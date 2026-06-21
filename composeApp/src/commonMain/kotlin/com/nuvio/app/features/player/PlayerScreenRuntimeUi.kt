@@ -217,13 +217,22 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             onSeekForward = { seekBy(10_000L) },
             onResizeModeClick = { cycleResizeMode() },
             onSpeedClick = { cyclePlaybackSpeed() },
-            onSubtitleClick = {
-                refreshTracks()
-                showSubtitleModal = true
+            onSubtitleClick = if (isLiveTv) null else {
+                {
+                    refreshTracks()
+                    showSubtitleModal = true
+                }
             },
-            onAudioClick = {
-                refreshTracks()
-                showAudioModal = true
+            onAudioClick = if (isLiveTv) null else {
+                {
+                    refreshTracks()
+                    showAudioModal = true
+                }
+            },
+            onChannelsClick = if (isLiveTv) {
+                { showLiveTvChannelsPanel = true }
+            } else {
+                null
             },
             onVideoSettingsClick = if (isIos) {
                 {
@@ -528,4 +537,15 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             showSubmitIntroModal = false
         },
     )
+    if (isLiveTv) {
+        LiveTvChannelsPanel(
+            visible = showLiveTvChannelsPanel,
+            currentStreamUrl = activeSourceUrl,
+            onChannelSelected = { channel -> switchToLiveTvChannel(channel) },
+            onDismiss = {
+                showLiveTvChannelsPanel = false
+                controlsVisible = true
+            },
+        )
+    }
 }

@@ -15,6 +15,7 @@ object LiveTvRepository {
         initialized = true
         mutableUiState.value = mutableUiState.value.copy(
             sourceUrl = LiveTvStorage.loadSourceUrl().orEmpty(),
+            favoriteUrls = LiveTvStorage.loadFavoriteUrls(),
         )
     }
 
@@ -39,6 +40,7 @@ object LiveTvRepository {
             mutableUiState.value = LiveTvUiState(
                 sourceUrl = normalizedUrl,
                 channels = channels,
+                favoriteUrls = mutableUiState.value.favoriteUrls,
                 isLoaded = true,
             )
             channels
@@ -53,13 +55,26 @@ object LiveTvRepository {
 
     fun disconnect() {
         LiveTvStorage.saveSourceUrl("")
-        mutableUiState.value = LiveTvUiState()
+        mutableUiState.value = LiveTvUiState(
+            favoriteUrls = mutableUiState.value.favoriteUrls,
+        )
+    }
+
+    fun toggleFavorite(channel: LiveTvChannel) {
+        val favorites = mutableUiState.value.favoriteUrls.toMutableSet()
+        if (!favorites.add(channel.streamUrl)) {
+            favorites.remove(channel.streamUrl)
+        }
+        LiveTvStorage.saveFavoriteUrls(favorites)
+        mutableUiState.value = mutableUiState.value.copy(favoriteUrls = favorites)
     }
 }
 
 internal expect object LiveTvStorage {
     fun loadSourceUrl(): String?
     fun saveSourceUrl(url: String)
+    fun loadFavoriteUrls(): Set<String>
+    fun saveFavoriteUrls(urls: Set<String>)
 }
 
 internal fun parseM3uPlaylist(content: String): List<LiveTvChannel> {

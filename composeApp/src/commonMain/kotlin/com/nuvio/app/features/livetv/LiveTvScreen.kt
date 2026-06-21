@@ -21,6 +21,8 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -62,6 +64,8 @@ import nuvio.composeapp.generated.resources.live_tv_channels
 import nuvio.composeapp.generated.resources.live_tv_disconnect
 import nuvio.composeapp.generated.resources.live_tv_empty_description
 import nuvio.composeapp.generated.resources.live_tv_empty_title
+import nuvio.composeapp.generated.resources.live_tv_favorite
+import nuvio.composeapp.generated.resources.live_tv_favorites
 import nuvio.composeapp.generated.resources.live_tv_load
 import nuvio.composeapp.generated.resources.live_tv_refresh
 import nuvio.composeapp.generated.resources.live_tv_search
@@ -83,6 +87,7 @@ fun LiveTvScreen(
     var sourceUrl by rememberSaveable { mutableStateOf(uiState.sourceUrl) }
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf("") }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var editingSource by rememberSaveable { mutableStateOf(uiState.sourceUrl.isBlank()) }
 
     LaunchedEffect(uiState.sourceUrl) {
@@ -97,9 +102,10 @@ fun LiveTvScreen(
     val groups = remember(uiState.channels) {
         uiState.channels.map { it.group }.filter { it.isNotBlank() }.distinct().sorted()
     }
-    val visibleChannels = remember(uiState.channels, query, selectedGroup) {
+    val visibleChannels = remember(uiState.channels, uiState.favoriteUrls, query, selectedGroup, favoritesOnly) {
         uiState.channels.filter { channel ->
             (selectedGroup.isBlank() || channel.group == selectedGroup) &&
+                (!favoritesOnly || channel.streamUrl in uiState.favoriteUrls) &&
                 (query.isBlank() || channel.name.contains(query, ignoreCase = true))
         }
     }
@@ -187,7 +193,15 @@ fun LiveTvScreen(
                     LiveTvGroupRow(
                         groups = groups,
                         selectedGroup = selectedGroup,
-                        onSelected = { selectedGroup = it },
+                        favoritesOnly = favoritesOnly,
+                        onFavoritesSelected = {
+                            favoritesOnly = true
+                            selectedGroup = ""
+                        },
+                        onSelected = {
+                            favoritesOnly = false
+                            selectedGroup = it
+                        },
                     )
                 }
             }
@@ -213,6 +227,8 @@ fun LiveTvScreen(
             ) { index ->
                 LiveTvChannelRow(
                     channel = visibleChannels[index],
+                    isFavorite = visibleChannels[index].streamUrl in uiState.favoriteUrls,
+                    onFavoriteClick = { LiveTvRepository.toggleFavorite(visibleChannels[index]) },
                     onClick = { onChannelClick(visibleChannels[index]) },
                 )
             }
@@ -320,6 +336,8 @@ private fun LiveTvSourceCard(
 private fun LiveTvGroupRow(
     groups: List<String>,
     selectedGroup: String,
+    favoritesOnly: Boolean,
+    onFavoritesSelected: () -> Unit,
     onSelected: (String) -> Unit,
 ) {
     Row(
@@ -329,8 +347,13 @@ private fun LiveTvGroupRow(
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
     ) {
         LiveTvGroupChip(
+            label = stringResource(Res.string.live_tv_favorites),
+            selected = favoritesOnly,
+            onClick = onFavoritesSelected,
+        )
+        LiveTvGroupChip(
             label = stringResource(Res.string.live_tv_all),
-            selected = selectedGroup.isBlank(),
+            selected = selectedGroup.isBlank() && !favoritesOnly,
             onClick = { onSelected("") },
         )
         groups.forEach { group ->
@@ -373,6 +396,8 @@ private fun LiveTvGroupChip(
 @Composable
 private fun LiveTvChannelRow(
     channel: LiveTvChannel,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
@@ -433,6 +458,13 @@ private fun LiveTvChannelRow(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            IconButton(onClick = onFavoriteClick) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                    contentDescription = stringResource(Res.string.live_tv_favorite),
+                    tint = if (isFavorite) tokens.colors.warning else tokens.colors.textMuted,
+                )
             }
             Box(
                 modifier = Modifier

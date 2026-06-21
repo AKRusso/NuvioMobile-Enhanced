@@ -12,6 +12,7 @@ data class LiveTvChannel(
 data class LiveTvUiState(
     val sourceUrl: String = "",
     val channels: List<LiveTvChannel> = emptyList(),
+    val favoriteUrls: Set<String> = emptySet(),
     val isLoading: Boolean = false,
     val isLoaded: Boolean = false,
     val errorMessage: String? = null,

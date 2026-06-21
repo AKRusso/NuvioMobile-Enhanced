@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 actual object LiveTvStorage {
     private const val preferencesName = "nuvio_live_tv"
     private const val sourceUrlKey = "m3u_source_url"
+    private const val favoriteUrlsKey = "favorite_channel_urls"
 
     private var preferences: SharedPreferences? = null
 
@@ -20,5 +21,12 @@ actual object LiveTvStorage {
         preferences?.edit()?.apply {
             if (url.isBlank()) remove(sourceUrlKey) else putString(sourceUrlKey, url)
         }?.apply()
+    }
+
+    actual fun loadFavoriteUrls(): Set<String> =
+        preferences?.getStringSet(favoriteUrlsKey, emptySet()).orEmpty()
+
+    actual fun saveFavoriteUrls(urls: Set<String>) {
+        preferences?.edit()?.putStringSet(favoriteUrlsKey, urls)?.apply()
     }
 }

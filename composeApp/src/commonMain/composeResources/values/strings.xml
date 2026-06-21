@@ -341,6 +341,10 @@
     <string name="live_tv_all">All</string>
     <string name="live_tv_channels">Channels</string>
     <string name="live_tv_channel_count">%1$d channels</string>
+    <string name="live_tv_favorite">Favorite</string>
+    <string name="live_tv_favorites">Favorites</string>
+    <string name="live_tv_no_favorites">Favorite channels will appear here.</string>
+    <string name="live_tv_player_channels">Channels</string>
     <string name="live_tv_empty_title">Add your channel list</string>
     <string name="live_tv_empty_description">Enter an M3U URL to bring your live channels into Nuvio.</string>
     <string name="compose_player_audio_tracks">Audio Tracks</string>

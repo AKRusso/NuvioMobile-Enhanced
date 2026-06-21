@@ -322,6 +322,10 @@
     <string name="live_tv_all">Tümü</string>
     <string name="live_tv_channels">Kanallar</string>
     <string name="live_tv_channel_count">%1$d kanal</string>
+    <string name="live_tv_favorite">Favori</string>
+    <string name="live_tv_favorites">Favoriler</string>
+    <string name="live_tv_no_favorites">Favori kanalların burada görünecek.</string>
+    <string name="live_tv_player_channels">Kanallar</string>
     <string name="live_tv_empty_title">Kanal listeni ekle</string>
     <string name="live_tv_empty_description">Canlı kanallarını Nuvio'ya eklemek için bir M3U URL'si gir.</string>
     <string name="compose_player_audio_tracks">Ses parçaları</string>
