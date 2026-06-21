@@ -320,11 +320,14 @@
     <string name="live_tv_refresh">Listeyi yenile</string>
     <string name="live_tv_search">Kanal ara</string>
     <string name="live_tv_all">Tümü</string>
+    <string name="live_tv_all_channels">Tüm kanallar</string>
     <string name="live_tv_channels">Kanallar</string>
     <string name="live_tv_categories">Kategoriler</string>
+    <string name="live_tv_choose_category">Kategori seç</string>
     <string name="live_tv_channel_count">%1$d kanal</string>
     <string name="live_tv_favorite">Favori</string>
     <string name="live_tv_favorites">Favoriler</string>
+    <string name="live_tv_no_channels_found">Kanal bulunamadı.</string>
     <string name="live_tv_no_favorites">Favori kanalların burada görünecek.</string>
     <string name="live_tv_player_channels">Kanallar</string>
     <string name="live_tv_empty_title">Kanal listeni ekle</string>

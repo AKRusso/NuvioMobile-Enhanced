@@ -16,7 +16,7 @@ internal fun PlayerScreenRuntime.switchToLiveTvChannel(channel: LiveTvChannel) {
     activeStreamType = null
     activeSourceIdentityKey = "live-tv:${channel.streamUrl}"
     activeStreamTitle = channel.name
-    activeStreamSubtitle = channel.group.takeIf(String::isNotBlank)
+    activeStreamSubtitle = null
     activeProviderName = "M3U"
     activeProviderAddonId = "live-tv"
     activeVideoId = null
@@ -26,7 +26,7 @@ internal fun PlayerScreenRuntime.switchToLiveTvChannel(channel: LiveTvChannel) {
         title = channel.name,
         logo = channel.logoUrl,
         streamTitle = channel.name,
-        streamSubtitle = channel.group.takeIf(String::isNotBlank),
+        streamSubtitle = null,
         sourceUrl = channel.streamUrl,
         sourceHeaders = channel.headers,
     )

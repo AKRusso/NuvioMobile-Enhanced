@@ -41,4 +41,20 @@ class LiveTvPlaylistParserTest {
         assertEquals(1, channels.size)
         assertEquals("Channel One", channels.first().name)
     }
+
+    @Test
+    fun skipsCategoryHeadingLikeEntries() {
+        val channels = parseM3uPlaylist(
+            """
+            #EXTM3U
+            #EXTINF:-1,#### HABER KANALLARI ####
+            https://stream.test/haber.m3u8
+            #EXTINF:-1,TRT 1 HD
+            https://stream.test/trt1.m3u8
+            """.trimIndent(),
+        )
+
+        assertEquals(1, channels.size)
+        assertEquals("TRT 1 HD", channels.first().name)
+    }
 }

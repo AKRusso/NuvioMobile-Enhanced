@@ -35,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,11 +51,16 @@ import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.livetv.LiveTvChannel
 import com.nuvio.app.features.livetv.LiveTvRepository
+import com.nuvio.app.features.livetv.LiveTvFilterRow
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_close
 import nuvio.composeapp.generated.resources.live_tv_favorite
 import nuvio.composeapp.generated.resources.live_tv_no_favorites
 import nuvio.composeapp.generated.resources.live_tv_player_channels
+import nuvio.composeapp.generated.resources.live_tv_all_channels
+import nuvio.composeapp.generated.resources.live_tv_favorites
+import nuvio.composeapp.generated.resources.live_tv_choose_category
+import nuvio.composeapp.generated.resources.live_tv_no_channels_found
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -66,10 +74,28 @@ internal fun LiveTvChannelsPanel(
     val tokens = MaterialTheme.nuvio
     val uiState by LiveTvRepository.uiState.collectAsStateWithLifecycle()
     val channels = remember(uiState.channels, uiState.favoriteUrls) {
-        uiState.channels.sortedWith(
-            compareByDescending<LiveTvChannel> { it.streamUrl in uiState.favoriteUrls }
-                .thenBy { it.name.lowercase() },
-        )
+        uiState.channels
+            .filterNot { com.nuvio.app.features.livetv.isLikelyCategoryHeading(it.name) }
+            .sortedWith(
+                compareByDescending<LiveTvChannel> { it.streamUrl in uiState.favoriteUrls }
+                    .thenBy { it.name.lowercase() },
+            )
+    }
+    val groups = remember(uiState.channels) {
+        uiState.channels
+            .filterNot { com.nuvio.app.features.livetv.isLikelyCategoryHeading(it.name) }
+            .map { it.group }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
+    }
+    var selectedGroup by rememberSaveable { mutableStateOf("") }
+    var favoritesOnly by rememberSaveable { mutableStateOf(false) }
+    val filteredChannels = remember(channels, selectedGroup, favoritesOnly) {
+        channels.filter { channel ->
+            (selectedGroup.isBlank() || channel.group == selectedGroup) &&
+                (!favoritesOnly || channel.streamUrl in uiState.favoriteUrls)
+        }
     }
 
     AnimatedVisibility(
@@ -132,9 +158,42 @@ internal fun LiveTvChannelsPanel(
                         )
                     }
 
-                    if (channels.isEmpty()) {
+                    if (channels.isNotEmpty()) {
+                        LiveTvFilterRow(
+                            groups = groups,
+                            selectedGroup = selectedGroup,
+                            favoritesOnly = favoritesOnly,
+                            allLabel = stringResource(Res.string.live_tv_all_channels),
+                            favoritesLabel = stringResource(Res.string.live_tv_favorites),
+                            categoryLabel = stringResource(Res.string.live_tv_choose_category),
+                            onAllSelected = {
+                                favoritesOnly = false
+                                selectedGroup = ""
+                            },
+                            onFavoritesSelected = {
+                                favoritesOnly = true
+                                selectedGroup = ""
+                            },
+                            onGroupSelected = {
+                                favoritesOnly = false
+                                selectedGroup = it
+                            },
+                            modifier = Modifier.padding(
+                                start = tokens.spacing.sheetPadding,
+                                end = tokens.spacing.sheetPadding,
+                                bottom = tokens.spacing.controlGap,
+                            ),
+                        )
+                    }
+
+                    if (filteredChannels.isEmpty()) {
+                        val emptyMessage = when {
+                            favoritesOnly -> stringResource(Res.string.live_tv_no_favorites)
+                            selectedGroup.isNotBlank() -> stringResource(Res.string.live_tv_no_channels_found)
+                            else -> stringResource(Res.string.live_tv_no_channels_found)
+                        }
                         Text(
-                            text = stringResource(Res.string.live_tv_no_favorites),
+                            text = emptyMessage,
                             modifier = Modifier.padding(tokens.spacing.sheetPadding),
                             color = tokens.colors.textMuted,
                             style = MaterialTheme.typography.bodyMedium,
@@ -149,7 +208,7 @@ internal fun LiveTvChannelsPanel(
                             ),
                             verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
                         ) {
-                            items(channels, key = LiveTvChannel::id) { channel ->
+                            items(filteredChannels, key = LiveTvChannel::id) { channel ->
                                 LiveTvPlayerChannelRow(
                                     channel = channel,
                                     selected = channel.streamUrl == currentStreamUrl,

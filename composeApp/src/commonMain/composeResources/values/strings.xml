@@ -339,11 +339,14 @@
     <string name="live_tv_refresh">Refresh playlist</string>
     <string name="live_tv_search">Search channels</string>
     <string name="live_tv_all">All</string>
+    <string name="live_tv_all_channels">All channels</string>
     <string name="live_tv_channels">Channels</string>
     <string name="live_tv_categories">Categories</string>
+    <string name="live_tv_choose_category">Choose category</string>
     <string name="live_tv_channel_count">%1$d channels</string>
     <string name="live_tv_favorite">Favorite</string>
     <string name="live_tv_favorites">Favorites</string>
+    <string name="live_tv_no_channels_found">No channels found.</string>
     <string name="live_tv_no_favorites">Favorite channels will appear here.</string>
     <string name="live_tv_player_channels">Channels</string>
     <string name="live_tv_empty_title">Add your channel list</string>

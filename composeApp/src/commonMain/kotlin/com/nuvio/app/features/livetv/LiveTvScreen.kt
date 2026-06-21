@@ -2,7 +2,6 @@ package com.nuvio.app.features.livetv
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,8 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddLink
 import androidx.compose.material.icons.rounded.Close
@@ -45,13 +42,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioIconActionButton
 import com.nuvio.app.core.ui.NuvioInputField
 import com.nuvio.app.core.ui.NuvioPrimaryButton
-import com.nuvio.app.core.ui.NuvioDropdownChip
-import com.nuvio.app.core.ui.NuvioDropdownOption
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSectionLabel
@@ -60,10 +56,9 @@ import com.nuvio.app.core.ui.nuvio
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.live_tv_add_source
-import nuvio.composeapp.generated.resources.live_tv_all
+import nuvio.composeapp.generated.resources.live_tv_all_channels
 import nuvio.composeapp.generated.resources.live_tv_channel_count
 import nuvio.composeapp.generated.resources.live_tv_channels
-import nuvio.composeapp.generated.resources.live_tv_categories
 import nuvio.composeapp.generated.resources.live_tv_disconnect
 import nuvio.composeapp.generated.resources.live_tv_empty_description
 import nuvio.composeapp.generated.resources.live_tv_empty_title
@@ -72,6 +67,7 @@ import nuvio.composeapp.generated.resources.live_tv_favorites
 import nuvio.composeapp.generated.resources.live_tv_load
 import nuvio.composeapp.generated.resources.live_tv_refresh
 import nuvio.composeapp.generated.resources.live_tv_search
+import nuvio.composeapp.generated.resources.live_tv_choose_category
 import nuvio.composeapp.generated.resources.live_tv_source_hint
 import nuvio.composeapp.generated.resources.live_tv_source_title
 import nuvio.composeapp.generated.resources.live_tv_title
@@ -103,10 +99,15 @@ fun LiveTvScreen(
     }
 
     val groups = remember(uiState.channels) {
-        uiState.channels.map { it.group }.filter { it.isNotBlank() }.distinct().sorted()
+        uiState.channels
+            .filterNot { isLikelyCategoryHeading(it.name) }
+            .map { it.group }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .sorted()
     }
     val visibleChannels = remember(uiState.channels, uiState.favoriteUrls, query, selectedGroup, favoritesOnly) {
-        uiState.channels.filter { channel ->
+        uiState.channels.filterNot { isLikelyCategoryHeading(it.name) }.filter { channel ->
             (selectedGroup.isBlank() || channel.group == selectedGroup) &&
                 (!favoritesOnly || channel.streamUrl in uiState.favoriteUrls) &&
                 (query.isBlank() || channel.name.contains(query, ignoreCase = true))
@@ -117,6 +118,7 @@ fun LiveTvScreen(
             if (LiveTvRepository.load(sourceUrl).isSuccess) {
                 editingSource = false
                 selectedGroup = ""
+                favoritesOnly = false
             }
         }
         Unit
@@ -160,6 +162,8 @@ fun LiveTvScreen(
                         LiveTvRepository.disconnect()
                         sourceUrl = ""
                         editingSource = true
+                        favoritesOnly = false
+                        selectedGroup = ""
                     },
                 )
             }
@@ -191,22 +195,27 @@ fun LiveTvScreen(
                 )
             }
 
-            if (groups.isNotEmpty()) {
-                item {
-                    LiveTvGroupRow(
-                        groups = groups,
-                        selectedGroup = selectedGroup,
-                        favoritesOnly = favoritesOnly,
-                        onFavoritesSelected = {
-                            favoritesOnly = true
-                            selectedGroup = ""
-                        },
-                        onSelected = {
-                            favoritesOnly = false
-                            selectedGroup = it
-                        },
-                    )
-                }
+            item {
+                LiveTvFilterRow(
+                    groups = groups,
+                    selectedGroup = selectedGroup,
+                    favoritesOnly = favoritesOnly,
+                    allLabel = stringResource(Res.string.live_tv_all_channels),
+                    favoritesLabel = stringResource(Res.string.live_tv_favorites),
+                    categoryLabel = stringResource(Res.string.live_tv_choose_category),
+                    onAllSelected = {
+                        favoritesOnly = false
+                        selectedGroup = ""
+                    },
+                    onFavoritesSelected = {
+                        favoritesOnly = true
+                        selectedGroup = ""
+                    },
+                    onGroupSelected = {
+                        favoritesOnly = false
+                        selectedGroup = it
+                    },
+                )
             }
 
             item {
@@ -333,71 +342,6 @@ private fun LiveTvSourceCard(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun LiveTvGroupRow(
-    groups: List<String>,
-    selectedGroup: String,
-    favoritesOnly: Boolean,
-    onFavoritesSelected: () -> Unit,
-    onSelected: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LiveTvGroupChip(
-            label = stringResource(Res.string.live_tv_all),
-            selected = selectedGroup.isBlank() && !favoritesOnly,
-            onClick = { onSelected("") },
-        )
-        LiveTvGroupChip(
-            label = stringResource(Res.string.live_tv_favorites),
-            selected = favoritesOnly,
-            onClick = onFavoritesSelected,
-        )
-        NuvioDropdownChip(
-            title = stringResource(Res.string.live_tv_categories),
-            label = stringResource(Res.string.live_tv_categories),
-            selectedKey = selectedGroup.takeIf { it.isNotBlank() && !favoritesOnly },
-            options = groups.map { group ->
-                NuvioDropdownOption(key = group, label = group)
-            },
-            pillStyle = true,
-            onSelected = { option -> onSelected(option.key) },
-        )
-    }
-}
-
-@Composable
-private fun LiveTvGroupChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val tokens = MaterialTheme.nuvio
-    Surface(
-        onClick = onClick,
-        color = if (selected) tokens.colors.overlaySelected else tokens.colors.surface,
-        shape = tokens.shapes.chip,
-        border = if (selected) null else androidx.compose.foundation.BorderStroke(
-            width = NuvioTokens.Border.thin,
-            color = tokens.colors.borderSubtle,
-        ),
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (selected) tokens.colors.accent else tokens.colors.textSecondary,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-            maxLines = 1,
-        )
     }
 }
 

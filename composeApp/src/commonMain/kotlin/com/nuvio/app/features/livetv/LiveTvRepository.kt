@@ -169,7 +169,9 @@ internal fun parseM3uPlaylistData(content: String): ParsedM3uPlaylist {
     }
 
     return ParsedM3uPlaylist(
-        channels = channels.distinctBy { it.streamUrl },
+        channels = channels
+            .distinctBy { it.streamUrl }
+            .filterNot { isLikelyCategoryHeading(it.name) },
         epgUrls = epgUrls.toList(),
     )
 }
@@ -228,6 +230,11 @@ private fun parseExtHttpHeaders(value: String): Map<String, String> {
             if (key.isBlank() || headerValue.isBlank()) null else key to headerValue
         }
         .toMap()
+}
+
+internal fun isLikelyCategoryHeading(name: String): Boolean {
+    val normalized = name.trim()
+    return normalized.length >= 8 && Regex("""^\s*#+\s*.+\s*#+\s*$""").matches(normalized)
 }
 
 internal expect object LiveTvClock {
