@@ -348,6 +348,7 @@ private fun LiveTvGroupRow(
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         LiveTvGroupChip(
             label = stringResource(Res.string.live_tv_all),
@@ -366,6 +367,7 @@ private fun LiveTvGroupRow(
             options = groups.map { group ->
                 NuvioDropdownOption(key = group, label = group)
             },
+            pillStyle = true,
             onSelected = { option -> onSelected(option.key) },
         )
     }

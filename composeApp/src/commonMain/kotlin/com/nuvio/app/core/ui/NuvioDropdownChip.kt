@@ -1,6 +1,7 @@
 package com.nuvio.app.core.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 data class NuvioDropdownOption(
@@ -45,6 +48,7 @@ fun NuvioDropdownChip(
     selectedKey: String?,
     options: List<NuvioDropdownOption>,
     enabled: Boolean = true,
+    pillStyle: Boolean = false,
     onSelected: (NuvioDropdownOption) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -52,11 +56,28 @@ fun NuvioDropdownChip(
     var isSheetVisible by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val coroutineScope = rememberCoroutineScope()
+    val selected = selectedKey != null
+    val shape = if (pillStyle) tokens.shapes.chip else tokens.shapes.compactCard
+    val containerColor = when {
+        pillStyle && selected -> tokens.colors.overlaySelected
+        else -> tokens.colors.surface
+    }
 
     Row(
         modifier = modifier
-            .clip(tokens.shapes.compactCard)
-            .background(tokens.colors.surface)
+            .clip(shape)
+            .background(containerColor)
+            .then(
+                if (pillStyle && !selected) {
+                    Modifier.border(
+                        width = NuvioTokens.Border.thin,
+                        color = tokens.colors.borderSubtle,
+                        shape = shape,
+                    )
+                } else {
+                    Modifier
+                },
+            )
             .then(
                 if (enabled) {
                     Modifier.clickable { isSheetVisible = true }
@@ -64,14 +85,27 @@ fun NuvioDropdownChip(
                     Modifier
                 },
             )
-            .padding(horizontal = NuvioTokens.Space.s12, vertical = tokens.components.chipVerticalPadding),
+            .padding(
+                horizontal = if (pillStyle) 16.dp else NuvioTokens.Space.s12,
+                vertical = if (pillStyle) 9.dp else tokens.components.chipVerticalPadding,
+            ),
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s6),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) tokens.colors.textPrimary else tokens.colors.textDisabled,
+            color = when {
+                !enabled -> tokens.colors.textDisabled
+                pillStyle && selected -> tokens.colors.accent
+                pillStyle -> tokens.colors.textSecondary
+                else -> tokens.colors.textPrimary
+            },
+            fontWeight = when {
+                pillStyle && selected -> FontWeight.SemiBold
+                pillStyle -> FontWeight.Medium
+                else -> FontWeight.Normal
+            },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -79,7 +113,11 @@ fun NuvioDropdownChip(
             imageVector = Icons.Rounded.KeyboardArrowDown,
             contentDescription = null,
             modifier = Modifier.size(NuvioTokens.Icon.sm + NuvioTokens.Space.s2),
-            tint = if (enabled) tokens.colors.textMuted else tokens.colors.borderDefault,
+            tint = when {
+                !enabled -> tokens.colors.borderDefault
+                pillStyle && selected -> tokens.colors.accent
+                else -> tokens.colors.textMuted
+            },
         )
     }
 
