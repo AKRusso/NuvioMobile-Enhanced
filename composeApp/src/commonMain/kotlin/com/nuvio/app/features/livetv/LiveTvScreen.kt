@@ -50,6 +50,8 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioIconActionButton
 import com.nuvio.app.core.ui.NuvioInputField
 import com.nuvio.app.core.ui.NuvioPrimaryButton
+import com.nuvio.app.core.ui.NuvioDropdownChip
+import com.nuvio.app.core.ui.NuvioDropdownOption
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSectionLabel
@@ -61,6 +63,7 @@ import nuvio.composeapp.generated.resources.live_tv_add_source
 import nuvio.composeapp.generated.resources.live_tv_all
 import nuvio.composeapp.generated.resources.live_tv_channel_count
 import nuvio.composeapp.generated.resources.live_tv_channels
+import nuvio.composeapp.generated.resources.live_tv_categories
 import nuvio.composeapp.generated.resources.live_tv_disconnect
 import nuvio.composeapp.generated.resources.live_tv_empty_description
 import nuvio.composeapp.generated.resources.live_tv_empty_title
@@ -347,22 +350,24 @@ private fun LiveTvGroupRow(
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
     ) {
         LiveTvGroupChip(
-            label = stringResource(Res.string.live_tv_favorites),
-            selected = favoritesOnly,
-            onClick = onFavoritesSelected,
-        )
-        LiveTvGroupChip(
             label = stringResource(Res.string.live_tv_all),
             selected = selectedGroup.isBlank() && !favoritesOnly,
             onClick = { onSelected("") },
         )
-        groups.forEach { group ->
-            LiveTvGroupChip(
-                label = group,
-                selected = selectedGroup == group,
-                onClick = { onSelected(group) },
-            )
-        }
+        LiveTvGroupChip(
+            label = stringResource(Res.string.live_tv_favorites),
+            selected = favoritesOnly,
+            onClick = onFavoritesSelected,
+        )
+        NuvioDropdownChip(
+            title = stringResource(Res.string.live_tv_categories),
+            label = stringResource(Res.string.live_tv_categories),
+            selectedKey = selectedGroup.takeIf { it.isNotBlank() && !favoritesOnly },
+            options = groups.map { group ->
+                NuvioDropdownOption(key = group, label = group)
+            },
+            onSelected = { option -> onSelected(option.key) },
+        )
     }
 }
 

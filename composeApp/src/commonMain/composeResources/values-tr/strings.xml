@@ -321,6 +321,7 @@
     <string name="live_tv_search">Kanal ara</string>
     <string name="live_tv_all">Tümü</string>
     <string name="live_tv_channels">Kanallar</string>
+    <string name="live_tv_categories">Kategoriler</string>
     <string name="live_tv_channel_count">%1$d kanal</string>
     <string name="live_tv_favorite">Favori</string>
     <string name="live_tv_favorites">Favoriler</string>

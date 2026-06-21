@@ -340,6 +340,7 @@
     <string name="live_tv_search">Search channels</string>
     <string name="live_tv_all">All</string>
     <string name="live_tv_channels">Channels</string>
+    <string name="live_tv_categories">Categories</string>
     <string name="live_tv_channel_count">%1$d channels</string>
     <string name="live_tv_favorite">Favorite</string>
     <string name="live_tv_favorites">Favorites</string>
