@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -141,6 +142,7 @@ import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.library.LibraryScreen
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.library.toMetaPreview
+import com.nuvio.app.features.livetv.LiveTvScreen
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
@@ -373,6 +375,7 @@ private data class PosterActionTarget(
 enum class AppScreenTab {
     Home,
     Search,
+    LiveTv,
     Library,
     Settings,
 }
@@ -380,6 +383,7 @@ enum class AppScreenTab {
 private fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (this) {
     AppScreenTab.Home -> NativeNavigationTab.Home
     AppScreenTab.Search -> NativeNavigationTab.Search
+    AppScreenTab.LiveTv -> NativeNavigationTab.LiveTv
     AppScreenTab.Library -> NativeNavigationTab.Library
     AppScreenTab.Settings -> NativeNavigationTab.Settings
 }
@@ -387,6 +391,7 @@ private fun AppScreenTab.toNativeNavigationTab(): NativeNavigationTab = when (th
 private fun NativeNavigationTab.toAppScreenTab(): AppScreenTab = when (this) {
     NativeNavigationTab.Home -> AppScreenTab.Home
     NativeNavigationTab.Search -> AppScreenTab.Search
+    NativeNavigationTab.LiveTv -> AppScreenTab.LiveTv
     NativeNavigationTab.Library -> AppScreenTab.Library
     NativeNavigationTab.Settings -> AppScreenTab.Settings
 }
@@ -803,6 +808,7 @@ private fun MainAppContent(
                 searchFocusRequestCount++
                 searchScrollToTopRequests.tryEmit(Unit)
             }
+            AppScreenTab.LiveTv -> Unit
             AppScreenTab.Library -> libraryScrollToTopRequests.tryEmit(Unit)
             AppScreenTab.Settings -> settingsRootActionRequests.tryEmit(Unit)
         }
@@ -1462,6 +1468,12 @@ private fun MainAppContent(
                                             onClick = { handleRootTabClick(AppScreenTab.Search) },
                                             icon = Res.drawable.sidebar_search,
                                             contentDescription = stringResource(Res.string.compose_nav_search),
+                                        )
+                                        NavItem(
+                                            selected = selectedTab == AppScreenTab.LiveTv,
+                                            onClick = { handleRootTabClick(AppScreenTab.LiveTv) },
+                                            icon = Icons.Filled.Tv,
+                                            contentDescription = stringResource(Res.string.compose_nav_live_tv),
                                         )
                                         NavItem(
                                             selected = selectedTab == AppScreenTab.Library,
@@ -2983,6 +2995,12 @@ private fun AppTabHost(
                     )
                 }
 
+                AppScreenTab.LiveTv -> {
+                    LiveTvScreen(
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
                 AppScreenTab.Library -> {
                     LibraryScreen(
                         modifier = Modifier.fillMaxSize(),
@@ -3076,6 +3094,23 @@ private fun TabletFloatingTopBar(
                             contentDescription = stringResource(Res.string.compose_nav_search),
                             modifier = Modifier.size(NuvioTokens.Space.s18),
                             tint = if (selectedTab == AppScreenTab.Search) {
+                                tokens.colors.textPrimary
+                            } else {
+                                tokens.colors.textMuted
+                            },
+                        )
+                    },
+                )
+                TabletTopPillItem(
+                    label = stringResource(Res.string.compose_nav_live_tv),
+                    selected = selectedTab == AppScreenTab.LiveTv,
+                    onClick = { onTabSelected(AppScreenTab.LiveTv) },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.Tv,
+                            contentDescription = stringResource(Res.string.compose_nav_live_tv),
+                            modifier = Modifier.size(NuvioTokens.Space.s18),
+                            tint = if (selectedTab == AppScreenTab.LiveTv) {
                                 tokens.colors.textPrimary
                             } else {
                                 tokens.colors.textMuted

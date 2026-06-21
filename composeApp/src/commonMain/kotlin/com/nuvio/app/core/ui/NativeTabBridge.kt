@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 internal enum class NativeNavigationTab {
     Home,
     Search,
+    LiveTv,
     Library,
     Settings,
     ;

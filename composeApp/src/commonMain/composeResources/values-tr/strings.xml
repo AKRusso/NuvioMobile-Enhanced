@@ -308,8 +308,13 @@
     <string name="compose_catalog_subtitle_trakt_library">Trakt kitaplığı</string>
     <string name="compose_nav_home">Ana sayfa</string>
     <string name="compose_nav_library">Kitaplık</string>
+    <string name="compose_nav_live_tv">Canlı TV</string>
     <string name="compose_nav_profile">Profil</string>
     <string name="compose_nav_search">Ara</string>
+    <string name="live_tv_title">Canlı TV</string>
+    <string name="live_tv_subtitle">Canlı kanalları, yayın akışını ve öne çıkan anları keşfet.</string>
+    <string name="live_tv_featured">Öne Çıkan Kanallar</string>
+    <string name="live_tv_now_playing">Şu anda</string>
     <string name="compose_player_audio_tracks">Ses parçaları</string>
     <string name="compose_player_audio">Ses</string>
     <string name="compose_player_built_in">Yerleşik</string>
@@ -1413,4 +1418,7 @@
     </plurals>
     <string name="cw_new_episode">Yeni Bölüm</string>
     <string name="cw_new_season">Yeni Sezon</string>
+    <string name="library_group_all">Tümü</string>
+    <string name="library_group_watched">İzlenenler</string>
+    <string name="library_group_unwatched">İzlenmeyenler</string>
 </resources>

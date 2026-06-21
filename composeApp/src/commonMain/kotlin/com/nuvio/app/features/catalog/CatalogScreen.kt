@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +14,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.items
@@ -21,6 +24,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,6 +86,13 @@ fun CatalogScreen(
         WatchedRepository.ensureLoaded()
         WatchedRepository.uiState
     }.collectAsStateWithLifecycle()
+    val libraryGroupAllTitle = stringResource(Res.string.library_group_all)
+    val libraryGroupWatchedTitle = stringResource(Res.string.library_group_watched)
+    val libraryGroupUnwatchedTitle = stringResource(Res.string.library_group_unwatched)
+    var selectedLibraryFilterName by remember { mutableStateOf(LibraryFilter.All.name) }
+    val selectedLibraryFilter = remember(selectedLibraryFilterName) {
+        runCatching { LibraryFilter.valueOf(selectedLibraryFilterName) }.getOrDefault(LibraryFilter.All)
+    }
     val initialScrollPosition = remember(
         target,
         homeCatalogSettingsUiState.hideUnreleasedContent,
@@ -96,6 +107,12 @@ fun CatalogScreen(
     )
     var headerHeightPx by remember { mutableIntStateOf(0) }
     var observedOfflineState by remember { mutableStateOf(false) }
+
+    LaunchedEffect(target) {
+        if (target is CatalogTarget.Library) {
+            selectedLibraryFilterName = LibraryFilter.All.name
+        }
+    }
 
     LaunchedEffect(target, homeCatalogSettingsUiState.hideUnreleasedContent) {
         CatalogRepository.load(
@@ -191,22 +208,59 @@ fun CatalogScreen(
                         )
                     }
                 } else {
-                    items(
-                        items = uiState.items.withDuplicateSafeLazyKeys { item -> item.stableKey() },
-                        key = { item -> item.lazyKey },
-                    ) { keyedItem ->
-                        val item = keyedItem.value
-                        CatalogPosterTile(
-                            item = item,
-                            cornerRadiusDp = posterCardStyle.cornerRadiusDp,
-                            hideLabels = posterCardStyle.hideLabelsEnabled,
-                            isWatched = WatchingState.isPosterWatched(
+                    if (target is CatalogTarget.Library) {
+                        val watchedItems = uiState.items.filter { item ->
+                            WatchingState.isPosterWatched(
                                 watchedKeys = watchedUiState.watchedKeys,
                                 item = item,
-                            ),
-                            onClick = onPosterClick?.let { { it(item) } },
-                            onLongClick = onPosterLongClick?.let { { it(item) } },
-                        )
+                            )
+                        }
+                        val unwatchedItems = uiState.items.filterNot { item ->
+                            WatchingState.isPosterWatched(
+                                watchedKeys = watchedUiState.watchedKeys,
+                                item = item,
+                            )
+                        }
+                        val filteredItems = when (selectedLibraryFilter) {
+                            LibraryFilter.All -> uiState.items
+                            LibraryFilter.Watched -> watchedItems
+                            LibraryFilter.Unwatched -> unwatchedItems
+                        }
+                        items(
+                            items = filteredItems.withDuplicateSafeLazyKeys { item -> item.stableKey() },
+                            key = { item -> item.lazyKey },
+                        ) { keyedItem ->
+                            val item = keyedItem.value
+                            CatalogPosterTile(
+                                item = item,
+                                cornerRadiusDp = posterCardStyle.cornerRadiusDp,
+                                hideLabels = posterCardStyle.hideLabelsEnabled,
+                                isWatched = WatchingState.isPosterWatched(
+                                    watchedKeys = watchedUiState.watchedKeys,
+                                    item = item,
+                                ),
+                                onClick = onPosterClick?.let { { it(item) } },
+                                onLongClick = onPosterLongClick?.let { { it(item) } },
+                            )
+                        }
+                    } else {
+                        items(
+                            items = uiState.items.withDuplicateSafeLazyKeys { item -> item.stableKey() },
+                            key = { item -> item.lazyKey },
+                        ) { keyedItem ->
+                            val item = keyedItem.value
+                            CatalogPosterTile(
+                                item = item,
+                                cornerRadiusDp = posterCardStyle.cornerRadiusDp,
+                                hideLabels = posterCardStyle.hideLabelsEnabled,
+                                isWatched = WatchingState.isPosterWatched(
+                                    watchedKeys = watchedUiState.watchedKeys,
+                                    item = item,
+                                ),
+                                onClick = onPosterClick?.let { { it(item) } },
+                                onLongClick = onPosterLongClick?.let { { it(item) } },
+                            )
+                        }
                     }
                     if (uiState.isLoading) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
@@ -220,7 +274,27 @@ fun CatalogScreen(
                 title = title,
                 subtitle = subtitle,
                 modifier = Modifier.onSizeChanged { headerHeightPx = it.height },
+                showLibraryFilters = target is CatalogTarget.Library,
+                selectedLibraryFilter = selectedLibraryFilter,
                 onBack = onBack,
+                onLibraryFilterSelected = { selectedLibraryFilterName = it.name },
+                allLabel = "$libraryGroupAllTitle (${uiState.items.size})",
+                watchedLabel = "$libraryGroupWatchedTitle (${
+                    uiState.items.count {
+                        WatchingState.isPosterWatched(
+                            watchedKeys = watchedUiState.watchedKeys,
+                            item = it,
+                        )
+                    }
+                })",
+                unwatchedLabel = "$libraryGroupUnwatchedTitle (${
+                    uiState.items.count {
+                        !WatchingState.isPosterWatched(
+                            watchedKeys = watchedUiState.watchedKeys,
+                            item = it,
+                        )
+                    }
+                })",
             )
         }
     }
@@ -231,6 +305,12 @@ private fun CatalogHeader(
     title: String,
     subtitle: String,
     onBack: () -> Unit,
+    showLibraryFilters: Boolean = false,
+    selectedLibraryFilter: LibraryFilter = LibraryFilter.All,
+    allLabel: String = "",
+    watchedLabel: String = "",
+    unwatchedLabel: String = "",
+    onLibraryFilterSelected: ((LibraryFilter) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -266,6 +346,28 @@ private fun CatalogHeader(
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+        if (showLibraryFilters) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.72f),
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.16f),
+                ),
+            ) {
+                LibraryFilterRow(
+                    selectedFilter = selectedLibraryFilter,
+                    allLabel = allLabel,
+                    watchedLabel = watchedLabel,
+                    unwatchedLabel = unwatchedLabel,
+                    onSelected = { onLibraryFilterSelected?.invoke(it) },
+                )
+            }
         }
     }
 }
@@ -400,3 +502,78 @@ private fun catalogGridColumnsForWidth(screenWidth: Dp): Int =
         screenWidth >= 840.dp -> 4
         else -> 3
     }
+
+private enum class LibraryFilter {
+    All,
+    Watched,
+    Unwatched,
+}
+
+@Composable
+private fun LibraryFilterRow(
+    selectedFilter: LibraryFilter,
+    allLabel: String,
+    watchedLabel: String,
+    unwatchedLabel: String,
+    onSelected: (LibraryFilter) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            LibraryFilterChip(
+                label = allLabel,
+                selected = selectedFilter == LibraryFilter.All,
+                onClick = { onSelected(LibraryFilter.All) },
+            )
+        }
+        item {
+            LibraryFilterChip(
+                label = watchedLabel,
+                selected = selectedFilter == LibraryFilter.Watched,
+                onClick = { onSelected(LibraryFilter.Watched) },
+            )
+        }
+        item {
+            LibraryFilterChip(
+                label = unwatchedLabel,
+                selected = selectedFilter == LibraryFilter.Unwatched,
+                onClick = { onSelected(LibraryFilter.Unwatched) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryFilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(999.dp),
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.24f)
+        else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
+        tonalElevation = 0.dp,
+        shadowElevation = if (selected) 2.dp else 0.dp,
+        border = if (selected) null else androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f),
+        ),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}

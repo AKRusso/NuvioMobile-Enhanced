@@ -299,6 +299,9 @@
     <string name="collections_new">New Collection</string>
     <string name="collections_pinned">Pinned</string>
     <string name="collections_tab_all">All</string>
+    <string name="library_group_all">All</string>
+    <string name="library_group_watched">Watched</string>
+    <string name="library_group_unwatched">Unwatched</string>
     <string name="collections_your_collections">Your Collections</string>
     <string name="compose_about_made_with">Made with ❤️ by Tapframe and friends</string>
     <string name="compose_about_version_format">Version %1$s (%2$s)</string>
@@ -324,8 +327,13 @@
     <string name="compose_catalog_subtitle_trakt_library">Trakt Library</string>
     <string name="compose_nav_home">Home</string>
     <string name="compose_nav_library">Library</string>
+    <string name="compose_nav_live_tv">Live TV</string>
     <string name="compose_nav_profile">Profile</string>
     <string name="compose_nav_search">Search</string>
+    <string name="live_tv_title">Live TV</string>
+    <string name="live_tv_subtitle">Browse live channels, schedules, and on-air highlights.</string>
+    <string name="live_tv_featured">Featured Channels</string>
+    <string name="live_tv_now_playing">Now Playing</string>
     <string name="compose_player_audio_tracks">Audio Tracks</string>
     <string name="compose_player_audio">Audio</string>
     <string name="compose_player_auto_sync">Auto Sync</string>
