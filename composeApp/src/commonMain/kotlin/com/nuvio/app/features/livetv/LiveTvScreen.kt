@@ -1,11 +1,11 @@
 package com.nuvio.app.features.livetv
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,402 +13,475 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.rounded.AddLink
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import com.nuvio.app.core.ui.NuvioIconActionButton
+import com.nuvio.app.core.ui.NuvioInputField
+import com.nuvio.app.core.ui.NuvioPrimaryButton
+import com.nuvio.app.core.ui.NuvioScreen
+import com.nuvio.app.core.ui.NuvioScreenHeader
+import com.nuvio.app.core.ui.NuvioSectionLabel
+import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.nuvio
+import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.media_tv
+import nuvio.composeapp.generated.resources.live_tv_add_source
+import nuvio.composeapp.generated.resources.live_tv_all
+import nuvio.composeapp.generated.resources.live_tv_channel_count
+import nuvio.composeapp.generated.resources.live_tv_channels
+import nuvio.composeapp.generated.resources.live_tv_disconnect
+import nuvio.composeapp.generated.resources.live_tv_empty_description
+import nuvio.composeapp.generated.resources.live_tv_empty_title
+import nuvio.composeapp.generated.resources.live_tv_load
+import nuvio.composeapp.generated.resources.live_tv_refresh
+import nuvio.composeapp.generated.resources.live_tv_search
+import nuvio.composeapp.generated.resources.live_tv_source_hint
+import nuvio.composeapp.generated.resources.live_tv_source_title
+import nuvio.composeapp.generated.resources.live_tv_title
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun LiveTvScreen(
     modifier: Modifier = Modifier,
-    onChannelClick: ((LiveTvChannel) -> Unit)? = null,
+    onChannelClick: (LiveTvChannel) -> Unit = {},
 ) {
-    val channels = remember { demoLiveTvChannels() }
-    val categories = remember { demoLiveTvCategories() }
+    val uiState by remember {
+        LiveTvRepository.ensureLoaded()
+        LiveTvRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var sourceUrl by rememberSaveable { mutableStateOf(uiState.sourceUrl) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var selectedGroup by rememberSaveable { mutableStateOf("") }
+    var editingSource by rememberSaveable { mutableStateOf(uiState.sourceUrl.isBlank()) }
 
-    val backgroundBrush = Brush.linearGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background,
-        ),
-    )
+    LaunchedEffect(uiState.sourceUrl) {
+        if (sourceUrl.isBlank()) sourceUrl = uiState.sourceUrl
+    }
+    LaunchedEffect(Unit) {
+        if (uiState.sourceUrl.isNotBlank() && uiState.channels.isEmpty() && !uiState.isLoading) {
+            LiveTvRepository.load(uiState.sourceUrl)
+        }
+    }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(backgroundBrush),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            top = 48.dp,
-            end = 16.dp,
-            bottom = nuvioSafeBottomPadding(28.dp),
-        ),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    val groups = remember(uiState.channels) {
+        uiState.channels.map { it.group }.filter { it.isNotBlank() }.distinct().sorted()
+    }
+    val visibleChannels = remember(uiState.channels, query, selectedGroup) {
+        uiState.channels.filter { channel ->
+            (selectedGroup.isBlank() || channel.group == selectedGroup) &&
+                (query.isBlank() || channel.name.contains(query, ignoreCase = true))
+        }
+    }
+    val loadSource: () -> Unit = {
+        scope.launch {
+            if (LiveTvRepository.load(sourceUrl).isSuccess) {
+                editingSource = false
+                selectedGroup = ""
+            }
+        }
+        Unit
+    }
+
+    NuvioScreen(
+        modifier = modifier,
+        horizontalPadding = 16.dp,
     ) {
         item {
-            LiveTvHeroCard()
-        }
-
-        item {
-            LiveTvQuickStatsRow()
-        }
-
-        item {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(categories, key = { it }) { category ->
-                    Surface(
-                        onClick = { },
-                        shape = RoundedCornerShape(999.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow,
-                        border = androidx.compose.foundation.BorderStroke(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
-                        ),
-                    ) {
-                        Text(
-                            text = category,
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+            NuvioScreenHeader(
+                title = stringResource(Res.string.live_tv_title),
+                includeStatusBarPadding = false,
+                actions = {
+                    if (uiState.channels.isNotEmpty()) {
+                        NuvioIconActionButton(
+                            icon = Icons.Rounded.Refresh,
+                            contentDescription = stringResource(Res.string.live_tv_refresh),
+                            onClick = { scope.launch { LiveTvRepository.load(uiState.sourceUrl) } },
+                        )
+                        NuvioIconActionButton(
+                            icon = Icons.Rounded.AddLink,
+                            contentDescription = stringResource(Res.string.live_tv_add_source),
+                            onClick = { editingSource = !editingSource },
                         )
                     }
-                }
+                },
+            )
+        }
+
+        if (editingSource || uiState.sourceUrl.isBlank()) {
+            item {
+                LiveTvSourceCard(
+                    sourceUrl = sourceUrl,
+                    isLoading = uiState.isLoading,
+                    errorMessage = uiState.errorMessage,
+                    hasConnectedSource = uiState.channels.isNotEmpty(),
+                    onSourceUrlChange = { sourceUrl = it },
+                    onLoad = loadSource,
+                    onDisconnect = {
+                        LiveTvRepository.disconnect()
+                        sourceUrl = ""
+                        editingSource = true
+                    },
+                )
             }
         }
 
-        item {
-            Text(
-                text = "Featured Channels",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        if (uiState.channels.isNotEmpty()) {
+            item {
+                NuvioInputField(
+                    value = query,
+                    onValueChange = { query = it },
+                    placeholder = stringResource(Res.string.live_tv_search),
+                    trailingContent = {
+                        if (query.isBlank()) {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.nuvio.colors.textMuted,
+                            )
+                        } else {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.nuvio.colors.textMuted,
+                                )
+                            }
+                        }
+                    },
+                )
+            }
 
-        items(channels, key = { it.id }) { channel ->
-            LiveTvChannelCard(
-                channel = channel,
-                onChannelClick = onChannelClick,
-            )
+            if (groups.isNotEmpty()) {
+                item {
+                    LiveTvGroupRow(
+                        groups = groups,
+                        selectedGroup = selectedGroup,
+                        onSelected = { selectedGroup = it },
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NuvioSectionLabel(text = stringResource(Res.string.live_tv_channels))
+                    Text(
+                        text = stringResource(Res.string.live_tv_channel_count, visibleChannels.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.nuvio.colors.textMuted,
+                    )
+                }
+            }
+
+            items(
+                count = visibleChannels.size,
+                key = { index -> visibleChannels[index].id },
+            ) { index ->
+                LiveTvChannelRow(
+                    channel = visibleChannels[index],
+                    onClick = { onChannelClick(visibleChannels[index]) },
+                )
+            }
+        } else if (!uiState.isLoading && !editingSource) {
+            item {
+                LiveTvEmptyState(onAddSource = { editingSource = true })
+            }
         }
     }
 }
 
 @Composable
-private fun LiveTvHeroCard() {
+private fun LiveTvSourceCard(
+    sourceUrl: String,
+    isLoading: Boolean,
+    errorMessage: String?,
+    hasConnectedSource: Boolean,
+    onSourceUrlChange: (String) -> Unit,
+    onLoad: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
     Surface(
-        shape = RoundedCornerShape(32.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
-        ),
+        modifier = Modifier.fillMaxWidth(),
+        color = tokens.colors.surface,
+        shape = tokens.shapes.card,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF121826),
-                            Color(0xFF1E293B),
-                            Color(0xFF0F172A),
-                        ),
-                    ),
-                )
-                .padding(18.dp),
+        Column(
+            modifier = Modifier.padding(tokens.spacing.cardPadding),
+            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
+                        .size(NuvioTokens.Space.s48)
+                        .clip(tokens.shapes.compactCard)
+                        .background(tokens.colors.overlaySelected),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Tv,
+                        imageVector = Icons.Rounded.AddLink,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(30.dp),
+                        tint = tokens.colors.accent,
                     )
                 }
-
-                Text(
-                    text = stringResource(Res.string.media_tv),
-                    style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Browse live channels, schedules, and on-air highlights.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.78f),
-                )
-
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LiveTvMetaPill("24/7")
-                    LiveTvMetaPill("HD")
-                    LiveTvMetaPill("EPG")
+                Column {
+                    Text(
+                        text = stringResource(Res.string.live_tv_source_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(Res.string.live_tv_empty_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.colors.textMuted,
+                    )
                 }
+            }
+            NuvioInputField(
+                value = sourceUrl,
+                onValueChange = onSourceUrlChange,
+                placeholder = stringResource(Res.string.live_tv_source_hint),
+            )
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.colors.danger,
+                )
+            }
+            NuvioPrimaryButton(
+                text = stringResource(Res.string.live_tv_load),
+                enabled = sourceUrl.isNotBlank() && !isLoading,
+                onClick = onLoad,
+            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(NuvioTokens.Icon.md)
+                        .align(Alignment.CenterHorizontally),
+                    color = tokens.colors.accent,
+                    strokeWidth = 2.dp,
+                )
+            }
+            if (hasConnectedSource) {
+                Text(
+                    text = stringResource(Res.string.live_tv_disconnect),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clickable(onClick = onDisconnect)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.colors.danger,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun LiveTvQuickStatsRow() {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        LiveTvStatCard(
-            modifier = Modifier.width(110.dp),
-            title = "128",
-            subtitle = "Channels",
-        )
-        LiveTvStatCard(
-            modifier = Modifier.width(110.dp),
-            title = "16",
-            subtitle = "Live now",
-        )
-        LiveTvStatCard(
-            modifier = Modifier.width(110.dp),
-            title = "4K",
-            subtitle = "Ready",
-        )
-    }
-}
-
-@Composable
-private fun LiveTvStatCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    subtitle: String,
+private fun LiveTvGroupRow(
+    groups: List<String>,
+    selectedGroup: String,
+    onSelected: (String) -> Unit,
 ) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-        ),
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s8),
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        LiveTvGroupChip(
+            label = stringResource(Res.string.live_tv_all),
+            selected = selectedGroup.isBlank(),
+            onClick = { onSelected("") },
+        )
+        groups.forEach { group ->
+            LiveTvGroupChip(
+                label = group,
+                selected = selectedGroup == group,
+                onClick = { onSelected(group) },
             )
         }
     }
 }
 
 @Composable
-private fun LiveTvMetaPill(text: String) {
+private fun LiveTvGroupChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
     Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.18f),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.16f),
+        onClick = onClick,
+        color = if (selected) tokens.colors.overlaySelected else tokens.colors.surface,
+        shape = tokens.shapes.chip,
+        border = if (selected) null else androidx.compose.foundation.BorderStroke(
+            width = NuvioTokens.Border.thin,
+            color = tokens.colors.borderSubtle,
         ),
     ) {
         Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-            color = MaterialTheme.colorScheme.onPrimary,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
+            text = label,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) tokens.colors.accent else tokens.colors.textSecondary,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }
 
 @Composable
-private fun LiveTvChannelCard(
+private fun LiveTvChannelRow(
     channel: LiveTvChannel,
-    onChannelClick: ((LiveTvChannel) -> Unit)?,
+    onClick: () -> Unit,
 ) {
+    val tokens = MaterialTheme.nuvio
     Surface(
-        onClick = { onChannelClick?.invoke(channel) },
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 0.dp,
-        shadowElevation = 0.dp,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
-        ),
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        color = tokens.colors.surface,
+        shape = tokens.shapes.compactCard,
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(92.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(channel.accent),
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(tokens.colors.surfaceCard),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = channel.shortName,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Black,
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = channel.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Box(
+                if (!channel.logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = channel.logoUrl,
+                        contentDescription = channel.name,
                         modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(channel.liveDot),
+                            .fillMaxSize()
+                            .padding(8.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Tv,
+                        contentDescription = null,
+                        tint = tokens.colors.textMuted,
+                        modifier = Modifier.size(28.dp),
                     )
                 }
-
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    text = channel.category,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    text = channel.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tokens.colors.textPrimary,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
-
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (channel.group.isNotBlank()) {
                     Text(
-                        text = "Now Playing: ${channel.nowPlaying}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    LinearProgressIndicator(
-                        progress = { channel.progress },
-                        modifier = Modifier.fillMaxWidth(),
-                        color = channel.accent,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    )
-                    Text(
-                        text = channel.nextUp,
+                        text = channel.group,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = tokens.colors.textMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(tokens.shapes.avatar)
+                    .background(tokens.colors.overlaySelected),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = tokens.colors.accent,
+                )
             }
         }
     }
 }
 
-data class LiveTvChannel(
-    val id: String,
-    val name: String,
-    val shortName: String,
-    val category: String,
-    val nowPlaying: String,
-    val nextUp: String,
-    val progress: Float,
-    val accent: Color,
-    val liveDot: Color,
-)
-
-private fun demoLiveTvChannels(): List<LiveTvChannel> =
-    listOf(
-        LiveTvChannel(
-            id = "news-24",
-            name = "News 24",
-            shortName = "N24",
-            category = "News",
-            nowPlaying = "Morning Headlines",
-            nextUp = "World Update in 12 min",
-            progress = 0.62f,
-            accent = Color(0xFF3B82F6),
-            liveDot = Color(0xFF22C55E),
-        ),
-        LiveTvChannel(
-            id = "sports-now",
-            name = "Sports Now",
-            shortName = "SP",
-            category = "Sports",
-            nowPlaying = "Live Match Coverage",
-            nextUp = "Post-game analysis in 8 min",
-            progress = 0.41f,
-            accent = Color(0xFFF59E0B),
-            liveDot = Color(0xFF22C55E),
-        ),
-        LiveTvChannel(
-            id = "movie-premiere",
-            name = "Movie Premiere",
-            shortName = "MP",
-            category = "Entertainment",
-            nowPlaying = "Weekend Blockbuster",
-            nextUp = "Behind the scenes in 19 min",
-            progress = 0.78f,
-            accent = Color(0xFFEC4899),
-            liveDot = Color(0xFF22C55E),
-        ),
-        LiveTvChannel(
-            id = "kids-zone",
-            name = "Kids Zone",
-            shortName = "KZ",
-            category = "Kids",
-            nowPlaying = "Animated Adventures",
-            nextUp = "Learning Time in 25 min",
-            progress = 0.23f,
-            accent = Color(0xFF8B5CF6),
-            liveDot = Color(0xFF22C55E),
-        ),
-    )
-
-private fun demoLiveTvCategories(): List<String> =
-    listOf("All", "News", "Sports", "Movies", "Kids", "Documentary")
+@Composable
+private fun LiveTvEmptyState(onAddSource: () -> Unit) {
+    val tokens = MaterialTheme.nuvio
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 56.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.Tv,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = tokens.colors.textMuted,
+        )
+        Text(
+            text = stringResource(Res.string.live_tv_empty_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = tokens.colors.textPrimary,
+        )
+        Text(
+            text = stringResource(Res.string.live_tv_empty_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = tokens.colors.textMuted,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        NuvioPrimaryButton(
+            text = stringResource(Res.string.live_tv_add_source),
+            modifier = Modifier.fillMaxWidth(0.72f),
+            onClick = onAddSource,
+        )
+    }
+}

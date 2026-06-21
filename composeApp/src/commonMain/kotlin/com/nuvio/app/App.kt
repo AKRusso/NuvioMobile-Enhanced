@@ -142,6 +142,7 @@ import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.library.LibraryScreen
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.library.toMetaPreview
+import com.nuvio.app.features.livetv.LiveTvChannel
 import com.nuvio.app.features.livetv.LiveTvScreen
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.p2p.P2pConsentDialog
@@ -1519,6 +1520,25 @@ private fun MainAppContent(
                                         onPosterLongClick = { meta ->
                                             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                                             selectedPosterActionTarget = PosterActionTarget(preview = meta)
+                                        },
+                                        onLiveTvChannelClick = { channel ->
+                                            val launchId = PlayerLaunchStore.put(
+                                                PlayerLaunch(
+                                                    profileId = activePlaybackProfileId,
+                                                    title = channel.name,
+                                                    sourceUrl = channel.streamUrl,
+                                                    sourceHeaders = channel.headers,
+                                                    logo = channel.logoUrl,
+                                                    streamTitle = channel.name,
+                                                    streamSubtitle = channel.group.takeIf { it.isNotBlank() },
+                                                    providerName = "M3U",
+                                                    providerAddonId = "live-tv",
+                                                    contentType = "live-tv",
+                                                    parentMetaId = channel.id,
+                                                    parentMetaType = "live-tv",
+                                                ),
+                                            )
+                                            navController.navigate(PlayerRoute(launchId = launchId))
                                         },
                                         onLibraryPosterClick = { item ->
                                             navController.navigate(DetailRoute(type = item.type, id = item.id))
@@ -2941,6 +2961,7 @@ private fun AppTabHost(
     onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
+    onLiveTvChannelClick: ((LiveTvChannel) -> Unit)? = null,
     onLibraryPosterClick: ((LibraryItem) -> Unit)? = null,
     onLibraryPosterLongClick: ((LibraryItem, LibrarySection) -> Unit)? = null,
     onLibrarySectionViewAllClick: ((LibrarySection) -> Unit)? = null,
@@ -2998,6 +3019,7 @@ private fun AppTabHost(
                 AppScreenTab.LiveTv -> {
                     LiveTvScreen(
                         modifier = Modifier.fillMaxSize(),
+                        onChannelClick = { channel -> onLiveTvChannelClick?.invoke(channel) },
                     )
                 }
 
