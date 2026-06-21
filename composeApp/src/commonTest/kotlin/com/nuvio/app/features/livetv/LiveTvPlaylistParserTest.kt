@@ -6,16 +6,19 @@ import kotlin.test.assertEquals
 class LiveTvPlaylistParserTest {
     @Test
     fun parsesChannelMetadataAndHeaders() {
-        val channels = parseM3uPlaylist(
+        val playlist = parseM3uPlaylistData(
             """
-            #EXTM3U
-            #EXTINF:-1 tvg-name="TRT 1" tvg-logo="https://img.test/trt.png" group-title="Ulusal",TRT 1 HD
+            #EXTM3U url-tvg="https://epg.test/guide.xml"
+            #EXTINF:-1 tvg-id="trt1.tr" tvg-name="TRT 1" tvg-logo="https://img.test/trt.png" group-title="Ulusal",TRT 1 HD
             #EXTVLCOPT:http-user-agent=Nuvio
             https://stream.test/trt.m3u8|Referer=https://example.test
             """.trimIndent(),
         )
+        val channels = playlist.channels
 
         assertEquals(1, channels.size)
+        assertEquals(listOf("https://epg.test/guide.xml"), playlist.epgUrls)
+        assertEquals("trt1.tr", channels.first().tvgId)
         assertEquals("TRT 1 HD", channels.first().name)
         assertEquals("Ulusal", channels.first().group)
         assertEquals("https://img.test/trt.png", channels.first().logoUrl)

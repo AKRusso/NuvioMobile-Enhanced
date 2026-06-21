@@ -207,7 +207,10 @@ private fun LiveTvPlayerChannelRow(
                 )
             }
         }
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(
                 text = channel.name,
                 color = tokens.colors.textPrimary,
@@ -216,15 +219,6 @@ private fun LiveTvPlayerChannelRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (channel.group.isNotBlank()) {
-                Text(
-                    text = channel.group,
-                    color = tokens.colors.textMuted,
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         }
         IconButton(onClick = onFavoriteClick) {
             Icon(

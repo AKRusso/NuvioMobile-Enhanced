@@ -230,6 +230,7 @@ fun LiveTvScreen(
             ) { index ->
                 LiveTvChannelRow(
                     channel = visibleChannels[index],
+                    programme = visibleChannels[index].tvgId?.let(uiState.currentProgrammes::get),
                     isFavorite = visibleChannels[index].streamUrl in uiState.favoriteUrls,
                     onFavoriteClick = { LiveTvRepository.toggleFavorite(visibleChannels[index]) },
                     onClick = { onChannelClick(visibleChannels[index]) },
@@ -403,6 +404,7 @@ private fun LiveTvGroupChip(
 @Composable
 private fun LiveTvChannelRow(
     channel: LiveTvChannel,
+    programme: LiveTvProgramme?,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
@@ -461,6 +463,21 @@ private fun LiveTvChannelRow(
                         text = channel.group,
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.colors.textMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (programme != null) {
+                    Text(
+                        text = buildString {
+                            append(programme.title)
+                            if (programme.timeLabel.isNotBlank()) {
+                                append("  •  ")
+                                append(programme.timeLabel)
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.colors.accent,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
