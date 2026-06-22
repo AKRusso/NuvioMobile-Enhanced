@@ -22,6 +22,7 @@ object LiveTvRepository {
         mutableUiState.value = mutableUiState.value.copy(
             sourceUrl = LiveTvStorage.loadSourceUrl().orEmpty(),
             favoriteUrls = LiveTvStorage.loadFavoriteUrls(),
+            recentChannel = LiveTvStorage.loadRecentChannel(),
         )
     }
 
@@ -50,6 +51,7 @@ object LiveTvRepository {
                 sourceUrl = normalizedUrl,
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
+                recentChannel = mutableUiState.value.recentChannel,
                 isEpgLoading = playlist.epgUrls.isNotEmpty(),
                 isLoaded = true,
             )
@@ -68,6 +70,7 @@ object LiveTvRepository {
         LiveTvStorage.saveSourceUrl("")
         mutableUiState.value = LiveTvUiState(
             favoriteUrls = mutableUiState.value.favoriteUrls,
+            recentChannel = mutableUiState.value.recentChannel,
         )
     }
 
@@ -78,6 +81,18 @@ object LiveTvRepository {
         }
         LiveTvStorage.saveFavoriteUrls(favorites)
         mutableUiState.value = mutableUiState.value.copy(favoriteUrls = favorites)
+    }
+
+    fun recordRecentChannel(channel: LiveTvChannel) {
+        val recentChannel = LiveTvRecentChannel(
+            streamUrl = channel.streamUrl,
+            name = channel.name,
+            logoUrl = channel.logoUrl,
+            group = channel.group,
+            tvgId = channel.tvgId,
+        )
+        LiveTvStorage.saveRecentChannel(recentChannel)
+        mutableUiState.value = mutableUiState.value.copy(recentChannel = recentChannel)
     }
 
     private fun loadEpgInBackground(sourceUrl: String, epgUrls: List<String>) {
@@ -105,6 +120,8 @@ internal expect object LiveTvStorage {
     fun saveSourceUrl(url: String)
     fun loadFavoriteUrls(): Set<String>
     fun saveFavoriteUrls(urls: Set<String>)
+    fun loadRecentChannel(): LiveTvRecentChannel?
+    fun saveRecentChannel(channel: LiveTvRecentChannel?)
 }
 
 internal fun parseM3uPlaylist(content: String): List<LiveTvChannel> =

@@ -65,6 +65,8 @@ import nuvio.composeapp.generated.resources.live_tv_empty_title
 import nuvio.composeapp.generated.resources.live_tv_favorite
 import nuvio.composeapp.generated.resources.live_tv_favorites
 import nuvio.composeapp.generated.resources.live_tv_load
+import nuvio.composeapp.generated.resources.live_tv_recent_channel_cta
+import nuvio.composeapp.generated.resources.live_tv_recent_channel_title
 import nuvio.composeapp.generated.resources.live_tv_refresh
 import nuvio.composeapp.generated.resources.live_tv_search
 import nuvio.composeapp.generated.resources.live_tv_choose_category
@@ -105,6 +107,21 @@ fun LiveTvScreen(
             .filter { it.isNotBlank() }
             .distinct()
             .sorted()
+    }
+    val recentChannel = remember(uiState.recentChannel, uiState.channels) {
+        uiState.recentChannel?.let { recent ->
+            val currentMatch = uiState.channels.firstOrNull { it.streamUrl == recent.streamUrl }
+            if (currentMatch != null) {
+                recent.copy(
+                    name = currentMatch.name,
+                    logoUrl = currentMatch.logoUrl ?: recent.logoUrl,
+                    group = currentMatch.group,
+                    tvgId = currentMatch.tvgId ?: recent.tvgId,
+                )
+            } else {
+                recent
+            }
+        }
     }
     val visibleChannels = remember(uiState.channels, uiState.favoriteUrls, query, selectedGroup, favoritesOnly) {
         uiState.channels.filterNot { isLikelyCategoryHeading(it.name) }.filter { channel ->
@@ -164,6 +181,27 @@ fun LiveTvScreen(
                         editingSource = true
                         favoritesOnly = false
                         selectedGroup = ""
+                    },
+                )
+            }
+        }
+
+        if (recentChannel != null) {
+            item {
+                LiveTvRecentChannelCard(
+                    channel = recentChannel,
+                    onClick = {
+                        onChannelClick(
+                            uiState.channels.firstOrNull { it.streamUrl == recentChannel.streamUrl }
+                                ?: LiveTvChannel(
+                                    id = recentChannel.streamUrl,
+                                    name = recentChannel.name,
+                                    streamUrl = recentChannel.streamUrl,
+                                    tvgId = recentChannel.tvgId,
+                                    logoUrl = recentChannel.logoUrl,
+                                    group = recentChannel.group,
+                                ),
+                        )
                     },
                 )
             }
@@ -249,6 +287,84 @@ fun LiveTvScreen(
             item {
                 LiveTvEmptyState(onAddSource = { editingSource = true })
             }
+        }
+    }
+}
+
+@Composable
+private fun LiveTvRecentChannelCard(
+    channel: LiveTvRecentChannel,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+        color = tokens.colors.surface,
+        shape = tokens.shapes.card,
+    ) {
+        Row(
+            modifier = Modifier.padding(tokens.spacing.cardPadding),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(tokens.colors.surfaceCard),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (!channel.logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = channel.logoUrl,
+                        contentDescription = channel.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(7.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Rounded.Tv,
+                        contentDescription = null,
+                        tint = tokens.colors.textMuted,
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.live_tv_recent_channel_title),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = tokens.colors.textMuted,
+                )
+                Text(
+                    text = channel.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = tokens.colors.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (channel.group.isNotBlank()) {
+                    Text(
+                        text = channel.group,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.colors.textMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            NuvioPrimaryButton(
+                text = stringResource(Res.string.live_tv_recent_channel_cta),
+                onClick = onClick,
+            )
         }
     }
 }

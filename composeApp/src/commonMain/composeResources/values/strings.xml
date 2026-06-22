@@ -346,6 +346,8 @@
     <string name="live_tv_channel_count">%1$d channels</string>
     <string name="live_tv_favorite">Favorite</string>
     <string name="live_tv_favorites">Favorites</string>
+    <string name="live_tv_recent_channel_title">Last watched channel</string>
+    <string name="live_tv_recent_channel_cta">Continue</string>
     <string name="live_tv_no_channels_found">No channels found.</string>
     <string name="live_tv_no_favorites">Favorite channels will appear here.</string>
     <string name="live_tv_player_channels">Channels</string>

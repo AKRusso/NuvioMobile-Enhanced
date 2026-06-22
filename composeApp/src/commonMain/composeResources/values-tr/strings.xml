@@ -327,6 +327,8 @@
     <string name="live_tv_channel_count">%1$d kanal</string>
     <string name="live_tv_favorite">Favori</string>
     <string name="live_tv_favorites">Favoriler</string>
+    <string name="live_tv_recent_channel_title">Son izlenen kanal</string>
+    <string name="live_tv_recent_channel_cta">Devam et</string>
     <string name="live_tv_no_channels_found">Kanal bulunamadı.</string>
     <string name="live_tv_no_favorites">Favori kanalların burada görünecek.</string>
     <string name="live_tv_player_channels">Kanallar</string>

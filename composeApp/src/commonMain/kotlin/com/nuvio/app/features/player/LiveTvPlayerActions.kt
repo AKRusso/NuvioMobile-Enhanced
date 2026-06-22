@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import com.nuvio.app.features.livetv.LiveTvChannel
 
 internal fun PlayerScreenRuntime.switchToLiveTvChannel(channel: LiveTvChannel) {
+    com.nuvio.app.features.livetv.LiveTvRepository.recordRecentChannel(channel)
     if (channel.streamUrl == activeSourceUrl) {
         showLiveTvChannelsPanel = false
         controlsVisible = true

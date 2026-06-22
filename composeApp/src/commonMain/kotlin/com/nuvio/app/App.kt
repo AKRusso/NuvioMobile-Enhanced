@@ -143,6 +143,7 @@ import com.nuvio.app.features.library.LibraryScreen
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.library.toMetaPreview
 import com.nuvio.app.features.livetv.LiveTvChannel
+import com.nuvio.app.features.livetv.LiveTvRepository
 import com.nuvio.app.features.livetv.LiveTvScreen
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.p2p.P2pConsentDialog
@@ -1522,6 +1523,7 @@ private fun MainAppContent(
                                             selectedPosterActionTarget = PosterActionTarget(preview = meta)
                                         },
                                         onLiveTvChannelClick = { channel ->
+                                            LiveTvRepository.recordRecentChannel(channel)
                                             val launchId = PlayerLaunchStore.put(
                                                 PlayerLaunch(
                                                     profileId = activePlaybackProfileId,
