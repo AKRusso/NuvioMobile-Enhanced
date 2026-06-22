@@ -1004,7 +1004,7 @@ private fun LazyListScope.librarySections(
             headerHorizontalPadding = 16.dp,
             rowContentPadding = PaddingValues(horizontal = 16.dp),
             showHeaderAccent = showHeaderAccent,
-            onViewAllClick = if (section.items.size > LIBRARY_SECTION_PREVIEW_LIMIT) {
+            onViewAllClick = if (section.items.isNotEmpty()) {
                 onSectionViewAllClick?.let { { it(section) } }
             } else {
                 null
