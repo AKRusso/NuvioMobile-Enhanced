@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -52,6 +54,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +66,7 @@ import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.roundToLong
 
 @Composable
 internal fun PlayerControlsShell(
@@ -500,16 +505,28 @@ private fun ProgressControls(
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
 
     Column(modifier = modifier) {
-        Slider(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(metrics.sliderTouchHeight)
-                .graphicsLayer(scaleY = metrics.sliderScaleY),
-            value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
-            onValueChange = { value -> onScrubChange(value.toLong()) },
-            onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
-            valueRange = 0f..durationMs.toFloat(),
-        )
+                .graphicsLayer(scaleY = metrics.sliderScaleY)
+                .tapToSeekOnTimeline(
+                    durationMs = playbackSnapshot.durationMs,
+                    onSeek = { positionMs ->
+                        val targetPositionMs = positionMs.coerceIn(0L, durationMs)
+                        onScrubChange(targetPositionMs)
+                        onScrubFinished(targetPositionMs)
+                    },
+                ),
+        ) {
+            Slider(
+                modifier = Modifier.fillMaxSize(),
+                value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
+                onValueChange = { value -> onScrubChange(value.toLong()) },
+                onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
+                valueRange = 0f..durationMs.toFloat(),
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -592,6 +609,39 @@ private fun ProgressControls(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+private fun Modifier.tapToSeekOnTimeline(
+    durationMs: Long,
+    onSeek: (Long) -> Unit,
+): Modifier {
+    if (durationMs <= 0L) return this
+
+    return pointerInput(durationMs) {
+        awaitEachGesture {
+            val width = size.width.toFloat().takeIf { it > 0f } ?: return@awaitEachGesture
+            val down = awaitFirstDown(
+                requireUnconsumed = false,
+                pass = PointerEventPass.Initial,
+            )
+            val downPosition = down.position
+            var lastPosition = downPosition
+            var maxDistance = 0f
+
+            while (true) {
+                val event = awaitPointerEvent(pass = PointerEventPass.Final)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                lastPosition = change.position
+                maxDistance = maxOf(maxDistance, (lastPosition - downPosition).getDistance())
+                if (!change.pressed) break
+            }
+
+            if (maxDistance <= viewConfiguration.touchSlop) {
+                val targetFraction = (lastPosition.x / width).coerceIn(0f, 1f)
+                onSeek((durationMs * targetFraction).roundToLong().coerceIn(0L, durationMs))
             }
         }
     }
