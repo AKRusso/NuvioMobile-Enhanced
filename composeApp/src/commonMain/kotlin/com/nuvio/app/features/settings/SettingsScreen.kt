@@ -510,7 +510,6 @@ private fun MobileSettingsScreen(
                             onNotificationsClick = { onPageChange(SettingsPage.Notifications) },
                             onContentDiscoveryClick = { onPageChange(SettingsPage.ContentDiscovery) },
                             onIntegrationsClick = { onPageChange(SettingsPage.Integrations) },
-                            onTraktClick = { onPageChange(SettingsPage.TraktAuthentication) },
                             onSupportersContributorsClick = onSupportersContributorsClick,
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -611,6 +610,7 @@ private fun MobileSettingsScreen(
                 )
                 SettingsPage.Integrations -> integrationsContent(
                     isTablet = false,
+                    onTraktClick = { onPageChange(SettingsPage.TraktAuthentication) },
                     onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                     onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
                     onDebridClick = { onPageChange(SettingsPage.Debrid) },
@@ -891,7 +891,6 @@ private fun TabletSettingsScreen(
                                 onNotificationsClick = { openInlinePage(SettingsPage.Notifications) },
                                 onContentDiscoveryClick = { openInlinePage(SettingsPage.ContentDiscovery) },
                                 onIntegrationsClick = { openInlinePage(SettingsPage.Integrations) },
-                                onTraktClick = { openInlinePage(SettingsPage.TraktAuthentication) },
                                 onSupportersContributorsClick = { openInlinePage(SettingsPage.SupportersContributors) },
                                 onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -996,6 +995,7 @@ private fun TabletSettingsScreen(
                     )
                     SettingsPage.Integrations -> integrationsContent(
                         isTablet = true,
+                        onTraktClick = { openInlinePage(SettingsPage.TraktAuthentication) },
                         onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                         onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
                         onDebridClick = { onPageChange(SettingsPage.Debrid) },

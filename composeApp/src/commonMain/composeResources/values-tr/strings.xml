@@ -308,8 +308,32 @@
     <string name="compose_catalog_subtitle_trakt_library">Trakt kitaplığı</string>
     <string name="compose_nav_home">Ana sayfa</string>
     <string name="compose_nav_library">Kitaplık</string>
+    <string name="compose_nav_live_tv">Canlı TV</string>
     <string name="compose_nav_profile">Profil</string>
     <string name="compose_nav_search">Ara</string>
+    <string name="live_tv_title">Canlı TV</string>
+    <string name="live_tv_source_title">M3U oynatma listesi</string>
+    <string name="live_tv_source_hint">https://ornek.com/liste.m3u</string>
+    <string name="live_tv_load">Kanalları yükle</string>
+    <string name="live_tv_add_source">Kaynağı düzenle</string>
+    <string name="live_tv_disconnect">Listeyi kaldır</string>
+    <string name="live_tv_refresh">Listeyi yenile</string>
+    <string name="live_tv_search">Kanal ara</string>
+    <string name="live_tv_all">Tümü</string>
+    <string name="live_tv_all_channels">Tüm kanallar</string>
+    <string name="live_tv_channels">Kanallar</string>
+    <string name="live_tv_categories">Kategoriler</string>
+    <string name="live_tv_choose_category">Kategori seç</string>
+    <string name="live_tv_channel_count">%1$d kanal</string>
+    <string name="live_tv_favorite">Favori</string>
+    <string name="live_tv_favorites">Favoriler</string>
+    <string name="live_tv_recent_channel_title">Son izlenen kanal</string>
+    <string name="live_tv_recent_channel_cta">Devam et</string>
+    <string name="live_tv_no_channels_found">Kanal bulunamadı.</string>
+    <string name="live_tv_no_favorites">Favori kanalların burada görünecek.</string>
+    <string name="live_tv_player_channels">Kanallar</string>
+    <string name="live_tv_empty_title">Kanal listeni ekle</string>
+    <string name="live_tv_empty_description">Canlı kanallarını Nuvio'ya eklemek için bir M3U URL'si gir.</string>
     <string name="compose_player_audio_tracks">Ses parçaları</string>
     <string name="compose_player_audio">Ses</string>
     <string name="compose_player_built_in">Yerleşik</string>
@@ -1413,4 +1437,7 @@
     </plurals>
     <string name="cw_new_episode">Yeni Bölüm</string>
     <string name="cw_new_season">Yeni Sezon</string>
+    <string name="library_group_all">Tümü</string>
+    <string name="library_group_watched">İzlenenler</string>
+    <string name="library_group_unwatched">İzlenmeyenler</string>
 </resources>

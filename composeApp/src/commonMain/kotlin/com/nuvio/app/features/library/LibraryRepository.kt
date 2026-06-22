@@ -39,6 +39,8 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.media_movies
+import nuvio.composeapp.generated.resources.media_series
 import nuvio.composeapp.generated.resources.library_local_tab_title
 import nuvio.composeapp.generated.resources.library_other
 import nuvio.composeapp.generated.resources.trakt_lists_update_failed
@@ -460,7 +462,15 @@ object LibraryRepository {
                     items = typeItems.sortedByDescending { it.savedAtEpochMs },
                 )
             }
-            .sortedBy { it.displayTitle }
+            .sortedWith(
+                compareBy<LibrarySection> { section ->
+                    when (section.type.lowercase()) {
+                        "movie" -> 0
+                        "series" -> 1
+                        else -> 2
+                    }
+                }.thenBy { it.displayTitle },
+            )
 
         _uiState.value = LibraryUiState(
             sourceMode = LibrarySourceMode.LOCAL,
@@ -590,13 +600,23 @@ internal fun String.toLibraryDisplayTitle(): String {
     val normalized = trim()
     if (normalized.isBlank()) return localizedLibraryOtherTitle()
 
-    return normalized
-        .split('-', '_', ' ')
-        .filter { it.isNotBlank() }
-        .joinToString(" ") { token ->
-            token.lowercase().replaceFirstChar { char -> char.uppercase() }
-        }
-        .ifBlank { localizedLibraryOtherTitle() }
+    return when (normalized.lowercase()) {
+        "movie" -> localizedStringOrDefault(
+            resource = Res.string.media_movies,
+            fallback = "Movies",
+        )
+        "series" -> localizedStringOrDefault(
+            resource = Res.string.media_series,
+            fallback = "Series",
+        )
+        else -> normalized
+            .split('-', '_', ' ')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { token ->
+                token.lowercase().replaceFirstChar { char -> char.uppercase() }
+            }
+            .ifBlank { localizedLibraryOtherTitle() }
+    }
 }
 
 private fun localizedLibraryOtherTitle(): String =

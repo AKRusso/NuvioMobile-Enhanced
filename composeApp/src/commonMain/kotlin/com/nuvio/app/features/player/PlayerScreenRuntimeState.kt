@@ -58,6 +58,7 @@ internal class PlayerScreenRuntime(
     val initialPositionMs: Long get() = args.initialPositionMs
     val initialProgressFraction: Float? get() = args.initialProgressFraction
     val isSeries: Boolean get() = parentMetaType == "series"
+    val isLiveTv: Boolean get() = contentType == "live-tv"
 
     lateinit var scope: CoroutineScope
     lateinit var hapticFeedback: HapticFeedback
@@ -145,6 +146,8 @@ internal class PlayerScreenRuntime(
         initialPositionMs <= 0L && ((initialProgressFraction ?: 0f) <= 0f),
     )
     var lastProgressPersistEpochMs by mutableStateOf(0L)
+    var lastProgressRemoteSyncEpochMs by mutableStateOf(0L)
+    var lastProgressRemoteSyncPositionMs by mutableStateOf(0L)
     var previousIsPlaying by mutableStateOf(false)
     var hasRequestedScrobbleStartForCurrentItem by mutableStateOf(false)
     var scrobbleStartRequestGeneration by mutableStateOf(0L)
@@ -180,6 +183,7 @@ internal class PlayerScreenRuntime(
     var showAudioModal by mutableStateOf(false)
     var showSubtitleModal by mutableStateOf(false)
     var showVideoSettingsModal by mutableStateOf(false)
+    var showLiveTvChannelsPanel by mutableStateOf(false)
     var audioTracks by mutableStateOf<List<AudioTrack>>(emptyList())
     var subtitleTracks by mutableStateOf<List<SubtitleTrack>>(emptyList())
     var selectedAudioIndex by mutableStateOf(-1)

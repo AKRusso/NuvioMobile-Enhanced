@@ -152,7 +152,7 @@ internal enum class SettingsPage(
     TraktAuthentication(
         titleRes = Res.string.compose_settings_page_trakt,
         category = SettingsCategory.Account,
-        parentPage = Root,
+        parentPage = Integrations,
     ),
 }
 
