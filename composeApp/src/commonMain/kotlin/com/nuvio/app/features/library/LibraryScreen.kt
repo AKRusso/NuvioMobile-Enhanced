@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,15 +29,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,11 +62,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.format.formatReleaseDateForDisplay
+import com.nuvio.app.core.i18n.localizedMonthName
+import com.nuvio.app.core.i18n.localizedShortMonthName
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
+import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioDropdownChip
 import com.nuvio.app.core.ui.NuvioDropdownOption
+import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.NuvioScreenHeader
@@ -78,6 +90,7 @@ import com.nuvio.app.features.home.components.HomePosterCard
 import com.nuvio.app.features.home.components.HomeSkeletonRow
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.watched.WatchedRepository
+import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watching.application.WatchingState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -117,6 +130,10 @@ fun LibraryScreen(
     var sourceModeName by rememberSaveable { mutableStateOf(LibraryViewMode.Saved.name) }
     val sourceMode = remember(sourceModeName) {
         runCatching { LibraryViewMode.valueOf(sourceModeName) }.getOrDefault(LibraryViewMode.Saved)
+    }
+    var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
+    val releaseCalendarEvents = remember(uiState.items) {
+        buildLibraryReleaseCalendarEvents(uiState.items)
     }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -196,6 +213,16 @@ fun LibraryScreen(
                             stringResource(Res.string.library_title)
                         },
                         modifier = Modifier.padding(horizontal = 16.dp),
+                        actions = {
+                            if (sourceMode != LibraryViewMode.Cloud) {
+                                IconButton(onClick = { showReleaseCalendar = true }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CalendarMonth,
+                                        contentDescription = stringResource(Res.string.library_calendar_open),
+                                    )
+                                }
+                            }
+                        },
                     )
                     LibrarySourceSwitch(
                         selectedMode = sourceMode,
@@ -309,6 +336,14 @@ fun LibraryScreen(
                 }
             }
         }
+    }
+
+    if (showReleaseCalendar) {
+        LibraryReleaseCalendarSheet(
+            events = releaseCalendarEvents,
+            onDismiss = { showReleaseCalendar = false },
+            onPosterClick = onPosterClick,
+        )
     }
 }
 
@@ -978,6 +1013,459 @@ private fun CloudSkeletonBlock(
             .clip(RoundedCornerShape(cornerRadius))
             .background(brush),
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryReleaseCalendarSheet(
+    events: List<LibraryCalendarEvent>,
+    onDismiss: () -> Unit,
+    onPosterClick: ((LibraryItem) -> Unit)?,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val initialMonth = remember(events) { initialLibraryCalendarMonth(events) }
+    var visibleMonth by remember(events) { mutableStateOf(initialMonth) }
+    val monthEvents = remember(events, visibleMonth) {
+        events
+            .filter { event -> event.date.year == visibleMonth.year && event.date.month == visibleMonth.month }
+            .sortedWith(compareBy<LibraryCalendarEvent> { it.date.iso }.thenBy { it.item.name.lowercase() })
+    }
+    var selectedDateIso by remember(events) { mutableStateOf(monthEvents.firstOrNull()?.date?.iso) }
+    val eventsByDate = remember(events) { events.groupBy { event -> event.date.iso } }
+
+    LaunchedEffect(visibleMonth, monthEvents) {
+        if (selectedDateIso?.take(7) != visibleMonth.key) {
+            selectedDateIso = monthEvents.firstOrNull()?.date?.iso
+        }
+    }
+
+    val selectedEvents = selectedDateIso?.let { date -> eventsByDate[date].orEmpty() }.orEmpty()
+    val visibleEvents = selectedEvents.takeIf { it.isNotEmpty() } ?: monthEvents
+    val visibleEventsTitle = selectedDateIso
+        ?.takeIf { selectedEvents.isNotEmpty() }
+        ?.let { date -> stringResource(Res.string.library_calendar_selected_day, displayLibraryCalendarDate(date)) }
+        ?: stringResource(Res.string.library_calendar_month_events)
+
+    NuvioModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(Res.string.library_calendar_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = stringResource(Res.string.library_calendar_exact_dates_only),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = stringResource(Res.string.action_close),
+                    )
+                }
+            }
+
+            if (events.isEmpty()) {
+                LibraryCalendarEmptyState()
+            } else {
+                LibraryCalendarMonthHeader(
+                    month = visibleMonth,
+                    onPrevious = {
+                        visibleMonth = visibleMonth.previous()
+                        selectedDateIso = null
+                    },
+                    onNext = {
+                        visibleMonth = visibleMonth.next()
+                        selectedDateIso = null
+                    },
+                )
+                LibraryCalendarWeekdayHeader()
+                LibraryCalendarMonthGrid(
+                    month = visibleMonth,
+                    eventsByDate = eventsByDate,
+                    selectedDateIso = selectedDateIso,
+                    onDateSelected = { date -> selectedDateIso = date.iso },
+                )
+
+                NuvioBottomSheetDivider()
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = visibleEventsTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    if (visibleEvents.isEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.library_calendar_no_month_events),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        visibleEvents.forEach { event ->
+                            LibraryCalendarEventRow(
+                                event = event,
+                                onClick = onPosterClick?.let { posterClick -> { posterClick(event.item) } },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarEmptyState() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.library_calendar_empty_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(Res.string.library_calendar_empty_message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarMonthHeader(
+    month: LibraryCalendarMonth,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconButton(onClick = onPrevious) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                contentDescription = stringResource(Res.string.library_calendar_previous_month),
+            )
+        }
+        Text(
+            text = month.displayTitle,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
+        )
+        IconButton(onClick = onNext) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = stringResource(Res.string.library_calendar_next_month),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarWeekdayHeader() {
+    val labels = listOf(
+        stringResource(Res.string.library_calendar_weekday_mon),
+        stringResource(Res.string.library_calendar_weekday_tue),
+        stringResource(Res.string.library_calendar_weekday_wed),
+        stringResource(Res.string.library_calendar_weekday_thu),
+        stringResource(Res.string.library_calendar_weekday_fri),
+        stringResource(Res.string.library_calendar_weekday_sat),
+        stringResource(Res.string.library_calendar_weekday_sun),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        labels.forEach { label ->
+            Text(
+                text = label,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarMonthGrid(
+    month: LibraryCalendarMonth,
+    eventsByDate: Map<String, List<LibraryCalendarEvent>>,
+    selectedDateIso: String?,
+    onDateSelected: (LibraryCalendarDate) -> Unit,
+) {
+    val cells = remember(month) { libraryCalendarCells(month) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        cells.chunked(7).forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                week.forEach { date ->
+                    if (date == null) {
+                        Spacer(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp),
+                        )
+                    } else {
+                        val dayEvents = eventsByDate[date.iso].orEmpty()
+                        val hasEvents = dayEvents.isNotEmpty()
+                        val isSelected = selectedDateIso == date.iso
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable(enabled = hasEvents) { onDateSelected(date) },
+                            color = when {
+                                isSelected -> MaterialTheme.colorScheme.primary
+                                hasEvents -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            },
+                            contentColor = when {
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                hasEvents -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            border = if (isSelected) {
+                                BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+                            } else {
+                                null
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(vertical = 5.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = date.day.toString(),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (hasEvents) FontWeight.Bold else FontWeight.Normal,
+                                )
+                                if (hasEvents) {
+                                    Text(
+                                        text = dayEvents.size.toString(),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarEventRow(
+    event: LibraryCalendarEvent,
+    onClick: (() -> Unit)?,
+) {
+    val modifier = if (onClick != null) {
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+    } else {
+        Modifier.fillMaxWidth()
+    }
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                contentColor = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Text(
+                    text = "${event.date.day} ${localizedShortMonthName(event.date.month)}",
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = event.item.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = formatReleaseDateForDisplay(event.rawReleaseInfo),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+private data class LibraryCalendarEvent(
+    val date: LibraryCalendarDate,
+    val rawReleaseInfo: String,
+    val item: LibraryItem,
+)
+
+private data class LibraryCalendarDate(
+    val year: Int,
+    val month: Int,
+    val day: Int,
+) {
+    val iso: String = "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+}
+
+private data class LibraryCalendarMonth(
+    val year: Int,
+    val month: Int,
+) {
+    val key: String = "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}"
+    val displayTitle: String = "${localizedMonthName(month)} $year"
+
+    fun previous(): LibraryCalendarMonth =
+        if (month == 1) LibraryCalendarMonth(year - 1, 12) else copy(month = month - 1)
+
+    fun next(): LibraryCalendarMonth =
+        if (month == 12) LibraryCalendarMonth(year + 1, 1) else copy(month = month + 1)
+}
+
+private fun buildLibraryReleaseCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> =
+    items
+        .asSequence()
+        .filter { item -> item.type.equals("series", ignoreCase = true) }
+        .mapNotNull { item ->
+            val rawReleaseInfo = item.releaseInfo?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val date = parseLibraryCalendarDate(rawReleaseInfo) ?: return@mapNotNull null
+            LibraryCalendarEvent(
+                date = date,
+                rawReleaseInfo = rawReleaseInfo,
+                item = item,
+            )
+        }
+        .sortedWith(compareBy<LibraryCalendarEvent> { it.date.iso }.thenBy { it.item.name.lowercase() })
+        .toList()
+
+private fun parseLibraryCalendarDate(raw: String?): LibraryCalendarDate? {
+    val datePart = raw
+        ?.trim()
+        ?.substringBefore('T')
+        ?.takeIf { it.length == 10 }
+        ?: return null
+    val parts = datePart.split('-')
+    if (parts.size != 3) return null
+    val year = parts[0].toIntOrNull()?.takeIf { it in 1000..9999 } ?: return null
+    val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+    val day = parts[2].toIntOrNull()?.takeIf { it in 1..daysInLibraryCalendarMonth(year, month) } ?: return null
+    return LibraryCalendarDate(year, month, day)
+}
+
+private fun initialLibraryCalendarMonth(events: List<LibraryCalendarEvent>): LibraryCalendarMonth {
+    val today = parseLibraryCalendarDate(CurrentDateProvider.todayIsoDate())
+        ?: LibraryCalendarDate(1970, 1, 1)
+    val upcoming = events.firstOrNull { event -> event.date.iso >= today.iso }
+    val target = upcoming?.date ?: events.lastOrNull()?.date ?: today
+    return LibraryCalendarMonth(target.year, target.month)
+}
+
+private fun displayLibraryCalendarDate(isoDate: String): String {
+    val date = parseLibraryCalendarDate(isoDate) ?: return isoDate
+    return "${date.day} ${localizedMonthName(date.month)} ${date.year}"
+}
+
+private fun libraryCalendarCells(month: LibraryCalendarMonth): List<LibraryCalendarDate?> {
+    val firstDayOffset = firstLibraryCalendarWeekdayOffset(month.year, month.month)
+    val days = daysInLibraryCalendarMonth(month.year, month.month)
+    val cells = MutableList<LibraryCalendarDate?>(firstDayOffset) { null }
+    for (day in 1..days) {
+        cells += LibraryCalendarDate(month.year, month.month, day)
+    }
+    while (cells.size < 42) {
+        cells += null
+    }
+    return cells
+}
+
+private fun firstLibraryCalendarWeekdayOffset(year: Int, month: Int): Int {
+    val epochDay = isoEpochDay(LibraryCalendarDate(year, month, 1).iso)
+    val raw = (epochDay + 3L) % 7L
+    return if (raw < 0L) (raw + 7L).toInt() else raw.toInt()
+}
+
+private fun daysInLibraryCalendarMonth(year: Int, month: Int): Int =
+    when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> if (isLibraryCalendarLeapYear(year)) 29 else 28
+        else -> 30
+    }
+
+private fun isLibraryCalendarLeapYear(year: Int): Boolean =
+    (year % 4 == 0 && year % 100 != 0) || year % 400 == 0
+
+private fun isoEpochDay(date: String): Long {
+    val year = date.substring(0, 4).toLong()
+    val month = date.substring(5, 7).toLong()
+    val day = date.substring(8, 10).toLong()
+
+    val adjustedYear = year - if (month <= 2L) 1L else 0L
+    val era = if (adjustedYear >= 0L) adjustedYear / 400L else (adjustedYear - 399L) / 400L
+    val yearOfEra = adjustedYear - era * 400L
+    val adjustedMonth = month + if (month > 2L) -3L else 9L
+    val dayOfYear = (153L * adjustedMonth + 2L) / 5L + day - 1L
+    val dayOfEra = yearOfEra * 365L + yearOfEra / 4L - yearOfEra / 100L + dayOfYear
+    return era * 146_097L + dayOfEra - 719_468L
 }
 
 private enum class LibraryViewMode {
