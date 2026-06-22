@@ -40,7 +40,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
@@ -265,7 +269,11 @@ private fun ChatBubble(message: AiChatMessage) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = message.text,
+                text = if (isUser) {
+                    AnnotatedString(message.text)
+                } else {
+                    parseAiBoldMarkdown(message.text)
+                },
                 color = if (isUser) {
                     MaterialTheme.colorScheme.onPrimary
                 } else {
@@ -288,5 +296,29 @@ private fun ChatBubble(message: AiChatMessage) {
                 }
             }
         }
+    }
+}
+
+internal fun parseAiBoldMarkdown(text: String): AnnotatedString = buildAnnotatedString {
+    var cursor = 0
+    while (cursor < text.length) {
+        val opening = text.indexOf("**", startIndex = cursor)
+        if (opening < 0) {
+            append(text.substring(cursor))
+            break
+        }
+
+        append(text.substring(cursor, opening))
+        val contentStart = opening + 2
+        val closing = text.indexOf("**", startIndex = contentStart)
+        if (closing < 0 || closing == contentStart) {
+            append(text.substring(opening))
+            break
+        }
+
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+            append(text.substring(contentStart, closing))
+        }
+        cursor = closing + 2
     }
 }
