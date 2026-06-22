@@ -21,9 +21,15 @@ internal enum class NativeNavigationTab {
 internal object NativeTabBridge {
     private val _requestedTabs = MutableSharedFlow<NativeNavigationTab>(extraBufferCapacity = 1)
     val requestedTabs: SharedFlow<NativeNavigationTab> = _requestedTabs.asSharedFlow()
+    private val _profileTabLongPresses = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val profileTabLongPresses: SharedFlow<Unit> = _profileTabLongPresses.asSharedFlow()
 
     fun requestTab(tabName: String) {
         _requestedTabs.tryEmit(NativeNavigationTab.fromName(tabName))
+    }
+
+    fun requestProfileTabLongPress() {
+        _profileTabLongPresses.tryEmit(Unit)
     }
 
     fun publishSelectedTab(tab: NativeNavigationTab) {
@@ -40,6 +46,15 @@ internal object NativeTabBridge {
 
     fun publishAccentColor(hexColor: String) {
         publishNativeTabAccentColor(hexColor)
+    }
+
+    fun publishTabTitles(
+        home: String,
+        search: String,
+        library: String,
+        profile: String,
+    ) {
+        publishNativeTabTitles(home, search, library, profile)
     }
 
     fun publishProfileTabIcon(
@@ -61,6 +76,10 @@ fun nativeTabSelect(tabName: String) {
     NativeTabBridge.requestTab(tabName)
 }
 
+fun nativeProfileTabLongPress() {
+    NativeTabBridge.requestProfileTabLongPress()
+}
+
 internal expect fun isLiquidGlassNativeTabBarSupported(): Boolean
 
 internal expect fun publishLiquidGlassNativeTabBarEnabled(enabled: Boolean)
@@ -70,6 +89,13 @@ internal expect fun publishNativeTabBarVisible(visible: Boolean)
 internal expect fun publishNativeSelectedTab(tabName: String)
 
 internal expect fun publishNativeTabAccentColor(hexColor: String)
+
+internal expect fun publishNativeTabTitles(
+    home: String,
+    search: String,
+    library: String,
+    profile: String,
+)
 
 internal expect fun publishNativeProfileTabIcon(
     name: String?,

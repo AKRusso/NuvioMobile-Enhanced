@@ -467,8 +467,12 @@ fun HomeScreen(
         HomeRepository.refresh(enabledAddons)
     }
 
-    LaunchedEffect(collections) {
+    LaunchedEffect(collections, enabledAddons) {
         HomeCatalogSettingsRepository.syncCollections(collections)
+        HomeRepository.applyCurrentSettings()
+        if (collections.any { it.folders.isNotEmpty() }) {
+            HomeRepository.refresh(enabledAddons, force = true)
+        }
     }
 
     LaunchedEffect(
@@ -767,7 +771,7 @@ fun HomeScreen(
                 when {
                     !hasActiveAddons && !hasRenderableCollectionRows -> {
                         if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item {
+                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
                                 HomeContinueWatchingSection(
                                     items = continueWatchingItems,
                                     style = continueWatchingPreferences.style,
@@ -792,7 +796,7 @@ fun HomeScreen(
 
                     homeUiState.isLoading && homeUiState.sections.isEmpty() && !hasRenderableCollectionRows -> {
                         if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item {
+                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
                                 HomeContinueWatchingSection(
                                     items = continueWatchingItems,
                                     style = continueWatchingPreferences.style,
@@ -840,7 +844,7 @@ fun HomeScreen(
 
                     else -> {
                         if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item {
+                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
                                 HomeContinueWatchingSection(
                                     items = continueWatchingItems,
                                     style = continueWatchingPreferences.style,
@@ -899,6 +903,7 @@ fun HomeScreen(
 }
 
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
+private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
 internal const val HomeNextUpInitialResolutionLimit = 32
 private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
