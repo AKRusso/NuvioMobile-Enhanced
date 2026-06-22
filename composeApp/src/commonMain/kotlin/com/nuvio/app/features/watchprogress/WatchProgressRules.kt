@@ -104,6 +104,7 @@ internal fun List<WatchProgressEntry>.continueWatchingEntries(
 
 internal fun WatchProgressEntry.shouldTreatAsInProgressForContinueWatching(): Boolean {
     val entry = normalizedCompletion()
+    if (entry.isLiveTvProgressEntry()) return false
     if (entry.isEffectivelyCompleted) return false
 
     val hasStartedPlayback = entry.lastPositionMs > 0L ||
@@ -116,6 +117,7 @@ internal fun WatchProgressEntry.shouldTreatAsInProgressForContinueWatching(): Bo
 
 internal fun WatchProgressEntry.shouldUseAsCompletedSeedForContinueWatching(): Boolean {
     val entry = normalizedCompletion()
+    if (entry.isLiveTvProgressEntry()) return false
     if (isMalformedNextUpSeedContentId(entry.parentMetaId)) return false
     if (!entry.isEffectivelyCompleted) return false
     if (entry.source != WatchProgressSourceTraktPlayback) return true
@@ -131,6 +133,10 @@ internal fun shouldCascadeCompletedProgressToWatchedHistory(
 
 internal fun String?.isSeriesTypeForContinueWatching(): Boolean =
     equals("series", ignoreCase = true) || equals("tv", ignoreCase = true)
+
+internal fun WatchProgressEntry.isLiveTvProgressEntry(): Boolean =
+    contentType.equals("live-tv", ignoreCase = true) ||
+        parentMetaType.equals("live-tv", ignoreCase = true)
 
 internal fun isMalformedNextUpSeedContentId(contentId: String?): Boolean {
     val trimmed = contentId?.trim().orEmpty()
