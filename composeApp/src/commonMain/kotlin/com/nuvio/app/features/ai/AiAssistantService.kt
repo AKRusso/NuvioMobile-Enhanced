@@ -20,10 +20,21 @@ object AiAssistantService {
         settings: AiAssistantSettings,
         meta: MetaDetails,
         messages: List<AiChatMessage>,
-    ): String {
+    ): AiAssistantReply {
         require(settings.isReady) { "AI assistant is not configured." }
         require(messages.isNotEmpty()) { "Message cannot be empty." }
 
+        val webContext = if (settings.webSearchEnabled) {
+            runCatching {
+                AiWebSearchService.search(
+                    apiKey = settings.tavilyApiKey,
+                    meta = meta,
+                    question = messages.last().text,
+                )
+            }.getOrNull()
+        } else {
+            null
+        }
         val providers = buildList {
             add(settings.provider)
             when (settings.provider) {
@@ -39,11 +50,16 @@ object AiAssistantService {
         var lastError: Throwable? = null
         providers.forEachIndexed { index, provider ->
             try {
-                return requestProvider(
+                val answer = requestProvider(
                     provider = provider,
                     settings = settings,
                     meta = meta,
                     messages = messages.takeLast(MAX_HISTORY_MESSAGES),
+                    webContext = webContext,
+                )
+                return AiAssistantReply(
+                    answer = answer,
+                    sources = webContext?.sources.orEmpty(),
                 )
             } catch (error: AiServiceException) {
                 lastError = error
@@ -64,6 +80,7 @@ object AiAssistantService {
         settings: AiAssistantSettings,
         meta: MetaDetails,
         messages: List<AiChatMessage>,
+        webContext: AiWebSearchContext?,
     ): String = when (provider) {
         AiProvider.CEREBRAS -> chatWithOpenAiCompatible(
             endpoint = "https://api.cerebras.ai/v1/chat/completions",
@@ -72,6 +89,7 @@ object AiAssistantService {
             providerName = "Cerebras",
             meta = meta,
             messages = messages,
+            webContext = webContext,
         )
         AiProvider.GROQ -> chatWithOpenAiCompatible(
             endpoint = "https://api.groq.com/openai/v1/chat/completions",
@@ -80,8 +98,9 @@ object AiAssistantService {
             providerName = "Groq",
             meta = meta,
             messages = messages,
+            webContext = webContext,
         )
-        AiProvider.GEMINI -> chatWithGemini(settings, meta, messages)
+        AiProvider.GEMINI -> chatWithGemini(settings, meta, messages, webContext)
         AiProvider.OPENROUTER -> chatWithOpenAiCompatible(
             endpoint = "https://openrouter.ai/api/v1/chat/completions",
             apiKey = settings.openRouterApiKey,
@@ -89,6 +108,7 @@ object AiAssistantService {
             providerName = "OpenRouter",
             meta = meta,
             messages = messages,
+            webContext = webContext,
             extraHeaders = mapOf(
                 "HTTP-Referer" to "https://github.com/yesnt10/NuvioMobile-Enhanced",
                 "X-Title" to "Nuvio Mobile Enhanced",
@@ -100,11 +120,12 @@ object AiAssistantService {
         settings: AiAssistantSettings,
         meta: MetaDetails,
         messages: List<AiChatMessage>,
+        webContext: AiWebSearchContext?,
     ): String {
         val body = buildJsonObject {
             put("systemInstruction", buildJsonObject {
                 put("parts", buildJsonArray {
-                    add(buildJsonObject { put("text", systemPrompt(meta)) })
+                    add(buildJsonObject { put("text", systemPrompt(meta, webContext)) })
                 })
             })
             put("contents", buildJsonArray {
@@ -156,13 +177,14 @@ object AiAssistantService {
         providerName: String,
         meta: MetaDetails,
         messages: List<AiChatMessage>,
+        webContext: AiWebSearchContext?,
         extraHeaders: Map<String, String> = emptyMap(),
     ): String {
         require(apiKey.isNotBlank()) { "$providerName API key is missing." }
         val body = buildJsonObject {
             put("model", model)
             put("messages", buildJsonArray {
-                add(openAiMessage("system", systemPrompt(meta)))
+                add(openAiMessage("system", systemPrompt(meta, webContext)))
                 messages.forEach { message ->
                     add(
                         openAiMessage(
@@ -220,12 +242,17 @@ object AiAssistantService {
         )
     }
 
-    private fun systemPrompt(meta: MetaDetails): String = buildString {
+    private fun systemPrompt(
+        meta: MetaDetails,
+        webContext: AiWebSearchContext?,
+    ): String = buildString {
         appendLine("You are the content assistant inside the Nuvio app.")
         appendLine("Reply in the same language as the user. Keep the answer concise and natural.")
-        appendLine("Treat only the CONTENT DATA below as verified facts about this title.")
+        appendLine("Treat only CONTENT DATA and WEB SOURCES below as verified facts about this title.")
         appendLine("Never invent plot points, characters, cast, production details, ratings, or events.")
-        appendLine("If the requested fact is not present in CONTENT DATA, say: 'Bu bilgi elimde yok.'")
+        appendLine("If the requested fact is absent from both sections, say you could not find reliable information.")
+        appendLine("When WEB SOURCES are present, cite factual claims with [1], [2], and so on.")
+        appendLine("If sources conflict, state the uncertainty instead of choosing silently.")
         appendLine("You may give clearly labeled subjective recommendations based only on the supplied genres and summary.")
         appendLine("Do not reveal spoilers unless the user explicitly asks for spoilers.")
         appendLine("Do not pretend that you watched the title or accessed external sources.")
@@ -244,6 +271,12 @@ object AiAssistantService {
         }
         meta.description?.takeIf(String::isNotBlank)?.let { appendLine("Summary: $it") }
         appendLine("END CONTENT DATA")
+        webContext?.let {
+            appendLine()
+            appendLine("WEB SOURCES")
+            appendLine(it.promptContext)
+            appendLine("END WEB SOURCES")
+        }
     }
 }
 

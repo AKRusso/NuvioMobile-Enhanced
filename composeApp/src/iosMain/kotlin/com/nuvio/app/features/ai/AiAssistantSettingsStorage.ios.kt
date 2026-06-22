@@ -11,8 +11,17 @@ actual object AiAssistantSettingsStorage {
     }
 
     actual fun saveEnabled(value: Boolean) = saveBoolean("ai_assistant_enabled", value)
+    actual fun loadWebSearchEnabled(): Boolean? {
+        val key = ProfileScopedKey.of("ai_assistant_web_search_enabled")
+        val defaults = NSUserDefaults.standardUserDefaults
+        return if (defaults.objectForKey(key) != null) defaults.boolForKey(key) else null
+    }
+    actual fun saveWebSearchEnabled(value: Boolean) =
+        saveBoolean("ai_assistant_web_search_enabled", value)
     actual fun loadProvider(): String? = loadString("ai_assistant_provider")
     actual fun saveProvider(value: String) = saveString("ai_assistant_provider", value)
+    actual fun loadTavilyApiKey(): String? = loadString("ai_assistant_tavily_api_key")
+    actual fun saveTavilyApiKey(value: String) = saveString("ai_assistant_tavily_api_key", value)
     actual fun loadCerebrasApiKey(): String? = loadString("ai_assistant_cerebras_api_key")
     actual fun saveCerebrasApiKey(value: String) = saveString("ai_assistant_cerebras_api_key", value)
     actual fun loadGroqApiKey(): String? = loadString("ai_assistant_groq_api_key")

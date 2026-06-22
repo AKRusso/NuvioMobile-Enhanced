@@ -14,8 +14,12 @@ actual object AiAssistantSettingsStorage {
 
     actual fun loadEnabled(): Boolean? = loadBoolean("enabled")
     actual fun saveEnabled(value: Boolean) = saveBoolean("enabled", value)
+    actual fun loadWebSearchEnabled(): Boolean? = loadBoolean("web_search_enabled")
+    actual fun saveWebSearchEnabled(value: Boolean) = saveBoolean("web_search_enabled", value)
     actual fun loadProvider(): String? = loadString("provider")
     actual fun saveProvider(value: String) = saveString("provider", value)
+    actual fun loadTavilyApiKey(): String? = loadString("tavily_api_key")
+    actual fun saveTavilyApiKey(value: String) = saveString("tavily_api_key", value)
     actual fun loadCerebrasApiKey(): String? = loadString("cerebras_api_key")
     actual fun saveCerebrasApiKey(value: String) = saveString("cerebras_api_key", value)
     actual fun loadGroqApiKey(): String? = loadString("groq_api_key")

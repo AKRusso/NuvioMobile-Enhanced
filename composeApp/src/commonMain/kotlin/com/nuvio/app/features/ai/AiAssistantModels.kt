@@ -17,7 +17,9 @@ val AiProvider.displayName: String
 
 data class AiAssistantSettings(
     val enabled: Boolean = false,
+    val webSearchEnabled: Boolean = true,
     val provider: AiProvider = AiProvider.CEREBRAS,
+    val tavilyApiKey: String = "",
     val cerebrasApiKey: String = "",
     val groqApiKey: String = "",
     val geminiApiKey: String = "",
@@ -50,6 +52,17 @@ data class AiAssistantSettings(
 data class AiChatMessage(
     val role: AiChatRole,
     val text: String,
+    val sources: List<AiWebSource> = emptyList(),
+)
+
+data class AiAssistantReply(
+    val answer: String,
+    val sources: List<AiWebSource> = emptyList(),
+)
+
+data class AiWebSource(
+    val title: String,
+    val url: String,
 )
 
 enum class AiChatRole {

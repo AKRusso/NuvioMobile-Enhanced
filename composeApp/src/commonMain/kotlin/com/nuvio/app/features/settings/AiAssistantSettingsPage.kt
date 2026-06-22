@@ -40,6 +40,11 @@ import nuvio.composeapp.generated.resources.ai_settings_model_help
 import nuvio.composeapp.generated.resources.ai_settings_provider
 import nuvio.composeapp.generated.resources.ai_settings_section_access
 import nuvio.composeapp.generated.resources.ai_settings_section_general
+import nuvio.composeapp.generated.resources.ai_settings_section_web_search
+import nuvio.composeapp.generated.resources.ai_settings_tavily_description
+import nuvio.composeapp.generated.resources.ai_settings_tavily_key
+import nuvio.composeapp.generated.resources.ai_settings_web_search
+import nuvio.composeapp.generated.resources.ai_settings_web_search_description
 import org.jetbrains.compose.resources.stringResource
 
 internal fun LazyListScope.aiAssistantSettingsContent(
@@ -76,6 +81,29 @@ internal fun LazyListScope.aiAssistantSettingsContent(
                     provider = settings.provider,
                     apiKey = settings.activeApiKey,
                     model = settings.activeModel,
+                )
+            }
+        }
+    }
+
+    item {
+        SettingsSection(
+            title = stringResource(Res.string.ai_settings_section_web_search),
+            isTablet = isTablet,
+        ) {
+            SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.ai_settings_web_search),
+                    description = stringResource(Res.string.ai_settings_web_search_description),
+                    checked = settings.webSearchEnabled,
+                    enabled = settings.tavilyApiKey.isNotBlank(),
+                    isTablet = isTablet,
+                    onCheckedChange = AiAssistantSettingsRepository::setWebSearchEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                TavilyCredentials(
+                    isTablet = isTablet,
+                    apiKey = settings.tavilyApiKey,
                 )
             }
         }
@@ -203,6 +231,60 @@ private fun ProviderCredentials(
                 Text(stringResource(Res.string.action_save))
             }
             OutlinedButton(onClick = { uriHandler.openUri(keyUrl) }) {
+                Text(stringResource(Res.string.ai_settings_get_key))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TavilyCredentials(
+    isTablet: Boolean,
+    apiKey: String,
+) {
+    val uriHandler = LocalUriHandler.current
+    var draft by rememberSaveable(apiKey) { mutableStateOf(apiKey) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = if (isTablet) 20.dp else 16.dp,
+                vertical = if (isTablet) 16.dp else 14.dp,
+            ),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "Tavily",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = stringResource(Res.string.ai_settings_tavily_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SettingsSecretTextField(
+            value = draft,
+            onValueChange = { draft = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(Res.string.ai_settings_tavily_key),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                enabled = draft.trim() != apiKey,
+                onClick = {
+                    AiAssistantSettingsRepository.setTavilyApiKey(draft)
+                    if (draft.isNotBlank()) {
+                        AiAssistantSettingsRepository.setWebSearchEnabled(true)
+                    }
+                },
+            ) {
+                Text(stringResource(Res.string.action_save))
+            }
+            OutlinedButton(
+                onClick = { uriHandler.openUri("https://app.tavily.com/home") },
+            ) {
                 Text(stringResource(Res.string.ai_settings_get_key))
             }
         }

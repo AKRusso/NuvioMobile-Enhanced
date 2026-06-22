@@ -16,9 +16,11 @@ object AiAssistantSettingsRepository {
         publish(
             AiAssistantSettings(
                 enabled = AiAssistantSettingsStorage.loadEnabled() ?: false,
+                webSearchEnabled = AiAssistantSettingsStorage.loadWebSearchEnabled() ?: true,
                 provider = AiAssistantSettingsStorage.loadProvider()
                     ?.let { value -> runCatching { AiProvider.valueOf(value) }.getOrNull() }
                     ?: AiProvider.CEREBRAS,
+                tavilyApiKey = AiAssistantSettingsStorage.loadTavilyApiKey()?.trim().orEmpty(),
                 cerebrasApiKey = AiAssistantSettingsStorage.loadCerebrasApiKey()?.trim().orEmpty(),
                 groqApiKey = AiAssistantSettingsStorage.loadGroqApiKey()?.trim().orEmpty(),
                 geminiApiKey = AiAssistantSettingsStorage.loadGeminiApiKey()?.trim().orEmpty(),
@@ -45,7 +47,11 @@ object AiAssistantSettingsRepository {
 
     fun setEnabled(value: Boolean) = update { copy(enabled = value) }
 
+    fun setWebSearchEnabled(value: Boolean) = update { copy(webSearchEnabled = value) }
+
     fun setProvider(value: AiProvider) = update { copy(provider = value) }
+
+    fun setTavilyApiKey(value: String) = update { copy(tavilyApiKey = value.trim()) }
 
     fun setCerebrasApiKey(value: String) = update { copy(cerebrasApiKey = value.trim()) }
 
@@ -76,7 +82,9 @@ object AiAssistantSettingsRepository {
         val next = _uiState.value.transform()
         publish(next)
         AiAssistantSettingsStorage.saveEnabled(next.enabled)
+        AiAssistantSettingsStorage.saveWebSearchEnabled(next.webSearchEnabled)
         AiAssistantSettingsStorage.saveProvider(next.provider.name)
+        AiAssistantSettingsStorage.saveTavilyApiKey(next.tavilyApiKey)
         AiAssistantSettingsStorage.saveCerebrasApiKey(next.cerebrasApiKey)
         AiAssistantSettingsStorage.saveGroqApiKey(next.groqApiKey)
         AiAssistantSettingsStorage.saveGeminiApiKey(next.geminiApiKey)

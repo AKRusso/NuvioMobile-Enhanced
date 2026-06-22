@@ -1,6 +1,7 @@
 package com.nuvio.app.features.details.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -46,6 +48,7 @@ import com.nuvio.app.features.ai.AiAssistantService
 import com.nuvio.app.features.ai.AiAssistantSettings
 import com.nuvio.app.features.ai.AiChatMessage
 import com.nuvio.app.features.ai.AiChatRole
+import com.nuvio.app.features.ai.AiWebSource
 import com.nuvio.app.features.ai.AiProvider
 import com.nuvio.app.features.ai.displayName
 import com.nuvio.app.features.details.MetaDetails
@@ -87,8 +90,12 @@ internal fun AiAssistantSheet(
         scope.launch {
             runCatching {
                 AiAssistantService.chat(settings, meta, messages.toList())
-            }.onSuccess { answer ->
-                messages += AiChatMessage(AiChatRole.ASSISTANT, answer)
+            }.onSuccess { reply ->
+                messages += AiChatMessage(
+                    role = AiChatRole.ASSISTANT,
+                    text = reply.answer,
+                    sources = reply.sources,
+                )
             }.onFailure { throwable ->
                 error = throwable.message ?: genericError
             }
@@ -233,12 +240,12 @@ internal fun AiAssistantSheet(
 @Composable
 private fun ChatBubble(message: AiChatMessage) {
     val isUser = message.role == AiChatRole.USER
+    val uriHandler = LocalUriHandler.current
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
-        Text(
-            text = message.text,
+        Column(
             modifier = Modifier
                 .fillMaxWidth(0.88f)
                 .background(
@@ -255,12 +262,31 @@ private fun ChatBubble(message: AiChatMessage) {
                     ),
                 )
                 .padding(horizontal = 14.dp, vertical = 11.dp),
-            color = if (isUser) {
-                MaterialTheme.colorScheme.onPrimary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            style = MaterialTheme.typography.bodyMedium,
-        )
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = message.text,
+                color = if (isUser) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (!isUser && message.sources.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    message.sources.forEachIndexed { index, source ->
+                        Text(
+                            text = "[${index + 1}] ${source.title}",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { uriHandler.openUri(source.url) },
+                        )
+                    }
+                }
+            }
+        }
     }
 }

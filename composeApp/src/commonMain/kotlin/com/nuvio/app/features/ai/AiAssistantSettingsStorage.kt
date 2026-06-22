@@ -3,8 +3,12 @@ package com.nuvio.app.features.ai
 internal expect object AiAssistantSettingsStorage {
     fun loadEnabled(): Boolean?
     fun saveEnabled(value: Boolean)
+    fun loadWebSearchEnabled(): Boolean?
+    fun saveWebSearchEnabled(value: Boolean)
     fun loadProvider(): String?
     fun saveProvider(value: String)
+    fun loadTavilyApiKey(): String?
+    fun saveTavilyApiKey(value: String)
     fun loadCerebrasApiKey(): String?
     fun saveCerebrasApiKey(value: String)
     fun loadGroqApiKey(): String?

@@ -649,6 +649,11 @@
     <string name="ai_settings_model_help">Recommended defaults use GPT-OSS 120B directly through Cerebras or Groq.</string>
     <string name="ai_settings_fallback_help">Recommended: configure both Cerebras and Groq. On temporary load or quota errors, the assistant automatically tries the other one.</string>
     <string name="ai_settings_get_key">Get free key</string>
+    <string name="ai_settings_section_web_search">WEB SEARCH</string>
+    <string name="ai_settings_web_search">Automatic web search</string>
+    <string name="ai_settings_web_search_description">Search reliable sources for specific questions that cannot be answered from title metadata.</string>
+    <string name="ai_settings_tavily_key">Tavily API key</string>
+    <string name="ai_settings_tavily_description">Tavily provides 1,000 free search credits per month without requiring a credit card. Sources are shown below each answer.</string>
     <string name="ai_chat_title">Ask Nuvio</string>
     <string name="ai_chat_disclaimer">Ask anything about this title. Spoilers stay hidden unless you explicitly request them.</string>
     <string name="ai_chat_configure">To use the assistant, open Settings &gt; Integrations &gt; AI Assistant, choose a provider, and enter your free API key. Cerebras and Groq are recommended.</string>
