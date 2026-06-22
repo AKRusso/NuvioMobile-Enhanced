@@ -1,6 +1,8 @@
 package com.nuvio.app.features.livetv
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -302,17 +304,23 @@ private fun LiveTvRecentChannelCard(
         onClick = onClick,
         color = tokens.colors.surface,
         shape = tokens.shapes.card,
+        border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.borderSubtle),
     ) {
         Row(
             modifier = Modifier.padding(tokens.spacing.cardPadding),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(58.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(tokens.colors.surfaceCard),
+                    .background(tokens.colors.overlaySelected)
+                    .border(
+                        width = NuvioTokens.Border.thin,
+                        color = tokens.colors.borderSubtle,
+                        shape = RoundedCornerShape(16.dp),
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (!channel.logoUrl.isNullOrBlank()) {
@@ -328,14 +336,14 @@ private fun LiveTvRecentChannelCard(
                     Icon(
                         imageVector = Icons.Rounded.Tv,
                         contentDescription = null,
-                        tint = tokens.colors.textMuted,
+                        tint = tokens.colors.accent,
                     )
                 }
             }
 
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 Text(
                     text = stringResource(Res.string.live_tv_recent_channel_title),
@@ -347,24 +355,54 @@ private fun LiveTvRecentChannelCard(
                     style = MaterialTheme.typography.titleMedium,
                     color = tokens.colors.textPrimary,
                     fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (channel.group.isNotBlank()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(RoundedCornerShape(99.dp))
+                                .background(tokens.colors.accent),
+                        )
+                        Text(
+                            text = channel.group,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = tokens.colors.textMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+
+            }
+
+            Surface(
+                color = tokens.colors.overlaySelected,
+                shape = tokens.shapes.chip,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = null,
+                        tint = tokens.colors.accent,
+                    )
                     Text(
-                        text = channel.group,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tokens.colors.textMuted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        text = stringResource(Res.string.live_tv_recent_channel_cta),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
                     )
                 }
             }
-
-            NuvioPrimaryButton(
-                text = stringResource(Res.string.live_tv_recent_channel_cta),
-                onClick = onClick,
-            )
         }
     }
 }
