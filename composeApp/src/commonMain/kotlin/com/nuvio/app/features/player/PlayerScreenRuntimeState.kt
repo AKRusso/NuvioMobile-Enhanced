@@ -146,6 +146,8 @@ internal class PlayerScreenRuntime(
         initialPositionMs <= 0L && ((initialProgressFraction ?: 0f) <= 0f),
     )
     var lastProgressPersistEpochMs by mutableStateOf(0L)
+    var lastProgressRemoteSyncEpochMs by mutableStateOf(0L)
+    var lastProgressRemoteSyncPositionMs by mutableStateOf(0L)
     var previousIsPlaying by mutableStateOf(false)
     var hasRequestedScrobbleStartForCurrentItem by mutableStateOf(false)
     var scrobbleStartRequestGeneration by mutableStateOf(0L)

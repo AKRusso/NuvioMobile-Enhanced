@@ -54,6 +54,8 @@ internal fun PlayerScreenRuntime.resetIdentityStateIfNeeded() {
         initialSeekApplied = activeInitialPositionMs <= 0L &&
             (activeInitialProgressFraction == null || activeInitialProgressFraction!! <= 0f)
         lastProgressPersistEpochMs = 0L
+        lastProgressRemoteSyncEpochMs = 0L
+        lastProgressRemoteSyncPositionMs = 0L
         previousIsPlaying = false
         pendingScrobbleStartAfterSeek = false
         autoFetchedAddonSubtitlesForKey = null
@@ -231,5 +233,29 @@ internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
         session = playbackSession,
         snapshot = playbackSnapshot,
         syncRemote = false,
+    )
+}
+
+internal fun PlayerScreenRuntime.syncPlaybackProgressTick() {
+    if (isLiveTv) return
+    if (playbackSnapshot.isLoading || !playbackSnapshot.isPlaying) return
+    val positionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    if (positionMs <= 0L || playbackSnapshot.durationMs <= 0L) return
+
+    val now = WatchProgressClock.nowEpochMs()
+    val elapsedSinceRemoteSync = now - lastProgressRemoteSyncEpochMs
+    val advancedSinceRemoteSync = positionMs - lastProgressRemoteSyncPositionMs
+    if (elapsedSinceRemoteSync < PlaybackProgressRemoteSyncIntervalMs &&
+        advancedSinceRemoteSync < PlaybackProgressRemoteSyncMinAdvanceMs
+    ) {
+        return
+    }
+
+    lastProgressRemoteSyncEpochMs = now
+    lastProgressRemoteSyncPositionMs = positionMs
+    WatchProgressRepository.upsertPlaybackProgress(
+        session = playbackSession,
+        snapshot = playbackSnapshot,
+        syncRemote = true,
     )
 }

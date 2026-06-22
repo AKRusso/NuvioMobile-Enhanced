@@ -67,6 +67,8 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         credentialRefreshAttemptedSourceUrl = null
         initialLoadCompleted = false
         lastProgressPersistEpochMs = 0L
+        lastProgressRemoteSyncEpochMs = 0L
+        lastProgressRemoteSyncPositionMs = 0L
         previousIsPlaying = false
         pendingScrobbleStartAfterSeek = false
         seekProgressSyncJob?.cancel()
@@ -332,6 +334,7 @@ private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
         }
         if (playbackSnapshot.isPlaying) {
             persistPlaybackProgressTick()
+            syncPlaybackProgressTick()
         }
     }
 }
