@@ -47,6 +47,7 @@ import com.nuvio.app.features.ai.AiAssistantSettings
 import com.nuvio.app.features.ai.AiChatMessage
 import com.nuvio.app.features.ai.AiChatRole
 import com.nuvio.app.features.ai.AiProvider
+import com.nuvio.app.features.ai.displayName
 import com.nuvio.app.features.details.MetaDetails
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
@@ -135,7 +136,7 @@ internal fun AiAssistantSheet(
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "${meta.name} • ${if (settings.provider == AiProvider.GEMINI) "Gemini" else "OpenRouter Free"}",
+                        text = "${meta.name} • ${settings.provider.displayName}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

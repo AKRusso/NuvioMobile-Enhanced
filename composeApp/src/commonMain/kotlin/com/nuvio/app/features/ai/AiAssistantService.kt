@@ -2,8 +2,8 @@ package com.nuvio.app.features.ai
 
 import com.nuvio.app.features.addons.httpRequestRaw
 import com.nuvio.app.features.details.MetaDetails
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -24,10 +24,76 @@ object AiAssistantService {
         require(settings.isReady) { "AI assistant is not configured." }
         require(messages.isNotEmpty()) { "Message cannot be empty." }
 
-        return when (settings.provider) {
-            AiProvider.GEMINI -> chatWithGemini(settings, meta, messages)
-            AiProvider.OPENROUTER -> chatWithOpenRouter(settings, meta, messages)
+        val providers = buildList {
+            add(settings.provider)
+            when (settings.provider) {
+                AiProvider.CEREBRAS -> if (settings.groqApiKey.isNotBlank()) add(AiProvider.GROQ)
+                AiProvider.GROQ -> if (settings.cerebrasApiKey.isNotBlank()) add(AiProvider.CEREBRAS)
+                AiProvider.GEMINI, AiProvider.OPENROUTER -> {
+                    if (settings.cerebrasApiKey.isNotBlank()) add(AiProvider.CEREBRAS)
+                    if (settings.groqApiKey.isNotBlank()) add(AiProvider.GROQ)
+                }
+            }
+        }.distinct()
+
+        var lastError: Throwable? = null
+        providers.forEachIndexed { index, provider ->
+            try {
+                return requestProvider(
+                    provider = provider,
+                    settings = settings,
+                    meta = meta,
+                    messages = messages.takeLast(MAX_HISTORY_MESSAGES),
+                )
+            } catch (error: AiServiceException) {
+                lastError = error
+                val hasFallback = index < providers.lastIndex
+                if (!error.retryable || !hasFallback) throw error
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                lastError = error
+                if (index >= providers.lastIndex) throw error
+            }
         }
+        throw lastError ?: IllegalStateException("AI service is unavailable.")
+    }
+
+    private suspend fun requestProvider(
+        provider: AiProvider,
+        settings: AiAssistantSettings,
+        meta: MetaDetails,
+        messages: List<AiChatMessage>,
+    ): String = when (provider) {
+        AiProvider.CEREBRAS -> chatWithOpenAiCompatible(
+            endpoint = "https://api.cerebras.ai/v1/chat/completions",
+            apiKey = settings.cerebrasApiKey,
+            model = settings.cerebrasModel,
+            providerName = "Cerebras",
+            meta = meta,
+            messages = messages,
+        )
+        AiProvider.GROQ -> chatWithOpenAiCompatible(
+            endpoint = "https://api.groq.com/openai/v1/chat/completions",
+            apiKey = settings.groqApiKey,
+            model = settings.groqModel,
+            providerName = "Groq",
+            meta = meta,
+            messages = messages,
+        )
+        AiProvider.GEMINI -> chatWithGemini(settings, meta, messages)
+        AiProvider.OPENROUTER -> chatWithOpenAiCompatible(
+            endpoint = "https://openrouter.ai/api/v1/chat/completions",
+            apiKey = settings.openRouterApiKey,
+            model = settings.openRouterModel,
+            providerName = "OpenRouter",
+            meta = meta,
+            messages = messages,
+            extraHeaders = mapOf(
+                "HTTP-Referer" to "https://github.com/yesnt10/NuvioMobile-Enhanced",
+                "X-Title" to "Nuvio Mobile Enhanced",
+            ),
+        )
     }
 
     private suspend fun chatWithGemini(
@@ -52,8 +118,8 @@ object AiAssistantService {
                 }
             })
             put("generationConfig", buildJsonObject {
-                put("temperature", 0.65)
-                put("maxOutputTokens", 700)
+                put("temperature", RESPONSE_TEMPERATURE)
+                put("maxOutputTokens", MAX_OUTPUT_TOKENS)
             })
         }
         val response = httpRequestRaw(
@@ -75,42 +141,47 @@ object AiAssistantService {
             ?.jsonObject
             ?.get("parts")
             ?.jsonArray
-            ?.joinToString("\n") { part -> part.jsonObject["text"]?.jsonPrimitive?.contentOrNull.orEmpty() }
+            ?.joinToString("\n") { part ->
+                part.jsonObject["text"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            }
             ?.trim()
             ?.takeIf(String::isNotBlank)
-            ?: throw IllegalStateException("Gemini boş bir yanıt döndürdü.")
+            ?: throw AiServiceException("Gemini returned an empty response.", retryable = true)
     }
 
-    private suspend fun chatWithOpenRouter(
-        settings: AiAssistantSettings,
+    private suspend fun chatWithOpenAiCompatible(
+        endpoint: String,
+        apiKey: String,
+        model: String,
+        providerName: String,
         meta: MetaDetails,
         messages: List<AiChatMessage>,
+        extraHeaders: Map<String, String> = emptyMap(),
     ): String {
+        require(apiKey.isNotBlank()) { "$providerName API key is missing." }
         val body = buildJsonObject {
-            put("model", settings.openRouterModel)
+            put("model", model)
             put("messages", buildJsonArray {
-                add(openRouterMessage("system", systemPrompt(meta)))
+                add(openAiMessage("system", systemPrompt(meta)))
                 messages.forEach { message ->
                     add(
-                        openRouterMessage(
+                        openAiMessage(
                             role = if (message.role == AiChatRole.USER) "user" else "assistant",
                             text = message.text,
                         ),
                     )
                 }
             })
-            put("temperature", 0.65)
-            put("max_tokens", 700)
+            put("temperature", RESPONSE_TEMPERATURE)
+            put("max_tokens", MAX_OUTPUT_TOKENS)
         }
         val response = httpRequestRaw(
             method = "POST",
-            url = "https://openrouter.ai/api/v1/chat/completions",
+            url = endpoint,
             headers = mapOf(
                 "Content-Type" to "application/json",
-                "Authorization" to "Bearer ${settings.openRouterApiKey}",
-                "HTTP-Referer" to "https://github.com/yesnt10/NuvioMobile-Enhanced",
-                "X-Title" to "Nuvio Mobile Enhanced",
-            ),
+                "Authorization" to "Bearer $apiKey",
+            ) + extraHeaders,
             body = body.toString(),
         )
         ensureSuccess(response.status, response.body)
@@ -126,10 +197,10 @@ object AiAssistantService {
             ?.contentOrNull
             ?.trim()
             ?.takeIf(String::isNotBlank)
-            ?: throw IllegalStateException("OpenRouter boş bir yanıt döndürdü.")
+            ?: throw AiServiceException("$providerName returned an empty response.", retryable = true)
     }
 
-    private fun openRouterMessage(role: String, text: String): JsonObject = buildJsonObject {
+    private fun openAiMessage(role: String, text: String): JsonObject = buildJsonObject {
         put("role", role)
         put("content", text)
     }
@@ -143,27 +214,44 @@ object AiAssistantService {
                 else -> error?.jsonPrimitive?.contentOrNull
             }
         }.getOrNull()
-        throw IllegalStateException(apiMessage ?: "AI servisi hata döndürdü ($status).")
+        throw AiServiceException(
+            message = apiMessage ?: "AI service returned error $status.",
+            retryable = status == 408 || status == 429 || status >= 500,
+        )
     }
 
     private fun systemPrompt(meta: MetaDetails): String = buildString {
-        appendLine("Sen Nuvio uygulamasındaki içerik asistanısın.")
-        appendLine("Kullanıcının dilinde, kısa ve doğal yanıt ver.")
-        appendLine("Kullanıcı açıkça istemedikçe spoiler verme. Emin olmadığın bilgileri uydurma.")
-        appendLine("Yalnızca aşağıdaki içerik ve genel sinema bilgisi bağlamında yardımcı ol.")
+        appendLine("You are the content assistant inside the Nuvio app.")
+        appendLine("Reply in the same language as the user. Keep the answer concise and natural.")
+        appendLine("Treat only the CONTENT DATA below as verified facts about this title.")
+        appendLine("Never invent plot points, characters, cast, production details, ratings, or events.")
+        appendLine("If the requested fact is not present in CONTENT DATA, say: 'Bu bilgi elimde yok.'")
+        appendLine("You may give clearly labeled subjective recommendations based only on the supplied genres and summary.")
+        appendLine("Do not reveal spoilers unless the user explicitly asks for spoilers.")
+        appendLine("Do not pretend that you watched the title or accessed external sources.")
         appendLine()
-        appendLine("İçerik: ${meta.name}")
-        appendLine("Tür: ${meta.type}")
-        meta.releaseInfo?.let { appendLine("Yayın: $it") }
-        meta.genres.takeIf { it.isNotEmpty() }?.let { appendLine("Türler: ${it.joinToString()}") }
-        meta.runtime?.let { appendLine("Süre: $it") }
-        meta.imdbRating?.let { appendLine("IMDb: $it") }
-        meta.director.takeIf { it.isNotEmpty() }?.let { appendLine("Yönetmen: ${it.joinToString()}") }
-        meta.writer.takeIf { it.isNotEmpty() }?.let { appendLine("Yazar: ${it.joinToString()}") }
+        appendLine("CONTENT DATA")
+        appendLine("Title: ${meta.name}")
+        appendLine("Type: ${meta.type}")
+        meta.releaseInfo?.let { appendLine("Release: $it") }
+        meta.genres.takeIf { it.isNotEmpty() }?.let { appendLine("Genres: ${it.joinToString()}") }
+        meta.runtime?.let { appendLine("Runtime: $it") }
+        meta.imdbRating?.let { appendLine("IMDb rating: $it") }
+        meta.director.takeIf { it.isNotEmpty() }?.let { appendLine("Directors: ${it.joinToString()}") }
+        meta.writer.takeIf { it.isNotEmpty() }?.let { appendLine("Writers: ${it.joinToString()}") }
         meta.cast.take(10).takeIf { it.isNotEmpty() }?.let { cast ->
-            appendLine("Oyuncular: ${cast.joinToString { it.name }}")
+            appendLine("Cast: ${cast.joinToString { it.name }}")
         }
-        meta.description?.takeIf(String::isNotBlank)?.let { appendLine("Özet: $it") }
+        meta.description?.takeIf(String::isNotBlank)?.let { appendLine("Summary: $it") }
+        appendLine("END CONTENT DATA")
     }
 }
 
+private class AiServiceException(
+    message: String,
+    val retryable: Boolean,
+) : IllegalStateException(message)
+
+private const val MAX_HISTORY_MESSAGES = 8
+private const val MAX_OUTPUT_TOKENS = 500
+private const val RESPONSE_TEMPERATURE = 0.2

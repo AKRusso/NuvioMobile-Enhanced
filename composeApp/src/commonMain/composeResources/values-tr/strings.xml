@@ -593,7 +593,7 @@
     <string name="settings_content_discovery_collections_description">Ana sayfada gösterilen klasörlerle özel katalog grupları oluştur.</string>
     <string name="settings_integrations_section_title">ENTEGRASYONLAR</string>
     <string name="compose_settings_page_ai_assistant">Yapay Zekâ Asistanı</string>
-    <string name="settings_integrations_ai_description">Film ve diziler hakkında Gemini veya ücretsiz OpenRouter modelleriyle sohbet et.</string>
+    <string name="settings_integrations_ai_description">Film ve diziler hakkında hızlı, ücretsiz Cerebras veya Groq modelleriyle sohbet et.</string>
     <string name="ai_settings_section_general">ASİSTAN</string>
     <string name="ai_settings_section_access">SAĞLAYICI ERİŞİMİ</string>
     <string name="ai_settings_enable">Yapay zekâ asistanını etkinleştir</string>
@@ -602,11 +602,12 @@
     <string name="ai_settings_api_key">API anahtarı</string>
     <string name="ai_settings_api_key_help">Ücretsiz bir API anahtarı oluştur, aşağıya yapıştır ve kaydet. Anahtar yalnızca bu cihazda tutulur.</string>
     <string name="ai_settings_model">Model</string>
-    <string name="ai_settings_model_help">Varsayılanlar Gemini Flash veya OpenRouter’ın otomatik ücretsiz model yönlendiricisini kullanır.</string>
+    <string name="ai_settings_model_help">Önerilen varsayılanlar GPT-OSS 120B modelini doğrudan Cerebras veya Groq üzerinden kullanır.</string>
+    <string name="ai_settings_fallback_help">Önerilen: Cerebras ve Groq anahtarlarını birlikte tanımla. Geçici yoğunluk veya kota hatasında asistan diğerini otomatik dener.</string>
     <string name="ai_settings_get_key">Ücretsiz anahtar al</string>
     <string name="ai_chat_title">Nuvio’ya Sor</string>
     <string name="ai_chat_disclaimer">Bu içerik hakkında istediğini sor. Sen açıkça istemedikçe spoiler verilmez.</string>
-    <string name="ai_chat_configure">Asistanı kullanmak için Ayarlar &gt; Entegrasyonlar &gt; Yapay Zekâ Asistanı bölümünü aç, Gemini veya OpenRouter Free seç ve ücretsiz API anahtarını gir.</string>
+    <string name="ai_chat_configure">Asistanı kullanmak için Ayarlar &gt; Entegrasyonlar &gt; Yapay Zekâ Asistanı bölümünü aç, sağlayıcı seç ve ücretsiz API anahtarını gir. Cerebras ve Groq önerilir.</string>
     <string name="ai_chat_hint">Bu içerik hakkında sor…</string>
     <string name="ai_chat_prompt_recommend">Spoilersız, izlemeye değer mi?</string>
     <string name="ai_chat_prompt_explain">İzlemeden önce ne bilmeliyim?</string>

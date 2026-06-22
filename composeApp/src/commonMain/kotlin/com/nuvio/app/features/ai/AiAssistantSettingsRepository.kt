@@ -18,9 +18,19 @@ object AiAssistantSettingsRepository {
                 enabled = AiAssistantSettingsStorage.loadEnabled() ?: false,
                 provider = AiAssistantSettingsStorage.loadProvider()
                     ?.let { value -> runCatching { AiProvider.valueOf(value) }.getOrNull() }
-                    ?: AiProvider.GEMINI,
+                    ?: AiProvider.CEREBRAS,
+                cerebrasApiKey = AiAssistantSettingsStorage.loadCerebrasApiKey()?.trim().orEmpty(),
+                groqApiKey = AiAssistantSettingsStorage.loadGroqApiKey()?.trim().orEmpty(),
                 geminiApiKey = AiAssistantSettingsStorage.loadGeminiApiKey()?.trim().orEmpty(),
                 openRouterApiKey = AiAssistantSettingsStorage.loadOpenRouterApiKey()?.trim().orEmpty(),
+                cerebrasModel = AiAssistantSettingsStorage.loadCerebrasModel()
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: DEFAULT_CEREBRAS_MODEL,
+                groqModel = AiAssistantSettingsStorage.loadGroqModel()
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    ?: DEFAULT_GROQ_MODEL,
                 geminiModel = AiAssistantSettingsStorage.loadGeminiModel()
                     ?.trim()
                     ?.takeIf(String::isNotBlank)
@@ -37,9 +47,21 @@ object AiAssistantSettingsRepository {
 
     fun setProvider(value: AiProvider) = update { copy(provider = value) }
 
+    fun setCerebrasApiKey(value: String) = update { copy(cerebrasApiKey = value.trim()) }
+
+    fun setGroqApiKey(value: String) = update { copy(groqApiKey = value.trim()) }
+
     fun setGeminiApiKey(value: String) = update { copy(geminiApiKey = value.trim()) }
 
     fun setOpenRouterApiKey(value: String) = update { copy(openRouterApiKey = value.trim()) }
+
+    fun setCerebrasModel(value: String) = update {
+        copy(cerebrasModel = value.trim().ifBlank { DEFAULT_CEREBRAS_MODEL })
+    }
+
+    fun setGroqModel(value: String) = update {
+        copy(groqModel = value.trim().ifBlank { DEFAULT_GROQ_MODEL })
+    }
 
     fun setGeminiModel(value: String) = update {
         copy(geminiModel = value.trim().ifBlank { DEFAULT_GEMINI_MODEL })
@@ -55,8 +77,12 @@ object AiAssistantSettingsRepository {
         publish(next)
         AiAssistantSettingsStorage.saveEnabled(next.enabled)
         AiAssistantSettingsStorage.saveProvider(next.provider.name)
+        AiAssistantSettingsStorage.saveCerebrasApiKey(next.cerebrasApiKey)
+        AiAssistantSettingsStorage.saveGroqApiKey(next.groqApiKey)
         AiAssistantSettingsStorage.saveGeminiApiKey(next.geminiApiKey)
         AiAssistantSettingsStorage.saveOpenRouterApiKey(next.openRouterApiKey)
+        AiAssistantSettingsStorage.saveCerebrasModel(next.cerebrasModel)
+        AiAssistantSettingsStorage.saveGroqModel(next.groqModel)
         AiAssistantSettingsStorage.saveGeminiModel(next.geminiModel)
         AiAssistantSettingsStorage.saveOpenRouterModel(next.openRouterModel)
     }
@@ -65,4 +91,3 @@ object AiAssistantSettingsRepository {
         _uiState.value = settings
     }
 }
-

@@ -2,6 +2,8 @@ package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.ai.AiAssistantSettings
 import com.nuvio.app.features.ai.AiAssistantSettingsRepository
 import com.nuvio.app.features.ai.AiProvider
+import com.nuvio.app.features.ai.displayName
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_save
 import nuvio.composeapp.generated.resources.ai_settings_api_key
@@ -31,6 +34,7 @@ import nuvio.composeapp.generated.resources.ai_settings_api_key_help
 import nuvio.composeapp.generated.resources.ai_settings_enable
 import nuvio.composeapp.generated.resources.ai_settings_enable_description
 import nuvio.composeapp.generated.resources.ai_settings_get_key
+import nuvio.composeapp.generated.resources.ai_settings_fallback_help
 import nuvio.composeapp.generated.resources.ai_settings_model
 import nuvio.composeapp.generated.resources.ai_settings_model_help
 import nuvio.composeapp.generated.resources.ai_settings_provider
@@ -79,6 +83,7 @@ internal fun LazyListScope.aiAssistantSettingsContent(
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ProviderSelector(
     isTablet: Boolean,
     selected: AiProvider,
@@ -97,17 +102,23 @@ private fun ProviderSelector(
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
             AiProvider.entries.forEach { provider ->
                 FilterChip(
                     selected = provider == selected,
                     onClick = { AiAssistantSettingsRepository.setProvider(provider) },
-                    label = {
-                        Text(if (provider == AiProvider.GEMINI) "Gemini" else "OpenRouter Free")
-                    },
+                    label = { Text(provider.displayName) },
                 )
             }
         }
+        Text(
+            text = stringResource(Res.string.ai_settings_fallback_help),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -121,10 +132,11 @@ private fun ProviderCredentials(
     val uriHandler = LocalUriHandler.current
     var apiKeyDraft by rememberSaveable(provider, apiKey) { mutableStateOf(apiKey) }
     var modelDraft by rememberSaveable(provider, model) { mutableStateOf(model) }
-    val keyUrl = if (provider == AiProvider.GEMINI) {
-        "https://aistudio.google.com/app/apikey"
-    } else {
-        "https://openrouter.ai/settings/keys"
+    val keyUrl = when (provider) {
+        AiProvider.CEREBRAS -> "https://cloud.cerebras.ai/"
+        AiProvider.GROQ -> "https://console.groq.com/keys"
+        AiProvider.GEMINI -> "https://aistudio.google.com/app/apikey"
+        AiProvider.OPENROUTER -> "https://openrouter.ai/settings/keys"
     }
 
     Column(
@@ -137,7 +149,7 @@ private fun ProviderCredentials(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
-            text = if (provider == AiProvider.GEMINI) "Gemini" else "OpenRouter Free",
+            text = provider.displayName,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
@@ -168,12 +180,23 @@ private fun ProviderCredentials(
             Button(
                 enabled = apiKeyDraft.trim() != apiKey || modelDraft.trim() != model,
                 onClick = {
-                    if (provider == AiProvider.GEMINI) {
-                        AiAssistantSettingsRepository.setGeminiApiKey(apiKeyDraft)
-                        AiAssistantSettingsRepository.setGeminiModel(modelDraft)
-                    } else {
-                        AiAssistantSettingsRepository.setOpenRouterApiKey(apiKeyDraft)
-                        AiAssistantSettingsRepository.setOpenRouterModel(modelDraft)
+                    when (provider) {
+                        AiProvider.CEREBRAS -> {
+                            AiAssistantSettingsRepository.setCerebrasApiKey(apiKeyDraft)
+                            AiAssistantSettingsRepository.setCerebrasModel(modelDraft)
+                        }
+                        AiProvider.GROQ -> {
+                            AiAssistantSettingsRepository.setGroqApiKey(apiKeyDraft)
+                            AiAssistantSettingsRepository.setGroqModel(modelDraft)
+                        }
+                        AiProvider.GEMINI -> {
+                            AiAssistantSettingsRepository.setGeminiApiKey(apiKeyDraft)
+                            AiAssistantSettingsRepository.setGeminiModel(modelDraft)
+                        }
+                        AiProvider.OPENROUTER -> {
+                            AiAssistantSettingsRepository.setOpenRouterApiKey(apiKeyDraft)
+                            AiAssistantSettingsRepository.setOpenRouterModel(modelDraft)
+                        }
                     }
                 },
             ) {

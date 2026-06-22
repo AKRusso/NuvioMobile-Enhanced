@@ -16,10 +16,18 @@ actual object AiAssistantSettingsStorage {
     actual fun saveEnabled(value: Boolean) = saveBoolean("enabled", value)
     actual fun loadProvider(): String? = loadString("provider")
     actual fun saveProvider(value: String) = saveString("provider", value)
+    actual fun loadCerebrasApiKey(): String? = loadString("cerebras_api_key")
+    actual fun saveCerebrasApiKey(value: String) = saveString("cerebras_api_key", value)
+    actual fun loadGroqApiKey(): String? = loadString("groq_api_key")
+    actual fun saveGroqApiKey(value: String) = saveString("groq_api_key", value)
     actual fun loadGeminiApiKey(): String? = loadString("gemini_api_key")
     actual fun saveGeminiApiKey(value: String) = saveString("gemini_api_key", value)
     actual fun loadOpenRouterApiKey(): String? = loadString("openrouter_api_key")
     actual fun saveOpenRouterApiKey(value: String) = saveString("openrouter_api_key", value)
+    actual fun loadCerebrasModel(): String? = loadString("cerebras_model")
+    actual fun saveCerebrasModel(value: String) = saveString("cerebras_model", value)
+    actual fun loadGroqModel(): String? = loadString("groq_model")
+    actual fun saveGroqModel(value: String) = saveString("groq_model", value)
     actual fun loadGeminiModel(): String? = loadString("gemini_model")
     actual fun saveGeminiModel(value: String) = saveString("gemini_model", value)
     actual fun loadOpenRouterModel(): String? = loadString("openrouter_model")
@@ -41,4 +49,3 @@ actual object AiAssistantSettingsStorage {
         preferences?.edit()?.putBoolean(ProfileScopedKey.of(key), value)?.apply()
     }
 }
-
