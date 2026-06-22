@@ -54,6 +54,8 @@ import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.features.addons.AddonRepository
+import com.nuvio.app.features.ai.AiAssistantSettingsRepository
+import com.nuvio.app.features.ai.AiAssistantSettings
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsUiState
 import com.nuvio.app.core.ui.PosterCardStyleRepository
@@ -133,6 +135,10 @@ fun SettingsScreen(
         val tmdbSettings by remember {
             TmdbSettingsRepository.ensureLoaded()
             TmdbSettingsRepository.uiState
+        }.collectAsStateWithLifecycle()
+        val aiAssistantSettings by remember {
+            AiAssistantSettingsRepository.ensureLoaded()
+            AiAssistantSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
         val mdbListSettings by remember {
             MdbListSettingsRepository.ensureLoaded()
@@ -275,6 +281,7 @@ fun SettingsScreen(
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
                 tmdbSettings = tmdbSettings,
+                aiAssistantSettings = aiAssistantSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
                 traktAuthUiState = traktAuthUiState,
@@ -326,6 +333,7 @@ fun SettingsScreen(
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
                 tmdbSettings = tmdbSettings,
+                aiAssistantSettings = aiAssistantSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
                 traktAuthUiState = traktAuthUiState,
@@ -387,6 +395,7 @@ private fun MobileSettingsScreen(
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
     tmdbSettings: TmdbSettings,
+    aiAssistantSettings: AiAssistantSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
     traktAuthUiState: TraktAuthUiState,
@@ -611,9 +620,14 @@ private fun MobileSettingsScreen(
                 SettingsPage.Integrations -> integrationsContent(
                     isTablet = false,
                     onTraktClick = { onPageChange(SettingsPage.TraktAuthentication) },
+                    onAiAssistantClick = { onPageChange(SettingsPage.AiAssistant) },
                     onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                     onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
                     onDebridClick = { onPageChange(SettingsPage.Debrid) },
+                )
+                SettingsPage.AiAssistant -> aiAssistantSettingsContent(
+                    isTablet = false,
+                    settings = aiAssistantSettings,
                 )
                 SettingsPage.TmdbEnrichment -> tmdbSettingsContent(
                     isTablet = false,
@@ -713,6 +727,7 @@ private fun TabletSettingsScreen(
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
     tmdbSettings: TmdbSettings,
+    aiAssistantSettings: AiAssistantSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
     traktAuthUiState: TraktAuthUiState,
@@ -996,9 +1011,14 @@ private fun TabletSettingsScreen(
                     SettingsPage.Integrations -> integrationsContent(
                         isTablet = true,
                         onTraktClick = { openInlinePage(SettingsPage.TraktAuthentication) },
-                        onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
-                        onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
-                        onDebridClick = { onPageChange(SettingsPage.Debrid) },
+                        onAiAssistantClick = { openInlinePage(SettingsPage.AiAssistant) },
+                        onTmdbClick = { openInlinePage(SettingsPage.TmdbEnrichment) },
+                        onMdbListClick = { openInlinePage(SettingsPage.MdbListRatings) },
+                        onDebridClick = { openInlinePage(SettingsPage.Debrid) },
+                    )
+                    SettingsPage.AiAssistant -> aiAssistantSettingsContent(
+                        isTablet = true,
+                        settings = aiAssistantSettings,
                     )
                     SettingsPage.TmdbEnrichment -> tmdbSettingsContent(
                         isTablet = true,

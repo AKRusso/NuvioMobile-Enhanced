@@ -11,6 +11,7 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_category_about
 import nuvio.composeapp.generated.resources.compose_settings_category_general
 import nuvio.composeapp.generated.resources.compose_settings_page_account
+import nuvio.composeapp.generated.resources.compose_settings_page_ai_assistant
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
 import nuvio.composeapp.generated.resources.compose_settings_page_appearance
@@ -133,6 +134,11 @@ internal enum class SettingsPage(
         titleRes = Res.string.compose_settings_page_integrations,
         category = SettingsCategory.General,
         parentPage = Root,
+    ),
+    AiAssistant(
+        titleRes = Res.string.compose_settings_page_ai_assistant,
+        category = SettingsCategory.General,
+        parentPage = Integrations,
     ),
     TmdbEnrichment(
         titleRes = Res.string.compose_settings_page_tmdb_enrichment,

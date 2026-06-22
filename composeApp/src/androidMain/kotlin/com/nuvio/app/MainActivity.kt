@@ -14,6 +14,7 @@ import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.network.SyncBackendStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.features.addons.AddonStorage
+import com.nuvio.app.features.ai.AiAssistantSettingsStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
 import com.nuvio.app.features.collection.CollectionStorage
 import com.nuvio.app.features.debrid.DebridSettingsStorage
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawableResource(R.color.nuvio_background)
         AddonStorage.initialize(applicationContext)
+        AiAssistantSettingsStorage.initialize(applicationContext)
         AuthStorage.initialize(applicationContext)
         SyncBackendStorage.initialize(applicationContext)
         LibraryStorage.initialize(applicationContext)
