@@ -32,7 +32,6 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -1066,19 +1065,12 @@ private fun LibraryReleaseCalendarPage(
             NuvioScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalPadding = 20.dp,
+                topPadding = 64.dp,
             ) {
                 stickyHeader {
                     NuvioScreenHeader(
                         title = stringResource(Res.string.library_calendar_title),
                         onBack = onDismiss,
-                        actions = {
-                            IconButton(onClick = onDismiss) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = stringResource(Res.string.action_close),
-                                )
-                            }
-                        },
                     )
                 }
 
