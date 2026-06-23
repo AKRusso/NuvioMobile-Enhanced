@@ -10,13 +10,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,14 +36,12 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,6 +59,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.i18n.localizedMonthName
@@ -71,7 +71,6 @@ import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioDropdownChip
 import com.nuvio.app.core.ui.NuvioDropdownOption
-import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.NuvioScreenHeader
@@ -188,162 +187,171 @@ fun LibraryScreen(
         }
     }
 
-    NuvioScreen(
-        modifier = modifier,
-        horizontalPadding = 0.dp,
-        listState = listState,
-    ) {
-        stickyHeader {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .nuvioConsumePointerEvents(),
-                )
-                androidx.compose.foundation.layout.Column(
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    NuvioScreenHeader(
-                        title = if (sourceMode == LibraryViewMode.Cloud) {
-                            stringResource(Res.string.library_title)
-                        } else if (isTraktSource) {
-                            stringResource(Res.string.library_trakt_title)
-                        } else {
-                            stringResource(Res.string.library_title)
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        actions = {
-                            if (sourceMode != LibraryViewMode.Cloud) {
-                                IconButton(onClick = { showReleaseCalendar = true }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.CalendarMonth,
-                                        contentDescription = stringResource(Res.string.library_calendar_open),
-                                    )
+    Box(modifier = modifier.fillMaxSize()) {
+        NuvioScreen(
+            modifier = Modifier.fillMaxSize(),
+            horizontalPadding = 0.dp,
+            listState = listState,
+        ) {
+            stickyHeader {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(MaterialTheme.colorScheme.background)
+                            .nuvioConsumePointerEvents(),
+                    )
+                    androidx.compose.foundation.layout.Column(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        NuvioScreenHeader(
+                            title = if (sourceMode == LibraryViewMode.Cloud) {
+                                stringResource(Res.string.library_title)
+                            } else if (isTraktSource) {
+                                stringResource(Res.string.library_trakt_title)
+                            } else {
+                                stringResource(Res.string.library_title)
+                            },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            actions = {
+                                if (sourceMode != LibraryViewMode.Cloud) {
+                                    IconButton(
+                                        onClick = { showReleaseCalendar = true },
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CalendarMonth,
+                                            contentDescription = stringResource(Res.string.library_calendar_open),
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
                                 }
-                            }
-                        },
-                    )
-                    LibrarySourceSwitch(
-                        selectedMode = sourceMode,
-                        onModeSelected = { mode ->
-                            sourceModeName = mode.name
-                        },
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
+                            },
+                        )
+                        LibrarySourceSwitch(
+                            selectedMode = sourceMode,
+                            onModeSelected = { mode ->
+                                sourceModeName = mode.name
+                            },
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
                 }
             }
-        }
 
-        if (sourceMode == LibraryViewMode.Cloud) {
-            cloudLibraryContent(
-                uiState = cloudUiState,
-                selectedProviderId = selectedProviderId,
-                selectedType = selectedType,
-                selectedCloudItemKey = selectedCloudItemKey,
-                onProviderSelected = {
-                    selectedProviderId = it
-                    selectedTypeName = null
-                    selectedCloudItemKey = null
-                },
-                onTypeSelected = {
-                    selectedTypeName = it?.name
-                    selectedCloudItemKey = null
-                },
-                onItemSelected = { item ->
-                    val playableFiles = item.playableFiles
-                    when {
-                        playableFiles.size == 1 -> onCloudFilePlay?.invoke(item, playableFiles.first())
-                        playableFiles.size > 1 -> selectedCloudItemKey = item.stableKey
+            if (sourceMode == LibraryViewMode.Cloud) {
+                cloudLibraryContent(
+                    uiState = cloudUiState,
+                    selectedProviderId = selectedProviderId,
+                    selectedType = selectedType,
+                    selectedCloudItemKey = selectedCloudItemKey,
+                    onProviderSelected = {
+                        selectedProviderId = it
+                        selectedTypeName = null
+                        selectedCloudItemKey = null
+                    },
+                    onTypeSelected = {
+                        selectedTypeName = it?.name
+                        selectedCloudItemKey = null
+                    },
+                    onItemSelected = { item ->
+                        val playableFiles = item.playableFiles
+                        when {
+                            playableFiles.size == 1 -> onCloudFilePlay?.invoke(item, playableFiles.first())
+                            playableFiles.size > 1 -> selectedCloudItemKey = item.stableKey
+                        }
+                    },
+                    onFileSelected = { item, file -> onCloudFilePlay?.invoke(item, file) },
+                    onBackToItems = { selectedCloudItemKey = null },
+                    onRefresh = { CloudLibraryRepository.refresh() },
+                    onConnectCloudClick = onConnectCloudClick,
+                )
+            } else {
+                when {
+                    !uiState.isLoaded || (uiState.isLoading && uiState.sections.isEmpty()) -> {
+                        items(3) {
+                            HomeSkeletonRow(
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
+                            )
+                        }
                     }
-                },
-                onFileSelected = { item, file -> onCloudFilePlay?.invoke(item, file) },
-                onBackToItems = { selectedCloudItemKey = null },
-                onRefresh = { CloudLibraryRepository.refresh() },
-                onConnectCloudClick = onConnectCloudClick,
-            )
-        } else {
-            when {
-                !uiState.isLoaded || (uiState.isLoading && uiState.sections.isEmpty()) -> {
-                    items(3) {
-                        HomeSkeletonRow(
-                            modifier = Modifier.padding(horizontal = 16.dp),
+
+                    !uiState.errorMessage.isNullOrBlank() && uiState.sections.isEmpty() -> {
+                        item {
+                            if (networkStatusUiState.isOfflineLike) {
+                                NuvioNetworkOfflineCard(
+                                    condition = networkStatusUiState.condition,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    onRetry = retryLibraryLoad,
+                                )
+                            } else {
+                                HomeEmptyStateCard(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    title = if (isTraktSource) {
+                                        stringResource(Res.string.library_trakt_load_failed)
+                                    } else {
+                                        stringResource(Res.string.library_load_failed)
+                                    },
+                                    message = uiState.errorMessage.orEmpty(),
+                                    actionLabel = stringResource(Res.string.action_retry),
+                                    onActionClick = retryLibraryLoad,
+                                )
+                            }
+                        }
+                    }
+
+                    uiState.sections.isEmpty() -> {
+                        item {
+                            if (networkStatusUiState.isOfflineLike && isTraktSource) {
+                                NuvioNetworkOfflineCard(
+                                    condition = networkStatusUiState.condition,
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    onRetry = retryLibraryLoad,
+                                )
+                            } else {
+                                HomeEmptyStateCard(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    title = if (isTraktSource) {
+                                        stringResource(Res.string.library_trakt_empty_title)
+                                    } else {
+                                        stringResource(Res.string.library_empty_title)
+                                    },
+                                    message = if (isTraktSource) {
+                                        stringResource(Res.string.library_trakt_empty_message)
+                                    } else {
+                                        stringResource(Res.string.library_empty_message)
+                                    },
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        librarySections(
+                            sections = uiState.sections,
+                            watchedKeys = watchedUiState.watchedKeys,
                             showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
+                            onPosterClick = onPosterClick,
+                            onSectionViewAllClick = onSectionViewAllClick,
+                            onPosterLongClick = onPosterLongClick,
                         )
                     }
                 }
-
-                !uiState.errorMessage.isNullOrBlank() && uiState.sections.isEmpty() -> {
-                    item {
-                        if (networkStatusUiState.isOfflineLike) {
-                            NuvioNetworkOfflineCard(
-                                condition = networkStatusUiState.condition,
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                onRetry = retryLibraryLoad,
-                            )
-                        } else {
-                            HomeEmptyStateCard(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                title = if (isTraktSource) {
-                                    stringResource(Res.string.library_trakt_load_failed)
-                                } else {
-                                    stringResource(Res.string.library_load_failed)
-                                },
-                                message = uiState.errorMessage.orEmpty(),
-                                actionLabel = stringResource(Res.string.action_retry),
-                                onActionClick = retryLibraryLoad,
-                            )
-                        }
-                    }
-                }
-
-                uiState.sections.isEmpty() -> {
-                    item {
-                        if (networkStatusUiState.isOfflineLike && isTraktSource) {
-                            NuvioNetworkOfflineCard(
-                                condition = networkStatusUiState.condition,
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                onRetry = retryLibraryLoad,
-                            )
-                        } else {
-                            HomeEmptyStateCard(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                title = if (isTraktSource) {
-                                    stringResource(Res.string.library_trakt_empty_title)
-                                } else {
-                                    stringResource(Res.string.library_empty_title)
-                                },
-                                message = if (isTraktSource) {
-                                    stringResource(Res.string.library_trakt_empty_message)
-                                } else {
-                                    stringResource(Res.string.library_empty_message)
-                                },
-                            )
-                        }
-                    }
-                }
-
-                else -> {
-                    librarySections(
-                        sections = uiState.sections,
-                        watchedKeys = watchedUiState.watchedKeys,
-                        showHeaderAccent = !homeCatalogSettingsUiState.hideCatalogUnderline,
-                        onPosterClick = onPosterClick,
-                        onSectionViewAllClick = onSectionViewAllClick,
-                        onPosterLongClick = onPosterLongClick,
-                    )
-                }
             }
         }
-    }
 
-    if (showReleaseCalendar) {
-        LibraryReleaseCalendarSheet(
-            events = releaseCalendarEvents,
-            onDismiss = { showReleaseCalendar = false },
-            onPosterClick = onPosterClick,
-        )
+        if (showReleaseCalendar) {
+            LibraryReleaseCalendarPage(
+                events = releaseCalendarEvents,
+                onDismiss = { showReleaseCalendar = false },
+                onPosterClick = onPosterClick,
+            )
+        }
     }
 }
 
@@ -1015,14 +1023,12 @@ private fun CloudSkeletonBlock(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LibraryReleaseCalendarSheet(
+private fun LibraryReleaseCalendarPage(
     events: List<LibraryCalendarEvent>,
     onDismiss: () -> Unit,
     onPosterClick: ((LibraryItem) -> Unit)?,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val initialMonth = remember(events) { initialLibraryCalendarMonth(events) }
     var visibleMonth by remember(events) { mutableStateOf(initialMonth) }
     val monthEvents = remember(events, visibleMonth) {
@@ -1046,88 +1052,114 @@ private fun LibraryReleaseCalendarSheet(
         ?.let { date -> stringResource(Res.string.library_calendar_selected_day, displayLibraryCalendarDate(date)) }
         ?: stringResource(Res.string.library_calendar_month_events)
 
-    NuvioModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
+        properties = DialogProperties(
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false,
+        ),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+            NuvioScreen(
+                modifier = Modifier.fillMaxSize(),
+                horizontalPadding = 20.dp,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.library_calendar_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
+                stickyHeader {
+                    NuvioScreenHeader(
+                        title = stringResource(Res.string.library_calendar_title),
+                        onBack = onDismiss,
+                        actions = {
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = stringResource(Res.string.action_close),
+                                )
+                            }
+                        },
                     )
+                }
+
+                item {
                     Text(
                         text = stringResource(Res.string.library_calendar_exact_dates_only),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = stringResource(Res.string.action_close),
-                    )
-                }
-            }
 
-            if (events.isEmpty()) {
-                LibraryCalendarEmptyState()
-            } else {
-                LibraryCalendarMonthHeader(
-                    month = visibleMonth,
-                    onPrevious = {
-                        visibleMonth = visibleMonth.previous()
-                        selectedDateIso = null
-                    },
-                    onNext = {
-                        visibleMonth = visibleMonth.next()
-                        selectedDateIso = null
-                    },
-                )
-                LibraryCalendarWeekdayHeader()
-                LibraryCalendarMonthGrid(
-                    month = visibleMonth,
-                    eventsByDate = eventsByDate,
-                    selectedDateIso = selectedDateIso,
-                    onDateSelected = { date -> selectedDateIso = date.iso },
-                )
-
-                NuvioBottomSheetDivider()
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = visibleEventsTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    if (visibleEvents.isEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.library_calendar_no_month_events),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (events.isEmpty()) {
+                    item {
+                        LibraryCalendarEmptyState()
+                    }
+                } else {
+                    item {
+                        LibraryCalendarMonthHeader(
+                            month = visibleMonth,
+                            onPrevious = {
+                                visibleMonth = visibleMonth.previous()
+                                selectedDateIso = null
+                            },
+                            onNext = {
+                                visibleMonth = visibleMonth.next()
+                                selectedDateIso = null
+                            },
                         )
-                    } else {
-                        visibleEvents.forEach { event ->
-                            LibraryCalendarEventRow(
-                                event = event,
-                                onClick = onPosterClick?.let { posterClick -> { posterClick(event.item) } },
+                    }
+                    item {
+                        LibraryCalendarWeekdayHeader()
+                    }
+                    item {
+                        LibraryCalendarMonthGrid(
+                            month = visibleMonth,
+                            eventsByDate = eventsByDate,
+                            selectedDateIso = selectedDateIso,
+                            onDateSelected = { date -> selectedDateIso = date.iso },
+                        )
+                    }
+
+                    item {
+                        NuvioBottomSheetDivider()
+                    }
+
+                    item {
+                        Text(
+                            text = visibleEventsTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+
+                    if (visibleEvents.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(Res.string.library_calendar_no_month_events),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                    } else {
+                        items(
+                            items = visibleEvents,
+                            key = { event -> "${event.date.iso}:${event.item.id}:${event.item.type}" },
+                        ) { event ->
+                            LibraryCalendarEventRow(
+                                event = event,
+                                onClick = onPosterClick?.let { posterClick ->
+                                    {
+                                        onDismiss()
+                                        posterClick(event.item)
+                                    }
+                                },
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
             }
