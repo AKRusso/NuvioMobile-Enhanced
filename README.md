@@ -1,101 +1,128 @@
 <div align="center">
 
-  <img src="https://github.com/tapframe/NuvioTV/blob/main/assets/brand/app_logo_wordmark.png" alt="Nuvio" width="300" />
-  <br />
-  <br />
+  <img src="https://github.com/tapframe/NuvioTV/blob/main/assets/brand/app_logo_wordmark.png" alt="NuvioMobile Enhanced" width="320" />
 
-  [![Contributors][contributors-shield]][contributors-url]
-  [![Forks][forks-shield]][forks-url]
-  [![Stargazers][stars-shield]][stars-url]
-  [![Issues][issues-shield]][issues-url]
-  [![License][license-shield]][license-url]
+  <h1>NuvioMobile Enhanced</h1>
 
   <p>
-    A modern media hub for Android and iOS built with Kotlin Multiplatform and Compose Multiplatform.
-    <br />
-    Stremio addon ecosystem • Cross-platform
+    A community-maintained, polished build of NuvioMobile with a stronger focus on premium UX, faster media browsing, smarter playback, and the features we have been refining in the enhanced branch.
+  </p>
+
+  <p>
+    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/releases/latest"><img src="https://img.shields.io/github/v/release/yesnt10/NuvioMobile-Enhanced?include_prereleases&style=for-the-badge&label=Latest%20Release" alt="Latest release" /></a>
+    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/releases"><img src="https://img.shields.io/github/downloads/yesnt10/NuvioMobile-Enhanced/total?style=for-the-badge&label=Downloads" alt="Downloads" /></a>
+    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/blob/enhanced/LICENSE"><img src="https://img.shields.io/github/license/yesnt10/NuvioMobile-Enhanced?style=for-the-badge" alt="License" /></a>
+    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/stargazers"><img src="https://img.shields.io/github/stars/yesnt10/NuvioMobile-Enhanced?style=for-the-badge" alt="Stars" /></a>
+  </p>
+
+  <p>
+    <a href="#download">Download</a> | <a href="#enhanced-highlights">Highlights</a> | <a href="#build-from-source">Build from source</a> | <a href="#credits">Credits</a>
   </p>
 
 </div>
 
-## About
+## Overview
 
-Nuvio is the current Kotlin Multiplatform rewrite of the original React Native app. It delivers a shared Compose UI for Android and iOS while keeping the playback-focused experience, collection tools, watch progress flows, downloads, and Stremio addon ecosystem integration that shaped the earlier app.
+NuvioMobile Enhanced is our tuned fork of NuvioMobile, built to keep pace with upstream while adding the kind of polish that makes the app feel more deliberate in day-to-day use.
 
-The mobile app is built from a single shared codebase in [composeApp](./composeApp), with native platform entry points for Android and iOS.
+The project stays close to the original codebase, but the enhanced branch is where we land improvements like the premium release calendar, richer AI replies, better live TV navigation, and smoother player interactions.
 
-## Installation
+Current enhanced release:
 
-### Android
+- `v0.2.12 (85)`
 
-Download the latest Android build from [GitHub Releases](https://github.com/NuvioMedia/NuvioMobile/releases/latest).
+## Enhanced Highlights
 
-### iOS
+| Area | What improved |
+| --- | --- |
+| AI assistant | Gemini, OpenRouter, Cerebras, and Groq support, plus grounded web search and formatted markdown replies. |
+| Live TV | Functional M3U browsing, favorites, channel switching, category filters, XMLTV EPG, and a recent channel card. |
+| Player | Android libmpv playback engine, tap-to-seek, and more reliable progress sync. |
+| Library | A premium-looking release calendar and clearer status handling for current and future entries. |
+| App feel | More intentional spacing, safer month transitions, and less UI flicker in calendar-driven views. |
 
-- [TestFlight](https://testflight.apple.com/join/u4y7MHK9)
+## Download
 
-## Development
+The fastest way to get the enhanced build is through GitHub Releases:
+
+- [Latest release](https://github.com/yesnt10/NuvioMobile-Enhanced/releases/latest)
+
+If you are checking a specific build, the current release line is:
+
+- `NuvioMobile Enhanced v0.2.12 (85)`
+
+## What This Fork Is
+
+This repository is a community-maintained fork of the original NuvioMobile project.
+
+We use it to ship:
+
+- incremental quality-of-life improvements
+- UI and interaction refinements
+- feature experiments that fit the app's direction
+- release builds that stay easy to discover and compare
+
+We also try to keep the relationship with upstream clear, so it is obvious what comes from the original project and what belongs to the enhanced branch.
+
+## Build From Source
 
 ```bash
-git clone https://github.com/NuvioMedia/NuvioMobile.git
-cd NuvioMobile
-./scripts/run-mobile.sh android
-# or
-./scripts/run-mobile.sh ios
-```
-
-### Project Structure
-
-- `composeApp/` contains the shared Kotlin Multiplatform and Compose Multiplatform app code.
-- `composeApp/src/commonMain/` contains shared UI, features, repositories, and platform-agnostic logic.
-- `composeApp/src/androidMain/` contains Android-specific integrations.
-- `composeApp/src/iosMain/` contains iOS-specific integrations.
-- `iosApp/` contains the native Xcode project and iOS entry point.
-
-Useful commands:
-
-```bash
+git clone https://github.com/yesnt10/NuvioMobile-Enhanced.git
+cd NuvioMobile-Enhanced
+git checkout enhanced
 ./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:compileKotlinIosSimulatorArm64
-./scripts/build-distribution.sh
 ```
 
-Versioning is driven from `iosApp/Configuration/Version.xcconfig`, which is used as the shared source of truth for both iOS and Android builds.
+On Windows, use:
+
+```powershell
+git clone https://github.com/yesnt10/NuvioMobile-Enhanced.git
+cd NuvioMobile-Enhanced
+git checkout enhanced
+.\gradlew.bat :composeApp:assembleDebug
+```
+
+If you want a broader app-level check, the shared module is the place to start:
+
+- `composeApp/` for shared Kotlin Multiplatform and Compose Multiplatform code
+- `composeApp/src/commonMain/` for shared UI, features, repositories, and app logic
+- `composeApp/src/androidMain/` for Android-specific integrations
+- `composeApp/src/iosMain/` for iOS-specific integrations
+- `iosApp/` for the native iOS entry point
+
+## What We Optimize For
+
+Our releases usually focus on one of these themes:
+
+- polish that makes the app feel more premium
+- fixes for calendar, playback, and browsing edge cases
+- stronger defaults for media discovery and live TV
+- smaller updates that reduce friction without changing the app's identity
+
+That is the style we will keep using for future enhanced builds.
+
+## Credits
+
+- Original project: [NuvioMedia/NuvioMobile](https://github.com/NuvioMedia/NuvioMobile)
+- Enhanced fork: [yesnt10/NuvioMobile-Enhanced](https://github.com/yesnt10/NuvioMobile-Enhanced)
+- Shared brand asset used here: [tapframe/NuvioTV](https://github.com/tapframe/NuvioTV)
 
 ## Legal & DMCA
 
-Nuvio functions solely as a client-side interface for browsing metadata and playing media provided by user-installed extensions and/or user-provided sources. It is intended for content the user owns or is otherwise authorized to access.
+NuvioMobile Enhanced functions as a client-side interface for browsing metadata and playing media provided by user-installed extensions and/or user-provided sources. It is intended for content the user owns or is otherwise authorized to access.
 
-Nuvio is not affiliated with any third-party extensions, catalogs, sources, or content providers. It does not host, store, or distribute any media content.
+The project does not host, store, or distribute media content and is not affiliated with third-party extensions, catalogs, sources, or content providers.
 
-For comprehensive legal information, including our full disclaimer, third-party extension policy, and DMCA/Copyright information, please visit our [Legal & Disclaimer Page](https://nuvioapp.space/legal).
+For the full legal policy and disclaimer, see the upstream legal page:
 
-## Built With
-
-- Kotlin Multiplatform
-- Compose Multiplatform
-- Kotlin
-- AndroidX Media3
-- AVFoundation and native iOS integrations
+- [Legal & Disclaimer](https://nuvioapp.space/legal)
 
 ## Star History
 
-<a href="https://www.star-history.com/#NuvioMedia/NuvioMobile&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=NuvioMedia/NuvioMobile&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=NuvioMedia/NuvioMobile&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=NuvioMedia/NuvioMobile&type=date&legend=top-left" />
- </picture>
+<a href="https://www.star-history.com/#yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
+  </picture>
 </a>
-
-<!-- MARKDOWN LINKS & IMAGES -->
-[contributors-shield]: https://img.shields.io/github/contributors/NuvioMedia/NuvioMobile.svg?style=for-the-badge
-[contributors-url]: https://github.com/NuvioMedia/NuvioMobile/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/NuvioMedia/NuvioMobile.svg?style=for-the-badge
-[forks-url]: https://github.com/NuvioMedia/NuvioMobile/network/members
-[stars-shield]: https://img.shields.io/github/stars/NuvioMedia/NuvioMobile.svg?style=for-the-badge
-[stars-url]: https://github.com/NuvioMedia/NuvioMobile/stargazers
-[issues-shield]: https://img.shields.io/github/issues/NuvioMedia/NuvioMobile.svg?style=for-the-badge
-[issues-url]: https://github.com/NuvioMedia/NuvioMobile/issues
-[license-shield]: https://img.shields.io/github/license/NuvioMedia/NuvioMobile.svg?style=for-the-badge
-[license-url]: https://github.com/NuvioMedia/NuvioMobile/blob/main/LICENSE
