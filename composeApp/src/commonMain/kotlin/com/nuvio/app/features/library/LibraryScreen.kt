@@ -109,12 +109,6 @@ import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
-private val LibraryCalendarReferenceBlue = Color(0xFF009CFF)
-private val LibraryCalendarReferenceSelectedBlue = Color(0xFF005F95)
-private val LibraryCalendarReferenceText = Color(0xFFE8EAEE)
-private val LibraryCalendarReferenceMutedText = Color(0xFF8F949B)
-private val LibraryCalendarReferenceWeekdayText = Color(0xFF52565D)
-
 @Composable
 fun LibraryScreen(
     modifier: Modifier = Modifier,
@@ -1079,11 +1073,12 @@ private fun LibraryReleaseCalendarPage(
     LaunchedEffect(visibleMonth, monthEvents) {
         if (selectedDateIso?.take(7) != visibleMonth.key) {
             selectedDateIso = defaultLibraryCalendarSelectedDate(monthEvents, visibleMonth, todayIso)
+                ?: LibraryCalendarDate(visibleMonth.year, visibleMonth.month, 1).iso
         }
     }
 
     val selectedEvents = selectedDateIso?.let { date -> eventsByDate[date].orEmpty() }.orEmpty()
-    val visibleEvents = selectedEvents.takeIf { it.isNotEmpty() } ?: monthEvents
+    val selectedDate = selectedDateIso?.let(::parseLibraryCalendarDate)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -1094,15 +1089,21 @@ private fun LibraryReleaseCalendarPage(
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color.Black,
+            color = MaterialTheme.colorScheme.background,
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 44.dp),
+                contentPadding = PaddingValues(
+                    start = 20.dp,
+                    top = 12.dp,
+                    end = 20.dp,
+                    bottom = 44.dp,
+                ),
             ) {
                 item {
-                    LibraryCalendarReferenceTopBar(
+                    LibraryCalendarTopBar(
                         title = stringResource(Res.string.library_calendar_title),
+                        subtitle = stringResource(Res.string.library_calendar_exact_dates_only),
                         onBack = onDismiss,
                     )
                 }
@@ -1117,8 +1118,12 @@ private fun LibraryReleaseCalendarPage(
                     }
                 } else {
                     item {
-                        LibraryCalendarMonthHeader(
+                        LibraryCalendarCard(
                             month = visibleMonth,
+                            monthEventCount = monthEvents.size,
+                            eventsByDate = eventsByDate,
+                            selectedDateIso = selectedDateIso,
+                            todayIso = todayIso,
                             onPrevious = {
                                 visibleMonth = visibleMonth.previous()
                                 selectedDateIso = null
@@ -1127,43 +1132,30 @@ private fun LibraryReleaseCalendarPage(
                                 visibleMonth = visibleMonth.next()
                                 selectedDateIso = null
                             },
-                        )
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                    item {
-                        LibraryCalendarWeekdayHeader()
-                    }
-                    item {
-                        Spacer(modifier = Modifier.height(17.dp))
-                    }
-                    item {
-                        LibraryCalendarMonthGrid(
-                            month = visibleMonth,
-                            eventsByDate = eventsByDate,
-                            selectedDateIso = selectedDateIso,
-                            todayIso = todayIso,
+                            onToday = {
+                                visibleMonth = LibraryCalendarMonth(today.year, today.month)
+                                selectedDateIso = todayIso
+                            },
                             onDateSelected = { date -> selectedDateIso = date.iso },
                         )
                     }
 
                     item {
-                        Spacer(modifier = Modifier.height(72.dp))
+                        Spacer(modifier = Modifier.height(26.dp))
+                        LibraryCalendarAgendaHeader(
+                            selectedDate = selectedDate,
+                            eventCount = selectedEvents.size,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                     }
 
-                    if (visibleEvents.isEmpty()) {
+                    if (selectedEvents.isEmpty()) {
                         item {
-                            Text(
-                                text = stringResource(Res.string.library_calendar_no_month_events),
-                                modifier = Modifier.padding(horizontal = 20.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = LibraryCalendarReferenceMutedText,
-                            )
+                            LibraryCalendarNoDayEvents()
                         }
                     } else {
                         items(
-                            items = visibleEvents,
+                            items = selectedEvents,
                             key = { event -> event.key },
                         ) { event ->
                             LibraryCalendarEventRow(
@@ -1194,42 +1186,51 @@ private fun LibraryReleaseCalendarPage(
 }
 
 @Composable
-private fun LibraryCalendarReferenceTopBar(
+private fun LibraryCalendarTopBar(
     title: String,
+    subtitle: String,
     onBack: () -> Unit,
 ) {
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp),
+            .padding(bottom = 22.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         IconButton(
             onClick = onBack,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .size(40.dp),
+            modifier = Modifier.size(40.dp),
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(Res.string.action_back),
-                modifier = Modifier.size(24.dp),
-                tint = Color.White,
+                modifier = Modifier.size(22.dp),
+                tint = MaterialTheme.colorScheme.onSurface,
             )
         }
-        Text(
-            text = title,
+        Column(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 37.dp, top = 7.dp),
-            style = MaterialTheme.typography.displayLarge.copy(
-                fontSize = 31.sp,
-                lineHeight = 35.sp,
-            ),
-            color = Color.White,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+                .weight(1f)
+                .padding(top = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -1352,50 +1353,95 @@ private fun LibraryCalendarEmptyState() {
 }
 
 @Composable
-private fun LibraryCalendarMonthHeader(
+private fun LibraryCalendarCard(
     month: LibraryCalendarMonth,
+    monthEventCount: Int,
+    eventsByDate: Map<String, List<LibraryCalendarEvent>>,
+    selectedDateIso: String?,
+    todayIso: String,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onToday: () -> Unit,
+    onDateSelected: (LibraryCalendarDate) -> Unit,
 ) {
-    Box(
+    Surface(
         modifier = Modifier
-            .fillMaxWidth()
-            .height(34.dp),
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(28.dp),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f),
+        ),
     ) {
-        IconButton(
-            onClick = onPrevious,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(36.dp),
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                contentDescription = stringResource(Res.string.library_calendar_previous_month),
-                modifier = Modifier.size(22.dp),
-                tint = Color.White,
-            )
-        }
-        Text(
-            text = month.displayTitle,
-            modifier = Modifier.align(Alignment.Center),
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-            ),
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-        )
-        IconButton(
-            onClick = onNext,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(36.dp),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                contentDescription = stringResource(Res.string.library_calendar_next_month),
-                modifier = Modifier.size(22.dp),
-                tint = Color.White,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(
+                    onClick = onPrevious,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                        contentDescription = stringResource(Res.string.library_calendar_previous_month),
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 6.dp),
+                ) {
+                    Text(
+                        text = month.displayTitle,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = libraryCalendarReleaseCountText(monthEventCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Surface(
+                    modifier = Modifier.clickable(onClick = onToday),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    shape = RoundedCornerShape(50),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.library_calendar_today),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                IconButton(
+                    onClick = onNext,
+                    modifier = Modifier.size(38.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                        contentDescription = stringResource(Res.string.library_calendar_next_month),
+                        modifier = Modifier.size(22.dp),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+            LibraryCalendarWeekdayHeader()
+            LibraryCalendarMonthGrid(
+                month = month,
+                eventsByDate = eventsByDate,
+                selectedDateIso = selectedDateIso,
+                todayIso = todayIso,
+                onDateSelected = onDateSelected,
             )
         }
     }
@@ -1423,7 +1469,7 @@ private fun LibraryCalendarWeekdayHeader() {
                     fontSize = 10.sp,
                     lineHeight = 12.sp,
                 ),
-                color = LibraryCalendarReferenceWeekdayText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.68f),
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -1441,7 +1487,7 @@ private fun LibraryCalendarMonthGrid(
     onDateSelected: (LibraryCalendarDate) -> Unit,
 ) {
     val cells = remember(month) { libraryCalendarCells(month) }
-    Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         cells.chunked(7).forEach { week ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1451,7 +1497,7 @@ private fun LibraryCalendarMonthGrid(
                         Spacer(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(43.dp),
+                                .height(40.dp),
                         )
                     } else {
                         val dayEvents = eventsByDate[date.iso].orEmpty()
@@ -1461,27 +1507,27 @@ private fun LibraryCalendarMonthGrid(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(43.dp)
-                                .clickable(enabled = hasEvents) { onDateSelected(date) },
+                                .height(40.dp)
+                                .clickable { onDateSelected(date) },
                             contentAlignment = Alignment.Center,
                         ) {
                             val dayColor = when {
-                                isSelected -> Color.White
-                                hasEvents || isToday -> LibraryCalendarReferenceText
-                                else -> LibraryCalendarReferenceText.copy(alpha = 0.78f)
+                                isSelected -> MaterialTheme.colorScheme.onPrimary
+                                hasEvents || isToday -> MaterialTheme.colorScheme.onSurface
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(34.dp)
-                                    .clip(CircleShape)
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(13.dp))
                                     .background(
-                                        if (isSelected) LibraryCalendarReferenceSelectedBlue else Color.Transparent,
+                                        if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
                                     )
                                     .then(
                                         if (!isSelected && isToday) {
                                             Modifier.border(
-                                                BorderStroke(1.2.dp, LibraryCalendarReferenceBlue),
-                                                CircleShape,
+                                                BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary),
+                                                RoundedCornerShape(13.dp),
                                             )
                                         } else {
                                             Modifier
@@ -1491,10 +1537,7 @@ private fun LibraryCalendarMonthGrid(
                             ) {
                                 Text(
                                     text = date.day.toString(),
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontSize = 14.sp,
-                                        lineHeight = 16.sp,
-                                    ),
+                                    style = MaterialTheme.typography.labelLarge,
                                     color = dayColor,
                                     fontWeight = if (hasEvents) FontWeight.Bold else FontWeight.Normal,
                                     modifier = if (hasEvents && isSelected) {
@@ -1510,13 +1553,114 @@ private fun LibraryCalendarMonthGrid(
                                             .padding(bottom = if (isSelected) 5.dp else 2.dp)
                                             .size(4.dp)
                                             .clip(CircleShape)
-                                            .background(LibraryCalendarReferenceBlue),
+                                            .background(
+                                                if (isSelected) {
+                                                    MaterialTheme.colorScheme.onPrimary
+                                                } else {
+                                                    MaterialTheme.colorScheme.primary
+                                                },
+                                            ),
                                     )
                                 }
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarAgendaHeader(
+    selectedDate: LibraryCalendarDate?,
+    eventCount: Int,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.library_calendar_agenda),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = selectedDate?.let(::displayLibraryCalendarEventDate).orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            shape = RoundedCornerShape(50),
+        ) {
+            Text(
+                text = libraryCalendarReleaseCountText(eventCount),
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun libraryCalendarReleaseCountText(count: Int): String =
+    if (count == 1) {
+        stringResource(Res.string.library_calendar_release_count_single)
+    } else {
+        stringResource(Res.string.library_calendar_release_count, count)
+    }
+
+@Composable
+private fun LibraryCalendarNoDayEvents() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    LibraryCalendarGlyph(
+                        modifier = Modifier.size(19.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        cutoutColor = MaterialTheme.colorScheme.primaryContainer,
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    text = stringResource(Res.string.library_calendar_no_day_events_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = stringResource(Res.string.library_calendar_no_day_events_message),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -1530,58 +1674,60 @@ private fun LibraryCalendarEventRow(
     val modifier = if (onClick != null) {
         Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
     } else {
         Modifier.fillMaxWidth()
     }
-    Row(
-        modifier = modifier.padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        modifier = modifier.padding(bottom = 10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.38f),
+        ),
     ) {
-        LibraryCalendarEventArtwork(event = event)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = event.title,
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontSize = 14.sp,
-                    lineHeight = 17.sp,
-                ),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            event.subtitle?.let { subtitle ->
+        Row(
+            modifier = Modifier.padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(13.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LibraryCalendarEventArtwork(event = event)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
                 Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                    ),
-                    color = LibraryCalendarReferenceMutedText,
+                    text = event.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+                event.subtitle?.let { subtitle ->
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = stringResource(Res.string.library_calendar_available),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
                 )
             }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                LibraryCalendarGlyph(
-                    modifier = Modifier.size(11.dp),
-                    tint = LibraryCalendarReferenceMutedText.copy(alpha = 0.78f),
-                    cutoutColor = Color.Black,
-                )
-                Text(
-                    text = displayLibraryCalendarEventDate(event.date),
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        lineHeight = 15.sp,
-                    ),
-                    color = LibraryCalendarReferenceMutedText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+            if (onClick != null) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -1592,9 +1738,9 @@ private fun LibraryCalendarEventRow(
 private fun LibraryCalendarEventArtwork(event: LibraryCalendarEvent) {
     Box(
         modifier = Modifier
-            .size(width = 82.dp, height = 46.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(Color(0xFF0D0F12)),
+            .size(width = 104.dp, height = 62.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
         if (!event.imageUrl.isNullOrBlank()) {
@@ -1606,16 +1752,19 @@ private fun LibraryCalendarEventArtwork(event: LibraryCalendarEvent) {
             )
         } else {
             Surface(
-                color = LibraryCalendarReferenceSelectedBlue.copy(alpha = 0.55f),
-                contentColor = Color.White,
-                shape = RoundedCornerShape(2.dp),
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shape = RoundedCornerShape(14.dp),
             ) {
-                Text(
-                    text = "${event.date.day} ${localizedShortMonthName(event.date.month)}",
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                )
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "${event.date.day} ${localizedShortMonthName(event.date.month)}",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             }
         }
     }
