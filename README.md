@@ -119,10 +119,12 @@ For the full legal policy and disclaimer, see the upstream legal page:
 
 ## Star History
 
-<a href="https://www.star-history.com/#yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
-  </picture>
+## Star History
+
+<a href="https://www.star-history.com/?type=date&legend=top-left&repos=yesnt10%2FNuvioMobile-Enhanced">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=yesnt10/NuvioMobile-Enhanced&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
+ </picture>
 </a>
