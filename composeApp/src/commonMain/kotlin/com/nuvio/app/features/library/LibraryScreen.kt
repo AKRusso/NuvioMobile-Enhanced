@@ -1059,26 +1059,20 @@ private fun LibraryReleaseCalendarPage(
     val today = remember { parseLibraryCalendarDate(CurrentDateProvider.todayIsoDate()) ?: LibraryCalendarDate(1970, 1, 1) }
     val todayIso = today.iso
     val initialMonth = remember { initialLibraryCalendarMonth() }
-    var visibleMonth by remember(events) { mutableStateOf(initialMonth) }
+    var calendarSelection by remember(events) {
+        mutableStateOf(defaultLibraryCalendarSelection(events, initialMonth, todayIso))
+    }
+    val visibleMonth = calendarSelection.month
+    val selectedDateIso = calendarSelection.dateIso
     val monthEvents = remember(events, visibleMonth) {
         events
             .filter { event -> event.date.year == visibleMonth.year && event.date.month == visibleMonth.month }
             .sortedWith(compareBy<LibraryCalendarEvent> { it.date.iso }.thenBy { it.sortTitle.lowercase() })
     }
-    var selectedDateIso by remember(events) {
-        mutableStateOf(defaultLibraryCalendarSelectedDate(monthEvents, initialMonth, todayIso))
-    }
     val eventsByDate = remember(events) { events.groupBy { event -> event.date.iso } }
 
-    LaunchedEffect(visibleMonth, monthEvents) {
-        if (selectedDateIso?.take(7) != visibleMonth.key) {
-            selectedDateIso = defaultLibraryCalendarSelectedDate(monthEvents, visibleMonth, todayIso)
-                ?: LibraryCalendarDate(visibleMonth.year, visibleMonth.month, 1).iso
-        }
-    }
-
-    val selectedEvents = selectedDateIso?.let { date -> eventsByDate[date].orEmpty() }.orEmpty()
-    val selectedDate = selectedDateIso?.let(::parseLibraryCalendarDate)
+    val selectedEvents = eventsByDate[selectedDateIso].orEmpty()
+    val selectedDate = parseLibraryCalendarDate(selectedDateIso)
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -1125,18 +1119,28 @@ private fun LibraryReleaseCalendarPage(
                             selectedDateIso = selectedDateIso,
                             todayIso = todayIso,
                             onPrevious = {
-                                visibleMonth = visibleMonth.previous()
-                                selectedDateIso = null
+                                calendarSelection = defaultLibraryCalendarSelection(
+                                    events = events,
+                                    month = visibleMonth.previous(),
+                                    todayIso = todayIso,
+                                )
                             },
                             onNext = {
-                                visibleMonth = visibleMonth.next()
-                                selectedDateIso = null
+                                calendarSelection = defaultLibraryCalendarSelection(
+                                    events = events,
+                                    month = visibleMonth.next(),
+                                    todayIso = todayIso,
+                                )
                             },
                             onToday = {
-                                visibleMonth = LibraryCalendarMonth(today.year, today.month)
-                                selectedDateIso = todayIso
+                                calendarSelection = LibraryCalendarSelection(
+                                    month = LibraryCalendarMonth(today.year, today.month),
+                                    dateIso = todayIso,
+                                )
                             },
-                            onDateSelected = { date -> selectedDateIso = date.iso },
+                            onDateSelected = { date ->
+                                calendarSelection = calendarSelection.copy(dateIso = date.iso)
+                            },
                         )
                     }
 
@@ -1160,6 +1164,7 @@ private fun LibraryReleaseCalendarPage(
                         ) { event ->
                             LibraryCalendarEventRow(
                                 event = event,
+                                todayIso = todayIso,
                                 onClick = onPosterClick?.let { posterClick ->
                                     {
                                         onDismiss()
@@ -1669,8 +1674,10 @@ private fun LibraryCalendarNoDayEvents() {
 @Composable
 private fun LibraryCalendarEventRow(
     event: LibraryCalendarEvent,
+    todayIso: String,
     onClick: (() -> Unit)?,
 ) {
+    val isUpcoming = event.date.iso > todayIso
     val modifier = if (onClick != null) {
         Modifier
             .fillMaxWidth()
@@ -1716,7 +1723,13 @@ private fun LibraryCalendarEventRow(
                     )
                 }
                 Text(
-                    text = stringResource(Res.string.library_calendar_available),
+                    text = stringResource(
+                        if (isUpcoming) {
+                            Res.string.library_calendar_upcoming
+                        } else {
+                            Res.string.library_calendar_available
+                        },
+                    ),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -1779,6 +1792,11 @@ private data class LibraryCalendarEvent(
     val subtitle: String? = null,
     val imageUrl: String? = null,
     val sortTitle: String = title,
+)
+
+private data class LibraryCalendarSelection(
+    val month: LibraryCalendarMonth,
+    val dateIso: String,
 )
 
 private data class LibraryCalendarDate(
@@ -1912,6 +1930,21 @@ private fun defaultLibraryCalendarSelectedDate(
         ?.date
         ?.iso
         ?: monthEvents.firstOrNull()?.date?.iso
+}
+
+private fun defaultLibraryCalendarSelection(
+    events: List<LibraryCalendarEvent>,
+    month: LibraryCalendarMonth,
+    todayIso: String,
+): LibraryCalendarSelection {
+    val monthEvents = events
+        .filter { event -> event.date.year == month.year && event.date.month == month.month }
+        .sortedWith(compareBy<LibraryCalendarEvent> { it.date.iso }.thenBy { it.sortTitle.lowercase() })
+    return LibraryCalendarSelection(
+        month = month,
+        dateIso = defaultLibraryCalendarSelectedDate(monthEvents, month, todayIso)
+            ?: LibraryCalendarDate(month.year, month.month, 1).iso,
+    )
 }
 
 private fun displayLibraryCalendarEventDate(date: LibraryCalendarDate): String =

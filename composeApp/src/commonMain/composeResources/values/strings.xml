@@ -1592,6 +1592,7 @@
     <string name="library_calendar_selected_day">%1$s releases</string>
     <string name="library_calendar_today">Today</string>
     <string name="library_calendar_title">Calendar</string>
+    <string name="library_calendar_upcoming">Coming soon</string>
     <string name="library_calendar_weekday_fri">Fri</string>
     <string name="library_calendar_weekday_mon">Mon</string>
     <string name="library_calendar_weekday_sat">Sat</string>

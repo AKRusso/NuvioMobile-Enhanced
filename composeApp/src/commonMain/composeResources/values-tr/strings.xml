@@ -1401,6 +1401,7 @@
     <string name="library_calendar_selected_day">%1$s yayınları</string>
     <string name="library_calendar_today">Bugün</string>
     <string name="library_calendar_title">Takvim</string>
+    <string name="library_calendar_upcoming">Yakında</string>
     <string name="library_calendar_weekday_fri">Cum</string>
     <string name="library_calendar_weekday_mon">Pzt</string>
     <string name="library_calendar_weekday_sat">Cmt</string>
