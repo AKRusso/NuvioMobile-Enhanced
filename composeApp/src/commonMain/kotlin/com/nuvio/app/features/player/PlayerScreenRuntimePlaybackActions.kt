@@ -118,6 +118,7 @@ internal suspend fun PlayerScreenRuntime.currentTraktScrobbleItem() =
     snapshotTraktScrobbleItemInputs().buildItem()
 
 internal fun PlayerScreenRuntime.emitTraktScrobbleStart() {
+    if (randomEpisodeMode) return
     if (hasRequestedScrobbleStartForCurrentItem) return
     hasRequestedScrobbleStartForCurrentItem = true
     val requestGeneration = scrobbleStartRequestGeneration + 1L
@@ -142,6 +143,7 @@ internal fun PlayerScreenRuntime.emitTraktScrobbleStart() {
 }
 
 internal fun PlayerScreenRuntime.emitTraktScrobbleStop(progressPercent: Float? = null) {
+    if (randomEpisodeMode) return
     val provided = progressPercent
     if (!hasRequestedScrobbleStartForCurrentItem && (provided ?: 0f) < 80f) return
 
@@ -194,6 +196,7 @@ internal suspend fun PlayerScreenRuntime.resolveParentalGuideImdbId(): String? {
 }
 
 internal fun PlayerScreenRuntime.flushWatchProgress() {
+    if (randomEpisodeMode) return
     emitStopScrobbleForCurrentProgress()
     WatchProgressRepository.flushPlaybackProgress(
         session = playbackSession,
@@ -202,6 +205,7 @@ internal fun PlayerScreenRuntime.flushWatchProgress() {
 }
 
 internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
+    if (randomEpisodeMode) return
     val shouldRestartScrobbleAfterSeek = shouldPlay || playbackSnapshot.isPlaying
     seekProgressSyncJob?.cancel()
     seekProgressSyncJob = scope.launch {
@@ -226,6 +230,7 @@ internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
 }
 
 internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
+    if (randomEpisodeMode) return
     val now = WatchProgressClock.nowEpochMs()
     if (now - lastProgressPersistEpochMs < PlaybackProgressPersistIntervalMs) return
     lastProgressPersistEpochMs = now
@@ -237,6 +242,7 @@ internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
 }
 
 internal fun PlayerScreenRuntime.syncPlaybackProgressTick() {
+    if (randomEpisodeMode) return
     if (isLiveTv) return
     if (playbackSnapshot.isLoading || !playbackSnapshot.isPlaying) return
     val positionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)

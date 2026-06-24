@@ -412,6 +412,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             videos = playerMetaVideos,
             currentSeason = curSeason,
             currentEpisode = curEpisode,
+            randomMode = randomEpisodeMode,
         )
         val nextSeason = nextVideo?.season
         val nextEpisode = nextVideo?.episode

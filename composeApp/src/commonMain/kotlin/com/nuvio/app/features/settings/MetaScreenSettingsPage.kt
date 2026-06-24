@@ -74,6 +74,8 @@ import nuvio.composeapp.generated.resources.settings_meta_details
 import nuvio.composeapp.generated.resources.settings_meta_details_description
 import nuvio.composeapp.generated.resources.settings_meta_hero_trailer_playback
 import nuvio.composeapp.generated.resources.settings_meta_hero_trailer_playback_description
+import nuvio.composeapp.generated.resources.settings_meta_random_episode_button
+import nuvio.composeapp.generated.resources.settings_meta_random_episode_button_description
 import nuvio.composeapp.generated.resources.settings_meta_episode_cards
 import nuvio.composeapp.generated.resources.settings_meta_episode_cards_description
 import nuvio.composeapp.generated.resources.settings_meta_episode_style_horizontal
@@ -134,6 +136,14 @@ internal fun LazyListScope.metaScreenSettingsContent(
                         onCheckedChange = { MetaScreenSettingsRepository.setHeroTrailerPlayback(it) },
                     )
                 }
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_meta_random_episode_button),
+                    description = stringResource(Res.string.settings_meta_random_episode_button_description),
+                    checked = uiState.randomEpisodeButton,
+                    isTablet = isTablet,
+                    onCheckedChange = { MetaScreenSettingsRepository.setRandomEpisodeButton(it) },
+                )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_meta_tab_layout),

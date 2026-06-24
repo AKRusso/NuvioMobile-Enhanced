@@ -16,6 +16,7 @@
     <string name="action_reorder">Sırala</string>
     <string name="action_reset">Sıfırla</string>
     <string name="action_resume">Devam et</string>
+    <string name="action_random_episode">Rastgele Bölüm</string>
     <string name="action_retry">Tekrar dene</string>
     <string name="action_save">Kaydet</string>
     <string name="action_saving">Kaydediliyor...</string>
@@ -1492,4 +1493,6 @@
     <string name="library_group_all">Tümü</string>
     <string name="library_group_watched">İzlenenler</string>
     <string name="library_group_unwatched">İzlenmeyenler</string>
+    <string name="settings_meta_random_episode_button">Rastgele Bölüm Düğmesi</string>
+    <string name="settings_meta_random_episode_button_description">Dizi detay sayfalarında bir rastgele bölüm düğmesi göster. Oynatma, rastgele seçilmiş yayınlanmış bir bölümden başlar.</string>
 </resources>

@@ -40,6 +40,7 @@ fun PlayerScreen(
     initialPositionMs: Long = 0L,
     initialProgressFraction: Float? = null,
     contentLanguage: String? = null,
+    randomEpisodeMode: Boolean = false,
 ) {
     PlayerScreenContent(
         PlayerScreenArgs(
@@ -78,6 +79,7 @@ fun PlayerScreen(
             initialPositionMs = initialPositionMs,
             initialProgressFraction = initialProgressFraction,
             contentLanguage = contentLanguage,
+            randomEpisodeMode = randomEpisodeMode,
         )
     )
 }

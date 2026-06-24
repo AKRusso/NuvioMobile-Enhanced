@@ -58,6 +58,7 @@ data class DetailSecondaryAction(
 fun DetailActionButtons(
     modifier: Modifier = Modifier,
     playLabel: String = stringResource(Res.string.action_play),
+    featuredAction: DetailSecondaryAction? = null,
     secondaryActions: List<DetailSecondaryAction> = emptyList(),
     actionsMenuLabel: String = stringResource(Res.string.details_actions_menu_label),
     isTablet: Boolean = false,
@@ -75,6 +76,7 @@ fun DetailActionButtons(
         animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
         label = "detail_action_menu_progress",
     )
+    val hasFeaturedAction = featuredAction != null
     val hasSecondaryActions = secondaryActions.isNotEmpty()
 
     Box(
@@ -129,6 +131,26 @@ fun DetailActionButtons(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+            }
+
+            if (hasFeaturedAction) {
+                Spacer(modifier = Modifier.width(12.dp))
+                val action = featuredAction!!
+                DetailCompactAction(
+                    label = action.label,
+                    icon = action.icon,
+                    size = iconButtonSize,
+                    onClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        action.onClick()
+                    },
+                    onLongClick = action.onLongClick?.let { longClick ->
+                        {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                            longClick()
+                        }
+                    },
+                )
             }
 
             if (hasSecondaryActions) {
@@ -207,6 +229,43 @@ fun DetailActionButtons(
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun DetailCompactAction(
+    label: String,
+    icon: ImageVector,
+    size: Dp,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier.size(size),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.onBackground,
+        contentColor = MaterialTheme.colorScheme.background,
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick,
+                    role = Role.Button,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

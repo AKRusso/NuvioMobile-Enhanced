@@ -1,6 +1,7 @@
 package com.nuvio.app.features.player.skip
 
 import com.nuvio.app.features.details.MetaVideo
+import kotlin.random.Random
 
 object PlayerNextEpisodeRules {
 
@@ -8,8 +9,8 @@ object PlayerNextEpisodeRules {
         videos: List<MetaVideo>,
         currentSeason: Int?,
         currentEpisode: Int?,
+        randomMode: Boolean = false,
     ): MetaVideo? {
-        if (currentSeason == null || currentEpisode == null) return null
         val sortedEpisodes = videos
             .filter { it.season != null && it.episode != null }
             .sortedWith(
@@ -17,6 +18,40 @@ object PlayerNextEpisodeRules {
                     .thenBy { it.episode ?: Int.MAX_VALUE }
             )
 
+        if (sortedEpisodes.isEmpty()) return null
+
+        if (randomMode) {
+            val currentIndex = if (currentSeason != null && currentEpisode != null) {
+                sortedEpisodes.indexOfFirst {
+                    it.season == currentSeason && it.episode == currentEpisode
+                }
+            } else {
+                -1
+            }
+            val currentEpisodeItem = sortedEpisodes.getOrNull(currentIndex)
+            val airedCandidates = sortedEpisodes.filter { hasEpisodeAired(it.released) }
+            val candidates = airedCandidates
+                .filterNot { episode ->
+                    currentEpisodeItem != null && episode.season == currentEpisodeItem.season && episode.episode == currentEpisodeItem.episode
+                }
+                .ifEmpty { airedCandidates.ifEmpty { sortedEpisodes } }
+
+            if (candidates.size == 1) return candidates.first()
+
+            val seed = buildString {
+                append(currentSeason ?: -1)
+                append(':')
+                append(currentEpisode ?: -1)
+                append(':')
+                append(candidates.joinToString("|") { episode ->
+                    "${episode.season ?: -1}x${episode.episode ?: -1}:${episode.id}"
+                })
+            }.hashCode()
+
+            return candidates[Random(seed).nextInt(candidates.size)]
+        }
+
+        if (currentSeason == null || currentEpisode == null) return null
         val currentIndex = sortedEpisodes.indexOfFirst {
             it.season == currentSeason && it.episode == currentEpisode
         }

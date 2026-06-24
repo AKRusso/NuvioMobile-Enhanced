@@ -16,6 +16,7 @@
     <string name="action_reorder">Reorder</string>
     <string name="action_reset">Reset to Default</string>
     <string name="action_resume">Resume</string>
+    <string name="action_random_episode">Random Episode</string>
     <string name="action_retry">Retry</string>
     <string name="action_save">Save</string>
     <string name="action_saving">Saving…</string>
@@ -794,6 +795,8 @@
     <string name="settings_meta_details_description">Runtime, status, release, language, and related info.</string>
     <string name="settings_meta_hero_trailer_playback">Hero Trailer Playback</string>
     <string name="settings_meta_hero_trailer_playback_description">Play trailer previews in the metadata hero when a trailer is available.</string>
+    <string name="settings_meta_random_episode_button">Random Episode Button</string>
+    <string name="settings_meta_random_episode_button_description">Show a random episode button on series detail pages. Playback starts from a randomly selected released episode.</string>
     <string name="settings_meta_episode_cards">Episode Cards</string>
     <string name="settings_meta_episode_cards_description">Choose how episodes are rendered on the metadata screen.</string>
     <string name="settings_meta_episode_style_horizontal">Horizontal</string>

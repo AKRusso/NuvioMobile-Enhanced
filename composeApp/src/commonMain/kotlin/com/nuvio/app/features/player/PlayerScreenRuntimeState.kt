@@ -58,6 +58,7 @@ internal class PlayerScreenRuntime(
     val initialPositionMs: Long get() = args.initialPositionMs
     val initialProgressFraction: Float? get() = args.initialProgressFraction
     val externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> get() = args.externalSubtitles
+    val randomEpisodeMode: Boolean get() = args.randomEpisodeMode
     val isSeries: Boolean get() = parentMetaType == "series"
     val isLiveTv: Boolean get() = contentType == "live-tv"
 

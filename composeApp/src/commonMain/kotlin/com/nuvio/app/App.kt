@@ -971,6 +971,9 @@ private fun MainAppContent(
                     null
                 }
                 val playerLaunch = lastExternalPlayerLaunch
+                if (playerLaunch?.randomEpisodeMode == true) {
+                    return@launch
+                }
                 if (TraktAuthRepository.isAuthenticated.value && progressPercent != null && playerLaunch != null) {
                     val scrobbleItem = TraktScrobbleRepository.buildItem(
                         contentType = playerLaunch.parentMetaType,
@@ -1190,6 +1193,7 @@ private fun MainAppContent(
             resumeProgressFraction: Float?,
             manualSelection: Boolean,
             startFromBeginning: Boolean,
+            randomEpisodeMode: Boolean,
         ) {
             val targetResumePositionMs = if (startFromBeginning) 0L else (resumePositionMs ?: 0L)
             val targetResumeProgressFraction = if (startFromBeginning) null else resumeProgressFraction
@@ -1228,6 +1232,7 @@ private fun MainAppContent(
                         parentMetaType = parentMetaType,
                         initialPositionMs = targetResumePositionMs,
                         initialProgressFraction = targetResumeProgressFraction,
+                        randomEpisodeMode = randomEpisodeMode,
                     )
                     if (playerSettingsUiState.externalPlayerEnabled) {
                         coroutineScope.launch { openExternalPlayback(playerLaunch) }
@@ -1259,6 +1264,7 @@ private fun MainAppContent(
                     resumeProgressFraction = targetResumeProgressFraction,
                     manualSelection = manualSelection,
                     startFromBeginning = startFromBeginning,
+                    randomEpisodeMode = randomEpisodeMode,
                 ),
             )
             navController.navigate(
@@ -1286,6 +1292,7 @@ private fun MainAppContent(
                     resumeProgressFraction = null,
                     manualSelection = false,
                     startFromBeginning = false,
+                    randomEpisodeMode = false,
                 )
             }
 
@@ -1309,6 +1316,55 @@ private fun MainAppContent(
                     resumeProgressFraction = null,
                     manualSelection = true,
                     startFromBeginning = false,
+                    randomEpisodeMode = false,
+                )
+            }
+
+        val onRandomPlay: (String, String, String, String, String, String?, String?, String?, Int?, Int?, String?, String?, String?, Long?) -> Unit =
+            { type, videoId, parentMetaId, parentMetaType, title, logo, poster, background, seasonNumber, episodeNumber, episodeTitle, episodeThumbnail, pauseDescription, _ ->
+                launchPlaybackWithDownloadPreference(
+                    type = type,
+                    videoId = videoId,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
+                    title = title,
+                    logo = logo,
+                    poster = poster,
+                    background = background,
+                    seasonNumber = seasonNumber,
+                    episodeNumber = episodeNumber,
+                    episodeTitle = episodeTitle,
+                    episodeThumbnail = episodeThumbnail,
+                    pauseDescription = pauseDescription,
+                    resumePositionMs = null,
+                    resumeProgressFraction = null,
+                    manualSelection = false,
+                    startFromBeginning = true,
+                    randomEpisodeMode = true,
+                )
+            }
+
+        val onRandomPlayManually: (String, String, String, String, String, String?, String?, String?, Int?, Int?, String?, String?, String?, Long?) -> Unit =
+            { type, videoId, parentMetaId, parentMetaType, title, logo, poster, background, seasonNumber, episodeNumber, episodeTitle, episodeThumbnail, pauseDescription, _ ->
+                launchPlaybackWithDownloadPreference(
+                    type = type,
+                    videoId = videoId,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
+                    title = title,
+                    logo = logo,
+                    poster = poster,
+                    background = background,
+                    seasonNumber = seasonNumber,
+                    episodeNumber = episodeNumber,
+                    episodeTitle = episodeTitle,
+                    episodeThumbnail = episodeThumbnail,
+                    pauseDescription = pauseDescription,
+                    resumePositionMs = null,
+                    resumeProgressFraction = null,
+                    manualSelection = true,
+                    startFromBeginning = true,
+                    randomEpisodeMode = true,
                 )
             }
 
@@ -1412,6 +1468,7 @@ private fun MainAppContent(
                     resumeProgressFraction = item.resumeProgressFraction,
                     manualSelection = manualSelection,
                     startFromBeginning = startFromBeginning,
+                    randomEpisodeMode = false,
                 )
             }
         }
@@ -1687,6 +1744,8 @@ private fun MainAppContent(
                         },
                         onPlay = onPlay,
                         onPlayManually = onPlayManually,
+                        onRandomPlay = onRandomPlay,
+                        onRandomPlayManually = onRandomPlayManually,
                         onOpenMeta = { preview ->
                             coroutineScope.launch {
                                 val resolvedId = if (preview.id.startsWith("tmdb:")) {
@@ -1965,6 +2024,7 @@ private fun MainAppContent(
                             torrentTrackers = stream.p2pTrackers,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
+                            randomEpisodeMode = launch.randomEpisodeMode,
                         )
 
                         val launchId = PlayerLaunchStore.put(playerLaunch)
@@ -2084,6 +2144,7 @@ private fun MainAppContent(
                                 initialPositionMs = launch.resumePositionMs ?: 0L,
                                 initialProgressFraction = launch.resumeProgressFraction,
                                 contentLanguage = cached.contentLanguage,
+                                randomEpisodeMode = launch.randomEpisodeMode,
                             )
                             if (playerSettings.externalPlayerEnabled) {
                                 openExternalPlayback(playerLaunch)
@@ -2220,6 +2281,7 @@ private fun MainAppContent(
                             parentMetaType = launch.parentMetaType ?: launch.type,
                             initialPositionMs = launch.resumePositionMs ?: 0L,
                             initialProgressFraction = launch.resumeProgressFraction,
+                            randomEpisodeMode = launch.randomEpisodeMode,
                         )
                         if (playerSettings.externalPlayerEnabled) {
                             openExternalPlayback(playerLaunch)
@@ -2348,6 +2410,7 @@ private fun MainAppContent(
                             parentMetaType = launch.parentMetaType ?: launch.type,
                             initialPositionMs = resolvedResumePositionMs ?: 0L,
                             initialProgressFraction = resolvedResumeProgressFraction,
+                            randomEpisodeMode = launch.randomEpisodeMode,
                         )
 
                         if (!forceInternal && (forceExternal || playerSettings.externalPlayerEnabled)) {
@@ -2543,6 +2606,7 @@ private fun MainAppContent(
                                 parentMetaId = launch.parentMetaId,
                                 parentMetaType = launch.parentMetaType,
                                 initialPositionMs = request.resumePositionMs,
+                                randomEpisodeMode = launch.randomEpisodeMode,
                             )
                             lastExternalPlayerLaunch = playerLaunch
                             val intentResult = ExternalPlayerPlatform.buildIntent(

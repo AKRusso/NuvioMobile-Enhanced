@@ -5,6 +5,7 @@ import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watching.domain.WatchingContentRef
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 
 class SeriesPlaybackResolverTest {
@@ -155,5 +156,34 @@ class SeriesPlaybackResolverTest {
         assertEquals(2, nextEpisode.season)
         assertEquals(2, nextEpisode.episode)
         assertEquals("s2e2", nextEpisode.id)
+    }
+
+    @Test
+    fun randomReleasedPlayableEpisode_is_stable_and_skips_current_episode_when_possible() {
+        val meta = MetaDetails(
+            id = "show",
+            type = "series",
+            name = "Show",
+            videos = listOf(
+                MetaVideo(id = "s1e1", title = "Episode 1", season = 1, episode = 1, released = "2026-03-01"),
+                MetaVideo(id = "s1e2", title = "Episode 2", season = 1, episode = 2, released = "2026-03-08"),
+                MetaVideo(id = "s1e3", title = "Episode 3", season = 1, episode = 3, released = "2026-03-15"),
+            ),
+        )
+
+        val first = meta.randomReleasedPlayableEpisode(
+            todayIsoDate = "2026-03-30",
+            currentSeason = 1,
+            currentEpisode = 2,
+        )
+        val second = meta.randomReleasedPlayableEpisode(
+            todayIsoDate = "2026-03-30",
+            currentSeason = 1,
+            currentEpisode = 2,
+        )
+
+        assertNotNull(first)
+        assertEquals(first, second)
+        assertNotEquals("s1e2", first.id)
     }
 }

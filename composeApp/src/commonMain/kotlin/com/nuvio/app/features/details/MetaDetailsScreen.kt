@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
@@ -130,6 +130,8 @@ fun MetaDetailsScreen(
     onBack: () -> Unit,
     onPlay: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
     onPlayManually: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
+    onRandomPlay: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
+    onRandomPlayManually: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
     onOpenMeta: ((MetaPreview) -> Unit)? = null,
     onCastClick: ((MetaPerson, String?) -> Unit)? = null,
     onCompanyClick: ((MetaCompany, String) -> Unit)? = null,
@@ -467,6 +469,134 @@ fun MetaDetailsScreen(
                 val seriesStreamVideoId = remember(seriesAction, seriesActionVideo) {
                     val action = seriesAction ?: return@remember null
                     seriesActionVideo?.id?.takeIf { it.isNotBlank() } ?: action.videoId
+                }
+                val showRandomEpisodeButton = metaScreenSettingsUiState.randomEpisodeButton &&
+                    meta.isSeriesLikeForEpisodeRatings()
+                val randomEpisodeLabel = stringResource(Res.string.action_random_episode)
+                var lastRandomEpisodePlaybackId by remember(
+                    meta.id,
+                    seriesActionVideo?.season,
+                    seriesActionVideo?.episode,
+                    todayIsoDate,
+                ) {
+                    mutableStateOf<String?>(null)
+                }
+
+                fun MetaVideo.randomEpisodePlaybackId(): String =
+                    buildPlaybackVideoId(
+                        parentMetaId = meta.id,
+                        seasonNumber = season,
+                        episodeNumber = episode,
+                        fallbackVideoId = id,
+                    )
+
+                fun pickRandomEpisode(): MetaVideo? {
+                    if (!showRandomEpisodeButton) return null
+                    val releasedEpisodes = meta.releasedPlayableEpisodes(todayIsoDate)
+                    if (releasedEpisodes.isEmpty()) return null
+
+                    val currentPlaybackId = seriesActionVideo?.randomEpisodePlaybackId()
+                    val previousPlaybackId = lastRandomEpisodePlaybackId
+
+                    val basePool = releasedEpisodes.filterNot { episode ->
+                        currentPlaybackId != null && episode.randomEpisodePlaybackId() == currentPlaybackId
+                    }
+                    val nonRepeatingPool = basePool
+                        .filterNot { episode ->
+                            previousPlaybackId != null &&
+                                basePool.size > 1 &&
+                                episode.randomEpisodePlaybackId() == previousPlaybackId
+                        }
+
+                    val candidates = when {
+                        nonRepeatingPool.isNotEmpty() -> nonRepeatingPool
+                        basePool.isNotEmpty() -> basePool
+                        previousPlaybackId != null -> releasedEpisodes.filterNot { episode ->
+                            episode.randomEpisodePlaybackId() == previousPlaybackId
+                        }.ifEmpty { releasedEpisodes }
+                        else -> releasedEpisodes
+                    }
+
+                    val selected = candidates.random()
+                    lastRandomEpisodePlaybackId = selected.randomEpisodePlaybackId()
+                    return selected
+                }
+
+                val randomEpisodeAction = remember(
+                    showRandomEpisodeButton,
+                    meta.id,
+                    meta.type,
+                    meta.name,
+                    meta.logo,
+                    meta.poster,
+                    meta.background,
+                    onRandomPlay,
+                    onRandomPlayManually,
+                    randomEpisodeLabel,
+                    todayIsoDate,
+                    seriesActionVideo?.season,
+                    seriesActionVideo?.episode,
+                ) {
+                    if (!showRandomEpisodeButton) return@remember null
+                    val playHandler = onRandomPlay
+                    val manualHandler = onRandomPlayManually
+                    if (playHandler == null && manualHandler == null) return@remember null
+                    val clickHandler = playHandler ?: manualHandler ?: return@remember null
+                    val longClickHandler = manualHandler ?: playHandler
+                    DetailSecondaryAction(
+                        label = randomEpisodeLabel,
+                        icon = Icons.Default.Shuffle,
+                        onClick = {
+                            pickRandomEpisode()?.let { video ->
+                                val season = video.season
+                                val episode = video.episode
+                                val playbackVideoId = video.randomEpisodePlaybackId()
+                                val streamVideoId = video.id.takeIf { it.isNotBlank() } ?: playbackVideoId
+                                clickHandler(
+                                    meta.type,
+                                    streamVideoId,
+                                    meta.id,
+                                    meta.type,
+                                    meta.name,
+                                    meta.logo,
+                                    meta.poster,
+                                    meta.background,
+                                    season,
+                                    episode,
+                                    video.title,
+                                    video.thumbnail,
+                                    video.overview,
+                                    null,
+                                )
+                            }
+                        },
+                        onLongClick = longClickHandler?.let { handler ->
+                            {
+                                pickRandomEpisode()?.let { video ->
+                                    val season = video.season
+                                    val episode = video.episode
+                                    val playbackVideoId = video.randomEpisodePlaybackId()
+                                    val streamVideoId = video.id.takeIf { it.isNotBlank() } ?: playbackVideoId
+                                    handler(
+                                        meta.type,
+                                        streamVideoId,
+                                        meta.id,
+                                        meta.type,
+                                        meta.name,
+                                        meta.logo,
+                                        meta.poster,
+                                        meta.background,
+                                        season,
+                                        episode,
+                                        video.title,
+                                        video.thumbnail,
+                                        video.overview,
+                                        null,
+                                    )
+                                }
+                            }
+                        },
+                    )
                 }
                 val hasEpisodes = meta.videos.any { it.season != null || it.episode != null }
                 val hasProductionSection = remember(meta) {
@@ -837,6 +967,7 @@ fun MetaDetailsScreen(
                                 isWatched = isWatched,
                                 onPrimaryPlayClick = onPrimaryPlayClick,
                                 onPrimaryPlayLongClick = onPrimaryPlayLongClick,
+                                featuredAction = randomEpisodeAction,
                                 onSaveClick = toggleSaved,
                                 onSaveLongClick = openLibraryListPicker,
                                 onWatchedClick = toggleWatched,
@@ -969,7 +1100,7 @@ fun MetaDetailsScreen(
                                 contentColor = MaterialTheme.colorScheme.onPrimary,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.AutoAwesome,
+                                    imageVector = Icons.Default.Add,
                                     contentDescription = stringResource(Res.string.ai_chat_title),
                                 )
                             }
@@ -1320,6 +1451,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     isWatched: Boolean,
     onPrimaryPlayClick: () -> Unit,
     onPrimaryPlayLongClick: (() -> Unit)?,
+    featuredAction: DetailSecondaryAction? = null,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
@@ -1395,6 +1527,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     isWatched = isWatched,
                     onPrimaryPlayClick = onPrimaryPlayClick,
                     onPrimaryPlayLongClick = onPrimaryPlayLongClick,
+                    featuredAction = featuredAction,
                     onSaveClick = onSaveClick,
                     onSaveLongClick = onSaveLongClick,
                     onWatchedClick = onWatchedClick,
@@ -1543,6 +1676,7 @@ private fun ConfiguredMetaSections(
     isWatched: Boolean,
     onPrimaryPlayClick: () -> Unit,
     onPrimaryPlayLongClick: (() -> Unit)?,
+    featuredAction: DetailSecondaryAction? = null,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
@@ -1600,9 +1734,10 @@ private fun ConfiguredMetaSections(
     @Composable
     fun RenderSection(key: MetaScreenSectionKey, showHeader: Boolean = true) {
         when (key) {
-            MetaScreenSectionKey.ACTIONS -> {
+                MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
                     playLabel = playButtonLabel,
+                    featuredAction = featuredAction,
                     secondaryActions = listOf(
                         DetailSecondaryAction(
                             label = if (isWatched) {
