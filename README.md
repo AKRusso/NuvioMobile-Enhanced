@@ -29,7 +29,7 @@ The project stays close to the original codebase, but the enhanced branch is whe
 
 Current enhanced release:
 
-- `v0.2.12 (85)`
+- `v0.2.12 (86)`
 
 ## Enhanced Highlights
 
@@ -49,7 +49,7 @@ The fastest way to get the enhanced build is through GitHub Releases:
 
 If you are checking a specific build, the current release line is:
 
-- `NuvioMobile Enhanced v0.2.12 (85)`
+- `NuvioMobile Enhanced v0.2.12 (86)`
 
 ## What This Fork Is
 
