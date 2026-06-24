@@ -593,6 +593,7 @@ private fun MobileSettingsScreen(
                 SettingsPage.Advanced -> advancedSettingsContent(
                     isTablet = false,
                     rememberLastProfileEnabled = rememberLastProfileEnabled,
+                    heroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
                 )
                 SettingsPage.Notifications -> notificationsSettingsContent(
                     isTablet = false,
@@ -992,6 +993,7 @@ private fun TabletSettingsScreen(
                     SettingsPage.Advanced -> advancedSettingsContent(
                         isTablet = true,
                         rememberLastProfileEnabled = rememberLastProfileEnabled,
+                        heroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
                     )
                     SettingsPage.Notifications -> notificationsSettingsContent(
                         isTablet = true,

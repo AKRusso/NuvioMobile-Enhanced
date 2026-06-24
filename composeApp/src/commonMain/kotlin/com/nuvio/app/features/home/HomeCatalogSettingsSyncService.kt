@@ -43,6 +43,7 @@ data class SyncCatalogItem(
 
 @Serializable
 data class SyncHomeCatalogPayload(
+    @SerialName("hero_auto_scroll_enabled") val heroAutoScrollEnabled: Boolean = true,
     @SerialName("hide_unreleased_content") val hideUnreleasedContent: Boolean = false,
     @SerialName("hide_catalog_underline") val hideCatalogUnderline: Boolean = false,
     val items: List<SyncCatalogItem> = emptyList(),
@@ -59,6 +60,7 @@ private data class RemoteHomeCatalogSettings(
     val platform: String,
     val payload: SyncHomeCatalogPayload,
     val updatedAt: String?,
+    val hasHeroAutoScrollEnabled: Boolean,
     val hasHideUnreleasedContent: Boolean,
     val hasHideCatalogUnderline: Boolean,
 )
@@ -88,6 +90,7 @@ object HomeCatalogSettingsSyncService {
     }
 
     private const val PUSH_DEBOUNCE_MS = 1500L
+    private const val HERO_AUTO_SCROLL_KEY = "hero_auto_scroll_enabled"
     private const val HIDE_UNRELEASED_CONTENT_KEY = "hide_unreleased_content"
     private const val HIDE_CATALOG_UNDERLINE_KEY = "hide_catalog_underline"
 
@@ -281,6 +284,7 @@ object HomeCatalogSettingsSyncService {
             platform = platform,
             payload = payload,
             updatedAt = blob.updatedAt,
+            hasHeroAutoScrollEnabled = blob.settingsJson.containsKey(HERO_AUTO_SCROLL_KEY),
             hasHideUnreleasedContent = blob.settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY),
             hasHideCatalogUnderline = blob.settingsJson.containsKey(HIDE_CATALOG_UNDERLINE_KEY),
         )
@@ -289,6 +293,9 @@ object HomeCatalogSettingsSyncService {
     private fun RemoteHomeCatalogSettings.withNewestStandaloneSettings(
         rows: List<RemoteHomeCatalogSettings>,
     ): RemoteHomeCatalogSettings {
+        val heroAutoScrollSource = rows
+            .filter { it.hasHeroAutoScrollEnabled }
+            .maxByOrNull { it.updatedAt.orEmpty() }
         val hideUnreleasedSource = rows
             .filter { it.hasHideUnreleasedContent }
             .maxByOrNull { it.updatedAt.orEmpty() }
@@ -298,6 +305,8 @@ object HomeCatalogSettingsSyncService {
 
         return copy(
             payload = payload.copy(
+                heroAutoScrollEnabled = heroAutoScrollSource?.payload?.heroAutoScrollEnabled
+                    ?: payload.heroAutoScrollEnabled,
                 hideUnreleasedContent = hideUnreleasedSource?.payload?.hideUnreleasedContent
                     ?: payload.hideUnreleasedContent,
                 hideCatalogUnderline = hideUnderlineSource?.payload?.hideCatalogUnderline
@@ -324,6 +333,11 @@ object HomeCatalogSettingsSyncService {
     ): SyncHomeCatalogPayload? = runCatching {
         val decoded = json.decodeFromJsonElement(SyncHomeCatalogPayload.serializer(), settingsJson)
         decoded.copy(
+            heroAutoScrollEnabled = if (settingsJson.containsKey(HERO_AUTO_SCROLL_KEY)) {
+                decoded.heroAutoScrollEnabled
+            } else {
+                localPayload.heroAutoScrollEnabled
+            },
             hideUnreleasedContent = if (settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY)) {
                 decoded.hideUnreleasedContent
             } else {

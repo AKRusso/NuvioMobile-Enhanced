@@ -756,6 +756,7 @@ fun HomeScreen(
                                 viewportHeight = viewportHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 listState = homeListState,
+                                autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled,
                                 onItemClick = onPosterClick,
                             )
 
@@ -1525,3 +1526,4 @@ private suspend fun remapTraktWatchedItems(
         }
     }
 }
+

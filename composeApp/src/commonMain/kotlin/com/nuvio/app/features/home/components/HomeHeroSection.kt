@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,7 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.features.home.MetaPreview
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -67,6 +69,7 @@ private const val HERO_SCROLL_UP_SCALE_MULTIPLIER = 0.002f
 private const val HERO_SCROLL_MAX_SCALE = 1.3f
 private const val HERO_SWIPE_THRESHOLD_FRACTION = 0.16f
 private const val HERO_SWIPE_VELOCITY_THRESHOLD = 300f
+private const val HERO_AUTO_SCROLL_INTERVAL_MS = 5500L
 private const val MOBILE_HERO_VIEWPORT_RATIO = 0.82f
 private const val MOBILE_HERO_MIN_HEIGHT_DP = 360f
 private const val MOBILE_HERO_MAX_HEIGHT_DP = 760f
@@ -89,12 +92,24 @@ fun HomeHeroSection(
     viewportHeight: Dp? = null,
     mobileBelowSectionHeightHint: Dp? = null,
     listState: LazyListState? = null,
+    autoScrollEnabled: Boolean = true,
     onItemClick: ((MetaPreview) -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
 
     val pagerState = rememberPagerState(pageCount = { items.size })
     val coroutineScope = rememberCoroutineScope()
+    var isUserInteracting by remember { mutableStateOf(false) }
+
+    LaunchedEffect(items.size, autoScrollEnabled, isUserInteracting) {
+        if (items.size <= 1 || !autoScrollEnabled) return@LaunchedEffect
+        while (isActive) {
+            kotlinx.coroutines.delay(HERO_AUTO_SCROLL_INTERVAL_MS)
+            if (!autoScrollEnabled || isUserInteracting || pagerState.isScrollInProgress) continue
+            val nextPage = (pagerState.currentPage + 1) % items.size
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -103,6 +118,7 @@ fun HomeHeroSection(
                 pagerState = pagerState,
                 itemCount = items.size,
                 coroutineScope = coroutineScope,
+                onInteractionChanged = { isUserInteracting = it },
             )
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
     ) {
@@ -526,6 +542,7 @@ private fun Modifier.homeHeroPagerGesture(
     pagerState: PagerState,
     itemCount: Int,
     coroutineScope: CoroutineScope,
+    onInteractionChanged: (Boolean) -> Unit,
 ): Modifier {
     if (itemCount <= 1) return this
 
@@ -559,6 +576,7 @@ private fun Modifier.homeHeroPagerGesture(
                             pagerState.animateScrollToPage(targetPage)
                         }
                     }
+                    onInteractionChanged(false)
                     break
                 }
 
@@ -573,8 +591,14 @@ private fun Modifier.homeHeroPagerGesture(
                         abs(totalDy) > viewConfiguration.touchSlop && abs(totalDy) > abs(totalDx)
 
                     when {
-                        verticalDrag -> break
-                        horizontalDrag -> dragging = true
+                        verticalDrag -> {
+                            onInteractionChanged(false)
+                            break
+                        }
+                        horizontalDrag -> {
+                            dragging = true
+                            onInteractionChanged(true)
+                        }
                         else -> continue
                     }
                 }
@@ -582,6 +606,7 @@ private fun Modifier.homeHeroPagerGesture(
                 pagerState.dispatchRawDelta(-delta.x)
                 change.consume()
             }
+            onInteractionChanged(false)
         }
     }
 }

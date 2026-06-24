@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentCache
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.launch
@@ -14,6 +15,8 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.settings_advanced_clear_cw_cache
 import nuvio.composeapp.generated.resources.settings_advanced_clear_cw_cache_done
 import nuvio.composeapp.generated.resources.settings_advanced_clear_cw_cache_subtitle
+import nuvio.composeapp.generated.resources.settings_advanced_hero_auto_scroll
+import nuvio.composeapp.generated.resources.settings_advanced_hero_auto_scroll_description
 import nuvio.composeapp.generated.resources.settings_advanced_remember_last_profile
 import nuvio.composeapp.generated.resources.settings_advanced_remember_last_profile_description
 import nuvio.composeapp.generated.resources.settings_advanced_section_cache
@@ -23,6 +26,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LazyListScope.advancedSettingsContent(
     isTablet: Boolean,
     rememberLastProfileEnabled: Boolean,
+    heroAutoScrollEnabled: Boolean,
 ) {
     item {
         SettingsSection(
@@ -30,6 +34,14 @@ internal fun LazyListScope.advancedSettingsContent(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_advanced_hero_auto_scroll),
+                    description = stringResource(Res.string.settings_advanced_hero_auto_scroll_description),
+                    checked = heroAutoScrollEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = HomeCatalogSettingsRepository::setHeroAutoScrollEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_advanced_remember_last_profile),
                     description = stringResource(Res.string.settings_advanced_remember_last_profile_description),

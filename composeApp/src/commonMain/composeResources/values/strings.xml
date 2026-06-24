@@ -475,6 +475,8 @@
     <string name="settings_search_results_section">RESULTS</string>
     <string name="settings_advanced_section_startup">STARTUP</string>
     <string name="settings_advanced_section_cache">CACHE</string>
+    <string name="settings_advanced_hero_auto_scroll">Auto-Scroll Hero Carousel</string>
+    <string name="settings_advanced_hero_auto_scroll_description">Automatically cycle hero suggestions on the home screen.</string>
     <string name="settings_advanced_remember_last_profile">Remember Last Profile</string>
     <string name="settings_advanced_remember_last_profile_description">Remember last selected profile at startup</string>
     <string name="settings_advanced_clear_cw_cache">Clear Continue Watching Cache</string>

@@ -381,6 +381,16 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.Advanced,
+        key = "hero-auto-scroll",
+        title = stringResource(Res.string.settings_advanced_hero_auto_scroll),
+        description = stringResource(Res.string.settings_advanced_hero_auto_scroll_description),
+        pageLabel = advancedPage,
+        section = stringResource(Res.string.settings_advanced_section_startup),
+        category = advancedCategory,
+        icon = Icons.Rounded.Tune,
+    )
+    addRow(
+        page = SettingsPage.Advanced,
         key = "remember-last-profile",
         title = stringResource(Res.string.settings_advanced_remember_last_profile),
         description = stringResource(Res.string.settings_advanced_remember_last_profile_description),
