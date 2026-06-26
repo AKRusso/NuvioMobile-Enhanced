@@ -932,6 +932,8 @@
     <string name="settings_tmdb_module_season_posters_description">Dizilerde meta veri ekranındaki sezon seçici için TMDB sezon posterlerini kullan.</string>
     <string name="settings_tmdb_module_trailers">Fragmanlar</string>
     <string name="settings_tmdb_module_trailers_description">Detay sayfalarında TMDB fragman videolarını çekip göster.</string>
+    <string name="home_hero_type_movie">Film</string>
+    <string name="home_hero_type_series">Dizi</string>
     <string name="settings_tmdb_personal_api_key">Kişisel API anahtarı</string>
     <string name="settings_tmdb_preferred_language">Tercih edilen dil</string>
     <string name="settings_tmdb_preferred_language_description">Yerelleştirilmiş meta veriler için kullanılacak TMDB dil kodunu ayarla; örneğin `en`, `en-US` veya `pt-BR`.</string>

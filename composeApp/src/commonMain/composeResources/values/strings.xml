@@ -1271,6 +1271,8 @@
     <string name="home_empty_no_active_addons_message">Install and validate at least one addon before loading catalog rows on Home.</string>
     <string name="home_empty_no_rows_message">Installed addons do not currently expose board-compatible catalogs without required extras.</string>
     <string name="home_empty_no_rows_title">No home rows available</string>
+    <string name="home_hero_type_movie">Movie</string>
+    <string name="home_hero_type_series">Series</string>
     <string name="home_view_details">View Details</string>
     <string name="meta_section_actions_description">Play and save controls.</string>
     <string name="meta_section_actions_title">Actions</string>

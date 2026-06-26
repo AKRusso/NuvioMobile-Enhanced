@@ -150,7 +150,7 @@ fun ProfileSelectionScreen(
             Spacer(modifier = Modifier.height(if (isTabletLayout) 28.dp else 48.dp))
 
             val profiles = profileState.profiles
-            val items = profiles.size + if (profiles.size < 4) 1 else 0
+            val items = profiles.size + if (profiles.size < MAX_PROFILE_SLOTS) 1 else 0
 
             if (isTabletLayout) {
                 Box(

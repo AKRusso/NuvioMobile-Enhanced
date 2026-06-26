@@ -1,5 +1,6 @@
 package com.nuvio.app.features.tmdb
 
+import com.nuvio.app.features.player.DeviceLanguagePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -165,7 +166,9 @@ object TmdbSettingsRepository {
         apiKey = TmdbSettingsStorage.loadApiKey()?.trim().orEmpty()
         enabled = (TmdbSettingsStorage.loadEnabled() ?: false) && apiKey.isNotBlank()
         val storedLanguage = TmdbSettingsStorage.loadLanguage()
-        language = if (storedLanguage == null) "en" else normalizeLanguage(storedLanguage)
+        language = storedLanguage?.let(::normalizeLanguage)
+            ?.takeIf(String::isNotBlank)
+            ?: defaultTmdbLanguage()
         useTrailers = TmdbSettingsStorage.loadUseTrailers() ?: true
         useArtwork = TmdbSettingsStorage.loadUseArtwork() ?: true
         useBasicInfo = TmdbSettingsStorage.loadUseBasicInfo() ?: true
@@ -197,6 +200,11 @@ object TmdbSettingsRepository {
             useMoreLikeThis = useMoreLikeThis,
             useCollections = useCollections,
         )
+    }
+
+    private fun defaultTmdbLanguage(): String {
+        val preferred = DeviceLanguagePreferences.preferredLanguageCodes().firstOrNull()
+        return normalizeLanguage(preferred).ifBlank { "en" }
     }
 }
 

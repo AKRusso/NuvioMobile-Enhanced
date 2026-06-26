@@ -1,5 +1,12 @@
 package com.nuvio.app.features.home.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -31,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -52,7 +60,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
+import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.home.stableKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -67,6 +77,8 @@ private const val HERO_SCROLL_PARALLAX = 0.3f
 private const val HERO_SCROLL_DOWN_SCALE_MULTIPLIER = 0.0001f
 private const val HERO_SCROLL_UP_SCALE_MULTIPLIER = 0.002f
 private const val HERO_SCROLL_MAX_SCALE = 1.3f
+private const val HERO_CINEMATIC_PAN_PX = 18f
+private const val HERO_CINEMATIC_SCALE = 0.035f
 private const val HERO_SWIPE_THRESHOLD_FRACTION = 0.16f
 private const val HERO_SWIPE_VELOCITY_THRESHOLD = 300f
 private const val HERO_AUTO_SCROLL_INTERVAL_MS = 5500L
@@ -93,6 +105,7 @@ fun HomeHeroSection(
     mobileBelowSectionHeightHint: Dp? = null,
     listState: LazyListState? = null,
     autoScrollEnabled: Boolean = true,
+    metadataRefreshKey: String? = null,
     onItemClick: ((MetaPreview) -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
@@ -100,6 +113,8 @@ fun HomeHeroSection(
     val pagerState = rememberPagerState(pageCount = { items.size })
     val coroutineScope = rememberCoroutineScope()
     var isUserInteracting by remember { mutableStateOf(false) }
+    val itemKeys = remember(items) { items.joinToString(separator = "|") { it.stableKey() } }
+    val detailSummaries = remember(itemKeys, metadataRefreshKey) { mutableStateMapOf<String, String>() }
 
     LaunchedEffect(items.size, autoScrollEnabled, isUserInteracting) {
         if (items.size <= 1 || !autoScrollEnabled) return@LaunchedEffect
@@ -108,6 +123,16 @@ fun HomeHeroSection(
             if (!autoScrollEnabled || isUserInteracting || pagerState.isScrollInProgress) continue
             val nextPage = (pagerState.currentPage + 1) % items.size
             pagerState.animateScrollToPage(nextPage)
+        }
+    }
+
+    LaunchedEffect(itemKeys, metadataRefreshKey) {
+        items.forEach { item ->
+            launch {
+                fetchHeroDetailSummary(item)?.let { summary ->
+                    detailSummaries[item.stableKey()] = summary
+                }
+            }
         }
     }
 
@@ -165,6 +190,16 @@ fun HomeHeroSection(
             ?.page
             ?.let(items::get)
             ?: items[currentPage]
+        val cinematicMotion = rememberInfiniteTransition(label = "heroCinematicMotion")
+        val cinematicPulse by cinematicMotion.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 8200, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "heroCinematicPulse",
+        )
 
         Box(
             modifier = Modifier
@@ -192,10 +227,12 @@ fun HomeHeroSection(
                             .fillMaxSize()
                             .graphicsLayer {
                                 alpha = layer.visibility
-                                translationX = -layer.offset * heroWidthPx * HERO_BACKGROUND_PARALLAX
+                                translationX = (-layer.offset * heroWidthPx * HERO_BACKGROUND_PARALLAX) +
+                                    ((cinematicPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * layer.visibility)
                                 translationY = heroScrollTranslationY
-                                scaleX = HERO_BACKGROUND_SCALE * heroScrollScale
-                                scaleY = HERO_BACKGROUND_SCALE * heroScrollScale
+                                val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * cinematicPulse * layer.visibility)
+                                scaleX = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
+                                scaleY = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
                             },
                         alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
                         contentScale = ContentScale.Crop,
@@ -253,11 +290,16 @@ fun HomeHeroSection(
                                 modifier = Modifier.graphicsLayer {
                                     alpha = layer.visibility
                                     translationX = -layer.offset * heroWidthPx * HERO_CONTENT_PARALLAX
+                                    translationY = (1f - layer.visibility) * 18f
+                                    val contentScale = 0.96f + (0.04f * layer.visibility)
+                                    scaleX = contentScale
+                                    scaleY = contentScale
                                 },
                             ) {
                                 HeroContentBlock(
                                     item = items[layer.page],
                                     layout = layout,
+                                    detailSummary = detailSummaries[items[layer.page].stableKey()],
                                     onItemClick = onItemClick,
                                 )
                             }
@@ -268,11 +310,11 @@ fun HomeHeroSection(
                         Spacer(modifier = Modifier.height(14.dp))
                         Surface(
                             modifier = Modifier
-                                .clickable(enabled = onItemClick != null) {
-                                    onItemClick?.invoke(currentItem)
-                                },
-                            color = MaterialTheme.colorScheme.onBackground,
-                            contentColor = MaterialTheme.colorScheme.background,
+                            .clickable(enabled = onItemClick != null) {
+                                onItemClick?.invoke(currentItem)
+                            },
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
                             shape = RoundedCornerShape(40.dp),
                         ) {
                             Text(
@@ -300,7 +342,13 @@ fun HomeHeroSection(
                                             }
                                         }
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.onBackground)
+                                        .background(
+                                            if (activeFraction > 0.5f) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onBackground
+                                            },
+                                        )
                                         .graphicsLayer {
                                             alpha = 0.35f + (0.57f * activeFraction)
                                         }
@@ -363,6 +411,7 @@ fun HomeHeroReservedSpace(
 private fun HeroContentBlock(
     item: MetaPreview,
     layout: HomeHeroLayout,
+    detailSummary: String?,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
     var logoLoadError by remember(item.type, item.id, item.logo) {
@@ -419,7 +468,7 @@ private fun HeroContentBlock(
             },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            HeroMetaText(text = item.type.replaceFirstChar(Char::uppercase))
+            HeroMetaText(text = heroTypeLabel(item.type))
             item.genres.firstOrNull()?.let { genre ->
                 HeroMetaDot()
                 HeroMetaText(text = genre)
@@ -428,9 +477,50 @@ private fun HeroContentBlock(
                 HeroMetaDot()
                 HeroMetaText(text = formatReleaseDateForDisplay(info))
             }
+            item.imdbRating?.takeIf { it.isNotBlank() }?.let { rating ->
+                HeroMetaDot()
+                HeroMetaText(text = "IMDb $rating")
+            }
+        }
+
+        detailSummary?.let { summary ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(18.dp),
+                    ),
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                contentColor = MaterialTheme.colorScheme.onBackground,
+                shape = RoundedCornerShape(18.dp),
+            ) {
+                Text(
+                    text = summary,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = if (layout.isTablet) TextAlign.Start else TextAlign.Center,
+                    maxLines = if (layout.isTablet) 3 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
+
+private suspend fun fetchHeroDetailSummary(item: MetaPreview): String? =
+    runCatching {
+        MetaDetailsRepository.fetch(
+            type = item.type,
+            id = item.id,
+        )
+    }.getOrNull()
+        ?.description
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
 
 @Composable
 private fun HeroMetaText(text: String) {
@@ -443,6 +533,14 @@ private fun HeroMetaText(text: String) {
         overflow = TextOverflow.Ellipsis,
     )
 }
+
+@Composable
+private fun heroTypeLabel(type: String): String =
+    when {
+        type.equals("movie", ignoreCase = true) -> stringResource(Res.string.home_hero_type_movie)
+        type.equals("series", ignoreCase = true) -> stringResource(Res.string.home_hero_type_series)
+        else -> type.replaceFirstChar(Char::uppercase)
+    }
 
 internal fun homeHeroLayout(
     maxWidthDp: Float,

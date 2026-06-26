@@ -48,6 +48,8 @@ data class ProfileState(
     val rememberLastProfileEnabled: Boolean = false,
 )
 
+const val MAX_PROFILE_SLOTS = 6
+
 @Serializable
 data class AvatarCatalogItem(
     val id: String,
