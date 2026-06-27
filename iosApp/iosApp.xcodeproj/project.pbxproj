@@ -266,7 +266,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\ncase \"$PLATFORM_NAME\" in\n  iphonesimulator)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/generated/compose/resourceGenerator/assembledResources/iosSimulatorArm64Main/composeResources\"\n    ;;\n  *)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/generated/compose/resourceGenerator/assembledResources/iosArm64Main/composeResources\"\n    ;;\nesac\nRESOURCE_DST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/compose-resources/composeResources\"\nif [ ! -d \"$RESOURCE_SRC\" ]; then\n  echo \"error: Compose resources not found at $RESOURCE_SRC\"\n  exit 1\nfi\nrm -rf \"$RESOURCE_DST\"\nmkdir -p \"$RESOURCE_DST\"\n/usr/bin/ditto \"$RESOURCE_SRC\" \"$RESOURCE_DST\"\n";
+			shellScript = "set -e\ncase \"$PLATFORM_NAME\" in\n  iphonesimulator)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/kotlin-multiplatform-resources/aggregated-resources/iosSimulatorArm64/composeResources\"\n    ;;\n  *)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/kotlin-multiplatform-resources/aggregated-resources/iosArm64/composeResources\"\n    ;;\nesac\nRESOURCE_DST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/compose-resources/composeResources\"\nif [ ! -d \"$RESOURCE_SRC\" ]; then\n  echo \"error: Compose resources not found at $RESOURCE_SRC\"\n  exit 1\nfi\nrm -rf \"$RESOURCE_DST\"\nmkdir -p \"$RESOURCE_DST\"\n/usr/bin/ditto \"$RESOURCE_SRC\" \"$RESOURCE_DST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
