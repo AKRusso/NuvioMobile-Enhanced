@@ -320,7 +320,7 @@ kotlin {
             isStatic = true
             freeCompilerArgs += listOf("-Xbinary=bundleId=$iosFrameworkBundleId")
             if (iosDistribution == "full" && buildType.name == "RELEASE") {
-                freeCompilerArgs += "-Xdisable-phases=DevirtualizationAnalysis"
+                freeCompilerArgs += "-Xdisable-phases=DevirtualizationAnalysis,RemoveRedundantCallsToStaticInitializersPhase"
             }
         }
     }
