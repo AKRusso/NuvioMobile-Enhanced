@@ -5,7 +5,12 @@ import android.content.SharedPreferences
 
 actual object LiveTvStorage {
     private const val preferencesName = "nuvio_live_tv"
+    private const val sourceTypeKey = "source_type"
     private const val sourceUrlKey = "m3u_source_url"
+    private const val stalkerPortalUrlKey = "stalker_portal_url"
+    private const val stalkerMacAddressKey = "stalker_mac_address"
+    private const val stalkerUsernameKey = "stalker_username"
+    private const val stalkerPasswordKey = "stalker_password"
     private const val favoriteUrlsKey = "favorite_channel_urls"
     private const val recentChannelUrlKey = "recent_channel_url"
     private const val recentChannelNameKey = "recent_channel_name"
@@ -19,12 +24,39 @@ actual object LiveTvStorage {
         preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
     }
 
+    actual fun loadSourceType(): LiveTvSourceType =
+        when (preferences?.getString(sourceTypeKey, LiveTvSourceType.M3u.name)) {
+            LiveTvSourceType.Stalker.name -> LiveTvSourceType.Stalker
+            else -> LiveTvSourceType.M3u
+        }
+
+    actual fun saveSourceType(type: LiveTvSourceType) {
+        preferences?.edit()?.putString(sourceTypeKey, type.name)?.apply()
+    }
+
     actual fun loadSourceUrl(): String? =
         preferences?.getString(sourceUrlKey, null)
 
     actual fun saveSourceUrl(url: String) {
         preferences?.edit()?.apply {
             if (url.isBlank()) remove(sourceUrlKey) else putString(sourceUrlKey, url)
+        }?.apply()
+    }
+
+    actual fun loadStalkerSettings(): LiveTvStalkerSettings =
+        LiveTvStalkerSettings(
+            portalUrl = preferences?.getString(stalkerPortalUrlKey, null).orEmpty(),
+            macAddress = preferences?.getString(stalkerMacAddressKey, null).orEmpty(),
+            username = preferences?.getString(stalkerUsernameKey, null).orEmpty(),
+            password = preferences?.getString(stalkerPasswordKey, null).orEmpty(),
+        )
+
+    actual fun saveStalkerSettings(settings: LiveTvStalkerSettings) {
+        preferences?.edit()?.apply {
+            putString(stalkerPortalUrlKey, settings.portalUrl)
+            putString(stalkerMacAddressKey, settings.macAddress)
+            putString(stalkerUsernameKey, settings.username)
+            putString(stalkerPasswordKey, settings.password)
         }?.apply()
     }
 

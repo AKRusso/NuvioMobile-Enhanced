@@ -8,6 +8,7 @@ data class LiveTvChannel(
     val logoUrl: String? = null,
     val group: String = "",
     val headers: Map<String, String> = emptyMap(),
+    val stalkerCommand: String? = null,
 )
 
 data class LiveTvRecentChannel(
@@ -26,7 +27,9 @@ data class LiveTvProgramme(
 )
 
 data class LiveTvUiState(
+    val sourceType: LiveTvSourceType = LiveTvSourceType.M3u,
     val sourceUrl: String = "",
+    val stalkerSettings: LiveTvStalkerSettings = LiveTvStalkerSettings(),
     val channels: List<LiveTvChannel> = emptyList(),
     val currentProgrammes: Map<String, LiveTvProgramme> = emptyMap(),
     val recentChannel: LiveTvRecentChannel? = null,
@@ -36,3 +39,18 @@ data class LiveTvUiState(
     val isLoaded: Boolean = false,
     val errorMessage: String? = null,
 )
+
+enum class LiveTvSourceType {
+    M3u,
+    Stalker,
+}
+
+data class LiveTvStalkerSettings(
+    val portalUrl: String = "",
+    val macAddress: String = "",
+    val username: String = "",
+    val password: String = "",
+) {
+    val isConfigured: Boolean
+        get() = portalUrl.isNotBlank() && macAddress.isNotBlank()
+}

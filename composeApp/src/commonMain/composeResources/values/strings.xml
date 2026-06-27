@@ -334,6 +334,15 @@
     <string name="live_tv_title">Live TV</string>
     <string name="live_tv_source_title">M3U playlist</string>
     <string name="live_tv_source_hint">https://example.com/playlist.m3u</string>
+    <string name="live_tv_settings">Live TV settings</string>
+    <string name="live_tv_source_m3u">M3U</string>
+    <string name="live_tv_source_stalker">Stalker Portal</string>
+    <string name="live_tv_stalker_settings_title">Advanced IPTV</string>
+    <string name="live_tv_stalker_settings_description">Connect providers that use Stalker middleware. Portal URL and MAC address are required.</string>
+    <string name="live_tv_stalker_portal_hint">Portal URL, e.g. http://example.com/stalker_portal</string>
+    <string name="live_tv_stalker_mac_hint">MAC address, e.g. 00:1A:79:12:34:56</string>
+    <string name="live_tv_stalker_username_hint">Username (optional)</string>
+    <string name="live_tv_stalker_password_hint">Password (optional)</string>
     <string name="live_tv_load">Load channels</string>
     <string name="live_tv_add_source">Edit source</string>
     <string name="live_tv_disconnect">Remove playlist</string>
@@ -478,6 +487,8 @@
     <string name="settings_advanced_section_cache">CACHE</string>
     <string name="settings_advanced_hero_auto_scroll">Auto-Scroll Hero Carousel</string>
     <string name="settings_advanced_hero_auto_scroll_description">Automatically cycle hero suggestions on the home screen.</string>
+    <string name="settings_advanced_hero_motion_preview">Hero Motion Preview</string>
+    <string name="settings_advanced_hero_motion_preview_description">Adds subtle cinematic motion when a hero item has trailer data. Off by default for battery and performance.</string>
     <string name="settings_advanced_remember_last_profile">Remember Last Profile</string>
     <string name="settings_advanced_remember_last_profile_description">Remember last selected profile at startup</string>
     <string name="settings_advanced_clear_cw_cache">Clear Continue Watching Cache</string>

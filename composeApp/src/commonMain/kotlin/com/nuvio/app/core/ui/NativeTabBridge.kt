@@ -51,10 +51,11 @@ internal object NativeTabBridge {
     fun publishTabTitles(
         home: String,
         search: String,
+        liveTv: String,
         library: String,
         profile: String,
     ) {
-        publishNativeTabTitles(home, search, library, profile)
+        publishNativeTabTitles(home, search, liveTv, library, profile)
     }
 
     fun publishProfileTabIcon(
@@ -93,6 +94,7 @@ internal expect fun publishNativeTabAccentColor(hexColor: String)
 internal expect fun publishNativeTabTitles(
     home: String,
     search: String,
+    liveTv: String,
     library: String,
     profile: String,
 )

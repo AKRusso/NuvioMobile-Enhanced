@@ -315,6 +315,15 @@
     <string name="live_tv_title">Canlı TV</string>
     <string name="live_tv_source_title">M3U oynatma listesi</string>
     <string name="live_tv_source_hint">https://ornek.com/liste.m3u</string>
+    <string name="live_tv_settings">Canlı TV ayarları</string>
+    <string name="live_tv_source_m3u">M3U</string>
+    <string name="live_tv_source_stalker">Stalker Portal</string>
+    <string name="live_tv_stalker_settings_title">İleri düzey IPTV</string>
+    <string name="live_tv_stalker_settings_description">Stalker middleware kullanan sağlayıcıları bağla. Portal URL ve MAC adresi zorunludur.</string>
+    <string name="live_tv_stalker_portal_hint">Portal URL, örn. http://ornek.com/stalker_portal</string>
+    <string name="live_tv_stalker_mac_hint">MAC adresi, örn. 00:1A:79:12:34:56</string>
+    <string name="live_tv_stalker_username_hint">Kullanıcı adı (opsiyonel)</string>
+    <string name="live_tv_stalker_password_hint">Şifre (opsiyonel)</string>
     <string name="live_tv_load">Kanalları yükle</string>
     <string name="live_tv_add_source">Kaynağı düzenle</string>
     <string name="live_tv_disconnect">Listeyi kaldır</string>
@@ -1495,6 +1504,14 @@
     <string name="library_group_all">Tümü</string>
     <string name="library_group_watched">İzlenenler</string>
     <string name="library_group_unwatched">İzlenmeyenler</string>
+    <string name="settings_advanced_section_startup">BAŞLANGIÇ</string>
+    <string name="settings_advanced_section_cache">ÖNBELLEK</string>
+    <string name="settings_advanced_hero_auto_scroll">Hero Karuselini Otomatik Kaydır</string>
+    <string name="settings_advanced_hero_auto_scroll_description">Ana sayfadaki hero önerilerini otomatik olarak değiştirir.</string>
+    <string name="settings_advanced_hero_motion_preview">Hero Hareket Önizlemesi</string>
+    <string name="settings_advanced_hero_motion_preview_description">Hero öğesinde fragman verisi varsa hafif sinematik hareket ekler. Pil ve performans için varsayılan olarak kapalıdır.</string>
+    <string name="settings_advanced_remember_last_profile">Son Profili Hatırla</string>
+    <string name="settings_advanced_remember_last_profile_description">Başlangıçta son seçilen profili hatırla</string>
     <string name="settings_meta_random_episode_button">Rastgele Bölüm Düğmesi</string>
     <string name="settings_meta_random_episode_button_description">Dizi detay sayfalarında bir rastgele bölüm düğmesi göster. Oynatma, rastgele seçilmiş yayınlanmış bir bölümden başlar.</string>
 </resources>

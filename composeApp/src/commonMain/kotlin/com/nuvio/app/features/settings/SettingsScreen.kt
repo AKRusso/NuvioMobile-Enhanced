@@ -295,6 +295,7 @@ fun SettingsScreen(
                 traktSettingsUiState = traktSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                 homescreenHeroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
+                homescreenHeroMotionPreviewEnabled = homescreenSettingsUiState.heroMotionPreviewEnabled,
                 homescreenHideUnreleasedContent = homescreenSettingsUiState.hideUnreleasedContent,
                 homescreenHideCatalogUnderline = homescreenSettingsUiState.hideCatalogUnderline,
                 homescreenItems = homescreenSettingsUiState.items,
@@ -352,6 +353,7 @@ fun SettingsScreen(
                 traktSettingsUiState = traktSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
                 homescreenHeroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
+                homescreenHeroMotionPreviewEnabled = homescreenSettingsUiState.heroMotionPreviewEnabled,
                 homescreenHideUnreleasedContent = homescreenSettingsUiState.hideUnreleasedContent,
                 homescreenHideCatalogUnderline = homescreenSettingsUiState.hideCatalogUnderline,
                 homescreenItems = homescreenSettingsUiState.items,
@@ -419,6 +421,7 @@ private fun MobileSettingsScreen(
     traktSettingsUiState: TraktSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenHeroAutoScrollEnabled: Boolean,
+    homescreenHeroMotionPreviewEnabled: Boolean,
     homescreenHideUnreleasedContent: Boolean,
     homescreenHideCatalogUnderline: Boolean,
     homescreenItems: List<HomeCatalogSettingsItem>,
@@ -597,6 +600,7 @@ private fun MobileSettingsScreen(
                         isTablet = false,
                         rememberLastProfileEnabled = rememberLastProfileEnabled,
                         heroAutoScrollEnabled = homescreenHeroAutoScrollEnabled,
+                        heroMotionPreviewEnabled = homescreenHeroMotionPreviewEnabled,
                     )
                 SettingsPage.Notifications -> notificationsSettingsContent(
                     isTablet = false,
@@ -761,6 +765,7 @@ private fun TabletSettingsScreen(
     traktSettingsUiState: TraktSettingsUiState,
     homescreenHeroEnabled: Boolean,
     homescreenHeroAutoScrollEnabled: Boolean,
+    homescreenHeroMotionPreviewEnabled: Boolean,
     homescreenHideUnreleasedContent: Boolean,
     homescreenHideCatalogUnderline: Boolean,
     homescreenItems: List<HomeCatalogSettingsItem>,
@@ -998,6 +1003,7 @@ private fun TabletSettingsScreen(
                         isTablet = true,
                         rememberLastProfileEnabled = rememberLastProfileEnabled,
                         heroAutoScrollEnabled = homescreenHeroAutoScrollEnabled,
+                        heroMotionPreviewEnabled = homescreenHeroMotionPreviewEnabled,
                     )
                     SettingsPage.Notifications -> notificationsSettingsContent(
                         isTablet = true,

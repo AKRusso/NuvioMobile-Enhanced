@@ -22,6 +22,8 @@ private enum NuvioNativeTabIcon {
         }
     }
 
+    static let liveTv = symbolIcon(systemName: "tv")
+
     static let library = vectorIcon(
         viewport: CGSize(width: 24, height: 24),
         paths: [
@@ -120,6 +122,14 @@ private enum NuvioNativeTabIcon {
                 }
             }
         }
+    }
+
+    private static func symbolIcon(systemName: String, size: CGSize = CGSize(width: 25, height: 25)) -> UIImage {
+        let image = UIImage(
+            systemName: systemName,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .regular)
+        ) ?? UIImage(systemName: systemName) ?? profileFallback
+        return image.withRenderingMode(.alwaysTemplate)
     }
 
     private static func drawnIcon(
@@ -257,6 +267,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
     private enum NativeTab: String, CaseIterable {
         case home = "Home"
         case search = "Search"
+        case liveTv = "LiveTv"
         case library = "Library"
         case settings = "Settings"
 
@@ -264,8 +275,9 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             switch self {
             case .home: return 0
             case .search: return 1
-            case .library: return 2
-            case .settings: return 3
+            case .liveTv: return 2
+            case .library: return 3
+            case .settings: return 4
             }
         }
 
@@ -273,6 +285,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             switch self {
             case .home: return "NuvioNativeTabTitleHome"
             case .search: return "NuvioNativeTabTitleSearch"
+            case .liveTv: return "NuvioNativeTabTitleLiveTv"
             case .library: return "NuvioNativeTabTitleLibrary"
             case .settings: return "NuvioNativeTabTitleProfile"
             }
@@ -282,6 +295,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             switch self {
             case .home: return "Home"
             case .search: return "Search"
+            case .liveTv: return "Live TV"
             case .library: return "Library"
             case .settings: return "Profile"
             }
@@ -295,6 +309,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             switch self {
             case .home: return NuvioNativeTabIcon.home
             case .search: return NuvioNativeTabIcon.search
+            case .liveTv: return NuvioNativeTabIcon.liveTv
             case .library: return NuvioNativeTabIcon.library
             case .settings: return NuvioNativeTabIcon.profileFallback
             }

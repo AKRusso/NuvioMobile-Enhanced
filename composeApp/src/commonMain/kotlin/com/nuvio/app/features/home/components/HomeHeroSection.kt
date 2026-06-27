@@ -8,13 +8,16 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,13 +25,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -59,7 +63,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.nuvio.app.core.format.formatReleaseDateForDisplay
+import com.nuvio.app.core.format.extractReleaseYearForDisplay
+import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.stableKey
@@ -105,6 +110,7 @@ fun HomeHeroSection(
     mobileBelowSectionHeightHint: Dp? = null,
     listState: LazyListState? = null,
     autoScrollEnabled: Boolean = true,
+    motionPreviewEnabled: Boolean = false,
     metadataRefreshKey: String? = null,
     onItemClick: ((MetaPreview) -> Unit)? = null,
 ) {
@@ -114,7 +120,7 @@ fun HomeHeroSection(
     val coroutineScope = rememberCoroutineScope()
     var isUserInteracting by remember { mutableStateOf(false) }
     val itemKeys = remember(items) { items.joinToString(separator = "|") { it.stableKey() } }
-    val detailSummaries = remember(itemKeys, metadataRefreshKey) { mutableStateMapOf<String, String>() }
+    val detailMetas = remember(itemKeys, metadataRefreshKey) { mutableStateMapOf<String, MetaDetails>() }
 
     LaunchedEffect(items.size, autoScrollEnabled, isUserInteracting) {
         if (items.size <= 1 || !autoScrollEnabled) return@LaunchedEffect
@@ -123,16 +129,6 @@ fun HomeHeroSection(
             if (!autoScrollEnabled || isUserInteracting || pagerState.isScrollInProgress) continue
             val nextPage = (pagerState.currentPage + 1) % items.size
             pagerState.animateScrollToPage(nextPage)
-        }
-    }
-
-    LaunchedEffect(itemKeys, metadataRefreshKey) {
-        items.forEach { item ->
-            launch {
-                fetchHeroDetailSummary(item)?.let { summary ->
-                    detailSummaries[item.stableKey()] = summary
-                }
-            }
         }
     }
 
@@ -190,6 +186,32 @@ fun HomeHeroSection(
             ?.page
             ?.let(items::get)
             ?: items[currentPage]
+        LaunchedEffect(itemKeys, metadataRefreshKey, currentPage) {
+            val prioritizedItems = items
+                .withIndex()
+                .sortedBy { (index, _) -> abs(index - currentPage) }
+                .map { it.value }
+
+            prioritizedItems.firstOrNull()?.let { item ->
+                val key = item.stableKey()
+                if (!detailMetas.containsKey(key)) {
+                    fetchHeroDetailMeta(item)?.let { meta ->
+                        detailMetas[key] = meta
+                    }
+                }
+            }
+
+            prioritizedItems.drop(1).forEach { item ->
+                launch {
+                    val key = item.stableKey()
+                    if (!detailMetas.containsKey(key)) {
+                        fetchHeroDetailMeta(item)?.let { meta ->
+                            detailMetas[key] = meta
+                        }
+                    }
+                }
+            }
+        }
         val cinematicMotion = rememberInfiniteTransition(label = "heroCinematicMotion")
         val cinematicPulse by cinematicMotion.animateFloat(
             initialValue = 0f,
@@ -220,17 +242,22 @@ fun HomeHeroSection(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 visiblePages.forEach { layer ->
+                    val layerItem = items[layer.page]
+                    val layerDetail = detailMetas[layerItem.stableKey()]
+                    val layerMotionEnabled = motionPreviewEnabled && layerDetail?.trailers?.isNotEmpty() == true
+                    val motionVisibility = if (layerMotionEnabled) layer.visibility else 0f
+                    val motionPulse = if (layerMotionEnabled) cinematicPulse else 0.5f
                     AsyncImage(
-                        model = items[layer.page].banner ?: items[layer.page].poster,
-                        contentDescription = items[layer.page].name,
+                        model = layerItem.banner ?: layerItem.poster,
+                        contentDescription = layerItem.name,
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
                                 alpha = layer.visibility
                                 translationX = (-layer.offset * heroWidthPx * HERO_BACKGROUND_PARALLAX) +
-                                    ((cinematicPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * layer.visibility)
+                                    ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
                                 translationY = heroScrollTranslationY
-                                val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * cinematicPulse * layer.visibility)
+                                val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
                                 scaleX = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
                                 scaleY = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
                             },
@@ -244,12 +271,10 @@ fun HomeHeroSection(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.02f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.12f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.34f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0.78f),
-                                ),
+                                0f to MaterialTheme.colorScheme.background.copy(alpha = 0.03f),
+                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.11f),
+                                0.64f to MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
+                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.84f),
                             ),
                         ),
                 )
@@ -261,10 +286,9 @@ fun HomeHeroSection(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.background.copy(alpha = 0f),
-                                    MaterialTheme.colorScheme.background,
-                                ),
+                                0f to Color.Transparent,
+                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.44f),
+                                1f to MaterialTheme.colorScheme.background,
                             ),
                         ),
                 )
@@ -299,7 +323,7 @@ fun HomeHeroSection(
                                 HeroContentBlock(
                                     item = items[layer.page],
                                     layout = layout,
-                                    detailSummary = detailSummaries[items[layer.page].stableKey()],
+                                    detailMeta = detailMetas[items[layer.page].stableKey()],
                                     onItemClick = onItemClick,
                                 )
                             }
@@ -308,22 +332,11 @@ fun HomeHeroSection(
 
                     if (!layout.isTablet) {
                         Spacer(modifier = Modifier.height(14.dp))
-                        Surface(
-                            modifier = Modifier
-                            .clickable(enabled = onItemClick != null) {
-                                onItemClick?.invoke(currentItem)
-                            },
-                            color = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shape = RoundedCornerShape(40.dp),
-                        ) {
-                            Text(
-                                text = stringResource(Res.string.home_view_details),
-                                modifier = Modifier.padding(horizontal = 28.dp, vertical = 12.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
+                        HeroCtaButton(
+                            text = stringResource(Res.string.home_view_details),
+                            enabled = onItemClick != null,
+                            onClick = { onItemClick?.invoke(currentItem) },
+                        )
                     }
 
                     if (items.size > 1) {
@@ -334,26 +347,13 @@ fun HomeHeroSection(
                         ) {
                             items.forEachIndexed { index, _ ->
                                 val activeFraction = heroPageVisibility(pagerState, index)
-                                Box(
-                                    modifier = Modifier
-                                        .clickable {
-                                            coroutineScope.launch {
-                                                pagerState.animateScrollToPage(index)
-                                            }
+                                HeroPageIndicator(
+                                    activeFraction = activeFraction,
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
                                         }
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (activeFraction > 0.5f) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onBackground
-                                            },
-                                        )
-                                        .graphicsLayer {
-                                            alpha = 0.35f + (0.57f * activeFraction)
-                                        }
-                                        .width(8.dp + (24.dp * activeFraction))
-                                        .height(8.dp),
+                                    },
                                 )
                             }
                         }
@@ -411,56 +411,95 @@ fun HomeHeroReservedSpace(
 private fun HeroContentBlock(
     item: MetaPreview,
     layout: HomeHeroLayout,
-    detailSummary: String?,
+    detailMeta: MetaDetails?,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
     var logoLoadError by remember(item.type, item.id, item.logo) {
         mutableStateOf(false)
     }
     val logoUrl = item.logo?.takeIf { it.isNotBlank() }
+    val displayType = detailMeta?.type?.takeIf { it.isNotBlank() } ?: item.type
+    val detailGenres = detailMeta?.genres
+        .orEmpty()
+        .map(String::trim)
+        .filter(String::isNotBlank)
+    val fallbackGenres = item.genres
+        .map(String::trim)
+        .filter(String::isNotBlank)
+    val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(2)
+    val displayRelease = detailMeta?.releaseInfo?.takeIf { it.isNotBlank() } ?: item.releaseInfo
+    val displayImdb = detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating
+    val displaySummary = detailMeta?.description
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?: item.description?.trim()?.takeIf { it.isNotBlank() }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (layout.isTablet) Alignment.Start else Alignment.CenterHorizontally,
     ) {
-        if (logoUrl != null && !logoLoadError) {
-            AsyncImage(
-                model = logoUrl,
-                contentDescription = item.name,
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(layout.logoWidthFraction)
-                    .aspectRatio(2.6f)
-                    .clickable(enabled = onItemClick != null) {
-                        onItemClick?.invoke(item)
-                    },
-                alignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
-                contentScale = ContentScale.Fit,
-                onError = { logoLoadError = true },
+                    .fillMaxWidth(
+                        if (layout.isTablet) {
+                            (layout.logoWidthFraction + 0.1f).coerceAtMost(0.82f)
+                        } else {
+                            (layout.logoWidthFraction + 0.24f).coerceAtMost(1f)
+                        },
+                    )
+                    .height(if (layout.isTablet) 110.dp else 118.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.68f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.28f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
             )
-        } else {
-            Text(
-                text = item.name,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = onItemClick != null) {
-                        onItemClick?.invoke(item)
-                    },
-                style = if (layout.isTablet) {
-                    MaterialTheme.typography.displaySmall
-                } else {
-                    MaterialTheme.typography.displaySmall
-                },
-                color = MaterialTheme.colorScheme.onBackground,
-                fontWeight = FontWeight.Black,
-                textAlign = if (layout.isTablet) TextAlign.Start else TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (logoUrl != null && !logoLoadError) {
+                AsyncImage(
+                    model = logoUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier
+                        .fillMaxWidth(layout.logoWidthFraction)
+                        .aspectRatio(2.6f)
+                        .clickable(enabled = onItemClick != null) {
+                            onItemClick?.invoke(item)
+                        },
+                    alignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
+                    contentScale = ContentScale.Fit,
+                    onError = { logoLoadError = true },
+                )
+            } else {
+                Text(
+                    text = item.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = onItemClick != null) {
+                            onItemClick?.invoke(item)
+                        },
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Black,
+                    textAlign = if (layout.isTablet) TextAlign.Start else TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = if (layout.isTablet) {
                 Arrangement.spacedBy(8.dp, Alignment.Start)
             } else {
@@ -468,39 +507,70 @@ private fun HeroContentBlock(
             },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            HeroMetaText(text = heroTypeLabel(item.type))
-            item.genres.firstOrNull()?.let { genre ->
-                HeroMetaDot()
-                HeroMetaText(text = genre)
-            }
-            item.releaseInfo?.takeIf { it.isNotBlank() }?.let { info ->
-                HeroMetaDot()
-                HeroMetaText(text = formatReleaseDateForDisplay(info))
-            }
-            item.imdbRating?.takeIf { it.isNotBlank() }?.let { rating ->
-                HeroMetaDot()
-                HeroMetaText(text = "IMDb $rating")
+            HeroMetaChip(
+                text = heroTypeLabel(displayType),
+                emphasized = true,
+            )
+            displayGenres.forEach { genre ->
+                HeroMetaChip(
+                    text = genre,
+                    emphasized = true,
+                )
             }
         }
 
-        detailSummary?.let { summary ->
+        if (!displayRelease.isNullOrBlank() || !displayImdb.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = if (layout.isTablet) {
+                    Arrangement.spacedBy(8.dp, Alignment.Start)
+                } else {
+                    Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                displayRelease?.takeIf { it.isNotBlank() }?.let { info ->
+                    HeroMetaChip(
+                        text = heroReleaseYearLabel(info),
+                        emphasized = true,
+                    )
+                }
+                displayImdb?.takeIf { it.isNotBlank() }?.let { rating ->
+                    HeroMetaChip(
+                        text = "IMDb $rating",
+                        emphasized = true,
+                    )
+                }
+            }
+        }
+
+        displaySummary?.let { summary ->
             Spacer(modifier = Modifier.height(12.dp))
-            Surface(
+            val summaryShape = RoundedCornerShape(20.dp)
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(summaryShape)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.44f),
+                                MaterialTheme.colorScheme.background.copy(alpha = 0.62f),
+                            ),
+                        ),
+                    )
                     .border(
                         width = 1.dp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.16f),
+                        shape = summaryShape,
                     ),
-                color = MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
-                contentColor = MaterialTheme.colorScheme.onBackground,
-                shape = RoundedCornerShape(18.dp),
             ) {
                 Text(
                     text = summary,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
                     style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = if (layout.isTablet) TextAlign.Start else TextAlign.Center,
                     maxLines = if (layout.isTablet) 3 else 2,
@@ -511,36 +581,119 @@ private fun HeroContentBlock(
     }
 }
 
-private suspend fun fetchHeroDetailSummary(item: MetaPreview): String? =
+private suspend fun fetchHeroDetailMeta(item: MetaPreview): MetaDetails? =
     runCatching {
         MetaDetailsRepository.fetch(
             type = item.type,
             id = item.id,
         )
     }.getOrNull()
-        ?.description
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
 
 @Composable
-private fun HeroMetaText(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onBackground,
-        fontWeight = FontWeight.SemiBold,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
+private fun HeroMetaChip(
+    text: String,
+    emphasized: Boolean = false,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.background.copy(alpha = if (emphasized) 0.42f else 0.32f),
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        shape = RoundedCornerShape(50),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (emphasized) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)
+            } else {
+                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.14f)
+            },
+        ),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun HeroCtaButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(44.dp))
+            .background(
+                Brush.horizontalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                        Color.Transparent,
+                    ),
+                ),
+            )
+            .padding(2.dp),
+    ) {
+        Surface(
+            modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
+            color = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = RoundedCornerShape(40.dp),
+            shadowElevation = 10.dp,
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.padding(horizontal = 32.dp, vertical = 13.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroPageIndicator(
+    activeFraction: Float,
+    onClick: () -> Unit,
+) {
+    val progress = activeFraction.coerceIn(0f, 1f)
+    Box(
+        modifier = Modifier
+            .width(8.dp + (28.dp * progress))
+            .height(8.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.26f))
+            .clickable(onClick = onClick),
+    ) {
+        if (progress > 0.02f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress.coerceAtLeast(0.18f))
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+        }
+    }
 }
 
 @Composable
 private fun heroTypeLabel(type: String): String =
     when {
-        type.equals("movie", ignoreCase = true) -> stringResource(Res.string.home_hero_type_movie)
-        type.equals("series", ignoreCase = true) -> stringResource(Res.string.home_hero_type_series)
+        type.equals("movie", ignoreCase = true) || type.equals("film", ignoreCase = true) ->
+            stringResource(Res.string.home_hero_type_movie)
+        type.equals("series", ignoreCase = true) || type.equals("show", ignoreCase = true) ||
+            type.equals("tv", ignoreCase = true) || type.equals("tvshow", ignoreCase = true) ->
+            stringResource(Res.string.home_hero_type_series)
         else -> type.replaceFirstChar(Char::uppercase)
     }
+
+private fun heroReleaseYearLabel(raw: String): String =
+    extractReleaseYearForDisplay(raw)?.toString() ?: raw
 
 internal fun homeHeroLayout(
     maxWidthDp: Float,
@@ -589,7 +742,7 @@ internal fun homeHeroLayout(
             contentWidthFraction = 1f,
             contentHorizontalPadding = 24.dp,
             contentVerticalPadding = 16.dp,
-            bottomFadeHeight = 220.dp,
+            bottomFadeHeight = 260.dp,
             logoWidthFraction = 0.62f,
         )
     }
@@ -611,16 +764,6 @@ private fun mobileHeroHeight(
     }
 
     return cappedHeight.coerceIn(MOBILE_HERO_MIN_HEIGHT_DP.dp, MOBILE_HERO_MAX_HEIGHT_DP.dp)
-}
-
-@Composable
-private fun HeroMetaDot() {
-    Box(
-        modifier = Modifier
-            .size(4.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)),
-    )
 }
 
 private fun heroBackgroundScrollScale(scrollOffsetPx: Float): Float {

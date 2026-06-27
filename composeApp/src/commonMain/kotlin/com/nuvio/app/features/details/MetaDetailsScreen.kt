@@ -909,13 +909,27 @@ fun MetaDetailsScreen(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .blur(30.dp),
+                                        .graphicsLayer {
+                                            alpha = 0.34f
+                                            scaleX = 1.16f
+                                            scaleY = 1.16f
+                                        }
+                                        .blur(18.dp),
                                     contentScale = ContentScale.Crop,
                                 )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f)),
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colorStops = arrayOf(
+                                                    0.00f to MaterialTheme.colorScheme.background.copy(alpha = 0.42f),
+                                                    0.22f to MaterialTheme.colorScheme.background.copy(alpha = 0.68f),
+                                                    0.58f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+                                                    1.00f to MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
+                                                ),
+                                            ),
+                                        ),
                                 )
                             }
                         }
@@ -1734,7 +1748,7 @@ private fun ConfiguredMetaSections(
     @Composable
     fun RenderSection(key: MetaScreenSectionKey, showHeader: Boolean = true) {
         when (key) {
-                MetaScreenSectionKey.ACTIONS -> {
+            MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
                     playLabel = playButtonLabel,
                     featuredAction = featuredAction,

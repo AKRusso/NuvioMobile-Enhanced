@@ -20,6 +20,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Tv
@@ -74,6 +75,15 @@ import nuvio.composeapp.generated.resources.live_tv_search
 import nuvio.composeapp.generated.resources.live_tv_choose_category
 import nuvio.composeapp.generated.resources.live_tv_source_hint
 import nuvio.composeapp.generated.resources.live_tv_source_title
+import nuvio.composeapp.generated.resources.live_tv_stalker_mac_hint
+import nuvio.composeapp.generated.resources.live_tv_stalker_password_hint
+import nuvio.composeapp.generated.resources.live_tv_stalker_portal_hint
+import nuvio.composeapp.generated.resources.live_tv_stalker_settings_description
+import nuvio.composeapp.generated.resources.live_tv_stalker_settings_title
+import nuvio.composeapp.generated.resources.live_tv_stalker_username_hint
+import nuvio.composeapp.generated.resources.live_tv_source_m3u
+import nuvio.composeapp.generated.resources.live_tv_source_stalker
+import nuvio.composeapp.generated.resources.live_tv_settings
 import nuvio.composeapp.generated.resources.live_tv_title
 import org.jetbrains.compose.resources.stringResource
 
@@ -92,13 +102,29 @@ fun LiveTvScreen(
     var selectedGroup by rememberSaveable { mutableStateOf("") }
     var favoritesOnly by rememberSaveable { mutableStateOf(false) }
     var editingSource by rememberSaveable { mutableStateOf(uiState.sourceUrl.isBlank()) }
+    var showingAdvancedSettings by rememberSaveable { mutableStateOf(false) }
+    var stalkerPortalUrl by rememberSaveable { mutableStateOf(uiState.stalkerSettings.portalUrl) }
+    var stalkerMacAddress by rememberSaveable { mutableStateOf(uiState.stalkerSettings.macAddress) }
+    var stalkerUsername by rememberSaveable { mutableStateOf(uiState.stalkerSettings.username) }
+    var stalkerPassword by rememberSaveable { mutableStateOf(uiState.stalkerSettings.password) }
 
     LaunchedEffect(uiState.sourceUrl) {
         if (sourceUrl.isBlank()) sourceUrl = uiState.sourceUrl
     }
+    LaunchedEffect(uiState.stalkerSettings) {
+        if (stalkerPortalUrl.isBlank()) stalkerPortalUrl = uiState.stalkerSettings.portalUrl
+        if (stalkerMacAddress.isBlank()) stalkerMacAddress = uiState.stalkerSettings.macAddress
+        if (stalkerUsername.isBlank()) stalkerUsername = uiState.stalkerSettings.username
+        if (stalkerPassword.isBlank()) stalkerPassword = uiState.stalkerSettings.password
+    }
     LaunchedEffect(Unit) {
-        if (uiState.sourceUrl.isNotBlank() && uiState.channels.isEmpty() && !uiState.isLoading) {
-            LiveTvRepository.load(uiState.sourceUrl)
+        if (uiState.channels.isEmpty() && !uiState.isLoading) {
+            when {
+                uiState.sourceType == LiveTvSourceType.Stalker && uiState.stalkerSettings.isConfigured ->
+                    LiveTvRepository.loadStalker(uiState.stalkerSettings)
+                uiState.sourceUrl.isNotBlank() ->
+                    LiveTvRepository.load(uiState.sourceUrl)
+            }
         }
     }
 
@@ -142,21 +168,90 @@ fun LiveTvScreen(
         }
         Unit
     }
+    val loadStalkerSource: () -> Unit = {
+        scope.launch {
+            val settings = LiveTvStalkerSettings(
+                portalUrl = stalkerPortalUrl,
+                macAddress = stalkerMacAddress,
+                username = stalkerUsername,
+                password = stalkerPassword,
+            )
+            if (LiveTvRepository.loadStalker(settings).isSuccess) {
+                showingAdvancedSettings = false
+                editingSource = false
+                selectedGroup = ""
+                favoritesOnly = false
+            }
+        }
+        Unit
+    }
+    val playChannel: (LiveTvChannel) -> Unit = { channel ->
+        scope.launch {
+            onChannelClick(LiveTvRepository.prepareForPlayback(channel))
+        }
+    }
 
     NuvioScreen(
         modifier = modifier,
         horizontalPadding = 16.dp,
     ) {
+        if (showingAdvancedSettings) {
+            item {
+                NuvioScreenHeader(
+                    title = stringResource(Res.string.live_tv_stalker_settings_title),
+                    includeStatusBarPadding = false,
+                    onBack = { showingAdvancedSettings = false },
+                )
+            }
+            item {
+                LiveTvStalkerSettingsCard(
+                    portalUrl = stalkerPortalUrl,
+                    macAddress = stalkerMacAddress,
+                    username = stalkerUsername,
+                    password = stalkerPassword,
+                    isLoading = uiState.isLoading,
+                    errorMessage = uiState.errorMessage,
+                    hasConnectedSource = uiState.sourceType == LiveTvSourceType.Stalker && uiState.channels.isNotEmpty(),
+                    onPortalUrlChange = { stalkerPortalUrl = it },
+                    onMacAddressChange = { stalkerMacAddress = it },
+                    onUsernameChange = { stalkerUsername = it },
+                    onPasswordChange = { stalkerPassword = it },
+                    onLoad = loadStalkerSource,
+                    onDisconnect = {
+                        LiveTvRepository.disconnect()
+                        editingSource = true
+                        showingAdvancedSettings = false
+                        favoritesOnly = false
+                        selectedGroup = ""
+                    },
+                )
+            }
+            return@NuvioScreen
+        }
+
         item {
             NuvioScreenHeader(
                 title = stringResource(Res.string.live_tv_title),
                 includeStatusBarPadding = false,
                 actions = {
+                    NuvioIconActionButton(
+                        icon = Icons.Rounded.Settings,
+                        contentDescription = stringResource(Res.string.live_tv_settings),
+                        onClick = { showingAdvancedSettings = true },
+                    )
                     if (uiState.channels.isNotEmpty()) {
                         NuvioIconActionButton(
                             icon = Icons.Rounded.Refresh,
                             contentDescription = stringResource(Res.string.live_tv_refresh),
-                            onClick = { scope.launch { LiveTvRepository.load(uiState.sourceUrl) } },
+                            onClick = {
+                                scope.launch {
+                                    if (uiState.sourceType == LiveTvSourceType.Stalker) {
+                                        LiveTvRepository.loadStalker(uiState.stalkerSettings)
+                                    } else {
+                                        LiveTvRepository.load(uiState.sourceUrl)
+                                    }
+                                }
+                            },
                         )
                         NuvioIconActionButton(
                             icon = Icons.Rounded.AddLink,
@@ -193,7 +288,7 @@ fun LiveTvScreen(
                 LiveTvRecentChannelCard(
                     channel = recentChannel,
                     onClick = {
-                        onChannelClick(
+                        playChannel(
                             uiState.channels.firstOrNull { it.streamUrl == recentChannel.streamUrl }
                                 ?: LiveTvChannel(
                                     id = recentChannel.streamUrl,
@@ -282,7 +377,7 @@ fun LiveTvScreen(
                     programme = visibleChannels[index].tvgId?.let(uiState.currentProgrammes::get),
                     isFavorite = visibleChannels[index].streamUrl in uiState.favoriteUrls,
                     onFavoriteClick = { LiveTvRepository.toggleFavorite(visibleChannels[index]) },
-                    onClick = { onChannelClick(visibleChannels[index]) },
+                    onClick = { playChannel(visibleChannels[index]) },
                 )
             }
         } else if (!uiState.isLoading && !editingSource) {
@@ -495,6 +590,168 @@ private fun LiveTvSourceCard(
                     color = tokens.colors.danger,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun LiveTvStalkerSettingsCard(
+    portalUrl: String,
+    macAddress: String,
+    username: String,
+    password: String,
+    isLoading: Boolean,
+    errorMessage: String?,
+    hasConnectedSource: Boolean,
+    onPortalUrlChange: (String) -> Unit,
+    onMacAddressChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoad: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = tokens.colors.surface,
+        shape = tokens.shapes.card,
+        border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.borderSubtle),
+    ) {
+        Column(
+            modifier = Modifier.padding(tokens.spacing.cardPadding),
+            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(NuvioTokens.Space.s48)
+                        .clip(tokens.shapes.compactCard)
+                        .background(tokens.colors.overlaySelected),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Settings,
+                        contentDescription = null,
+                        tint = tokens.colors.accent,
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.live_tv_source_stalker),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(Res.string.live_tv_stalker_settings_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.colors.textMuted,
+                    )
+                }
+            }
+
+            SourceTypePillRow(
+                activeLabel = stringResource(Res.string.live_tv_source_stalker),
+                inactiveLabel = stringResource(Res.string.live_tv_source_m3u),
+            )
+
+            NuvioInputField(
+                value = portalUrl,
+                onValueChange = onPortalUrlChange,
+                placeholder = stringResource(Res.string.live_tv_stalker_portal_hint),
+            )
+            NuvioInputField(
+                value = macAddress,
+                onValueChange = onMacAddressChange,
+                placeholder = stringResource(Res.string.live_tv_stalker_mac_hint),
+            )
+            NuvioInputField(
+                value = username,
+                onValueChange = onUsernameChange,
+                placeholder = stringResource(Res.string.live_tv_stalker_username_hint),
+            )
+            NuvioInputField(
+                value = password,
+                onValueChange = onPasswordChange,
+                placeholder = stringResource(Res.string.live_tv_stalker_password_hint),
+            )
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.colors.danger,
+                )
+            }
+            NuvioPrimaryButton(
+                text = stringResource(Res.string.live_tv_load),
+                enabled = portalUrl.isNotBlank() && macAddress.isNotBlank() && !isLoading,
+                onClick = onLoad,
+            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(NuvioTokens.Icon.md)
+                        .align(Alignment.CenterHorizontally),
+                    color = tokens.colors.accent,
+                    strokeWidth = 2.dp,
+                )
+            }
+            if (hasConnectedSource) {
+                Text(
+                    text = stringResource(Res.string.live_tv_disconnect),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clickable(onClick = onDisconnect)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.colors.danger,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SourceTypePillRow(
+    activeLabel: String,
+    inactiveLabel: String,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            color = tokens.colors.overlaySelected,
+            contentColor = tokens.colors.textPrimary,
+            shape = tokens.shapes.chip,
+            border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.accent.copy(alpha = 0.52f)),
+        ) {
+            Text(
+                text = activeLabel,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Surface(
+            color = tokens.colors.surfaceCard,
+            contentColor = tokens.colors.textMuted,
+            shape = tokens.shapes.chip,
+            border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.borderSubtle),
+        ) {
+            Text(
+                text = inactiveLabel,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }

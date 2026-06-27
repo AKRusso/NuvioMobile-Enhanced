@@ -18,10 +18,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -67,8 +70,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.i18n.localizedMonthName
@@ -143,10 +144,13 @@ fun LibraryScreen(
         runCatching { LibraryViewMode.valueOf(sourceModeName) }.getOrDefault(LibraryViewMode.Saved)
     }
     var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
-    var releaseCalendarEvents by remember(uiState.items) {
-        mutableStateOf(buildLibraryReleaseCalendarFallbackEvents(uiState.items))
+    val releaseCalendarItemsKey = remember(uiState.items) { libraryCalendarItemsCacheKey(uiState.items) }
+    val releaseCalendarFallbackEvents = remember(releaseCalendarItemsKey) {
+        buildLibraryReleaseCalendarFallbackEvents(uiState.items)
     }
-    var releaseCalendarLoading by remember(uiState.items) { mutableStateOf(false) }
+    var releaseCalendarEvents by remember { mutableStateOf(releaseCalendarFallbackEvents) }
+    var releaseCalendarLoading by remember { mutableStateOf(false) }
+    var releaseCalendarLoadedKey by remember { mutableStateOf<String?>(null) }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedType = remember(selectedTypeName) {
@@ -200,13 +204,25 @@ fun LibraryScreen(
         }
     }
 
-    LaunchedEffect(showReleaseCalendar, uiState.items) {
+    LaunchedEffect(releaseCalendarItemsKey, releaseCalendarFallbackEvents) {
+        releaseCalendarEvents = releaseCalendarFallbackEvents
+        releaseCalendarLoading = false
+        releaseCalendarLoadedKey = null
+    }
+
+    LaunchedEffect(showReleaseCalendar, releaseCalendarItemsKey) {
         if (!showReleaseCalendar) return@LaunchedEffect
         val itemsSnapshot = uiState.items
-        releaseCalendarEvents = buildLibraryReleaseCalendarFallbackEvents(itemsSnapshot)
+        if (releaseCalendarLoadedKey == releaseCalendarItemsKey) return@LaunchedEffect
+        releaseCalendarEvents = releaseCalendarFallbackEvents
+        if (itemsSnapshot.isEmpty()) {
+            releaseCalendarLoadedKey = releaseCalendarItemsKey
+            return@LaunchedEffect
+        }
         releaseCalendarLoading = true
         try {
             releaseCalendarEvents = buildLibraryReleaseCalendarEvents(itemsSnapshot)
+            releaseCalendarLoadedKey = releaseCalendarItemsKey
         } finally {
             releaseCalendarLoading = false
         }
@@ -244,11 +260,11 @@ fun LibraryScreen(
                                     IconButton(
                                         onClick = { showReleaseCalendar = true },
                                         modifier = Modifier
-                                            .size(40.dp)
+                                            .size(48.dp)
                                             .semantics { contentDescription = openCalendarLabel },
                                     ) {
                                         LibraryCalendarGlyph(
-                                            modifier = Modifier.size(19.dp),
+                                            modifier = Modifier.size(28.dp),
                                             tint = Color.White,
                                             cutoutColor = MaterialTheme.colorScheme.background,
                                         )
@@ -1073,117 +1089,110 @@ private fun LibraryReleaseCalendarPage(
 
     val selectedEvents = eventsByDate[selectedDateIso].orEmpty()
     val selectedDate = parseLibraryCalendarDate(selectedDateIso)
+    val safeInsets = WindowInsets.safeDrawing.asPaddingValues()
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnClickOutside = false,
-            usePlatformDefaultWidth = false,
-        ),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        Surface(
+        LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                top = safeInsets.calculateTopPadding() + 10.dp,
+                end = 20.dp,
+                bottom = safeInsets.calculateBottomPadding() + 28.dp,
+            ),
         ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 20.dp,
-                    top = 12.dp,
-                    end = 20.dp,
-                    bottom = 44.dp,
-                ),
-            ) {
+            item {
+                LibraryCalendarTopBar(
+                    title = stringResource(Res.string.library_calendar_title),
+                    subtitle = stringResource(Res.string.library_calendar_exact_dates_only),
+                    onBack = onDismiss,
+                )
+            }
+
+            if (events.isEmpty() && isLoading) {
                 item {
-                    LibraryCalendarTopBar(
-                        title = stringResource(Res.string.library_calendar_title),
-                        subtitle = stringResource(Res.string.library_calendar_exact_dates_only),
-                        onBack = onDismiss,
+                    LibraryCalendarLoadingState()
+                }
+            } else if (events.isEmpty()) {
+                item {
+                    LibraryCalendarEmptyState()
+                }
+            } else {
+                item {
+                    LibraryCalendarCard(
+                        month = visibleMonth,
+                        monthEventCount = monthEvents.size,
+                        eventsByDate = eventsByDate,
+                        selectedDateIso = selectedDateIso,
+                        todayIso = todayIso,
+                        onPrevious = {
+                            calendarSelection = defaultLibraryCalendarSelection(
+                                events = events,
+                                month = visibleMonth.previous(),
+                                todayIso = todayIso,
+                            )
+                        },
+                        onNext = {
+                            calendarSelection = defaultLibraryCalendarSelection(
+                                events = events,
+                                month = visibleMonth.next(),
+                                todayIso = todayIso,
+                            )
+                        },
+                        onToday = {
+                            calendarSelection = LibraryCalendarSelection(
+                                month = LibraryCalendarMonth(today.year, today.month),
+                                dateIso = todayIso,
+                            )
+                        },
+                        onDateSelected = { date ->
+                            calendarSelection = calendarSelection.copy(dateIso = date.iso)
+                        },
                     )
                 }
 
-                if (events.isEmpty() && isLoading) {
+                item {
+                    Spacer(modifier = Modifier.height(26.dp))
+                    LibraryCalendarAgendaHeader(
+                        selectedDate = selectedDate,
+                        eventCount = selectedEvents.size,
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                if (selectedEvents.isEmpty()) {
                     item {
-                        LibraryCalendarLoadingState()
-                    }
-                } else if (events.isEmpty()) {
-                    item {
-                        LibraryCalendarEmptyState()
+                        LibraryCalendarNoDayEvents()
                     }
                 } else {
-                    item {
-                        LibraryCalendarCard(
-                            month = visibleMonth,
-                            monthEventCount = monthEvents.size,
-                            eventsByDate = eventsByDate,
-                            selectedDateIso = selectedDateIso,
+                    items(
+                        items = selectedEvents,
+                        key = { event -> event.key },
+                    ) { event ->
+                        LibraryCalendarEventRow(
+                            event = event,
                             todayIso = todayIso,
-                            onPrevious = {
-                                calendarSelection = defaultLibraryCalendarSelection(
-                                    events = events,
-                                    month = visibleMonth.previous(),
-                                    todayIso = todayIso,
-                                )
-                            },
-                            onNext = {
-                                calendarSelection = defaultLibraryCalendarSelection(
-                                    events = events,
-                                    month = visibleMonth.next(),
-                                    todayIso = todayIso,
-                                )
-                            },
-                            onToday = {
-                                calendarSelection = LibraryCalendarSelection(
-                                    month = LibraryCalendarMonth(today.year, today.month),
-                                    dateIso = todayIso,
-                                )
-                            },
-                            onDateSelected = { date ->
-                                calendarSelection = calendarSelection.copy(dateIso = date.iso)
+                            onClick = onPosterClick?.let { posterClick ->
+                                {
+                                    onDismiss()
+                                    posterClick(event.item)
+                                }
                             },
                         )
                     }
+                }
 
+                if (isLoading) {
                     item {
-                        Spacer(modifier = Modifier.height(26.dp))
-                        LibraryCalendarAgendaHeader(
-                            selectedDate = selectedDate,
-                            eventCount = selectedEvents.size,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        LibraryCalendarInlineLoading()
                     }
+                }
 
-                    if (selectedEvents.isEmpty()) {
-                        item {
-                            LibraryCalendarNoDayEvents()
-                        }
-                    } else {
-                        items(
-                            items = selectedEvents,
-                            key = { event -> event.key },
-                        ) { event ->
-                            LibraryCalendarEventRow(
-                                event = event,
-                                todayIso = todayIso,
-                                onClick = onPosterClick?.let { posterClick ->
-                                    {
-                                        onDismiss()
-                                        posterClick(event.item)
-                                    }
-                                },
-                            )
-                        }
-                    }
-
-                    if (isLoading) {
-                        item {
-                            LibraryCalendarInlineLoading()
-                        }
-                    }
-
-                    item {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
@@ -1820,6 +1829,11 @@ private data class LibraryCalendarMonth(
     fun next(): LibraryCalendarMonth =
         if (month == 12) LibraryCalendarMonth(year + 1, 1) else copy(month = month + 1)
 }
+
+private fun libraryCalendarItemsCacheKey(items: List<LibraryItem>): String =
+    items.joinToString(separator = "|") { item ->
+        "${item.type}:${item.id}:${item.releaseInfo.orEmpty()}"
+    }
 
 private suspend fun buildLibraryReleaseCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> {
     val fallbackEvents = buildLibraryReleaseCalendarFallbackEvents(items)

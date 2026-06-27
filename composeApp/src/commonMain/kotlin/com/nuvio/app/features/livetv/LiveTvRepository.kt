@@ -1,6 +1,8 @@
 package com.nuvio.app.features.livetv
 
 import com.nuvio.app.features.addons.httpGetText
+import com.nuvio.app.features.addons.httpGetTextWithHeaders
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -8,6 +10,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 object LiveTvRepository {
     private val mutableUiState = MutableStateFlow(LiveTvUiState())
@@ -20,7 +30,9 @@ object LiveTvRepository {
         if (initialized) return
         initialized = true
         mutableUiState.value = mutableUiState.value.copy(
+            sourceType = LiveTvStorage.loadSourceType(),
             sourceUrl = LiveTvStorage.loadSourceUrl().orEmpty(),
+            stalkerSettings = LiveTvStorage.loadStalkerSettings(),
             favoriteUrls = LiveTvStorage.loadFavoriteUrls(),
             recentChannel = LiveTvStorage.loadRecentChannel(),
         )
@@ -47,8 +59,11 @@ object LiveTvRepository {
             val channels = playlist.channels
             require(channels.isNotEmpty()) { "Bu M3U listesinde oynatılabilir kanal bulunamadı." }
             LiveTvStorage.saveSourceUrl(normalizedUrl)
+            LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
             mutableUiState.value = LiveTvUiState(
+                sourceType = LiveTvSourceType.M3u,
                 sourceUrl = normalizedUrl,
+                stalkerSettings = mutableUiState.value.stalkerSettings,
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
                 recentChannel = mutableUiState.value.recentChannel,
@@ -66,9 +81,67 @@ object LiveTvRepository {
         }
     }
 
+    suspend fun loadStalker(settings: LiveTvStalkerSettings): Result<List<LiveTvChannel>> {
+        val normalizedSettings = settings.normalized()
+        if (!normalizedSettings.isConfigured) {
+            val error = IllegalArgumentException("Portal URL ve MAC adresi zorunludur.")
+            mutableUiState.value = mutableUiState.value.copy(errorMessage = error.message)
+            return Result.failure(error)
+        }
+        if (!normalizedSettings.portalUrl.startsWith("http://") && !normalizedSettings.portalUrl.startsWith("https://")) {
+            val error = IllegalArgumentException("Geçerli bir HTTP veya HTTPS portal bağlantısı girin.")
+            mutableUiState.value = mutableUiState.value.copy(errorMessage = error.message)
+            return Result.failure(error)
+        }
+
+        mutableUiState.value = mutableUiState.value.copy(
+            sourceType = LiveTvSourceType.Stalker,
+            sourceUrl = normalizedSettings.portalUrl,
+            stalkerSettings = normalizedSettings,
+            isLoading = true,
+            errorMessage = null,
+        )
+
+        return runCatching {
+            val channels = withContext(Dispatchers.Default) {
+                fetchStalkerChannels(normalizedSettings)
+            }
+            require(channels.isNotEmpty()) { "Bu Stalker Portal içinde oynatılabilir kanal bulunamadı." }
+            LiveTvStorage.saveSourceType(LiveTvSourceType.Stalker)
+            LiveTvStorage.saveStalkerSettings(normalizedSettings)
+            mutableUiState.value = LiveTvUiState(
+                sourceType = LiveTvSourceType.Stalker,
+                sourceUrl = normalizedSettings.portalUrl,
+                stalkerSettings = normalizedSettings,
+                channels = channels,
+                favoriteUrls = mutableUiState.value.favoriteUrls,
+                recentChannel = mutableUiState.value.recentChannel,
+                isLoaded = true,
+            )
+            channels
+        }.onFailure { error ->
+            mutableUiState.value = mutableUiState.value.copy(
+                isLoading = false,
+                isLoaded = mutableUiState.value.channels.isNotEmpty(),
+                errorMessage = error.message ?: "Stalker Portal yüklenemedi.",
+            )
+        }
+    }
+
+    suspend fun prepareForPlayback(channel: LiveTvChannel): LiveTvChannel =
+        if (mutableUiState.value.sourceType == LiveTvSourceType.Stalker && !channel.stalkerCommand.isNullOrBlank()) {
+            resolveStalkerPlaybackChannel(channel)
+        } else {
+            channel
+        }
+
     fun disconnect() {
         LiveTvStorage.saveSourceUrl("")
+        LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
+        LiveTvRepositoryStalker.clearSession()
         mutableUiState.value = LiveTvUiState(
+            sourceType = LiveTvSourceType.M3u,
+            stalkerSettings = LiveTvStorage.loadStalkerSettings(),
             favoriteUrls = mutableUiState.value.favoriteUrls,
             recentChannel = mutableUiState.value.recentChannel,
         )
@@ -116,13 +189,214 @@ object LiveTvRepository {
 }
 
 internal expect object LiveTvStorage {
+    fun loadSourceType(): LiveTvSourceType
+    fun saveSourceType(type: LiveTvSourceType)
     fun loadSourceUrl(): String?
     fun saveSourceUrl(url: String)
+    fun loadStalkerSettings(): LiveTvStalkerSettings
+    fun saveStalkerSettings(settings: LiveTvStalkerSettings)
     fun loadFavoriteUrls(): Set<String>
     fun saveFavoriteUrls(urls: Set<String>)
     fun loadRecentChannel(): LiveTvRecentChannel?
     fun saveRecentChannel(channel: LiveTvRecentChannel?)
 }
+
+private data class StalkerSession(
+    val settings: LiveTvStalkerSettings,
+    val token: String,
+)
+
+private suspend fun fetchStalkerChannels(settings: LiveTvStalkerSettings): List<LiveTvChannel> {
+    val session = LiveTvRepositoryStalker.session(settings)
+    val genres = LiveTvRepositoryStalker.getGenres(session)
+    return LiveTvRepositoryStalker.getChannels(session, genres)
+}
+
+private suspend fun resolveStalkerPlaybackChannel(channel: LiveTvChannel): LiveTvChannel {
+    val settings = LiveTvRepository.uiState.value.stalkerSettings.normalized()
+    if (!settings.isConfigured) return channel
+    val session = LiveTvRepositoryStalker.session(settings)
+    val resolvedUrl = LiveTvRepositoryStalker.createLink(session, channel.stalkerCommand.orEmpty())
+        ?: channel.streamUrl
+    return channel.copy(
+        streamUrl = resolvedUrl,
+        headers = channel.headers + LiveTvRepositoryStalker.playbackHeaders(session),
+    )
+}
+
+private object LiveTvRepositoryStalker {
+    private var cachedSession: StalkerSession? = null
+
+    fun clearSession() {
+        cachedSession = null
+    }
+
+    suspend fun session(settings: LiveTvStalkerSettings): StalkerSession {
+        cachedSession
+            ?.takeIf { it.settings == settings && it.token.isNotBlank() }
+            ?.let { return it }
+
+        val token = request(settings, type = "stb", action = "handshake")
+            .stalkerJs()
+            .stringValue("token")
+            .orEmpty()
+            .trim()
+        require(token.isNotBlank()) { "Stalker Portal token alınamadı." }
+        return StalkerSession(settings = settings, token = token).also {
+            cachedSession = it
+        }
+    }
+
+    suspend fun getGenres(session: StalkerSession): Map<String, String> {
+        val data = request(session.settings, session.token, type = "itv", action = "get_genres")
+            .stalkerJs()
+            .arrayValue("data")
+        return data.associateNotNull { element ->
+            val obj = element as? JsonObject ?: return@associateNotNull null
+            val id = obj.stringValue("id") ?: obj.stringValue("alias") ?: return@associateNotNull null
+            val title = obj.stringValue("title") ?: obj.stringValue("name") ?: return@associateNotNull null
+            id to title
+        }
+    }
+
+    suspend fun getChannels(
+        session: StalkerSession,
+        genres: Map<String, String>,
+    ): List<LiveTvChannel> {
+        val channels = mutableListOf<LiveTvChannel>()
+        repeat(20) { pageIndex ->
+            val page = pageIndex + 1
+            val data = request(
+                settings = session.settings,
+                token = session.token,
+                type = "itv",
+                action = "get_ordered_list",
+                extraParameters = mapOf("p" to page.toString()),
+            ).stalkerJs().arrayValue("data")
+            if (data.isEmpty()) return@repeat
+            data.forEachIndexed { index, element ->
+                val obj = element as? JsonObject ?: return@forEachIndexed
+                val name = obj.stringValue("name")
+                    ?: obj.stringValue("title")
+                    ?: return@forEachIndexed
+                val command = obj.stringValue("cmd")
+                    ?: obj.stringValue("mc_cmd")
+                    ?: obj.stringValue("url")
+                    ?: return@forEachIndexed
+                val streamUrl = command.toStalkerPlayableUrl()
+                if (streamUrl.isBlank()) return@forEachIndexed
+                val genreId = obj.stringValue("tv_genre_id") ?: obj.stringValue("genre_id")
+                channels += LiveTvChannel(
+                    id = obj.stringValue("id") ?: "stalker-${page}-$index-${streamUrl.hashCode()}",
+                    name = name,
+                    streamUrl = streamUrl,
+                    tvgId = obj.stringValue("xmltv_id") ?: obj.stringValue("tvg_id"),
+                    logoUrl = obj.stringValue("logo") ?: obj.stringValue("logo_url"),
+                    group = genreId?.let(genres::get).orEmpty(),
+                    headers = playbackHeaders(session),
+                    stalkerCommand = command,
+                )
+            }
+        }
+        return channels.distinctBy { it.id.ifBlank { it.streamUrl } }
+    }
+
+    suspend fun createLink(session: StalkerSession, command: String): String? {
+        val data = request(
+            settings = session.settings,
+            token = session.token,
+            type = "itv",
+            action = "create_link",
+            extraParameters = mapOf("cmd" to command),
+        ).stalkerJs()
+        return (data.stringValue("cmd") ?: data.stringValue("url") ?: data.stringValue("stream_url"))
+            ?.toStalkerPlayableUrl()
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    fun playbackHeaders(session: StalkerSession): Map<String, String> =
+        baseHeaders(session.settings) + mapOf(
+            "Authorization" to "Bearer ${session.token}",
+        )
+
+    private suspend fun request(
+        settings: LiveTvStalkerSettings,
+        token: String? = null,
+        type: String,
+        action: String,
+        extraParameters: Map<String, String> = emptyMap(),
+    ): JsonObject {
+        val parameters = buildMap {
+            put("type", type)
+            put("action", action)
+            put("JsHttpRequest", "1-xml")
+            if (!token.isNullOrBlank()) put("token", token)
+            if (settings.username.isNotBlank()) put("login", settings.username)
+            if (settings.password.isNotBlank()) put("password", settings.password)
+            putAll(extraParameters)
+        }
+        val url = settings.portalEndpoint() + parameters.entries.joinToString(
+            separator = "&",
+            prefix = if (settings.portalEndpoint().contains("?")) "&" else "?",
+        ) { (key, value) ->
+            "${key.encodeURLParameter()}=${value.encodeURLParameter()}"
+        }
+        val payload = httpGetTextWithHeaders(url, baseHeaders(settings) + tokenHeader(token))
+        return stalkerJson.parseToJsonElement(payload).jsonObject
+    }
+
+    private fun baseHeaders(settings: LiveTvStalkerSettings): Map<String, String> =
+        mapOf(
+            "User-Agent" to "Mozilla/5.0 (QtEmbedded; U; Linux; MAG254; en) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 4 rev: 2721 Mobile Safari/533.3",
+            "X-User-Agent" to "Model: MAG254; Link: Ethernet",
+            "Referer" to settings.portalBaseUrl(),
+            "Cookie" to "mac=${settings.macAddress}; stb_lang=en; timezone=Europe%2FIstanbul",
+        )
+
+    private fun tokenHeader(token: String?): Map<String, String> =
+        if (token.isNullOrBlank()) emptyMap() else mapOf("Authorization" to "Bearer $token")
+}
+
+private val stalkerJson = Json { ignoreUnknownKeys = true; isLenient = true }
+
+private fun LiveTvStalkerSettings.normalized(): LiveTvStalkerSettings =
+    copy(
+        portalUrl = portalUrl.trim().trimEnd('/'),
+        macAddress = macAddress.trim().uppercase(),
+        username = username.trim(),
+        password = password.trim(),
+    )
+
+private fun LiveTvStalkerSettings.portalEndpoint(): String {
+    val normalized = portalUrl.trim().trimEnd('/')
+    return when {
+        normalized.endsWith("portal.php", ignoreCase = true) -> normalized
+        normalized.contains("portal.php?", ignoreCase = true) -> normalized
+        else -> "$normalized/portal.php"
+    }
+}
+
+private fun LiveTvStalkerSettings.portalBaseUrl(): String =
+    portalUrl.trim().substringBefore("/portal.php").trimEnd('/') + "/c/"
+
+private fun String.toStalkerPlayableUrl(): String =
+    trim()
+        .removePrefix("ffmpeg ")
+        .removePrefix("auto ")
+        .substringBefore(' ')
+        .trim()
+
+private fun JsonObject.stalkerJs(): JsonObject =
+    (this["js"] as? JsonObject) ?: this
+
+private fun JsonObject.stringValue(name: String): String? =
+    (this[name] as? JsonPrimitive)?.jsonPrimitive?.contentOrNull?.trim()?.takeIf(String::isNotBlank)
+
+private fun JsonObject.arrayValue(name: String): List<JsonElement> =
+    (this[name] as? JsonArray)?.toList().orEmpty()
+
+private inline fun <K, V> Iterable<JsonElement>.associateNotNull(transform: (JsonElement) -> Pair<K, V>?): Map<K, V> =
+    mapNotNull(transform).toMap()
 
 internal fun parseM3uPlaylist(content: String): List<LiveTvChannel> =
     parseM3uPlaylistData(content).channels

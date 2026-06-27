@@ -33,6 +33,7 @@ data class HomeCatalogSettingsItem(
 data class HomeCatalogSettingsUiState(
     val heroEnabled: Boolean = true,
     val heroAutoScrollEnabled: Boolean = true,
+    val heroMotionPreviewEnabled: Boolean = false,
     val hideUnreleasedContent: Boolean = false,
     val hideCatalogUnderline: Boolean = false,
     val items: List<HomeCatalogSettingsItem> = emptyList(),
@@ -42,6 +43,8 @@ data class HomeCatalogSettingsUiState(
             append(heroEnabled)
             append('|')
             append(heroAutoScrollEnabled)
+            append('|')
+            append(heroMotionPreviewEnabled)
             append('|')
             append(hideUnreleasedContent)
             append('|')
@@ -65,6 +68,7 @@ internal data class HomeCatalogPreference(
 internal data class HomeCatalogSettingsSnapshot(
     val heroEnabled: Boolean,
     val heroAutoScrollEnabled: Boolean,
+    val heroMotionPreviewEnabled: Boolean,
     val hideUnreleasedContent: Boolean,
     val hideCatalogUnderline: Boolean,
     val preferences: Map<String, HomeCatalogPreference>,
@@ -83,6 +87,7 @@ private data class StoredHomeCatalogPreference(
 private data class StoredHomeCatalogSettingsPayload(
     val heroEnabled: Boolean = true,
     val heroAutoScrollEnabled: Boolean = true,
+    val heroMotionPreviewEnabled: Boolean = false,
     val hideUnreleasedContent: Boolean = false,
     val hideCatalogUnderline: Boolean = false,
     val items: List<StoredHomeCatalogPreference> = emptyList(),
@@ -105,6 +110,7 @@ object HomeCatalogSettingsRepository {
     private var preferences: MutableMap<String, StoredHomeCatalogPreference> = mutableMapOf()
     private var heroEnabled = true
     private var heroAutoScrollEnabled = true
+    private var heroMotionPreviewEnabled = false
     private var hideUnreleasedContent = false
     private var hideCatalogUnderline = false
 
@@ -113,6 +119,7 @@ object HomeCatalogSettingsRepository {
         preferences.clear()
         heroEnabled = true
         heroAutoScrollEnabled = true
+        heroMotionPreviewEnabled = false
         hideUnreleasedContent = false
         hideCatalogUnderline = false
         definitions = emptyList()
@@ -127,6 +134,7 @@ object HomeCatalogSettingsRepository {
         preferences.clear()
         heroEnabled = true
         heroAutoScrollEnabled = true
+        heroMotionPreviewEnabled = false
         hideUnreleasedContent = false
         hideCatalogUnderline = false
         _uiState.value = HomeCatalogSettingsUiState()
@@ -161,6 +169,7 @@ object HomeCatalogSettingsRepository {
         return HomeCatalogSettingsSnapshot(
             heroEnabled = heroEnabled,
             heroAutoScrollEnabled = heroAutoScrollEnabled,
+            heroMotionPreviewEnabled = heroMotionPreviewEnabled,
             hideUnreleasedContent = hideUnreleasedContent,
             hideCatalogUnderline = hideCatalogUnderline,
             preferences = preferences.mapValues { (_, value) ->
@@ -186,6 +195,14 @@ object HomeCatalogSettingsRepository {
         ensureLoaded()
         if (heroAutoScrollEnabled == enabled) return
         heroAutoScrollEnabled = enabled
+        publish()
+        persist()
+    }
+
+    fun setHeroMotionPreviewEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (heroMotionPreviewEnabled == enabled) return
+        heroMotionPreviewEnabled = enabled
         publish()
         persist()
     }
@@ -235,6 +252,7 @@ object HomeCatalogSettingsRepository {
         ensureLoaded()
         heroEnabled = true
         heroAutoScrollEnabled = true
+        heroMotionPreviewEnabled = false
         hideUnreleasedContent = false
         hideCatalogUnderline = false
         preferences.clear()
@@ -283,6 +301,7 @@ object HomeCatalogSettingsRepository {
         if (parsedPayload != null) {
             heroEnabled = parsedPayload.heroEnabled
             heroAutoScrollEnabled = parsedPayload.heroAutoScrollEnabled
+            heroMotionPreviewEnabled = parsedPayload.heroMotionPreviewEnabled
             hideUnreleasedContent = parsedPayload.hideUnreleasedContent
             hideCatalogUnderline = parsedPayload.hideCatalogUnderline
             preferences = parsedPayload.items.associateBy { it.key }.toMutableMap()
@@ -384,6 +403,7 @@ object HomeCatalogSettingsRepository {
         _uiState.value = HomeCatalogSettingsUiState(
             heroEnabled = heroEnabled,
             heroAutoScrollEnabled = heroAutoScrollEnabled,
+            heroMotionPreviewEnabled = heroMotionPreviewEnabled,
             hideUnreleasedContent = hideUnreleasedContent,
             hideCatalogUnderline = hideCatalogUnderline,
             items = items,
@@ -396,6 +416,7 @@ object HomeCatalogSettingsRepository {
                 StoredHomeCatalogSettingsPayload(
                     heroEnabled = heroEnabled,
                     heroAutoScrollEnabled = heroAutoScrollEnabled,
+                    heroMotionPreviewEnabled = heroMotionPreviewEnabled,
                     hideUnreleasedContent = hideUnreleasedContent,
                     hideCatalogUnderline = hideCatalogUnderline,
                     items = preferences.values.sortedBy { it.order },

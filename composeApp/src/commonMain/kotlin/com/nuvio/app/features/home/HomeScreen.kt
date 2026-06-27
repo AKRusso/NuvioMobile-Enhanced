@@ -762,6 +762,7 @@ fun HomeScreen(
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 listState = homeListState,
                                 autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled,
+                                motionPreviewEnabled = homeSettingsUiState.heroMotionPreviewEnabled,
                                 metadataRefreshKey = tmdbSettingsUiState.language,
                                 onItemClick = onPosterClick,
                             )

@@ -772,6 +772,7 @@ private fun MainAppContent(
     val cloudLibraryPlayNotConnectedText = stringResource(Res.string.cloud_library_play_not_connected)
     val nativeTabHomeTitle = stringResource(Res.string.compose_nav_home)
     val nativeTabSearchTitle = stringResource(Res.string.compose_nav_search)
+    val nativeTabLiveTvTitle = stringResource(Res.string.compose_nav_live_tv)
     val nativeTabLibraryTitle = stringResource(Res.string.compose_nav_library)
     val nativeTabProfileTitle = stringResource(Res.string.compose_nav_profile)
     val isTraktLibrarySource = libraryUiState.sourceMode == LibrarySourceMode.TRAKT
@@ -817,12 +818,14 @@ private fun MainAppContent(
     LaunchedEffect(
         nativeTabHomeTitle,
         nativeTabSearchTitle,
+        nativeTabLiveTvTitle,
         nativeTabLibraryTitle,
         nativeTabProfileTitle,
     ) {
         NativeTabBridge.publishTabTitles(
             home = nativeTabHomeTitle,
             search = nativeTabSearchTitle,
+            liveTv = nativeTabLiveTvTitle,
             library = nativeTabLibraryTitle,
             profile = nativeTabProfileTitle,
         )
