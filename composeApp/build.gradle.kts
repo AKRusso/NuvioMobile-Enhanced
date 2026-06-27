@@ -319,6 +319,9 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
             freeCompilerArgs += listOf("-Xbinary=bundleId=$iosFrameworkBundleId")
+            if (iosDistribution == "full" && buildType.name == "RELEASE") {
+                freeCompilerArgs += "-Xdisable-phases=DevirtualizationAnalysis"
+            }
         }
     }
     
