@@ -153,6 +153,7 @@
 				B8D8368DBB6E1F38F403E5AA /* Frameworks */,
 				0A1B2C3D4E5F60718293A4BC /* Embed App Extensions */,
 				2DAFDB313E32F227766A2072 /* Resources */,
+				4D8F7A1B9C2E43F0A6B5D812 /* Copy Compose Resources */,
 			);
 			buildRules = (
 			);
@@ -247,6 +248,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\nif [ -z \"$JAVA_HOME\" ] && [ -x \"/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home/bin/java\" ]; then\n  export JAVA_HOME=\"/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home\"\nfi\nif [ -n \"$JAVA_HOME\" ]; then\n  export PATH=\"$JAVA_HOME/bin:/opt/homebrew/bin:$PATH\"\nelse\n  export PATH=\"/opt/homebrew/bin:$PATH\"\nfi\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode\n";
+		};
+		4D8F7A1B9C2E43F0A6B5D812 /* Copy Compose Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Compose Resources";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\ncase \"$PLATFORM_NAME\" in\n  iphonesimulator)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/generated/compose/resourceGenerator/assembledResources/iosSimulatorArm64Main/composeResources\"\n    ;;\n  *)\n    RESOURCE_SRC=\"$SRCROOT/../composeApp/build/generated/compose/resourceGenerator/assembledResources/iosArm64Main/composeResources\"\n    ;;\nesac\nRESOURCE_DST=\"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/compose-resources/composeResources\"\nif [ ! -d \"$RESOURCE_SRC\" ]; then\n  echo \"error: Compose resources not found at $RESOURCE_SRC\"\n  exit 1\nfi\nrm -rf \"$RESOURCE_DST\"\nmkdir -p \"$RESOURCE_DST\"\n/usr/bin/ditto \"$RESOURCE_SRC\" \"$RESOURCE_DST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
