@@ -27,9 +27,6 @@ NuvioMobile Enhanced is our tuned fork of NuvioMobile, built to keep pace with u
 
 The project stays close to the original codebase, but the enhanced branch is where we land improvements like the premium release calendar, richer AI replies, better live TV navigation, and smoother player interactions.
 
-Current enhanced release:
-
-- `v0.2.12 (86)`
 
 ## Enhanced Highlights
 
