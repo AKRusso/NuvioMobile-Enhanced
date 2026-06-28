@@ -47,9 +47,6 @@ The fastest way to get the enhanced build is through GitHub Releases:
 
 - [Latest release](https://github.com/yesnt10/NuvioMobile-Enhanced/releases/latest)
 
-If you are checking a specific build, the current release line is:
-
-- `NuvioMobile Enhanced v0.2.12 (86)`
 
 ## What This Fork Is
 
