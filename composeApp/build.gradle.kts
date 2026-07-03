@@ -329,7 +329,7 @@ kotlin {
                 implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
                 implementation("com.google.code.gson:gson:2.11.0")
                 implementation("io.github.peerless2012:ass-media:0.4.0-beta01")
-                implementation(libs.ktor.client.android)
+                implementation(libs.ktor.client.okhttp)
                 implementation(libs.androidx.media3.exoplayer.hls)
                 implementation(libs.androidx.media3.exoplayer.dash)
                 implementation(libs.androidx.media3.exoplayer.smoothstreaming)
@@ -377,6 +377,7 @@ kotlin {
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
             implementation(libs.supabase.functions)
+            implementation(libs.supabase.realtime)
             implementation(libs.reorderable)
         }
         commonTest.dependencies {

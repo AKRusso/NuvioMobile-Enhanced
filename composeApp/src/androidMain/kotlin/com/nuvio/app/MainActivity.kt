@@ -13,6 +13,7 @@ import com.nuvio.app.core.auth.AuthStorage
 import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.network.DnsOverHttpsSettingsStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
+import com.nuvio.app.core.sync.SyncClientIdentityStorage
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.ai.AiAssistantSettingsStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
@@ -69,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         ThemeSettingsStorage.initialize(applicationContext)
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawableResource(R.color.nuvio_background)
+        SyncClientIdentityStorage.initialize(applicationContext)
         AddonStorage.initialize(applicationContext)
         AiAssistantSettingsStorage.initialize(applicationContext)
         AuthStorage.initialize(applicationContext)

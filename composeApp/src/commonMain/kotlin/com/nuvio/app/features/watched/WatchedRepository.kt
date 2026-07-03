@@ -296,7 +296,6 @@ object WatchedRepository {
 
             applyWatchedDeltaEvents(
                 events = events,
-                lastPushEpochMs = lastPushEpochMs,
                 pullStartedEpochMs = pullStartedEpochMs,
             )
             cursor = maxOf(cursor, events.maxOf { it.eventId })
@@ -316,13 +315,20 @@ object WatchedRepository {
 
     private fun applyWatchedDeltaEvents(
         events: Collection<WatchedDeltaEvent>,
-        lastPushEpochMs: Long,
         pullStartedEpochMs: Long,
     ) {
+        var upsertCount = 0
+        var deleteCount = 0
+        var removedCount = 0
+        var removedByFallbackKeyCount = 0
+        var preservedDuringPullCount = 0
+        var ignoredCount = 0
+
         events.forEach { event ->
             val key = watchedItemKey(event.contentType, event.contentId, event.season, event.episode)
             when (event.operation.lowercase()) {
                 watchedDeltaOperationUpsert -> {
+                    upsertCount += 1
                     itemsByKey[key] = WatchedItem(
                         id = event.contentId,
                         type = event.contentType,
@@ -333,14 +339,64 @@ object WatchedRepository {
                     )
                 }
                 watchedDeltaOperationDelete -> {
+                    deleteCount += 1
                     val localItem = itemsByKey[key]
-                    if (localItem != null && shouldPreserveLocalWatchedItem(localItem, lastPushEpochMs, pullStartedEpochMs)) {
+                    if (localItem != null && wasWatchedItemMarkedDuringPull(localItem, pullStartedEpochMs)) {
+                        preservedDuringPullCount += 1
                         return@forEach
                     }
-                    itemsByKey.remove(key)
+                    val removedItem = itemsByKey.remove(key)
+                    if (removedItem != null) {
+                        removedCount += 1
+                    } else if (
+                        removeWatchedItemByStableDeleteKey(
+                            contentId = event.contentId,
+                            contentType = event.contentType,
+                            season = event.season,
+                            episode = event.episode,
+                        )
+                    ) {
+                        removedCount += 1
+                        removedByFallbackKeyCount += 1
+                    }
+                }
+                else -> {
+                    ignoredCount += 1
                 }
             }
         }
+
+        log.i {
+            "Applied watched delta events total=${events.size} upserts=$upsertCount deletes=$deleteCount " +
+                "removed=$removedCount removedByFallbackKey=$removedByFallbackKeyCount " +
+                "preservedDuringPull=$preservedDuringPullCount ignored=$ignoredCount"
+        }
+    }
+
+    private fun removeWatchedItemByStableDeleteKey(
+        contentId: String,
+        contentType: String,
+        season: Int?,
+        episode: Int?,
+    ): Boolean {
+        val fallbackKey = itemsByKey.entries.firstOrNull { (_, item) ->
+            item.id == contentId &&
+                watchedDeleteTypesCompatible(remoteType = contentType, localType = item.type) &&
+                item.season == season &&
+                item.episode == episode
+        }?.key ?: return false
+
+        itemsByKey.remove(fallbackKey)
+        log.w {
+            "Removed watched delta delete with fallback key contentId=$contentId contentType=$contentType " +
+                "season=$season episode=$episode matchedKey=$fallbackKey"
+        }
+        return true
+    }
+
+    private fun watchedDeleteTypesCompatible(remoteType: String, localType: String): Boolean {
+        if (remoteType.equals(localType, ignoreCase = true)) return true
+        return remoteType.isSeriesLikeWatchedType() && localType.isSeriesLikeWatchedType()
     }
 
     fun toggleWatched(item: WatchedItem) {
@@ -658,10 +714,18 @@ internal fun shouldPreserveLocalWatchedItem(
     lastSuccessfulPushEpochMs: Long,
     pullStartedEpochMs: Long,
 ): Boolean {
-    val markedAt = localItem.markedAtEpochMs
+    val markedAt = normalizeWatchedMarkedAtEpochMs(localItem.markedAtEpochMs)
     val wasMarkedAfterLastPush = lastSuccessfulPushEpochMs > 0L && markedAt > lastSuccessfulPushEpochMs
     val wasMarkedDuringPull = pullStartedEpochMs > 0L && markedAt >= pullStartedEpochMs
     return wasMarkedAfterLastPush || wasMarkedDuringPull
+}
+
+internal fun wasWatchedItemMarkedDuringPull(
+    localItem: WatchedItem,
+    pullStartedEpochMs: Long,
+): Boolean {
+    val markedAt = normalizeWatchedMarkedAtEpochMs(localItem.markedAtEpochMs)
+    return pullStartedEpochMs > 0L && markedAt >= pullStartedEpochMs
 }
 
 internal fun shouldUseTraktWatchedSync(
