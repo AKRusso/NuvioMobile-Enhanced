@@ -8,31 +8,30 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -58,6 +57,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -371,6 +372,11 @@ private data class HeroPageLayer(
     val offset: Float,
 )
 
+private data class HeroMetaItem(
+    val text: String,
+    val emphasized: Boolean = false,
+)
+
 private fun heroPageOffset(
     pagerState: PagerState,
     page: Int,
@@ -429,11 +435,25 @@ private fun HeroContentBlock(
         .filter(String::isNotBlank)
     val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(2)
     val displayRelease = detailMeta?.releaseInfo?.takeIf { it.isNotBlank() } ?: item.releaseInfo
-    val displayImdb = detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating
+    val displayImdb = (detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating)
+        ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
     val displaySummary = detailMeta?.description
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: item.description?.trim()?.takeIf { it.isNotBlank() }
+    val displayTypeLabel = heroTypeLabel(displayType)
+    val heroMetaItems = buildList {
+        add(HeroMetaItem(text = displayTypeLabel, emphasized = true))
+        displayGenres.forEach { genre ->
+            add(HeroMetaItem(text = genre))
+        }
+        displayRelease?.takeIf { it.isNotBlank() }?.let { info ->
+            add(HeroMetaItem(text = heroReleaseYearLabel(info)))
+        }
+        displayImdb?.takeIf { it.isNotBlank() }?.let { rating ->
+            add(HeroMetaItem(text = "IMDb $rating"))
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -497,72 +517,92 @@ private fun HeroContentBlock(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-        HeroMetaRow(layout = layout) {
-            HeroMetaChip(
-                text = heroTypeLabel(displayType),
-                emphasized = true,
-            )
-        }
-
-        if (displayGenres.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            HeroMetaRow(layout = layout) {
-                displayGenres.forEach { genre ->
-                    HeroMetaChip(
-                        text = genre,
-                        emphasized = true,
-                    )
-                }
-            }
-        }
-
-        if (!displayRelease.isNullOrBlank() || !displayImdb.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(8.dp))
-            HeroMetaRow(layout = layout) {
-                displayRelease?.takeIf { it.isNotBlank() }?.let { info ->
-                    HeroMetaChip(
-                        text = heroReleaseYearLabel(info),
-                        emphasized = true,
-                    )
-                }
-                displayImdb?.takeIf { it.isNotBlank() }?.let { rating ->
-                    HeroMetaChip(
-                        text = "IMDb $rating",
-                        emphasized = true,
-                    )
-                }
-            }
-        }
+        HeroMetaGlassRail(
+            items = heroMetaItems,
+            layout = layout,
+        )
 
         displaySummary?.let { summary ->
             Spacer(modifier = Modifier.height(12.dp))
-            val summaryShape = RoundedCornerShape(20.dp)
+            HeroSummaryCard(
+                summary = summary,
+                layout = layout,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroSummaryCard(
+    summary: String,
+    layout: HomeHeroLayout,
+) {
+    val summaryLabel = stringResource(Res.string.meta_section_overview_title)
+    val summaryShape = RoundedCornerShape(24.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(summaryShape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.72f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.86f),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.18f),
+                shape = summaryShape,
+            )
+            .semantics(mergeDescendants = true) {
+                contentDescription = "$summaryLabel: $summary"
+            },
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(summaryShape)
+                    .width(3.dp)
+                    .height(if (layout.isTablet) 62.dp else 52.dp)
+                    .clip(RoundedCornerShape(999.dp))
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.44f),
-                                MaterialTheme.colorScheme.background.copy(alpha = 0.62f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.96f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
                             ),
                         ),
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.16f),
-                        shape = summaryShape,
                     ),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
+                    text = summaryLabel.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.92f),
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
                     text = summary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    style = if (layout.isTablet) {
+                        MaterialTheme.typography.bodyLarge
+                    } else {
+                        MaterialTheme.typography.bodyMedium
+                    },
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.96f),
                     fontWeight = FontWeight.SemiBold,
-                    textAlign = if (layout.isTablet) TextAlign.Start else TextAlign.Center,
-                    maxLines = if (layout.isTablet) 3 else 2,
+                    textAlign = TextAlign.Start,
+                    maxLines = if (layout.isTablet) 4 else 3,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -570,23 +610,55 @@ private fun HeroContentBlock(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun HeroMetaRow(
+private fun HeroMetaGlassRail(
+    items: List<HeroMetaItem>,
     layout: HomeHeroLayout,
-    content: @Composable RowScope.() -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = if (layout.isTablet) {
-            Arrangement.spacedBy(8.dp, Alignment.Start)
-        } else {
-            Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-        },
-        verticalAlignment = Alignment.CenterVertically,
-        content = content,
-    )
+    if (items.isEmpty()) return
+
+    val railShape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(if (layout.isTablet) 0.88f else 0.96f)
+                .widthIn(max = if (layout.isTablet) 560.dp else 430.dp)
+                .clip(railShape)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.42f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.24f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                        ),
+                    ),
+                )
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.14f),
+                    shape = railShape,
+                ),
+        ) {
+            FlowRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(
+                    space = 7.dp,
+                    alignment = if (layout.isTablet) Alignment.Start else Alignment.CenterHorizontally,
+                ),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                items.forEach { item ->
+                    HeroMetaLabel(item = item)
+                }
+            }
+        }
+    }
 }
 
 private suspend fun fetchHeroDetailMeta(item: MetaPreview): MetaDetails? =
@@ -598,32 +670,34 @@ private suspend fun fetchHeroDetailMeta(item: MetaPreview): MetaDetails? =
     }.getOrNull()
 
 @Composable
-private fun HeroMetaChip(
-    text: String,
-    emphasized: Boolean = false,
+private fun HeroMetaLabel(
+    item: HeroMetaItem,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.background.copy(alpha = if (emphasized) 0.42f else 0.32f),
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        shape = RoundedCornerShape(50),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (emphasized) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.48f)
-            } else {
-                MaterialTheme.colorScheme.onBackground.copy(alpha = 0.14f)
-            },
-        ),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = if (emphasized) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+    val modifier = if (item.emphasized) {
+        Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    } else {
+        Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
+            .padding(horizontal = 9.dp, vertical = 4.dp)
     }
+
+    Text(
+        text = item.text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelMedium,
+        color = if (item.emphasized) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onBackground.copy(alpha = 0.88f)
+        },
+        fontWeight = if (item.emphasized) FontWeight.Black else FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable

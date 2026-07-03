@@ -91,22 +91,29 @@ import com.nuvio.app.features.cloud.CloudLibraryItemType
 import com.nuvio.app.features.cloud.CloudLibraryRepository
 import com.nuvio.app.features.cloud.CloudLibraryUiState
 import com.nuvio.app.features.debrid.DebridSettingsRepository
+import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.buildHomeReleaseRadarItems
+import com.nuvio.app.features.home.homeRadarDetailsRequestKey
+import com.nuvio.app.features.home.libraryItemKeyForHomeRadar
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomePosterCard
+import com.nuvio.app.features.home.components.HomeReleaseRadarSection
 import com.nuvio.app.features.home.components.HomeSkeletonRow
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watching.application.WatchingState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -151,6 +158,8 @@ fun LibraryScreen(
     var releaseCalendarEvents by remember { mutableStateOf(releaseCalendarFallbackEvents) }
     var releaseCalendarLoading by remember { mutableStateOf(false) }
     var releaseCalendarLoadedKey by remember { mutableStateOf<String?>(null) }
+    val releaseRadarDetailsRequestKey = remember(uiState.items) { uiState.items.homeRadarDetailsRequestKey() }
+    var releaseRadarDetailsByKey by remember { mutableStateOf<Map<String, MetaDetails>>(emptyMap()) }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedType = remember(selectedTypeName) {
@@ -226,6 +235,33 @@ fun LibraryScreen(
         } finally {
             releaseCalendarLoading = false
         }
+    }
+
+    LaunchedEffect(sourceMode, releaseRadarDetailsRequestKey) {
+        if (sourceMode == LibraryViewMode.Cloud || releaseRadarDetailsRequestKey.isBlank()) {
+            releaseRadarDetailsByKey = emptyMap()
+            return@LaunchedEffect
+        }
+        val itemsSnapshot = uiState.items
+        releaseRadarDetailsByKey = withContext(Dispatchers.Default) {
+            resolveLibraryReleaseRadarDetails(itemsSnapshot)
+        }
+    }
+
+    val todayIsoDate = CurrentDateProvider.todayIsoDate()
+    val releaseRadarItems = remember(
+        todayIsoDate,
+        uiState.items,
+        releaseRadarDetailsByKey,
+    ) {
+        buildHomeReleaseRadarItems(
+            todayIsoDate = todayIsoDate,
+            continueWatchingItems = emptyList(),
+            libraryItems = uiState.items,
+            catalogSections = emptyList(),
+            resolvedLibraryDetails = releaseRadarDetailsByKey,
+            includeRecentPastReleases = false,
+        )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -381,6 +417,19 @@ fun LibraryScreen(
                             onSectionViewAllClick = onSectionViewAllClick,
                             onPosterLongClick = onPosterLongClick,
                         )
+                        if (releaseRadarItems.isNotEmpty()) {
+                            item(key = LIBRARY_RELEASE_RADAR_SECTION_KEY) {
+                                HomeReleaseRadarSection(
+                                    items = releaseRadarItems,
+                                    modifier = Modifier.padding(bottom = 12.dp),
+                                    sectionPadding = 16.dp,
+                                    onPosterClick = onPosterClick?.let { posterClick ->
+                                        { preview -> posterClick(preview.toLibraryItem(savedAtEpochMs = 0L)) }
+                                    },
+                                    onContinueWatchingClick = null,
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1865,6 +1914,26 @@ private fun buildLibraryReleaseCalendarFallbackEvents(items: List<LibraryItem>):
         .sortedWith(compareBy<LibraryCalendarEvent> { it.date.iso }.thenBy { it.item.name.lowercase() })
         .toList()
 
+private suspend fun resolveLibraryReleaseRadarDetails(items: List<LibraryItem>): Map<String, MetaDetails> =
+    coroutineScope {
+        val resolvedDetails = mutableListOf<Pair<String, MetaDetails>>()
+        items
+            .filter(LibraryItem::isLibrarySeries)
+            .take(LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT)
+            .chunked(LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY)
+            .forEach { chunk ->
+                resolvedDetails += chunk.map { item ->
+                    async {
+                        val details = runCatching {
+                            MetaDetailsRepository.fetch(item.type, item.id)
+                        }.getOrNull() ?: return@async null
+                        libraryItemKeyForHomeRadar(item) to details
+                    }
+                }.awaitAll().filterNotNull()
+            }
+        resolvedDetails.toMap()
+    }
+
 private suspend fun buildLibraryEpisodeCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> =
     coroutineScope {
         val events = mutableListOf<LibraryCalendarEvent>()
@@ -2055,3 +2124,6 @@ private fun LazyListScope.librarySections(
 }
 
 private const val LIBRARY_SECTION_PREVIEW_LIMIT = 18
+private const val LIBRARY_RELEASE_RADAR_SECTION_KEY = "library_release_radar"
+private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
+private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4
