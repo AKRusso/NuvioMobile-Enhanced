@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -66,6 +68,7 @@ import org.jetbrains.compose.resources.stringResource
 private val ContinueWatchingStatusBadgeShape = RoundedCornerShape(4.dp)
 private val ContinueWatchingNewEpisodeBadgeColor = Color(0xFF1D4ED8)
 private val ContinueWatchingNewSeasonBadgeColor = Color(0xFFB45309)
+private val ContinueWatchingSmartSignalShape = RoundedCornerShape(999.dp)
 private const val ContinueWatchingLandscapeCardScale = 1.2f
 
 internal fun continueWatchingLandscapeCardWidth(basePosterWidthDp: Int): Dp =
@@ -587,6 +590,7 @@ private fun ContinueWatchingCard(
     }
     val episodeTitle = item.episodeTitle?.trim()?.takeIf { it.isNotBlank() } ?: compactAirDateText
     val badgeText = continueWatchingCardBadgeText(item = item, compactAirDateText = compactAirDateText)
+    val smartSignalText = item.localizedSmartSignal(compactAirDateText)
     val backgroundColor = MaterialTheme.colorScheme.background
     val badgeBackground = when {
         item.isNewSeasonRelease -> ContinueWatchingNewSeasonBadgeColor
@@ -632,6 +636,12 @@ private fun ContinueWatchingCard(
                 contentScale = ContentScale.Crop,
             )
         }
+        ContinueWatchingSmartSignalPill(
+            text = smartSignalText,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(cardMetrics.badgeInset),
+        )
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -801,6 +811,10 @@ private fun ContinueWatchingWideCard(
             val wideMetaLine = localizedContinueWatchingMetaLine(item)
             val episodeTitle = item.episodeTitle?.trim()?.takeIf { it.isNotBlank() }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                ContinueWatchingSmartSignalPill(
+                    text = item.localizedSmartSignal(),
+                    compact = isCompact,
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -938,6 +952,13 @@ private fun ContinueWatchingPosterCard(
                     UpNextBadge(text = badgeText, compact = true, textSize = layout.posterBadgeTextSize)
                 }
             }
+            ContinueWatchingSmartSignalPill(
+                text = item.localizedSmartSignal(),
+                compact = true,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp),
+            )
             if (item.progressFraction > 0f) {
                 Box(
                     modifier = Modifier
@@ -1055,6 +1076,67 @@ private fun UpNextBadge(
             maxLines = 1,
         )
     }
+}
+
+@Composable
+private fun ContinueWatchingSmartSignalPill(
+    text: String,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    Row(
+        modifier = modifier
+            .clip(ContinueWatchingSmartSignalShape)
+            .background(Color.Black.copy(alpha = 0.40f))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), ContinueWatchingSmartSignalShape)
+            .padding(
+                horizontal = if (compact) 8.dp else 9.dp,
+                vertical = if (compact) 5.dp else 6.dp,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.AutoAwesome,
+            contentDescription = null,
+            modifier = Modifier.size(if (compact) 12.dp else 13.dp),
+            tint = Color.White.copy(alpha = 0.92f),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = if (compact) 9.sp else 10.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White.copy(alpha = 0.92f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun ContinueWatchingItem.localizedSmartSignal(compactAirDateText: String? = null): String =
+    when {
+        isReleaseAlert && isNewSeasonRelease -> stringResource(Res.string.home_continue_watching_signal_new_season)
+        isReleaseAlert -> stringResource(Res.string.home_continue_watching_signal_new_episode)
+        isNextUp && compactAirDateText != null -> stringResource(Res.string.home_continue_watching_signal_scheduled)
+        isNextUp -> stringResource(Res.string.home_continue_watching_signal_next_ready)
+        remainingMinutesOrNull()?.let { minutes -> minutes <= 30L } == true ->
+            stringResource(Res.string.home_continue_watching_signal_final_stretch)
+        remainingMinutesOrNull()?.let { minutes -> minutes <= 75L } == true ->
+            stringResource(Res.string.home_continue_watching_signal_quick_finish)
+        progressFraction >= 0.70f -> stringResource(Res.string.home_continue_watching_signal_almost_there)
+        else -> stringResource(Res.string.home_continue_watching_signal_resume_ready)
+    }
+
+private fun ContinueWatchingItem.remainingMinutesOrNull(): Long? {
+    if (durationMs <= 0L || progressFraction <= 0f) return null
+    val effectivePositionMs = when {
+        resumePositionMs > 0L -> resumePositionMs
+        else -> (durationMs * progressFraction.coerceIn(0f, 1f)).toLong()
+    }
+    return ((durationMs - effectivePositionMs).coerceAtLeast(0L) / 60_000L).coerceAtLeast(1L)
 }
 
 internal data class ContinueWatchingLayout(

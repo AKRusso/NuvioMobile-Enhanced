@@ -68,6 +68,7 @@ import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.WatchProgressUiState
 import kotlin.math.roundToInt
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.*
 import nuvio.composeapp.generated.resources.compose_nav_profile
 import nuvio.composeapp.generated.resources.home_hero_type_movie
 import nuvio.composeapp.generated.resources.home_hero_type_series
@@ -699,49 +700,210 @@ private fun ProfileTasteCard(stats: ProfileInsightsStats) {
     val topSignal = stats.topGenre ?: fallbackType ?: stringResource(Res.string.profile_insights_taste_empty)
 
     NuvioSurfaceCard {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Surface(
-                modifier = Modifier.size(52.dp),
-                color = tokens.colors.accent.copy(alpha = tokens.opacity.pressed),
-                shape = RoundedCornerShape(18.dp),
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoAwesome,
-                        contentDescription = null,
-                        tint = tokens.colors.accent,
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    color = tokens.colors.accent.copy(alpha = tokens.opacity.pressed),
+                    shape = RoundedCornerShape(18.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = tokens.colors.accent,
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.profile_insights_taste_dna_title),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = tokens.colors.textMuted,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = topSignal,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = stringResource(Res.string.profile_insights_taste_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = tokens.colors.textMuted,
                     )
                 }
             }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Text(
-                    text = stringResource(Res.string.profile_insights_taste_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = tokens.colors.textMuted,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = topSignal,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = tokens.colors.textPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = stringResource(Res.string.profile_insights_taste_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = tokens.colors.textMuted,
-                )
+            if (stats.tasteSegments.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    stats.tasteSegments.forEach { segment ->
+                        ProfileTasteSegmentRow(segment = segment)
+                    }
+                }
+            }
+            ProfileTasteBalanceBar(stats = stats)
+            if (stats.dnaChips.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stats.dnaChips.chunked(2).forEach { rowChips ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowChips.forEach { chip ->
+                                ProfileTasteDnaChip(
+                                    text = chip.localizedLabel(),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                            repeat(2 - rowChips.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ProfileTasteSegmentRow(segment: ProfileTasteSegment) {
+    val tokens = MaterialTheme.nuvio
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = segment.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "${(segment.share * 100f).roundToInt().coerceIn(1, 100)}%",
+                style = MaterialTheme.typography.labelSmall,
+                color = tokens.colors.textMuted,
+                maxLines = 1,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { segment.share.coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(5.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            color = tokens.colors.accent,
+            trackColor = tokens.colors.borderSubtle,
+        )
+    }
+}
+
+@Composable
+private fun ProfileTasteBalanceBar(stats: ProfileInsightsStats) {
+    val tokens = MaterialTheme.nuvio
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.profile_insights_taste_balance_title),
+                style = MaterialTheme.typography.labelMedium,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stats.typeBalanceLabel.localizedLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = tokens.colors.textMuted,
+                maxLines = 1,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(tokens.colors.borderSubtle),
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(stats.movieShare.coerceIn(0.05f, 0.95f))
+                    .fillMaxSize()
+                    .background(tokens.colors.accent),
+            )
+            Box(
+                modifier = Modifier
+                    .weight((1f - stats.movieShare).coerceIn(0.05f, 0.95f))
+                    .fillMaxSize()
+                    .background(tokens.colors.textMuted.copy(alpha = 0.42f)),
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(Res.string.home_hero_type_movie),
+                style = MaterialTheme.typography.labelSmall,
+                color = tokens.colors.textMuted,
+            )
+            Text(
+                text = stringResource(Res.string.home_hero_type_series),
+                style = MaterialTheme.typography.labelSmall,
+                color = tokens.colors.textMuted,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileTasteDnaChip(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(tokens.colors.accent.copy(alpha = tokens.opacity.pressed))
+            .border(1.dp, tokens.colors.accent.copy(alpha = 0.22f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Rounded.AutoAwesome,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
+            tint = tokens.colors.accent,
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = tokens.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -766,6 +928,21 @@ private fun buildProfileInsightsStats(
     val progressEntries = watchProgressState.entries
     val libraryItems = libraryState.items
     val watchedItems = watchedState.items
+    val normalizedTypes = libraryItems.map { item -> item.type } +
+        progressEntries.map { entry -> entry.parentMetaType } +
+        watchedItems.map { item -> item.type }
+    val typedCounts = normalizedTypes
+        .mapNotNull(String::profileNormalizedType)
+        .groupingBy { type -> type }
+        .eachCount()
+    val movieCount = typedCounts["movie"] ?: 0
+    val seriesCount = typedCounts["series"] ?: 0
+    val movieSeriesTotal = (movieCount + seriesCount).coerceAtLeast(0)
+    val movieShare = if (movieSeriesTotal > 0) {
+        movieCount.toFloat() / movieSeriesTotal.toFloat()
+    } else {
+        0.5f
+    }
 
     return ProfileInsightsStats(
         continueCount = progressEntries.count { entry ->
@@ -786,9 +963,29 @@ private fun buildProfileInsightsStats(
             .map(WatchProgressEntry::toSmartResumeSignal)
             .firstOrNull(),
         topGenre = libraryItems.profileTopGenre(),
-        topType = (libraryItems.map { item -> item.type } + progressEntries.map { entry -> entry.parentMetaType })
+        topType = normalizedTypes
             .mapNotNull(String::profileNormalizedType)
             .profileMostCommonValue(),
+        tasteSegments = libraryItems.profileTopGenreSegments(limit = 3),
+        movieShare = movieShare,
+        typeBalanceLabel = when {
+            movieSeriesTotal == 0 -> ProfileTasteBalanceLabel.Learning
+            movieShare >= 0.62f -> ProfileTasteBalanceLabel.MovieLeaning
+            movieShare <= 0.38f -> ProfileTasteBalanceLabel.SeriesLeaning
+            else -> ProfileTasteBalanceLabel.Balanced
+        },
+        dnaChips = buildProfileTasteDnaChips(
+            libraryCount = libraryItems.size,
+            continueCount = progressEntries.count { entry -> entry.isResumable && entry.progressFraction >= 0.02f },
+            completedCount = watchedItems.size,
+            recentActivityCount = watchedItems.count { it.markedAtEpochMs >= recentCutoff } +
+                progressEntries.count { it.lastUpdatedEpochMs >= recentCutoff },
+            upcomingCount = libraryItems.count { item ->
+                item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true
+            },
+            movieShare = movieShare,
+            movieSeriesTotal = movieSeriesTotal,
+        ),
     )
 }
 
@@ -832,6 +1029,48 @@ private fun List<LibraryItem>.profileTopGenre(): String? =
         .eachCount()
         .maxByOrNull { (_, count) -> count }
         ?.key
+
+private fun List<LibraryItem>.profileTopGenreSegments(limit: Int): List<ProfileTasteSegment> {
+    val counts = asSequence()
+        .flatMap { item -> item.genres.asSequence() }
+        .map { genre -> genre.trim() }
+        .filter { genre -> genre.isNotBlank() }
+        .groupingBy { genre -> genre }
+        .eachCount()
+        .toList()
+        .sortedByDescending { (_, count) -> count }
+    val total = counts.sumOf { (_, count) -> count }.coerceAtLeast(1)
+    return counts
+        .take(limit)
+        .map { (genre, count) ->
+            ProfileTasteSegment(
+                label = genre,
+                share = count.toFloat() / total.toFloat(),
+            )
+        }
+}
+
+private fun buildProfileTasteDnaChips(
+    libraryCount: Int,
+    continueCount: Int,
+    completedCount: Int,
+    recentActivityCount: Int,
+    upcomingCount: Int,
+    movieShare: Float,
+    movieSeriesTotal: Int,
+): List<ProfileTasteDnaChip> = buildList {
+    when {
+        movieSeriesTotal == 0 -> add(ProfileTasteDnaChip.Learning)
+        movieShare >= 0.62f -> add(ProfileTasteDnaChip.MovieLeaning)
+        movieShare <= 0.38f -> add(ProfileTasteDnaChip.SeriesLeaning)
+        else -> add(ProfileTasteDnaChip.Balanced)
+    }
+    if (continueCount >= 3) add(ProfileTasteDnaChip.BingeReady)
+    if (recentActivityCount >= 5) add(ProfileTasteDnaChip.HighActivity)
+    if (libraryCount >= 12) add(ProfileTasteDnaChip.Collector)
+    if (upcomingCount > 0) add(ProfileTasteDnaChip.RadarWatcher)
+    if (completedCount >= 10) add(ProfileTasteDnaChip.Completionist)
+}.distinct().take(4)
 
 private fun LibraryItem.profileReleaseIsoDate(): String? =
     releaseInfo.profileExtractIsoDate()
@@ -888,6 +1127,10 @@ private data class ProfileInsightsStats(
     val smartResume: SmartResumeSignal?,
     val topGenre: String?,
     val topType: String?,
+    val tasteSegments: List<ProfileTasteSegment>,
+    val movieShare: Float,
+    val typeBalanceLabel: ProfileTasteBalanceLabel,
+    val dnaChips: List<ProfileTasteDnaChip>,
 )
 
 private data class SmartResumeSignal(
@@ -903,6 +1146,53 @@ private data class ProfileInsightTile(
     val label: String,
     val caption: String,
 )
+
+private data class ProfileTasteSegment(
+    val label: String,
+    val share: Float,
+)
+
+private enum class ProfileTasteBalanceLabel {
+    Learning,
+    MovieLeaning,
+    SeriesLeaning,
+    Balanced,
+}
+
+private enum class ProfileTasteDnaChip {
+    Learning,
+    MovieLeaning,
+    SeriesLeaning,
+    Balanced,
+    BingeReady,
+    HighActivity,
+    Collector,
+    RadarWatcher,
+    Completionist,
+}
+
+@Composable
+private fun ProfileTasteBalanceLabel.localizedLabel(): String =
+    when (this) {
+        ProfileTasteBalanceLabel.Learning -> stringResource(Res.string.profile_insights_taste_balance_learning)
+        ProfileTasteBalanceLabel.MovieLeaning -> stringResource(Res.string.profile_insights_taste_balance_movie)
+        ProfileTasteBalanceLabel.SeriesLeaning -> stringResource(Res.string.profile_insights_taste_balance_series)
+        ProfileTasteBalanceLabel.Balanced -> stringResource(Res.string.profile_insights_taste_balance_balanced)
+    }
+
+@Composable
+private fun ProfileTasteDnaChip.localizedLabel(): String =
+    when (this) {
+        ProfileTasteDnaChip.Learning -> stringResource(Res.string.profile_insights_taste_chip_learning)
+        ProfileTasteDnaChip.MovieLeaning -> stringResource(Res.string.profile_insights_taste_chip_movie)
+        ProfileTasteDnaChip.SeriesLeaning -> stringResource(Res.string.profile_insights_taste_chip_series)
+        ProfileTasteDnaChip.Balanced -> stringResource(Res.string.profile_insights_taste_chip_balanced)
+        ProfileTasteDnaChip.BingeReady -> stringResource(Res.string.profile_insights_taste_chip_binge)
+        ProfileTasteDnaChip.HighActivity -> stringResource(Res.string.profile_insights_taste_chip_active)
+        ProfileTasteDnaChip.Collector -> stringResource(Res.string.profile_insights_taste_chip_collector)
+        ProfileTasteDnaChip.RadarWatcher -> stringResource(Res.string.profile_insights_taste_chip_radar)
+        ProfileTasteDnaChip.Completionist -> stringResource(Res.string.profile_insights_taste_chip_completionist)
+    }
 
 private const val ProfileInsightsMinuteMs = 60_000L
 private const val ProfileInsightsRecentWindowMs = 7L * 24L * 60L * 60L * 1000L

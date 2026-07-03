@@ -30,6 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -608,6 +609,7 @@ private fun HomeReleaseRadarSectionContent(
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)?,
 ) {
     val tokens = MaterialTheme.nuvio
+    val digest = remember(items) { HomeReleaseRadarDigest.from(items) }
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap + NuvioTokens.Space.s2),
@@ -661,6 +663,7 @@ private fun HomeReleaseRadarSectionContent(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            HomeReleaseRadarDigestRow(digest = digest)
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
@@ -738,6 +741,12 @@ private fun HomeReleaseRadarCard(
                     .align(Alignment.TopStart)
                     .padding(9.dp),
             )
+            HomeReleaseSignalBadge(
+                item = item,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(9.dp),
+            )
             Text(
                 text = item.category.localizedCategory(),
                 modifier = Modifier
@@ -771,6 +780,64 @@ private fun HomeReleaseRadarCard(
 }
 
 @Composable
+private fun HomeReleaseRadarDigestRow(digest: HomeReleaseRadarDigest) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HomeReleaseRadarDigestPill(
+            value = digest.todayCount,
+            label = stringResource(Res.string.home_release_radar_digest_today),
+            modifier = Modifier.weight(1f),
+        )
+        HomeReleaseRadarDigestPill(
+            value = digest.weekCount,
+            label = stringResource(Res.string.home_release_radar_digest_week),
+            modifier = Modifier.weight(1f),
+        )
+        HomeReleaseRadarDigestPill(
+            value = digest.profileSignalCount,
+            label = stringResource(Res.string.home_release_radar_digest_profile),
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun HomeReleaseRadarDigestPill(
+    value: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(tokens.colors.surface.copy(alpha = 0.72f))
+            .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(18.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = value.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            color = tokens.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = tokens.colors.textMuted,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun HomeReleaseTimingBadge(
     item: HomeReleaseRadarItem,
     modifier: Modifier = Modifier,
@@ -786,6 +853,28 @@ private fun HomeReleaseTimingBadge(
             text = item.localizedTiming(),
             style = MaterialTheme.typography.labelSmall,
             color = Color.Black,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun HomeReleaseSignalBadge(
+    item: HomeReleaseRadarItem,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(Color.Black.copy(alpha = 0.42f))
+            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 9.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = item.localizedRadarSignal(),
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.90f),
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
@@ -880,5 +969,34 @@ private fun HomeReleaseRadarItem.localizedTiming(): String {
         days > 1 -> stringResource(Res.string.home_release_radar_in_days, days)
         days == -1 -> stringResource(Res.string.home_release_radar_yesterday)
         else -> stringResource(Res.string.home_release_radar_days_ago, days.absoluteValue)
+    }
+}
+
+@Composable
+private fun HomeReleaseRadarItem.localizedRadarSignal(): String =
+    when {
+        category == HomeReleaseRadarCategory.NextUp -> stringResource(Res.string.home_release_radar_signal_next_up)
+        category == HomeReleaseRadarCategory.Episode -> stringResource(Res.string.home_release_radar_signal_library)
+        daysFromToday == 0 -> stringResource(Res.string.home_release_radar_signal_today)
+        (daysFromToday ?: Int.MAX_VALUE) in 1..7 -> stringResource(Res.string.home_release_radar_signal_week)
+        else -> stringResource(Res.string.home_release_radar_signal_upcoming)
+    }
+
+private data class HomeReleaseRadarDigest(
+    val todayCount: Int,
+    val weekCount: Int,
+    val profileSignalCount: Int,
+) {
+    companion object {
+        fun from(items: List<HomeReleaseRadarItem>): HomeReleaseRadarDigest =
+            HomeReleaseRadarDigest(
+                todayCount = items.count { item -> item.daysFromToday == 0 },
+                weekCount = items.count { item -> item.daysFromToday?.let { days -> days in 0..7 } == true },
+                profileSignalCount = items.count { item ->
+                    item.category == HomeReleaseRadarCategory.NextUp ||
+                        item.category == HomeReleaseRadarCategory.Episode ||
+                        item.category == HomeReleaseRadarCategory.Series
+                },
+            )
     }
 }

@@ -236,7 +236,7 @@ internal fun buildHomeReleaseRadarItems(
     libraryItems: List<LibraryItem>,
     catalogSections: List<HomeCatalogSection>,
     resolvedLibraryDetails: Map<String, MetaDetails>,
-    includeRecentPastReleases: Boolean = true,
+    includeRecentPastReleases: Boolean = false,
 ): List<HomeReleaseRadarItem> {
     val earliestReleaseDay = if (includeRecentPastReleases) {
         -HomeReleaseRadarRecentWindowDays
@@ -315,6 +315,7 @@ internal fun buildHomeReleaseRadarItems(
         .distinctBy { item -> item.key }
         .sortedWith(
             compareBy<HomeReleaseRadarItem> { item -> item.daysFromToday?.releaseRadarSortWeight() ?: Int.MAX_VALUE }
+                .thenByDescending { item -> item.releaseRadarSignalWeight() }
                 .thenBy { item -> item.title.lowercase() }
         )
         .take(HomeReleaseRadarItemLimit)
@@ -479,6 +480,15 @@ private fun daysBetweenIsoDates(startIsoDate: String, targetIsoDate: String): In
 
 private fun Int.releaseRadarSortWeight(): Int =
     if (this >= 0) this else HomeReleaseRadarUpcomingWindowDays + absoluteValue
+
+private fun HomeReleaseRadarItem.releaseRadarSignalWeight(): Int =
+    when (category) {
+        HomeReleaseRadarCategory.NextUp -> 5
+        HomeReleaseRadarCategory.Episode -> 4
+        HomeReleaseRadarCategory.Series -> 3
+        HomeReleaseRadarCategory.Movie -> 2
+        HomeReleaseRadarCategory.Catalog -> 1
+    }
 
 private fun String?.ratingScoreOrNull(): Double? {
     val normalized = this
