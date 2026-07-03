@@ -867,6 +867,22 @@ fun HomeScreen(
                     }
                 }
 
+                if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
+                    item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
+                        HomeContinueWatchingSection(
+                            items = continueWatchingItems,
+                            style = continueWatchingPreferences.style,
+                            useEpisodeThumbnails = continueWatchingPreferences.useEpisodeThumbnails,
+                            blurNextUp = continueWatchingPreferences.blurNextUp,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                            sectionPadding = homeSectionPadding,
+                            layout = continueWatchingLayout,
+                            onItemClick = onContinueWatchingClick,
+                            onItemLongPress = onContinueWatchingLongPress,
+                        )
+                    }
+                }
+
                 if (conciergeState != null) {
                     item(key = HOME_CONCIERGE_SECTION_KEY) {
                         HomeConciergeSection(
@@ -881,21 +897,6 @@ fun HomeScreen(
 
                 when {
                     !hasActiveAddons && !hasRenderableCollectionRows && !hasPremiumHomeRows -> {
-                        if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
-                                HomeContinueWatchingSection(
-                                    items = continueWatchingItems,
-                                    style = continueWatchingPreferences.style,
-                                    useEpisodeThumbnails = continueWatchingPreferences.useEpisodeThumbnails,
-                                    blurNextUp = continueWatchingPreferences.blurNextUp,
-                                    modifier = Modifier.padding(bottom = 12.dp),
-                                    sectionPadding = homeSectionPadding,
-                                    layout = continueWatchingLayout,
-                                    onItemClick = onContinueWatchingClick,
-                                    onItemLongPress = onContinueWatchingLongPress,
-                                )
-                            }
-                        }
                         item {
                             HomeEmptyStateCard(
                                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -906,21 +907,6 @@ fun HomeScreen(
                     }
 
                     homeUiState.isLoading && homeUiState.sections.isEmpty() && !hasRenderableCollectionRows && !hasPremiumHomeRows -> {
-                        if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
-                                HomeContinueWatchingSection(
-                                    items = continueWatchingItems,
-                                    style = continueWatchingPreferences.style,
-                                    useEpisodeThumbnails = continueWatchingPreferences.useEpisodeThumbnails,
-                                    blurNextUp = continueWatchingPreferences.blurNextUp,
-                                    modifier = Modifier.padding(bottom = 12.dp),
-                                    sectionPadding = homeSectionPadding,
-                                    layout = continueWatchingLayout,
-                                    onItemClick = onContinueWatchingClick,
-                                    onItemLongPress = onContinueWatchingLongPress,
-                                )
-                            }
-                        }
                         items(3) {
                             HomeSkeletonRow(
                                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -955,22 +941,6 @@ fun HomeScreen(
                     }
 
                     else -> {
-                        if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
-                            item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
-                                HomeContinueWatchingSection(
-                                    items = continueWatchingItems,
-                                    style = continueWatchingPreferences.style,
-                                    useEpisodeThumbnails = continueWatchingPreferences.useEpisodeThumbnails,
-                                    blurNextUp = continueWatchingPreferences.blurNextUp,
-                                    modifier = Modifier.padding(bottom = 12.dp),
-                                    sectionPadding = homeSectionPadding,
-                                    layout = continueWatchingLayout,
-                                    onItemClick = onContinueWatchingClick,
-                                    onItemLongPress = onContinueWatchingLongPress,
-                                )
-                            }
-                        }
-
                         enabledHomeItems.forEach { settingsItem ->
                             if (settingsItem.isCollection) {
                                 val collection = collectionsMap[settingsItem.key]
