@@ -36,12 +36,14 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.details.SeriesPrimaryAction
 import com.nuvio.app.features.details.seriesPrimaryAction
 import com.nuvio.app.features.home.components.HomeCatalogRowSection
+import com.nuvio.app.features.home.components.HomeConciergeSection
 import com.nuvio.app.features.home.components.HomeContinueWatchingSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomeHeroReservedSpace
 import com.nuvio.app.features.home.components.HomeHeroSection
 import com.nuvio.app.features.home.components.HomeSkeletonHero
 import com.nuvio.app.features.home.components.HomeSkeletonRow
+import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.trakt.TraktAuthRepository
 import com.nuvio.app.features.trakt.TRAKT_CONTINUE_WATCHING_DAYS_CAP_ALL
@@ -115,6 +117,7 @@ fun HomeScreen(
         AddonRepository.initialize()
         CollectionRepository.initialize()
         ContinueWatchingPreferencesRepository.ensureLoaded()
+        LibraryRepository.ensureLoaded()
         WatchedRepository.ensureLoaded()
         WatchProgressRepository.ensureLoaded()
     }
@@ -132,6 +135,7 @@ fun HomeScreen(
     val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val watchProgressUiState by WatchProgressRepository.uiState.collectAsStateWithLifecycle()
     val cloudLibraryUiState by CloudLibraryRepository.uiState.collectAsStateWithLifecycle()
+    val libraryUiState by LibraryRepository.uiState.collectAsStateWithLifecycle()
     val tmdbSettingsUiState by remember {
         TmdbSettingsRepository.ensureLoaded()
         TmdbSettingsRepository.uiState
@@ -300,6 +304,7 @@ fun HomeScreen(
 
     var nextUpItemsBySeries by remember(activeProfileId) { mutableStateOf<Map<String, Pair<Long, ContinueWatchingItem>>>(emptyMap()) }
     var processedNextUpContentIds by remember(activeProfileId) { mutableStateOf<Set<String>>(emptySet()) }
+    var releaseRadarDetailsByKey by remember(activeProfileId) { mutableStateOf<Map<String, MetaDetails>>(emptyMap()) }
 
     LaunchedEffect(activeProfileId, cwCacheClearVersion) {
         if (cwCacheClearVersion == 0) return@LaunchedEffect
@@ -453,6 +458,46 @@ fun HomeScreen(
             .filter { manifest -> manifest.resources.any { resource -> resource.name == "meta" } }
             .map { manifest -> manifest.transportUrl }
             .sorted()
+    }
+
+    val releaseRadarDetailsRequestKey = remember(libraryUiState.items) {
+        libraryUiState.items.homeRadarDetailsRequestKey()
+    }
+
+    LaunchedEffect(activeProfileId, releaseRadarDetailsRequestKey, metaProviderKey) {
+        if (releaseRadarDetailsRequestKey.isBlank()) {
+            releaseRadarDetailsByKey = emptyMap()
+            return@LaunchedEffect
+        }
+        if (metaProviderKey.isEmpty()) {
+            return@LaunchedEffect
+        }
+
+        val candidates = libraryUiState.items
+            .filter { item -> item.type.isHomeSeriesLikeType() }
+            .take(HOME_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT)
+        if (candidates.isEmpty()) {
+            releaseRadarDetailsByKey = emptyMap()
+            return@LaunchedEffect
+        }
+
+        withContext(Dispatchers.Default) {
+            val semaphore = Semaphore(HOME_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY)
+            val resolvedDetails = candidates.map { item ->
+                async {
+                    semaphore.withPermit {
+                        val details = runCatching {
+                            MetaDetailsRepository.fetch(type = item.type, id = item.id)
+                        }.getOrNull() ?: return@withPermit null
+                        libraryItemKeyForHomeRadar(item) to details
+                    }
+                }
+            }.awaitAll().filterNotNull().toMap()
+
+            withContext(Dispatchers.Main) {
+                releaseRadarDetailsByKey = resolvedDetails
+            }
+        }
     }
 
     val catalogRefreshKey = remember(enabledAddons) {
@@ -707,6 +752,38 @@ fun HomeScreen(
             item.isCollection && collectionsMap[item.key] != null
         }
     }
+    val todayIsoDate = CurrentDateProvider.todayIsoDate()
+    val releaseRadarItems = remember(
+        todayIsoDate,
+        continueWatchingItems,
+        libraryUiState.items,
+        homeUiState.sections,
+        releaseRadarDetailsByKey,
+    ) {
+        buildHomeReleaseRadarItems(
+            todayIsoDate = todayIsoDate,
+            continueWatchingItems = continueWatchingItems,
+            libraryItems = libraryUiState.items,
+            catalogSections = homeUiState.sections,
+            resolvedLibraryDetails = releaseRadarDetailsByKey,
+        )
+    }
+    val conciergeState = remember(
+        profileState.activeProfile?.name,
+        continueWatchingItems,
+        releaseRadarItems,
+        libraryUiState.items,
+        homeUiState.sections,
+    ) {
+        buildHomeConciergeState(
+            profileName = profileState.activeProfile?.name,
+            continueWatchingItems = continueWatchingItems,
+            releaseRadarItems = releaseRadarItems,
+            libraryItems = libraryUiState.items,
+            catalogSections = homeUiState.sections,
+        )
+    }
+    val hasPremiumHomeRows = conciergeState != null
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val viewportHeight = maxHeight
@@ -730,9 +807,11 @@ fun HomeScreen(
             continueWatchingLayout,
             continueWatchingCardHeight,
             nativeBottomNavigationOverlayHeight,
+            hasPremiumHomeRows,
         ) {
             heroMobileBelowSectionHeightHint(
                 maxWidthDp = maxWidth.value,
+                hasPremiumHomeRows = hasPremiumHomeRows,
                 continueWatchingVisible = continueWatchingPreferences.isVisible,
                 hasContinueWatchingItems = continueWatchingItems.isNotEmpty(),
                 continueWatchingStyle = continueWatchingPreferences.style,
@@ -788,8 +867,20 @@ fun HomeScreen(
                     }
                 }
 
+                if (conciergeState != null) {
+                    item(key = HOME_CONCIERGE_SECTION_KEY) {
+                        HomeConciergeSection(
+                            state = conciergeState,
+                            modifier = Modifier.padding(bottom = 12.dp),
+                            sectionPadding = homeSectionPadding,
+                            onPosterClick = onPosterClick,
+                            onContinueWatchingClick = onContinueWatchingClick,
+                        )
+                    }
+                }
+
                 when {
-                    !hasActiveAddons && !hasRenderableCollectionRows -> {
+                    !hasActiveAddons && !hasRenderableCollectionRows && !hasPremiumHomeRows -> {
                         if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
                             item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
                                 HomeContinueWatchingSection(
@@ -814,7 +905,7 @@ fun HomeScreen(
                         }
                     }
 
-                    homeUiState.isLoading && homeUiState.sections.isEmpty() && !hasRenderableCollectionRows -> {
+                    homeUiState.isLoading && homeUiState.sections.isEmpty() && !hasRenderableCollectionRows && !hasPremiumHomeRows -> {
                         if (continueWatchingPreferences.isVisible && continueWatchingItems.isNotEmpty()) {
                             item(key = HOME_CONTINUE_WATCHING_SECTION_KEY) {
                                 HomeContinueWatchingSection(
@@ -840,7 +931,8 @@ fun HomeScreen(
 
                     homeUiState.sections.isEmpty() && homeUiState.heroItems.isEmpty() &&
                         (!continueWatchingPreferences.isVisible || continueWatchingItems.isEmpty()) &&
-                        !hasRenderableCollectionRows -> {
+                        !hasRenderableCollectionRows &&
+                        !hasPremiumHomeRows -> {
                         item {
                             if (networkStatusUiState.isOfflineLike) {
                                 NuvioNetworkOfflineCard(
@@ -924,9 +1016,12 @@ fun HomeScreen(
 }
 
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
+private const val HOME_CONCIERGE_SECTION_KEY = "home_concierge"
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
 internal const val HomeNextUpInitialResolutionLimit = 32
+private const val HOME_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
+private const val HOME_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4
 private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 private const val OPTIMISTIC_NEXT_UP_SEED_WINDOW_MS = 3L * 60L * 1000L
 private const val NEXT_UP_RESOLUTION_CONCURRENCY = 4
@@ -1204,6 +1299,7 @@ private fun shouldTreatAsActiveInProgressForNextUpSuppression(
 
 private fun heroMobileBelowSectionHeightHint(
     maxWidthDp: Float,
+    hasPremiumHomeRows: Boolean,
     continueWatchingVisible: Boolean,
     hasContinueWatchingItems: Boolean,
     continueWatchingStyle: ContinueWatchingSectionStyle,
@@ -1211,7 +1307,11 @@ private fun heroMobileBelowSectionHeightHint(
     continueWatchingCardHeight: Dp,
     bottomNavigationOverlayHeight: Dp,
 ): Dp? {
-    if (maxWidthDp >= 600f || !continueWatchingVisible || !hasContinueWatchingItems) return null
+    if (maxWidthDp >= 600f) return null
+    if (hasPremiumHomeRows) {
+        return 300.dp + bottomNavigationOverlayHeight
+    }
+    if (!continueWatchingVisible || !hasContinueWatchingItems) return null
 
     val sectionHeight = when (continueWatchingStyle) {
         ContinueWatchingSectionStyle.Card -> continueWatchingCardHeight + 56.dp

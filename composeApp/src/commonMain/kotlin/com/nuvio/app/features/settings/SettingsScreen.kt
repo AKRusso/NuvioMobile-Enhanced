@@ -578,13 +578,21 @@ private fun MobileSettingsScreen(
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
                             onDownloadsClick = onDownloadsClick,
                             onAccountClick = onAccountClick,
-                            onSwitchProfileClick = onSwitchProfile,
+                            onSwitchProfileClick = if (onSwitchProfile != null) {
+                                { onPageChange(SettingsPage.Profile) }
+                            } else {
+                                null
+                            },
                             showSupportersContributorsPage = AppFeaturePolicy.supportersContributorsPageEnabled,
                         )
                     }
                 }
                 SettingsPage.Account -> accountSettingsContent(
                     isTablet = false,
+                )
+                SettingsPage.Profile -> profileInsightsContent(
+                    isTablet = false,
+                    onSwitchProfile = onSwitchProfile,
                 )
                 SettingsPage.SupportersContributors -> {
                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -988,7 +996,11 @@ private fun TabletSettingsScreen(
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                                 onDownloadsClick = onDownloadsClick,
                                 onAccountClick = { openInlinePage(SettingsPage.Account) },
-                                onSwitchProfileClick = onSwitchProfile,
+                                onSwitchProfileClick = if (onSwitchProfile != null) {
+                                    { openInlinePage(SettingsPage.Profile) }
+                                } else {
+                                    null
+                                },
                                 showAccountSection = activeCategory == SettingsCategory.Account,
                                 showGeneralSection = activeCategory == SettingsCategory.General,
                                 showAboutSection = activeCategory == SettingsCategory.About,
@@ -999,6 +1011,10 @@ private fun TabletSettingsScreen(
                     }
                     SettingsPage.Account -> accountSettingsContent(
                         isTablet = true,
+                    )
+                    SettingsPage.Profile -> profileInsightsContent(
+                        isTablet = true,
+                        onSwitchProfile = onSwitchProfile,
                     )
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {

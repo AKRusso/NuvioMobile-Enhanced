@@ -180,14 +180,14 @@ internal fun settingsSearchEntries(
 
     if (switchProfileAvailable) {
         add(
-            key = "switch-profile",
-            title = stringResource(Res.string.compose_settings_root_switch_profile_title),
-            description = stringResource(Res.string.compose_settings_root_switch_profile_description),
+            key = "profile-insights",
+            title = stringResource(Res.string.compose_settings_root_profile_title),
+            description = stringResource(Res.string.compose_settings_root_profile_description),
             page = accountPage,
             section = stringResource(Res.string.compose_settings_root_account_section),
             category = accountCategory,
             icon = Icons.Rounded.People,
-            target = SettingsSearchTarget.SwitchProfile,
+            target = SettingsSearchTarget.Page(SettingsPage.Profile),
         )
     }
     addPage(
