@@ -240,13 +240,16 @@ fun runtimeConfigValue(vararg keys: String, fallback: String = ""): String =
         .firstOrNull()
         ?: fallback
 
+val publicNuvioApiUrl = "https://api.nuvio.tv"
+val publicNuvioApiKey = "sb_publishable_1Clq8rlTVACkdcZuqr6_AD__xUUC_EN"
+
 val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generateRuntimeConfigs") {
     outputDir.set(generatedRuntimeConfigDir)
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
-    supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL", "SUPABASE_URL"))
-    supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY"))
+    supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL", "SUPABASE_URL", fallback = publicNuvioApiUrl))
+    supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY", fallback = publicNuvioApiKey))
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {
