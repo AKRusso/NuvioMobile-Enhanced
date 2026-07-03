@@ -741,12 +741,6 @@ private fun HomeReleaseRadarCard(
                     .align(Alignment.TopStart)
                     .padding(9.dp),
             )
-            HomeReleaseSignalBadge(
-                item = item,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(9.dp),
-            )
             Text(
                 text = item.category.localizedCategory(),
                 modifier = Modifier
@@ -767,6 +761,7 @@ private fun HomeReleaseRadarCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        HomeReleaseSignalBadge(item = item)
         item.subtitle?.let { subtitle ->
             Text(
                 text = subtitle,
@@ -864,19 +859,21 @@ private fun HomeReleaseSignalBadge(
     item: HomeReleaseRadarItem,
     modifier: Modifier = Modifier,
 ) {
+    val tokens = MaterialTheme.nuvio
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(Color.Black.copy(alpha = 0.42f))
-            .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 9.dp, vertical = 6.dp),
+            .background(tokens.colors.surface.copy(alpha = 0.74f))
+            .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(999.dp))
+            .padding(horizontal = 9.dp, vertical = 5.dp),
     ) {
         Text(
             text = item.localizedRadarSignal(),
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White.copy(alpha = 0.90f),
+            color = tokens.colors.textMuted,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

@@ -274,9 +274,9 @@ fun HomeHeroSection(
                         .background(
                             Brush.verticalGradient(
                                 0f to MaterialTheme.colorScheme.background.copy(alpha = 0.03f),
-                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.11f),
-                                0.64f to MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
-                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.84f),
+                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
+                                0.64f to MaterialTheme.colorScheme.background.copy(alpha = 0.26f),
+                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.78f),
                             ),
                         ),
                 )
@@ -289,8 +289,8 @@ fun HomeHeroSection(
                         .background(
                             Brush.verticalGradient(
                                 0f to Color.Transparent,
-                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.44f),
-                                1f to MaterialTheme.colorScheme.background,
+                                0.40f to MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
+                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
                             ),
                         ),
                 )
@@ -469,10 +469,10 @@ private fun HeroContentBlock(
                         if (layout.isTablet) {
                             (layout.logoWidthFraction + 0.1f).coerceAtMost(0.82f)
                         } else {
-                            (layout.logoWidthFraction + 0.24f).coerceAtMost(1f)
+                            (layout.logoWidthFraction + 0.18f).coerceAtMost(0.94f)
                         },
                     )
-                    .height(if (layout.isTablet) 110.dp else 118.dp)
+                    .height(if (layout.isTablet) 110.dp else 96.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(
                         Brush.radialGradient(
@@ -547,14 +547,14 @@ private fun HeroSummaryCard(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.72f),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.86f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.58f),
+                        MaterialTheme.colorScheme.background.copy(alpha = 0.76f),
                     ),
                 ),
             )
             .border(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.18f),
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.14f),
                 shape = summaryShape,
             )
             .semantics(mergeDescendants = true) {
@@ -562,14 +562,14 @@ private fun HeroSummaryCard(
             },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(if (layout.isTablet) 62.dp else 52.dp)
+                    .height(if (layout.isTablet) 62.dp else 44.dp)
                     .clip(RoundedCornerShape(999.dp))
                     .background(
                         Brush.verticalGradient(
@@ -602,7 +602,7 @@ private fun HeroSummaryCard(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.96f),
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Start,
-                    maxLines = if (layout.isTablet) 4 else 3,
+                    maxLines = if (layout.isTablet) 4 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -625,15 +625,15 @@ private fun HeroMetaGlassRail(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(if (layout.isTablet) 0.88f else 0.96f)
+                .fillMaxWidth(if (layout.isTablet) 0.88f else 0.92f)
                 .widthIn(max = if (layout.isTablet) 560.dp else 430.dp)
                 .clip(railShape)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.42f),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.24f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
+                            MaterialTheme.colorScheme.background.copy(alpha = 0.20f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                         ),
                     ),
                 )
@@ -823,9 +823,9 @@ internal fun homeHeroLayout(
             contentMaxWidth = 480.dp,
             contentWidthFraction = 1f,
             contentHorizontalPadding = 24.dp,
-            contentVerticalPadding = 16.dp,
+            contentVerticalPadding = 12.dp,
             bottomFadeHeight = 260.dp,
-            logoWidthFraction = 0.62f,
+            logoWidthFraction = 0.58f,
         )
     }
 

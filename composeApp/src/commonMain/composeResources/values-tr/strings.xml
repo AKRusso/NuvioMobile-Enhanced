@@ -1234,7 +1234,7 @@
     <string name="home_release_radar_digest_week">Bu hafta</string>
     <string name="home_release_radar_digest_profile">Sana özel</string>
     <string name="home_release_radar_signal_next_up">Sıradaki</string>
-    <string name="home_release_radar_signal_library">Kütüphane</string>
+    <string name="home_release_radar_signal_library">Kütüphane eşleşmesi</string>
     <string name="home_release_radar_signal_today">Bugün</string>
     <string name="home_release_radar_signal_week">Bu hafta</string>
     <string name="home_release_radar_signal_upcoming">Yakında</string>

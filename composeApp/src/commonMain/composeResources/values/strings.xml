@@ -1396,7 +1396,7 @@
     <string name="home_release_radar_digest_week">This week</string>
     <string name="home_release_radar_digest_profile">For you</string>
     <string name="home_release_radar_signal_next_up">Next up</string>
-    <string name="home_release_radar_signal_library">Library</string>
+    <string name="home_release_radar_signal_library">Library match</string>
     <string name="home_release_radar_signal_today">Today</string>
     <string name="home_release_radar_signal_week">This week</string>
     <string name="home_release_radar_signal_upcoming">Upcoming</string>
