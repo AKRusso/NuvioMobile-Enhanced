@@ -20,82 +20,105 @@ actual object LiveTvStorage {
 
     private var preferences: SharedPreferences? = null
 
+    private fun resolvedProfileId(): Int = resolveLiveTvStorageProfileId()
+
+    private fun scopedKey(baseKey: String, profileId: Int = resolvedProfileId()): String = "${baseKey}_$profileId"
+
+    private fun SharedPreferences.getScopedString(baseKey: String): String? {
+        val profileId = resolvedProfileId()
+        return getString(scopedKey(baseKey, profileId), null)
+            ?: if (profileId == 1) getString(baseKey, null) else null
+    }
+
+    private fun SharedPreferences.Editor.putScopedString(baseKey: String, value: String?) {
+        val profileId = resolvedProfileId()
+        val profileKey = scopedKey(baseKey, profileId)
+        if (value.isNullOrBlank()) {
+            remove(profileKey)
+            if (profileId == 1) remove(baseKey)
+        } else {
+            putString(profileKey, value)
+            if (profileId == 1) putString(baseKey, value)
+        }
+    }
+
     fun initialize(context: Context) {
         preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
     }
 
     actual fun loadSourceType(): LiveTvSourceType =
-        when (preferences?.getString(sourceTypeKey, LiveTvSourceType.M3u.name)) {
+        when (preferences?.getScopedString(sourceTypeKey) ?: LiveTvSourceType.M3u.name) {
             LiveTvSourceType.Stalker.name -> LiveTvSourceType.Stalker
             else -> LiveTvSourceType.M3u
         }
 
     actual fun saveSourceType(type: LiveTvSourceType) {
-        preferences?.edit()?.putString(sourceTypeKey, type.name)?.apply()
+        preferences?.edit()?.apply {
+            putScopedString(sourceTypeKey, type.name)
+        }?.apply()
     }
 
     actual fun loadSourceUrl(): String? =
-        preferences?.getString(sourceUrlKey, null)
+        preferences?.getScopedString(sourceUrlKey)
 
     actual fun saveSourceUrl(url: String) {
         preferences?.edit()?.apply {
-            if (url.isBlank()) remove(sourceUrlKey) else putString(sourceUrlKey, url)
+            putScopedString(sourceUrlKey, url)
         }?.apply()
     }
 
     actual fun loadStalkerSettings(): LiveTvStalkerSettings =
         LiveTvStalkerSettings(
-            portalUrl = preferences?.getString(stalkerPortalUrlKey, null).orEmpty(),
-            macAddress = preferences?.getString(stalkerMacAddressKey, null).orEmpty(),
-            username = preferences?.getString(stalkerUsernameKey, null).orEmpty(),
-            password = preferences?.getString(stalkerPasswordKey, null).orEmpty(),
+            portalUrl = preferences?.getScopedString(stalkerPortalUrlKey).orEmpty(),
+            macAddress = preferences?.getScopedString(stalkerMacAddressKey).orEmpty(),
+            username = preferences?.getScopedString(stalkerUsernameKey).orEmpty(),
+            password = preferences?.getScopedString(stalkerPasswordKey).orEmpty(),
         )
 
     actual fun saveStalkerSettings(settings: LiveTvStalkerSettings) {
         preferences?.edit()?.apply {
-            putString(stalkerPortalUrlKey, settings.portalUrl)
-            putString(stalkerMacAddressKey, settings.macAddress)
-            putString(stalkerUsernameKey, settings.username)
-            putString(stalkerPasswordKey, settings.password)
+            putScopedString(stalkerPortalUrlKey, settings.portalUrl)
+            putScopedString(stalkerMacAddressKey, settings.macAddress)
+            putScopedString(stalkerUsernameKey, settings.username)
+            putScopedString(stalkerPasswordKey, settings.password)
         }?.apply()
     }
 
     actual fun loadFavoriteUrls(): Set<String> =
-        preferences?.getStringSet(favoriteUrlsKey, emptySet()).orEmpty()
+        preferences?.getScopedString(favoriteUrlsKey)
+            ?.lineSequence()
+            ?.map(String::trim)
+            ?.filter(String::isNotBlank)
+            ?.toSet()
+            .orEmpty()
 
     actual fun saveFavoriteUrls(urls: Set<String>) {
-        preferences?.edit()?.putStringSet(favoriteUrlsKey, urls)?.apply()
+        preferences?.edit()?.apply {
+            putScopedString(favoriteUrlsKey, urls.sorted().joinToString("\n"))
+        }?.apply()
     }
 
     actual fun loadRecentChannel(): LiveTvRecentChannel? {
         val prefs = preferences ?: return null
-        val streamUrl = prefs.getString(recentChannelUrlKey, null).orEmpty().trim()
-        val name = prefs.getString(recentChannelNameKey, null).orEmpty().trim()
+        val streamUrl = prefs.getScopedString(recentChannelUrlKey).orEmpty().trim()
+        val name = prefs.getScopedString(recentChannelNameKey).orEmpty().trim()
         if (streamUrl.isBlank() || name.isBlank()) return null
         return LiveTvRecentChannel(
             streamUrl = streamUrl,
             name = name,
-            logoUrl = prefs.getString(recentChannelLogoKey, null)?.takeIf(String::isNotBlank),
-            group = prefs.getString(recentChannelGroupKey, null).orEmpty(),
-            tvgId = prefs.getString(recentChannelTvgIdKey, null)?.takeIf(String::isNotBlank),
+            logoUrl = prefs.getScopedString(recentChannelLogoKey)?.takeIf(String::isNotBlank),
+            group = prefs.getScopedString(recentChannelGroupKey).orEmpty(),
+            tvgId = prefs.getScopedString(recentChannelTvgIdKey)?.takeIf(String::isNotBlank),
         )
     }
 
     actual fun saveRecentChannel(channel: LiveTvRecentChannel?) {
         preferences?.edit()?.apply {
-            if (channel == null) {
-                remove(recentChannelUrlKey)
-                remove(recentChannelNameKey)
-                remove(recentChannelLogoKey)
-                remove(recentChannelGroupKey)
-                remove(recentChannelTvgIdKey)
-            } else {
-                putString(recentChannelUrlKey, channel.streamUrl)
-                putString(recentChannelNameKey, channel.name)
-                if (channel.logoUrl.isNullOrBlank()) remove(recentChannelLogoKey) else putString(recentChannelLogoKey, channel.logoUrl)
-                if (channel.group.isBlank()) remove(recentChannelGroupKey) else putString(recentChannelGroupKey, channel.group)
-                if (channel.tvgId.isNullOrBlank()) remove(recentChannelTvgIdKey) else putString(recentChannelTvgIdKey, channel.tvgId)
-            }
+            putScopedString(recentChannelUrlKey, channel?.streamUrl)
+            putScopedString(recentChannelNameKey, channel?.name)
+            putScopedString(recentChannelLogoKey, channel?.logoUrl)
+            putScopedString(recentChannelGroupKey, channel?.group)
+            putScopedString(recentChannelTvgIdKey, channel?.tvgId)
         }?.apply()
     }
 }

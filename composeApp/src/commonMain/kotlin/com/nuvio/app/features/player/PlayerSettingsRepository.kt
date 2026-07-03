@@ -39,6 +39,7 @@ data class PlayerSettingsUiState(
     val touchGesturesEnabled: Boolean = true,
     val externalPlayerEnabled: Boolean = false,
     val externalPlayerForwardSubtitles: Boolean = false,
+    val externalPlayerSendSkipSegments: Boolean = false,
     val externalPlayerId: String? = ExternalPlayerPlatform.defaultPlayerId(),
     val preferredAudioLanguage: String = AudioLanguageOption.DEVICE,
     val secondaryPreferredAudioLanguage: String? = null,
@@ -74,15 +75,15 @@ data class PlayerSettingsUiState(
     val nextEpisodeThresholdMinutesBeforeEnd: Float = 2f,
     val useLibass: Boolean = false,
     val libassRenderType: String = "CUES",
-    val iosVideoOutputPreset: IosVideoOutputPreset = IosVideoOutputPreset.NativeEdr,
+    val iosVideoOutputPreset: IosVideoOutputPreset = IosVideoOutputPreset.Compatibility,
     val iosToneMappingMode: IosToneMappingMode = IosToneMappingMode.Auto,
     val iosTargetPrimaries: IosTargetPrimaries = IosTargetPrimaries.Auto,
     val iosTargetTransfer: IosTargetTransfer = IosTargetTransfer.Auto,
-    val iosHardwareDecoderMode: IosHardwareDecoderMode = IosHardwareDecoderMode.VideoToolbox,
+    val iosHardwareDecoderMode: IosHardwareDecoderMode = IosHardwareDecoderMode.Off,
     val iosAudioOutputMode: IosAudioOutputMode = IosAudioOutputMode.Auto,
-    val iosExtendedDynamicRangeEnabled: Boolean = true,
-    val iosTargetColorspaceHintEnabled: Boolean = true,
-    val iosHdrComputePeakEnabled: Boolean = true,
+    val iosExtendedDynamicRangeEnabled: Boolean = false,
+    val iosTargetColorspaceHintEnabled: Boolean = false,
+    val iosHdrComputePeakEnabled: Boolean = false,
     val iosDebandEnabled: Boolean = false,
     val iosInterpolationEnabled: Boolean = false,
     val iosBrightness: Int = 0,
@@ -103,6 +104,7 @@ object PlayerSettingsRepository {
     private var touchGesturesEnabled = true
     private var externalPlayerEnabled = false
     private var externalPlayerForwardSubtitles = false
+    private var externalPlayerSendSkipSegments = false
     private var externalPlayerId: String? = ExternalPlayerPlatform.defaultPlayerId()
     private var preferredAudioLanguage = AudioLanguageOption.DEVICE
     private var secondaryPreferredAudioLanguage: String? = null
@@ -138,15 +140,15 @@ object PlayerSettingsRepository {
     private var nextEpisodeThresholdMinutesBeforeEnd = 2f
     private var useLibass = false
     private var libassRenderType = "CUES"
-    private var iosVideoOutputPreset = IosVideoOutputPreset.NativeEdr
+    private var iosVideoOutputPreset = IosVideoOutputPreset.Compatibility
     private var iosToneMappingMode = IosToneMappingMode.Auto
     private var iosTargetPrimaries = IosTargetPrimaries.Auto
     private var iosTargetTransfer = IosTargetTransfer.Auto
-    private var iosHardwareDecoderMode = IosHardwareDecoderMode.VideoToolbox
+    private var iosHardwareDecoderMode = IosHardwareDecoderMode.Off
     private var iosAudioOutputMode = IosAudioOutputMode.Auto
-    private var iosExtendedDynamicRangeEnabled = true
-    private var iosTargetColorspaceHintEnabled = true
-    private var iosHdrComputePeakEnabled = true
+    private var iosExtendedDynamicRangeEnabled = false
+    private var iosTargetColorspaceHintEnabled = false
+    private var iosHdrComputePeakEnabled = false
     private var iosDebandEnabled = false
     private var iosInterpolationEnabled = false
     private var iosBrightness = 0
@@ -172,6 +174,7 @@ object PlayerSettingsRepository {
         touchGesturesEnabled = true
         externalPlayerEnabled = false
         externalPlayerForwardSubtitles = false
+        externalPlayerSendSkipSegments = false
         externalPlayerId = ExternalPlayerPlatform.defaultPlayerId()
         preferredAudioLanguage = AudioLanguageOption.DEVICE
         secondaryPreferredAudioLanguage = null
@@ -207,15 +210,15 @@ object PlayerSettingsRepository {
         nextEpisodeThresholdMinutesBeforeEnd = 2f
         useLibass = false
         libassRenderType = "CUES"
-        iosVideoOutputPreset = IosVideoOutputPreset.NativeEdr
+        iosVideoOutputPreset = IosVideoOutputPreset.Compatibility
         iosToneMappingMode = IosToneMappingMode.Auto
         iosTargetPrimaries = IosTargetPrimaries.Auto
         iosTargetTransfer = IosTargetTransfer.Auto
-        iosHardwareDecoderMode = IosHardwareDecoderMode.VideoToolbox
+        iosHardwareDecoderMode = IosHardwareDecoderMode.Off
         iosAudioOutputMode = IosAudioOutputMode.Auto
-        iosExtendedDynamicRangeEnabled = true
-        iosTargetColorspaceHintEnabled = true
-        iosHdrComputePeakEnabled = true
+        iosExtendedDynamicRangeEnabled = false
+        iosTargetColorspaceHintEnabled = false
+        iosHdrComputePeakEnabled = false
         iosDebandEnabled = false
         iosInterpolationEnabled = false
         iosBrightness = 0
@@ -236,6 +239,7 @@ object PlayerSettingsRepository {
         touchGesturesEnabled = PlayerSettingsStorage.loadTouchGesturesEnabled() ?: true
         externalPlayerEnabled = PlayerSettingsStorage.loadExternalPlayerEnabled() ?: false
         externalPlayerForwardSubtitles = PlayerSettingsStorage.loadExternalPlayerForwardSubtitles() ?: false
+        externalPlayerSendSkipSegments = PlayerSettingsStorage.loadExternalPlayerSendSkipSegments() ?: false
         externalPlayerId = PlayerSettingsStorage.loadExternalPlayerId()
             ?: ExternalPlayerPlatform.defaultPlayerId()
         preferredAudioLanguage =
@@ -332,7 +336,7 @@ object PlayerSettingsRepository {
         libassRenderType = PlayerSettingsStorage.loadLibassRenderType() ?: "CUES"
         iosVideoOutputPreset = PlayerSettingsStorage.loadIosVideoOutputPreset()
             ?.let { runCatching { IosVideoOutputPreset.valueOf(it) }.getOrNull() }
-            ?: IosVideoOutputPreset.NativeEdr
+            ?: IosVideoOutputPreset.Compatibility
         iosToneMappingMode = PlayerSettingsStorage.loadIosToneMappingMode()
             ?.let { runCatching { IosToneMappingMode.valueOf(it) }.getOrNull() }
             ?: IosToneMappingMode.Auto
@@ -344,11 +348,11 @@ object PlayerSettingsRepository {
             ?: IosTargetTransfer.Auto
         iosHardwareDecoderMode = PlayerSettingsStorage.loadIosHardwareDecoderMode()
             ?.let { runCatching { IosHardwareDecoderMode.valueOf(it) }.getOrNull() }
-            ?: IosHardwareDecoderMode.VideoToolbox
+            ?: IosHardwareDecoderMode.Off
         iosAudioOutputMode = IosAudioOutputMode.fromStoredName(PlayerSettingsStorage.loadIosAudioOutputMode())
-        iosExtendedDynamicRangeEnabled = PlayerSettingsStorage.loadIosExtendedDynamicRangeEnabled() ?: true
-        iosTargetColorspaceHintEnabled = PlayerSettingsStorage.loadIosTargetColorspaceHintEnabled() ?: true
-        iosHdrComputePeakEnabled = PlayerSettingsStorage.loadIosHdrComputePeakEnabled() ?: true
+        iosExtendedDynamicRangeEnabled = PlayerSettingsStorage.loadIosExtendedDynamicRangeEnabled() ?: false
+        iosTargetColorspaceHintEnabled = PlayerSettingsStorage.loadIosTargetColorspaceHintEnabled() ?: false
+        iosHdrComputePeakEnabled = PlayerSettingsStorage.loadIosHdrComputePeakEnabled() ?: false
         iosDebandEnabled = PlayerSettingsStorage.loadIosDebandEnabled() ?: false
         iosInterpolationEnabled = PlayerSettingsStorage.loadIosInterpolationEnabled() ?: false
         iosBrightness = PlayerSettingsStorage.loadIosBrightness() ?: 0
@@ -430,6 +434,14 @@ object PlayerSettingsRepository {
         externalPlayerForwardSubtitles = enabled
         publish()
         PlayerSettingsStorage.saveExternalPlayerForwardSubtitles(enabled)
+    }
+
+    fun setExternalPlayerSendSkipSegments(enabled: Boolean) {
+        ensureLoaded()
+        if (externalPlayerSendSkipSegments == enabled) return
+        externalPlayerSendSkipSegments = enabled
+        publish()
+        PlayerSettingsStorage.saveExternalPlayerSendSkipSegments(enabled)
     }
 
     fun setPreferredAudioLanguage(language: String) {
@@ -741,8 +753,9 @@ object PlayerSettingsRepository {
             }
             IosVideoOutputPreset.Compatibility -> {
                 iosExtendedDynamicRangeEnabled = false
-                iosTargetColorspaceHintEnabled = true
+                iosTargetColorspaceHintEnabled = false
                 iosHdrComputePeakEnabled = false
+                iosHardwareDecoderMode = IosHardwareDecoderMode.Off
                 iosToneMappingMode = IosToneMappingMode.Auto
                 iosTargetPrimaries = IosTargetPrimaries.Auto
                 iosTargetTransfer = IosTargetTransfer.Auto
@@ -893,6 +906,7 @@ object PlayerSettingsRepository {
             touchGesturesEnabled = touchGesturesEnabled,
             externalPlayerEnabled = externalPlayerEnabled,
             externalPlayerForwardSubtitles = externalPlayerForwardSubtitles,
+            externalPlayerSendSkipSegments = externalPlayerSendSkipSegments,
             externalPlayerId = externalPlayerId,
             preferredAudioLanguage = preferredAudioLanguage,
             secondaryPreferredAudioLanguage = secondaryPreferredAudioLanguage,

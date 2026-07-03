@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.nuvio.app.core.auth.AuthStorage
 import com.nuvio.app.core.deeplink.handleAppUrl
-import com.nuvio.app.core.network.SyncBackendStorage
+import com.nuvio.app.core.network.DnsOverHttpsSettingsStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.ai.AiAssistantSettingsStorage
@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
         AddonStorage.initialize(applicationContext)
         AiAssistantSettingsStorage.initialize(applicationContext)
         AuthStorage.initialize(applicationContext)
-        SyncBackendStorage.initialize(applicationContext)
+        DnsOverHttpsSettingsStorage.initialize(applicationContext)
         LibraryStorage.initialize(applicationContext)
         LiveTvStorage.initialize(applicationContext)
         WatchedStorage.initialize(applicationContext)

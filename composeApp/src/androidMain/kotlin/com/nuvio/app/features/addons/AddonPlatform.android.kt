@@ -2,7 +2,8 @@ package com.nuvio.app.features.addons
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.nuvio.app.core.network.IPv4FirstDns
+import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
+import com.nuvio.app.core.network.toOkHttpDns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -77,15 +78,30 @@ private fun parseEnabledStateLine(line: String): Pair<String, Boolean>? {
     return url to enabled
 }
 
-private val addonHttpClient = OkHttpClient.Builder()
-    .dns(IPv4FirstDns())
-    .connectTimeout(60, TimeUnit.SECONDS)
-    .readTimeout(60, TimeUnit.SECONDS)
-    .writeTimeout(60, TimeUnit.SECONDS)
-    .followRedirects(true)
-    .followSslRedirects(true)
-    .proxy(Proxy.NO_PROXY)
-    .build()
+private val addonHttpClientLock = Any()
+private var cachedAddonHttpClientProviderId: String? = null
+private var cachedAddonHttpClient: OkHttpClient? = null
+
+private fun addonHttpClient(): OkHttpClient {
+    val provider = DnsOverHttpsSettingsRepository.snapshot().provider
+    synchronized(addonHttpClientLock) {
+        val cached = cachedAddonHttpClient
+        if (cached != null && cachedAddonHttpClientProviderId == provider.id) return cached
+        return OkHttpClient.Builder()
+            .dns(provider.toOkHttpDns())
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .proxy(Proxy.NO_PROXY)
+            .build()
+            .also { client ->
+                cachedAddonHttpClientProviderId = provider.id
+                cachedAddonHttpClient = client
+            }
+    }
+}
 
 private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 private const val maxRawResponseBodyBytes = 1024 * 1024
@@ -184,7 +200,7 @@ private suspend fun executeTextRequest(
         builder.method(normalizedMethod, null)
     }.build()
 
-    addonHttpClient.newCall(request).execute().use { response ->
+    addonHttpClient().newCall(request).execute().use { response ->
         val payload = readResponseBody(response.body)
         if (!response.isSuccessful) {
             error(runBlocking { getString(Res.string.network_request_failed_http, response.code) })
@@ -264,9 +280,9 @@ actual suspend fun httpRequestRaw(
         }.build()
 
         val client = if (followRedirects) {
-            addonHttpClient
+            addonHttpClient()
         } else {
-            addonHttpClient.newBuilder()
+            addonHttpClient().newBuilder()
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .build()

@@ -214,6 +214,7 @@ object HomeCatalogSettingsRepository {
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
+        HomeCatalogSettingsSyncService.triggerPush()
     }
 
     fun setHideCatalogUnderline(enabled: Boolean) {
@@ -222,10 +223,11 @@ object HomeCatalogSettingsRepository {
         hideCatalogUnderline = enabled
         publish()
         persist()
+        HomeCatalogSettingsSyncService.triggerPush()
     }
 
     fun setHeroSourceEnabled(key: String, enabled: Boolean) {
-        updatePreference(key) { preference ->
+        updatePreference(key, pushRemote = false) { preference ->
             if (!enabled) {
                 preference.copy(heroSourceEnabled = false)
             } else if (selectedHeroSourceCount(excludingKey = key) >= HERO_SOURCE_SELECTION_LIMIT) {
@@ -260,6 +262,7 @@ object HomeCatalogSettingsRepository {
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
+        HomeCatalogSettingsSyncService.triggerPush()
     }
 
     fun moveUp(key: String) {
@@ -285,6 +288,7 @@ object HomeCatalogSettingsRepository {
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
+        HomeCatalogSettingsSyncService.triggerPush()
     }
 
     private fun ensureLoaded() {
@@ -427,14 +431,20 @@ object HomeCatalogSettingsRepository {
 
     private fun updatePreference(
         key: String,
+        pushRemote: Boolean = true,
         transform: (StoredHomeCatalogPreference) -> StoredHomeCatalogPreference,
     ) {
         ensureLoaded()
         val current = preferences[key] ?: return
-        preferences[key] = transform(current)
+        val updated = transform(current)
+        if (updated == current) return
+        preferences[key] = updated
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
+        if (pushRemote) {
+            HomeCatalogSettingsSyncService.triggerPush()
+        }
     }
 
     private fun selectedHeroSourceCount(excludingKey: String? = null): Int {
@@ -469,6 +479,7 @@ object HomeCatalogSettingsRepository {
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
+        HomeCatalogSettingsSyncService.triggerPush()
     }
 
     fun exportToSyncPayload(): SyncHomeCatalogPayload {

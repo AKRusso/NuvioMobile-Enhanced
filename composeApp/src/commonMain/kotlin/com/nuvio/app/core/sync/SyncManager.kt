@@ -55,11 +55,11 @@ object SyncManager {
                     .onFailure { log.e(it) { "Library pull failed" } }
             }
             launch {
-                runCatching { WatchProgressRepository.pullFromServer(profileId) }
+                runCatching { WatchProgressRepository.forceSnapshotRefreshFromServer(profileId) }
                     .onFailure { log.e(it) { "WatchProgress pull failed" } }
             }
             launch {
-                runCatching { WatchedRepository.pullFromServer(profileId) }
+                runCatching { WatchedRepository.forceSnapshotRefreshFromServer(profileId) }
                     .onFailure { log.e(it) { "Watched pull failed" } }
             }
             launch {

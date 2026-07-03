@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -111,6 +112,7 @@ fun SearchScreen(
     }.collectAsStateWithLifecycle()
     val recentSearches by SearchHistoryRepository.uiState.collectAsStateWithLifecycle()
     val watchedUiState by WatchedRepository.uiState.collectAsStateWithLifecycle()
+    val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var lastRequestedQuery by rememberSaveable { mutableStateOf<String?>(null) }
@@ -290,6 +292,7 @@ fun SearchScreen(
                         recentSearches = recentSearches,
                         onSearchPress = { recentQuery -> query = recentQuery },
                         onRemoveSearch = SearchHistoryRepository::removeSearch,
+                        onClearAll = SearchHistoryRepository::clearAll,
                     )
                 }
             }
@@ -305,6 +308,7 @@ fun SearchScreen(
                         SearchRepository.refreshDiscover(addonsUiState.addons)
                     },
                     watchedKeys = watchedUiState.watchedKeys,
+                    fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                     onPosterClick = onPosterClick,
                     onPosterLongClick = onPosterLongClick,
                 )
@@ -360,6 +364,7 @@ fun SearchScreen(
                                 section = section,
                                 modifier = Modifier.padding(bottom = 12.dp),
                                 watchedKeys = watchedUiState.watchedKeys,
+                                fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                 onPosterClick = onPosterClick,
                                 onPosterLongClick = onPosterLongClick,
                             )
@@ -442,6 +447,7 @@ private fun SearchRecentSection(
     recentSearches: List<String>,
     onSearchPress: (String) -> Unit,
     onRemoveSearch: (String) -> Unit,
+    onClearAll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -450,11 +456,24 @@ private fun SearchRecentSection(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = stringResource(Res.string.compose_search_recent_searches),
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onBackground,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.compose_search_recent_searches),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            IconButton(onClick = onClearAll) {
+                Icon(
+                    imageVector = Icons.Rounded.DeleteSweep,
+                    contentDescription = stringResource(Res.string.compose_search_clear),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         recentSearches.forEach { recentQuery ->
             SearchRecentRow(

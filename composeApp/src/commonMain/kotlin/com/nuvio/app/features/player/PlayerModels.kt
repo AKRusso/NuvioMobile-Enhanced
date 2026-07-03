@@ -170,8 +170,8 @@ enum class IosHardwareDecoderMode(
     val mpvValue: String,
     val label: String,
 ) {
-    Auto("auto", "Auto"),
-    VideoToolbox("videotoolbox", "VideoToolbox"),
+    Auto("auto-copy", "Auto"),
+    VideoToolbox("videotoolbox-copy", "VideoToolbox"),
     Off("no", "Off"),
 }
 

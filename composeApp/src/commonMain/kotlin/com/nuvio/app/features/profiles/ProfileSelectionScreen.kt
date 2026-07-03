@@ -102,9 +102,18 @@ fun ProfileSelectionScreen(
     }
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val backgroundProfileColor = remember(profileState.activeProfile, profileState.profiles) {
-        val sourceProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
+    val backgroundProfile = remember(profileState.activeProfile, profileState.profiles) {
+        profileState.activeProfile ?: profileState.profiles.firstOrNull()
+    }
+    val backgroundProfileColor = remember(backgroundProfile) {
+        val sourceProfile = backgroundProfile
         sourceProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
+    }
+    val backgroundImageUrl = remember(backgroundProfile) {
+        backgroundProfile?.let(::profileBackgroundImageUrl)
+    }
+    val greetingText = remember(copy, backgroundProfile) {
+        copy.greeting(backgroundProfile?.name?.takeIf { it.isNotBlank() })
     }
 
     BoxWithConstraints(
@@ -113,7 +122,25 @@ fun ProfileSelectionScreen(
     ) {
         val isTabletLayout = maxWidth >= 768.dp
 
-        ProfileMeshBackground(profileColor = backgroundProfileColor)
+        if (backgroundImageUrl != null) {
+            AsyncImage(
+                model = backgroundImageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.34f)),
+            )
+        }
+        ProfileMeshBackground(
+            profileColor = backgroundProfileColor,
+            modifier = Modifier.graphicsLayer {
+                alpha = if (backgroundImageUrl != null) 0.62f else 1f
+            },
+        )
 
         Column(
             modifier = Modifier
@@ -136,7 +163,7 @@ fun ProfileSelectionScreen(
                 text = copy.whoIsWatching,
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontSize = 30.sp,
-                    letterSpacing = (-0.5).sp,
+                    letterSpacing = 0.sp,
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
                 fontWeight = FontWeight.Bold,
@@ -146,10 +173,23 @@ fun ProfileSelectionScreen(
                 },
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Text(
+                text = greetingText,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha.value
+                    translationY = titleOffset.value * 0.6f
+                },
+            )
+
             Spacer(modifier = Modifier.height(if (isTabletLayout) 28.dp else 48.dp))
 
             val profiles = profileState.profiles
-            val items = profiles.size + if (profiles.size < MAX_PROFILE_SLOTS) 1 else 0
+            val items = profiles.size + if (profiles.size < MAX_PROFILES) 1 else 0
 
             if (isTabletLayout) {
                 Box(
@@ -533,6 +573,9 @@ private data class ProfileSelectionCopy(
     val done: String,
     val addProfile: String,
     val profileNumber: (Int) -> String,
+    val greeting: (String?) -> String = { name ->
+        "Welcome back${name?.let { ", $it" } ?: ""}."
+    },
 )
 
 private fun profileSelectionCopy(language: AppLanguage): ProfileSelectionCopy {
@@ -548,6 +591,13 @@ private fun profileSelectionCopy(language: AppLanguage): ProfileSelectionCopy {
             done = "Tamam",
             addProfile = "Profil ekle",
             profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
+            greeting = { name ->
+                listOf(
+                    "${name ?: "Hazırsan"} izlemeye devam edelim.",
+                    "${name ?: "Bugün"} ne açıyoruz?",
+                    "${name ?: "Hazırsan"}, güzel bir şey bulalım.",
+                ).random()
+            },
         )
 
         "es" -> ProfileSelectionCopy(
@@ -652,6 +702,13 @@ private fun profileSelectionCopy(language: AppLanguage): ProfileSelectionCopy {
             done = "Done",
             addProfile = "Add Profile",
             profileNumber = { index -> profileLabel(index, "Profile %1\$d") },
+            greeting = { name ->
+                listOf(
+                    "Welcome back${name?.let { ", $it" } ?: ""}.",
+                    "Ready for the next watch${name?.let { ", $it" } ?: ""}?",
+                    "Let’s find something great${name?.let { ", $it" } ?: ""}.",
+                ).random()
+            },
         )
     }
 }

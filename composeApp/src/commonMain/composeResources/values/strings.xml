@@ -20,6 +20,7 @@
     <string name="action_retry">Retry</string>
     <string name="action_save">Save</string>
     <string name="action_saving">Saving…</string>
+    <string name="action_switch">Switch</string>
     <string name="action_validate">Validate</string>
     <string name="addon_installing">Installing</string>
     <string name="addon_title">Addons</string>
@@ -32,6 +33,11 @@
     <string name="addons_badge_unavailable">Unavailable</string>
     <string name="addons_configure">Configure addon</string>
     <string name="addons_delete">Delete addon</string>
+    <string name="addons_appstore_add_description">Connect your own media server to browse and play from your personal library.</string>
+    <string name="addons_appstore_empty_subtitle">Add a server URL above when you want Nuvio to show your private library.</string>
+    <string name="addons_appstore_empty_title">No personal libraries connected.</string>
+    <string name="addons_appstore_input_placeholder">Server URL</string>
+    <string name="addons_appstore_install_button">Add</string>
     <string name="addons_empty_subtitle">Add a manifest URL to start loading catalogs, metadata, streams or subtitles into Nuvio.</string>
     <string name="addons_empty_title">No addons installed yet.</string>
     <string name="addons_error_enter_url">Enter an addon URL.</string>
@@ -322,7 +328,9 @@
     <string name="compose_auth_sign_up_subtitle">Sign up to sync your data across devices</string>
     <string name="compose_auth_sign_up">Sign Up</string>
     <string name="compose_auth_store_locally">Your data will only be stored locally</string>
-    <string name="compose_auth_tagline">Stream everything, everywhere</string>
+    <string name="compose_auth_tagline">Watch your library, anywhere</string>
+    <string name="compose_auth_terms_prefix">By signing up, I agree to the</string>
+    <string name="compose_auth_terms_link">Terms</string>
     <string name="compose_auth_welcome_back">Welcome Back</string>
     <string name="compose_catalog_subtitle_library">Library</string>
     <string name="compose_catalog_subtitle_trakt_library">Trakt Library</string>
@@ -467,7 +475,7 @@
     <string name="compose_settings_root_account_section">ACCOUNT</string>
     <string name="compose_settings_root_advanced_description">Startup and profile behavior.</string>
     <string name="compose_settings_root_advanced_section">ADVANCED</string>
-    <string name="compose_settings_root_appearance_description">Home structure and poster styles</string>
+    <string name="compose_settings_root_appearance_description">Home, streams, collections, and detail pages</string>
     <string name="compose_settings_root_check_updates_description">Download latest release</string>
     <string name="compose_settings_root_check_updates_title">Check for updates</string>
     <string name="compose_settings_root_content_discovery_description">Manage addons and discovery sources.</string>
@@ -484,7 +492,10 @@
     <string name="settings_search_placeholder">Search settings...</string>
     <string name="settings_search_results_section">RESULTS</string>
     <string name="settings_advanced_section_startup">STARTUP</string>
+    <string name="settings_advanced_section_network">NETWORK</string>
     <string name="settings_advanced_section_cache">CACHE</string>
+    <string name="settings_advanced_doh_description">Routes Android addon requests through this DNS over HTTPS resolver where supported.</string>
+    <string name="settings_advanced_doh_selected">Selected for DNS over HTTPS.</string>
     <string name="settings_advanced_hero_auto_scroll">Auto-Scroll Hero Carousel</string>
     <string name="settings_advanced_hero_auto_scroll_description">Automatically cycle hero suggestions on the home screen.</string>
     <string name="settings_advanced_hero_motion_preview">Hero Motion Preview</string>
@@ -573,7 +584,6 @@
     <string name="settings_account_status">Status</string>
     <string name="settings_account_status_anonymous">Anonymous</string>
     <string name="settings_account_status_signed_in">Signed in</string>
-    <string name="settings_account_sync_backend">Sync backend</string>
     <string name="settings_appearance_amoled_black">AMOLED Black</string>
     <string name="settings_appearance_amoled_description">Use pure black backgrounds for OLED screens.</string>
     <string name="settings_appearance_app_language">App Language</string>
@@ -672,6 +682,7 @@
     <string name="settings_content_discovery_section_home">HOME</string>
     <string name="settings_content_discovery_section_sources">SOURCES</string>
     <string name="settings_content_discovery_addons_description">Install, remove, refresh, and sort your content sources.</string>
+    <string name="settings_content_discovery_addons_description_appstore">Connect personal media sources and manage access to your own library.</string>
     <string name="settings_content_discovery_plugins_description">Install JavaScript scraper repositories and test providers internally.</string>
     <string name="settings_content_discovery_homescreen_description">Adjust home layout, content visibility, and poster behavior</string>
     <string name="settings_content_discovery_meta_screen_description">Settings for the detail and episode screens.</string>
@@ -798,6 +809,14 @@
     <string name="settings_meta_cast_description">Principal cast list.</string>
     <string name="settings_meta_cinematic_background">Cinematic Background</string>
     <string name="settings_meta_cinematic_background_description">Blurred backdrop behind content, similar to stream screen.</string>
+    <string name="settings_meta_background_mode">Background Mode</string>
+    <string name="settings_meta_background_mode_description">Choose how artwork appears behind metadata pages.</string>
+    <string name="settings_meta_background_mode_normal">Normal</string>
+    <string name="settings_meta_background_mode_normal_description">Use the standard app background.</string>
+    <string name="settings_meta_background_mode_cinematic">Cinematic</string>
+    <string name="settings_meta_background_mode_cinematic_description">Show a soft blurred backdrop behind the page.</string>
+    <string name="settings_meta_background_mode_dominant">Dominant Color</string>
+    <string name="settings_meta_background_mode_dominant_description">Match the page background to the main color from the backdrop.</string>
     <string name="settings_meta_collection">Collection</string>
     <string name="settings_meta_collection_description">Related collection or franchise rail.</string>
     <string name="settings_meta_comments">Comments</string>
@@ -818,6 +837,8 @@
     <string name="settings_meta_episodes_description">Seasons and episode list for series.</string>
     <string name="settings_meta_blur_unwatched_episodes">Blur Unwatched Episodes</string>
     <string name="settings_meta_blur_unwatched_episodes_description">Blur episode thumbnails until watched to avoid spoilers.</string>
+    <string name="settings_meta_show_episode_ratings">Show Episode Ratings</string>
+    <string name="settings_meta_show_episode_ratings_description">Display IMDb ratings on episode cards in the details screen.</string>
     <string name="settings_meta_group_label">Group %1$d</string>
     <string name="settings_meta_more_like_this">More like this</string>
     <string name="settings_meta_more_like_this_description">TMDB recommendation backdrops on detail page</string>
@@ -913,6 +934,8 @@
     <string name="settings_playback_external_player_description_ios">Open new playback with the selected installed player.</string>
     <string name="settings_playback_external_player_forward_subtitles">Forward Subtitles to External Player</string>
     <string name="settings_playback_external_player_forward_subtitles_description">Fetch addon subtitles in your preferred language and pass them to the external player.</string>
+    <string name="settings_playback_external_player_send_skip_segments">Send Intro and Outro Timestamps</string>
+    <string name="settings_playback_external_player_send_skip_segments_description">Pass resolved intro and outro skip timestamps to the external player for auto-skipping. Only works in players that support it; other players ignore it.</string>
     <string name="settings_playback_external_player_none_available">No supported external players installed</string>
     <string name="settings_playback_player_preference">Player</string>
     <string name="settings_playback_player_preference_internal">Internal</string>
@@ -1253,6 +1276,8 @@
     <string name="details_servers_unreachable">Your device is online, but Nuvio could not reach required servers.</string>
     <string name="details_show_less">Show Less</string>
     <string name="details_show_more">Show More ▾</string>
+    <string name="details_total_seasons">%1$d seasons</string>
+    <string name="details_total_episodes">%1$d eps</string>
     <string name="details_writer">Writer</string>
     <string name="discover_all_genres">All Genres</string>
     <string name="discover_catalog">Catalog</string>
@@ -1328,10 +1353,18 @@
     <string name="profile_choose_avatar">Choose an avatar</string>
     <string name="profile_choose_avatar_below">Choose an avatar below.</string>
     <string name="profile_create_profile">Create Profile</string>
+    <string name="profile_max_profiles_reached">You already have the maximum number of profiles.</string>
+    <string name="profile_save_failed">Couldn't save the profile. Try again.</string>
+    <string name="profile_loading_welcome">Welcome, %1$s!</string>
+    <string name="profile_loading_message">One sec, increasing power levels...</string>
     <string name="profile_custom_avatar_selected">Custom avatar URL selected.</string>
     <string name="profile_custom_avatar_url">Custom avatar URL</string>
     <string name="profile_custom_avatar_url_description">Paste an image link, or leave this empty to use the built-in avatar catalog.</string>
     <string name="profile_custom_avatar_url_placeholder">https://example.com/avatar.png</string>
+    <string name="profile_custom_background_url">Custom background URL</string>
+    <string name="profile_custom_background_url_description">Paste an image link to use it behind the profile selection screen.</string>
+    <string name="profile_custom_background_url_placeholder">https://example.com/background.jpg</string>
+    <string name="profile_background_url_invalid">Enter a valid http:// or https:// background image URL.</string>
     <string name="profile_delete_confirm_message">All data for &quot;%1$s&quot; will be permanently deleted.</string>
     <string name="profile_delete_title">Delete Profile</string>
     <string name="profile_edit_add_title">Add Profile</string>
@@ -1355,7 +1388,7 @@
     <string name="profile_set_pin_lock">Set PIN Lock</string>
     <string name="profile_unnamed">Unnamed profile</string>
     <string name="profile_use_primary_addons">Use Primary Addons</string>
-    <string name="profile_use_primary_addons_description">Share the main profile's addon setup instead of managing a separate list.</string>
+    <string name="profile_use_primary_addons_description">Share the main profile&apos;s addon, plugin, and Live TV setup instead of managing separate sources.</string>
     <string name="profile_who_is_watching">Who&apos;s watching?</string>
     <string name="provider_downloaded">Downloaded</string>
     <string name="resume_prompt_action">Resume</string>
@@ -1377,6 +1410,7 @@
     <string name="streams_fetching">Fetching…</string>
     <string name="streams_finding_source">Finding source…</string>
     <string name="streams_loading_subtitles">Loading subtitles from addons…</string>
+    <string name="streams_loading_skip_segments">Loading skip segments…</string>
     <string name="streams_finding_streams">Finding streams…</string>
     <string name="streams_link_copied">Stream link copied</string>
     <string name="streams_no_direct_link">No direct stream link available</string>
@@ -1456,7 +1490,7 @@
     <string name="profile_pin_offline_verification_requires_online">This PIN can't be verified offline on this device yet. Connect once and unlock it online first.</string>
     <string name="profile_pin_set_failed">Couldn't set PIN. Try again.</string>
     <string name="profile_pin_set_requires_internet">Connect to the internet to set a PIN.</string>
-    <string name="profile_primary_addons_required">This profile uses primary addons.</string>
+    <string name="profile_primary_addons_required">This profile uses the primary addon, plugin, and Live TV setup.</string>
     <string name="streams_failed_to_load_scraper">Failed to load %1$s</string>
     <string name="stream_default_name">Stream</string>
     <string name="source_embedded">Embedded</string>
@@ -1523,8 +1557,10 @@
     <string name="action_resume_episode">Resume %1$s</string>
     <string name="collections_import_error_empty_json">JSON is empty.</string>
     <string name="collections_import_error_collection_blank_id">Collection %1$d has blank id.</string>
+    <string name="collections_import_error_collection_duplicate_id">Collection id '%1$s' is used more than once.</string>
     <string name="collections_import_error_collection_blank_title">Collection '%1$s' has blank title.</string>
     <string name="collections_import_error_folder_blank_id">Folder %1$d in '%2$s' has blank id.</string>
+    <string name="collections_import_error_folder_duplicate_id">Folder id '%1$s' is used more than once in '%2$s'.</string>
     <string name="collections_import_error_folder_blank_title">Folder '%1$s' in '%2$s' has blank title.</string>
     <string name="collections_import_error_source_blank_fields">Source %1$d in folder '%2$s' has blank fields.</string>
     <string name="collections_import_error_trakt_list_id">Source %1$d in folder '%2$s' is missing a Trakt list ID.</string>
@@ -1952,6 +1988,8 @@
     <string name="plugins_test_results_count">Test results (%1$d)</string>
     <string name="plugins_tmdb_required_message">Plugin providers require a TMDB API key. Set it on the TMDB screen or plugin providers will not work correctly.</string>
     <string name="search_error_no_results_for_catalog">No search results returned for %1$s.</string>
+    <string name="search_tmdb_fallback_title">Built-in TMDB search</string>
+    <string name="search_tmdb_fallback_subtitle">Results from TMDB when addons cannot answer</string>
     <string name="settings_playback_introdb_invalid_key">Invalid API Key or connection failed</string>
     <string name="streams_plugin_repository_fallback">Plugin repository</string>
     <string name="submit_intro_action">Submit Intro</string>
@@ -2007,4 +2045,19 @@
     <string name="player_torrent_starting_engine">Starting P2P engine…</string>
     <string name="player_error_failed_start_torrent">Failed to start torrent: %1$s</string>
     <string name="player_error_torrent">Torrent error: %1$s</string>
+    <!-- Person & TMDB entity detail (pass7) -->
+    <string name="person_detail_born">Born</string>
+    <string name="person_detail_place_of_birth">Place of birth</string>
+    <string name="person_detail_credits">Credits</string>
+    <string name="person_detail_biography">Biography</string>
+    <string name="entity_browse_country">Country</string>
+    <string name="entity_browse_type">Type</string>
+    <string name="entity_browse_catalogue">Catalogue</string>
+    <string name="entity_browse_about">About</string>
+    <string name="player_external_loading_subtitles">Loading subtitles from addons...</string>
+    <string name="player_external_downloading_subtitles">Downloading subtitles...</string>
+    <plurals name="entity_browse_title_count">
+        <item quantity="one">%d title</item>
+        <item quantity="other">%d titles</item>
+    </plurals>
 </resources>

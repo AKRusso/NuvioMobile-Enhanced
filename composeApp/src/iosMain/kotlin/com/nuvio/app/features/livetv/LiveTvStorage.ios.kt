@@ -16,48 +16,65 @@ actual object LiveTvStorage {
     private const val recentChannelGroupKey = "live_tv_recent_channel_group"
     private const val recentChannelTvgIdKey = "live_tv_recent_channel_tvg_id"
 
+    private fun resolvedProfileId(): Int = resolveLiveTvStorageProfileId()
+
+    private fun scopedKey(baseKey: String, profileId: Int = resolvedProfileId()): String = "${baseKey}_$profileId"
+
+    private fun loadScopedString(baseKey: String): String? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val profileId = resolvedProfileId()
+        return defaults.stringForKey(scopedKey(baseKey, profileId))
+            ?: if (profileId == 1) defaults.stringForKey(baseKey) else null
+    }
+
+    private fun saveScopedString(baseKey: String, value: String?) {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val profileId = resolvedProfileId()
+        val profileKey = scopedKey(baseKey, profileId)
+        if (value.isNullOrBlank()) {
+            defaults.removeObjectForKey(profileKey)
+            if (profileId == 1) defaults.removeObjectForKey(baseKey)
+        } else {
+            defaults.setObject(value, forKey = profileKey)
+            if (profileId == 1) defaults.setObject(value, forKey = baseKey)
+        }
+    }
+
     actual fun loadSourceType(): LiveTvSourceType =
-        when (NSUserDefaults.standardUserDefaults.stringForKey(sourceTypeKey)) {
+        when (loadScopedString(sourceTypeKey)) {
             LiveTvSourceType.Stalker.name -> LiveTvSourceType.Stalker
             else -> LiveTvSourceType.M3u
         }
 
     actual fun saveSourceType(type: LiveTvSourceType) {
-        NSUserDefaults.standardUserDefaults.setObject(type.name, forKey = sourceTypeKey)
+        saveScopedString(sourceTypeKey, type.name)
     }
 
     actual fun loadSourceUrl(): String? =
-        NSUserDefaults.standardUserDefaults.stringForKey(sourceUrlKey)
+        loadScopedString(sourceUrlKey)
 
     actual fun saveSourceUrl(url: String) {
-        if (url.isBlank()) {
-            NSUserDefaults.standardUserDefaults.removeObjectForKey(sourceUrlKey)
-        } else {
-            NSUserDefaults.standardUserDefaults.setObject(url, forKey = sourceUrlKey)
-        }
+        saveScopedString(sourceUrlKey, url)
     }
 
     actual fun loadStalkerSettings(): LiveTvStalkerSettings {
-        val defaults = NSUserDefaults.standardUserDefaults
         return LiveTvStalkerSettings(
-            portalUrl = defaults.stringForKey(stalkerPortalUrlKey).orEmpty(),
-            macAddress = defaults.stringForKey(stalkerMacAddressKey).orEmpty(),
-            username = defaults.stringForKey(stalkerUsernameKey).orEmpty(),
-            password = defaults.stringForKey(stalkerPasswordKey).orEmpty(),
+            portalUrl = loadScopedString(stalkerPortalUrlKey).orEmpty(),
+            macAddress = loadScopedString(stalkerMacAddressKey).orEmpty(),
+            username = loadScopedString(stalkerUsernameKey).orEmpty(),
+            password = loadScopedString(stalkerPasswordKey).orEmpty(),
         )
     }
 
     actual fun saveStalkerSettings(settings: LiveTvStalkerSettings) {
-        val defaults = NSUserDefaults.standardUserDefaults
-        defaults.setObject(settings.portalUrl, forKey = stalkerPortalUrlKey)
-        defaults.setObject(settings.macAddress, forKey = stalkerMacAddressKey)
-        defaults.setObject(settings.username, forKey = stalkerUsernameKey)
-        defaults.setObject(settings.password, forKey = stalkerPasswordKey)
+        saveScopedString(stalkerPortalUrlKey, settings.portalUrl)
+        saveScopedString(stalkerMacAddressKey, settings.macAddress)
+        saveScopedString(stalkerUsernameKey, settings.username)
+        saveScopedString(stalkerPasswordKey, settings.password)
     }
 
     actual fun loadFavoriteUrls(): Set<String> =
-        NSUserDefaults.standardUserDefaults
-            .stringForKey(favoriteUrlsKey)
+        loadScopedString(favoriteUrlsKey)
             .orEmpty()
             .lineSequence()
             .map(String::trim)
@@ -65,43 +82,27 @@ actual object LiveTvStorage {
             .toSet()
 
     actual fun saveFavoriteUrls(urls: Set<String>) {
-        NSUserDefaults.standardUserDefaults.setObject(
-            urls.sorted().joinToString("\n"),
-            forKey = favoriteUrlsKey,
-        )
+        saveScopedString(favoriteUrlsKey, urls.sorted().joinToString("\n"))
     }
 
     actual fun loadRecentChannel(): LiveTvRecentChannel? {
-        val defaults = NSUserDefaults.standardUserDefaults
-        val streamUrl = defaults.stringForKey(recentChannelUrlKey).orEmpty().trim()
-        val name = defaults.stringForKey(recentChannelNameKey).orEmpty().trim()
+        val streamUrl = loadScopedString(recentChannelUrlKey).orEmpty().trim()
+        val name = loadScopedString(recentChannelNameKey).orEmpty().trim()
         if (streamUrl.isBlank() || name.isBlank()) return null
         return LiveTvRecentChannel(
             streamUrl = streamUrl,
             name = name,
-            logoUrl = defaults.stringForKey(recentChannelLogoKey)?.takeIf(String::isNotBlank),
-            group = defaults.stringForKey(recentChannelGroupKey).orEmpty(),
-            tvgId = defaults.stringForKey(recentChannelTvgIdKey)?.takeIf(String::isNotBlank),
+            logoUrl = loadScopedString(recentChannelLogoKey)?.takeIf(String::isNotBlank),
+            group = loadScopedString(recentChannelGroupKey).orEmpty(),
+            tvgId = loadScopedString(recentChannelTvgIdKey)?.takeIf(String::isNotBlank),
         )
     }
 
     actual fun saveRecentChannel(channel: LiveTvRecentChannel?) {
-        val defaults = NSUserDefaults.standardUserDefaults
-        if (channel == null) {
-            defaults.removeObjectForKey(recentChannelUrlKey)
-            defaults.removeObjectForKey(recentChannelNameKey)
-            defaults.removeObjectForKey(recentChannelLogoKey)
-            defaults.removeObjectForKey(recentChannelGroupKey)
-            defaults.removeObjectForKey(recentChannelTvgIdKey)
-            return
-        }
-        defaults.setObject(channel.streamUrl, forKey = recentChannelUrlKey)
-        defaults.setObject(channel.name, forKey = recentChannelNameKey)
-        if (channel.logoUrl.isNullOrBlank()) defaults.removeObjectForKey(recentChannelLogoKey)
-        else defaults.setObject(channel.logoUrl, forKey = recentChannelLogoKey)
-        if (channel.group.isBlank()) defaults.removeObjectForKey(recentChannelGroupKey)
-        else defaults.setObject(channel.group, forKey = recentChannelGroupKey)
-        if (channel.tvgId.isNullOrBlank()) defaults.removeObjectForKey(recentChannelTvgIdKey)
-        else defaults.setObject(channel.tvgId, forKey = recentChannelTvgIdKey)
+        saveScopedString(recentChannelUrlKey, channel?.streamUrl)
+        saveScopedString(recentChannelNameKey, channel?.name)
+        saveScopedString(recentChannelLogoKey, channel?.logoUrl)
+        saveScopedString(recentChannelGroupKey, channel?.group)
+        saveScopedString(recentChannelTvgIdKey, channel?.tvgId)
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -414,10 +415,10 @@ private fun HeroContentBlock(
     detailMeta: MetaDetails?,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
-    var logoLoadError by remember(item.type, item.id, item.logo) {
+    val logoUrl = detailMeta?.logo?.takeIf { it.isNotBlank() } ?: item.logo?.takeIf { it.isNotBlank() }
+    var logoLoadError by remember(item.type, item.id, logoUrl) {
         mutableStateOf(false)
     }
-    val logoUrl = item.logo?.takeIf { it.isNotBlank() }
     val displayType = detailMeta?.type?.takeIf { it.isNotBlank() } ?: item.type
     val detailGenres = detailMeta?.genres
         .orEmpty()
@@ -496,40 +497,28 @@ private fun HeroContentBlock(
         }
 
         Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = if (layout.isTablet) {
-                Arrangement.spacedBy(8.dp, Alignment.Start)
-            } else {
-                Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-            },
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
+        HeroMetaRow(layout = layout) {
             HeroMetaChip(
                 text = heroTypeLabel(displayType),
                 emphasized = true,
             )
-            displayGenres.forEach { genre ->
-                HeroMetaChip(
-                    text = genre,
-                    emphasized = true,
-                )
+        }
+
+        if (displayGenres.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            HeroMetaRow(layout = layout) {
+                displayGenres.forEach { genre ->
+                    HeroMetaChip(
+                        text = genre,
+                        emphasized = true,
+                    )
+                }
             }
         }
 
         if (!displayRelease.isNullOrBlank() || !displayImdb.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (layout.isTablet) {
-                    Arrangement.spacedBy(8.dp, Alignment.Start)
-                } else {
-                    Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
-                },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
+            HeroMetaRow(layout = layout) {
                 displayRelease?.takeIf { it.isNotBlank() }?.let { info ->
                     HeroMetaChip(
                         text = heroReleaseYearLabel(info),
@@ -579,6 +568,25 @@ private fun HeroContentBlock(
             }
         }
     }
+}
+
+@Composable
+private fun HeroMetaRow(
+    layout: HomeHeroLayout,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = if (layout.isTablet) {
+            Arrangement.spacedBy(8.dp, Alignment.Start)
+        } else {
+            Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+        },
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
 }
 
 private suspend fun fetchHeroDetailMeta(item: MetaPreview): MetaDetails? =
@@ -753,7 +761,7 @@ private fun mobileHeroHeight(
     mobileBelowSectionHeightHintDp: Float?,
 ): Dp {
     val viewportDrivenHeight = viewportHeightDp?.let { (it * MOBILE_HERO_VIEWPORT_RATIO).dp }
-    val widthFallbackHeight = (maxWidthDp * 1.16f).dp
+    val widthFallbackHeight = (maxWidthDp * 1.02f).dp
     val baseHeight = viewportDrivenHeight ?: widthFallbackHeight
 
     val cappedHeight = if (viewportHeightDp != null && mobileBelowSectionHeightHintDp != null) {

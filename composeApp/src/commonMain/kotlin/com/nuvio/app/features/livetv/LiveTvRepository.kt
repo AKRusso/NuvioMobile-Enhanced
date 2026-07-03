@@ -38,6 +38,12 @@ object LiveTvRepository {
         )
     }
 
+    fun onProfileChanged() {
+        initialized = false
+        mutableUiState.value = LiveTvUiState()
+        ensureLoaded()
+    }
+
     suspend fun load(sourceUrl: String): Result<List<LiveTvChannel>> {
         val normalizedUrl = sourceUrl.trim()
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {

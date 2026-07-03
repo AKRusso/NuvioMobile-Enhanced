@@ -79,8 +79,10 @@ fun ProfileEditScreen(
     var name by rememberSaveable { mutableStateOf(currentProfile?.name ?: "") }
     var selectedAvatarId by rememberSaveable { mutableStateOf(currentProfile?.avatarId) }
     var avatarUrl by rememberSaveable { mutableStateOf(currentProfile?.avatarUrl.orEmpty()) }
+    var backgroundUrl by rememberSaveable { mutableStateOf(currentProfile?.backgroundUrl.orEmpty()) }
     var usesPrimaryAddons by rememberSaveable { mutableStateOf(currentProfile?.usesPrimaryAddons ?: false) }
     var isSaving by remember { mutableStateOf(false) }
+    var saveErrorMessage by remember { mutableStateOf<String?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showPinSetup by remember { mutableStateOf(false) }
     var showPinClear by remember { mutableStateOf(false) }
@@ -99,6 +101,9 @@ fun ProfileEditScreen(
 
     val customAvatarUrl = remember(avatarUrl) { normalizedAvatarUrl(avatarUrl) }
     val avatarUrlIsInvalid = avatarUrl.isNotBlank() && customAvatarUrl == null
+    val customBackgroundUrl = remember(backgroundUrl) { normalizedProfileBackgroundUrl(backgroundUrl) }
+    val backgroundUrlIsInvalid = backgroundUrl.isNotBlank() && customBackgroundUrl == null
+    val genericSaveErrorMessage = stringResource(Res.string.profile_save_failed)
     val selectedAvatarItem = remember(selectedAvatarId, avatars) {
         selectedAvatarId?.let { id -> avatars.find { it.id == id } }
     }
@@ -160,6 +165,35 @@ fun ProfileEditScreen(
                     if (avatarUrlIsInvalid) {
                         Text(
                             text = stringResource(Res.string.profile_avatar_url_invalid),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            NuvioSurfaceCard {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = stringResource(Res.string.profile_custom_background_url),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(Res.string.profile_custom_background_url_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    NuvioInputField(
+                        value = backgroundUrl,
+                        onValueChange = { backgroundUrl = it },
+                        placeholder = stringResource(Res.string.profile_custom_background_url_placeholder),
+                    )
+                    if (backgroundUrlIsInvalid) {
+                        Text(
+                            text = stringResource(Res.string.profile_background_url_invalid),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
@@ -254,6 +288,15 @@ fun ProfileEditScreen(
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
+            saveErrorMessage?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
             NuvioPrimaryButton(
                 text = if (isSaving) {
                     stringResource(Res.string.profile_saving)
@@ -262,17 +305,19 @@ fun ProfileEditScreen(
                 } else {
                     stringResource(Res.string.collections_editor_save_changes)
                 },
-                enabled = name.isNotBlank() && !avatarUrlIsInvalid && !isSaving,
+                enabled = name.isNotBlank() && !avatarUrlIsInvalid && !backgroundUrlIsInvalid && !isSaving,
                 onClick = {
+                    saveErrorMessage = null
                     isSaving = true
                     scope.launch {
                         val avatarColorHex = visibleAvatarItem?.bgColor ?: fallbackColorHex
-                        if (isNew) {
+                        val result = if (isNew) {
                             ProfileRepository.createProfile(
                                 name = name,
                                 avatarColorHex = avatarColorHex,
                                 avatarId = if (customAvatarUrl == null) selectedAvatarId else null,
                                 avatarUrl = customAvatarUrl,
+                                backgroundUrl = customBackgroundUrl,
                                 usesPrimaryAddons = usesPrimaryAddons,
                             )
                         } else {
@@ -282,11 +327,17 @@ fun ProfileEditScreen(
                                 avatarColorHex = avatarColorHex,
                                 avatarId = if (customAvatarUrl == null) selectedAvatarId else null,
                                 avatarUrl = customAvatarUrl,
+                                backgroundUrl = customBackgroundUrl,
                                 usesPrimaryAddons = usesPrimaryAddons,
                             )
                         }
                         isSaving = false
-                        onSaved()
+                        if (result.success) {
+                            onSaved()
+                        } else {
+                            saveErrorMessage = result.message
+                                ?: genericSaveErrorMessage
+                        }
                     }
                 },
             )

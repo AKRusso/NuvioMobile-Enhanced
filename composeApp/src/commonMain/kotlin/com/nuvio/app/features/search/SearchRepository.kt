@@ -18,6 +18,8 @@ import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.filterReleasedItems
+import com.nuvio.app.features.tmdb.TmdbService
+import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -58,9 +60,7 @@ object SearchRepository {
         if (activeAddons.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
-            _uiState.value = SearchUiState(
-                emptyStateReason = SearchEmptyStateReason.NoActiveAddons,
-            )
+            searchTmdbOnly(normalizedQuery, SearchEmptyStateReason.NoActiveAddons)
             return
         }
 
@@ -71,9 +71,7 @@ object SearchRepository {
         if (requests.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
-            _uiState.value = SearchUiState(
-                emptyStateReason = SearchEmptyStateReason.NoSearchCatalogs,
-            )
+            searchTmdbOnly(normalizedQuery, SearchEmptyStateReason.NoSearchCatalogs)
             return
         }
 
@@ -146,16 +144,35 @@ object SearchRepository {
             val sections = results.orderedSections()
             val firstFailure = completedResults.firstNotNullOfOrNull { it.error?.message }
             val allFailed = completedResults.isNotEmpty() && completedResults.all { it.error != null }
+            val fallbackSections = if (sections.isEmpty() || allFailed) {
+                tmdbSearchSection(normalizedQuery)?.let(::listOf).orEmpty()
+            } else {
+                emptyList()
+            }
+            val finalSections = sections + fallbackSections
 
             _uiState.value = SearchUiState(
                 isLoading = false,
-                sections = sections,
+                sections = finalSections,
                 emptyStateReason = when {
-                    sections.isNotEmpty() -> null
+                    finalSections.isNotEmpty() -> null
                     allFailed -> SearchEmptyStateReason.RequestFailed
                     else -> SearchEmptyStateReason.NoResults
                 },
                 errorMessage = if (allFailed) firstFailure else null,
+            )
+        }
+    }
+
+    private fun searchTmdbOnly(query: String, fallbackReason: SearchEmptyStateReason) {
+        activeJob?.cancel()
+        _uiState.value = SearchUiState(isLoading = true)
+        activeJob = scope.launch {
+            val section = tmdbSearchSection(query)
+            _uiState.value = SearchUiState(
+                isLoading = false,
+                sections = section?.let(::listOf).orEmpty(),
+                emptyStateReason = if (section != null) null else fallbackReason,
             )
         }
     }
@@ -390,6 +407,26 @@ object SearchRepository {
             items = items,
             availableItemCount = page.rawItemCount,
             hasMore = supportsPagination && page.nextSkip != null,
+        )
+    }
+
+    private suspend fun tmdbSearchSection(query: String): HomeCatalogSection? {
+        val settings = TmdbSettingsRepository.snapshot()
+        if (!settings.enabled || settings.apiKey.isBlank()) return null
+        val items = TmdbService.search(query)
+        if (items.isEmpty()) return null
+        return HomeCatalogSection(
+            key = "tmdb:search:${query.lowercase()}",
+            title = getString(Res.string.search_tmdb_fallback_title),
+            subtitle = getString(Res.string.search_tmdb_fallback_subtitle),
+            addonName = "TMDB",
+            target = CatalogTarget.Library(
+                contentType = "movie",
+                sectionType = "tmdb_search",
+            ),
+            items = items,
+            availableItemCount = items.size,
+            hasMore = false,
         )
     }
 

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,14 +27,21 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
-import com.nuvio.app.core.network.SyncBackendRepository
+import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioPrimaryButton
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.nuvio
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_cancel
 import nuvio.composeapp.generated.resources.compose_settings_page_account
+import nuvio.composeapp.generated.resources.auth_account_deletion_failed
+import nuvio.composeapp.generated.resources.settings_account_delete_account
+import nuvio.composeapp.generated.resources.settings_account_delete_account_description
+import nuvio.composeapp.generated.resources.settings_account_delete_confirm_message
+import nuvio.composeapp.generated.resources.settings_account_delete_confirm_title
 import nuvio.composeapp.generated.resources.settings_account_email
 import nuvio.composeapp.generated.resources.settings_account_not_signed_in
 import nuvio.composeapp.generated.resources.settings_account_sign_out
@@ -41,7 +50,6 @@ import nuvio.composeapp.generated.resources.settings_account_sign_out_confirm_ti
 import nuvio.composeapp.generated.resources.settings_account_status
 import nuvio.composeapp.generated.resources.settings_account_status_anonymous
 import nuvio.composeapp.generated.resources.settings_account_status_signed_in
-import nuvio.composeapp.generated.resources.settings_account_sync_backend
 import org.jetbrains.compose.resources.stringResource
 
 internal fun LazyListScope.accountSettingsContent(
@@ -57,10 +65,13 @@ private fun AccountSettingsBody(
     isTablet: Boolean,
 ) {
     val authState by AuthRepository.state.collectAsStateWithLifecycle()
-    val syncBackendState by SyncBackendRepository.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showSignOutConfirm by remember { mutableStateOf(false) }
-    val syncBackendLabel = syncBackendState.selectedBackend.displayName
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
+    var deleteErrorMessage by remember { mutableStateOf<String?>(null) }
+    val deleteAccountFallbackMessage = stringResource(Res.string.auth_account_deletion_failed)
+    val canDeleteAccount = AppFeaturePolicy.accountDeletionEnabled && authState is AuthState.Authenticated
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         NuvioSurfaceCard {
@@ -99,18 +110,22 @@ private fun AccountSettingsBody(
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            AccountInfoRow(
-                label = stringResource(Res.string.settings_account_sync_backend),
-                value = syncBackendLabel,
-            )
         }
 
         NuvioPrimaryButton(
             text = stringResource(Res.string.settings_account_sign_out),
             onClick = { showSignOutConfirm = true },
         )
+
+        if (canDeleteAccount) {
+            DeleteAccountCard(
+                errorMessage = deleteErrorMessage,
+                onDeleteClick = {
+                    deleteErrorMessage = null
+                    showDeleteConfirm = true
+                },
+            )
+        }
     }
 
     NuvioStatusModal(
@@ -125,6 +140,85 @@ private fun AccountSettingsBody(
         },
         onDismiss = { showSignOutConfirm = false },
     )
+
+    NuvioStatusModal(
+        title = stringResource(Res.string.settings_account_delete_confirm_title),
+        message = stringResource(Res.string.settings_account_delete_confirm_message),
+        isVisible = showDeleteConfirm,
+        isBusy = isDeletingAccount,
+        confirmText = stringResource(Res.string.settings_account_delete_account),
+        dismissText = stringResource(Res.string.action_cancel),
+        onConfirm = {
+            if (isDeletingAccount) return@NuvioStatusModal
+            isDeletingAccount = true
+            scope.launch {
+                val result = AuthRepository.deleteAccount()
+                isDeletingAccount = false
+                showDeleteConfirm = false
+                deleteErrorMessage = if (result.isSuccess) {
+                    null
+                } else {
+                    AuthRepository.error.value
+                        ?: result.exceptionOrNull()?.message
+                        ?: deleteAccountFallbackMessage
+                }
+            }
+        },
+        onDismiss = {
+            if (!isDeletingAccount) {
+                showDeleteConfirm = false
+            }
+        },
+    )
+}
+
+@Composable
+private fun DeleteAccountCard(
+    errorMessage: String?,
+    onDeleteClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+
+    NuvioSurfaceCard {
+        Text(
+            text = stringResource(Res.string.settings_account_delete_account),
+            style = MaterialTheme.typography.titleMedium,
+            color = tokens.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(Res.string.settings_account_delete_account_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = tokens.colors.textMuted,
+        )
+        errorMessage?.let { message ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.colors.danger,
+            )
+        }
+        Spacer(modifier = Modifier.height(14.dp))
+        Button(
+            onClick = onDeleteClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(NuvioTokens.Space.s48 + NuvioTokens.Space.s4),
+            shape = tokens.shapes.button,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = tokens.colors.danger,
+                contentColor = tokens.colors.textInverse,
+            ),
+        ) {
+            Text(
+                text = stringResource(Res.string.settings_account_delete_account),
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
 }
 
 @Composable
@@ -144,14 +238,14 @@ private fun AccountInfoRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-            modifier = Modifier.weight(1f),
             text = value,
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyLarge,
             color = valueColor,
             fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.End,
         )
     }
 }

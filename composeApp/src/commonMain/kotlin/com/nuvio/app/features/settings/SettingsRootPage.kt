@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
@@ -14,16 +15,15 @@ import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.compose_about_made_with
 import nuvio.composeapp.generated.resources.compose_about_version_format
 import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
@@ -32,7 +32,6 @@ import nuvio.composeapp.generated.resources.compose_settings_page_integrations
 import nuvio.composeapp.generated.resources.compose_settings_page_licenses_attributions
 import nuvio.composeapp.generated.resources.compose_settings_page_notifications
 import nuvio.composeapp.generated.resources.compose_settings_page_playback
-import nuvio.composeapp.generated.resources.compose_settings_page_streams
 import nuvio.composeapp.generated.resources.compose_settings_page_supporters_contributors
 import nuvio.composeapp.generated.resources.compose_settings_root_account_description
 import nuvio.composeapp.generated.resources.compose_settings_root_appearance_description
@@ -44,7 +43,6 @@ import nuvio.composeapp.generated.resources.compose_settings_root_downloads_titl
 import nuvio.composeapp.generated.resources.compose_settings_root_general_section
 import nuvio.composeapp.generated.resources.compose_settings_root_integrations_description
 import nuvio.composeapp.generated.resources.compose_settings_root_notifications_description
-import nuvio.composeapp.generated.resources.compose_settings_root_streams_description
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_switch_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_trakt_description
@@ -61,7 +59,6 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LazyListScope.settingsRootContent(
     isTablet: Boolean,
     onPlaybackClick: () -> Unit,
-    onStreamsClick: () -> Unit,
     onAppearanceClick: () -> Unit,
     onAdvancedClick: () -> Unit,
     onNotificationsClick: () -> Unit,
@@ -77,6 +74,7 @@ internal fun LazyListScope.settingsRootContent(
     showGeneralSection: Boolean = true,
     showAboutSection: Boolean = true,
     showAdvancedSection: Boolean = true,
+    showSupportersContributorsPage: Boolean = true,
 ) {
     if (showAccountSection) {
         item {
@@ -146,14 +144,6 @@ internal fun LazyListScope.settingsRootContent(
                     )
                     SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_streams),
-                        description = stringResource(Res.string.compose_settings_root_streams_description),
-                        icon = Icons.Rounded.Style,
-                        isTablet = isTablet,
-                        onClick = onStreamsClick,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsNavigationRow(
                         title = stringResource(Res.string.compose_settings_page_integrations),
                         description = stringResource(Res.string.compose_settings_root_integrations_description),
                         icon = Icons.Rounded.Link,
@@ -179,14 +169,16 @@ internal fun LazyListScope.settingsRootContent(
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.compose_settings_page_supporters_contributors),
-                        description = stringResource(Res.string.about_supporters_contributors_subtitle),
-                        icon = Icons.Rounded.Favorite,
-                        isTablet = isTablet,
-                        onClick = onSupportersContributorsClick,
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
+                    if (showSupportersContributorsPage) {
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.compose_settings_page_supporters_contributors),
+                            description = stringResource(Res.string.about_supporters_contributors_subtitle),
+                            icon = Icons.Rounded.Favorite,
+                            isTablet = isTablet,
+                            onClick = onSupportersContributorsClick,
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     SettingsNavigationRow(
                         title = stringResource(Res.string.compose_settings_page_licenses_attributions),
                         description = stringResource(Res.string.about_licenses_attributions_subtitle),
@@ -227,16 +219,29 @@ internal fun LazyListScope.settingsRootContent(
         }
     }
     item {
+        val uriHandler = LocalUriHandler.current
         androidx.compose.foundation.layout.Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = if (isTablet) 20.dp else 16.dp),
         ) {
             Text(
-                text = stringResource(Res.string.compose_about_made_with),
+                text = "NuvioEnhanced",
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "github.com/yesnt10/NuvioMobile-Enhanced",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp)
+                    .clickable {
+                        uriHandler.openUri("https://github.com/yesnt10/NuvioMobile-Enhanced")
+                    },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center,
             )
             Text(

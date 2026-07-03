@@ -50,6 +50,8 @@ import com.nuvio.app.features.trakt.normalizeTraktContinueWatchingDaysCap
 import com.nuvio.app.features.trakt.shouldUseTraktProgress
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watched.WatchedRepository
+import com.nuvio.app.features.watched.episodePlaybackId
+import com.nuvio.app.features.watched.watchedItemKey
 import com.nuvio.app.features.watchprogress.CachedInProgressItem
 import com.nuvio.app.features.watchprogress.CachedNextUpItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentCache
@@ -127,6 +129,7 @@ fun HomeScreen(
     val collections by CollectionRepository.collections.collectAsStateWithLifecycle()
     val continueWatchingPreferences by ContinueWatchingPreferencesRepository.uiState.collectAsStateWithLifecycle()
     val watchedUiState by WatchedRepository.uiState.collectAsStateWithLifecycle()
+    val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val watchProgressUiState by WatchProgressRepository.uiState.collectAsStateWithLifecycle()
     val cloudLibraryUiState by CloudLibraryRepository.uiState.collectAsStateWithLifecycle()
     val tmdbSettingsUiState by remember {
@@ -452,18 +455,8 @@ fun HomeScreen(
             .sorted()
     }
 
-    val catalogRefreshKey = remember(availableManifests) {
-        availableManifests
-            .map { manifest ->
-                buildString {
-                    append(manifest.transportUrl)
-                    append(':')
-                    append(manifest.catalogs.joinToString(separator = ",") { catalog ->
-                        "${catalog.type}:${catalog.id}:${catalog.extra.count { it.isRequired }}"
-                    })
-                }
-            }
-            .sorted()
+    val catalogRefreshKey = remember(enabledAddons) {
+        buildHomeCatalogRefreshSignature(enabledAddons)
     }
 
     LaunchedEffect(catalogRefreshKey) {
@@ -690,6 +683,25 @@ fun HomeScreen(
     val enabledHomeItems = remember(homeSettingsUiState.items) {
         homeSettingsUiState.items.filter { it.enabled }
     }
+    val visibleSeriesPosterTargets = remember(enabledHomeItems, sectionsMap) {
+        enabledHomeItems
+            .filterNot { it.isCollection }
+            .mapNotNull { settingsItem -> sectionsMap[settingsItem.key] }
+            .flatMap { section -> section.items.take(HOME_CATALOG_PREVIEW_LIMIT) }
+            .filter { item -> item.type.isHomeSeriesLikeType() }
+            .distinctBy { item -> watchedItemKey(item.type, item.id) }
+    }
+    LaunchedEffect(
+        visibleSeriesPosterTargets,
+        watchedUiState.items,
+        watchProgressUiState.entries,
+    ) {
+        reconcileVisibleSeriesPosterBadges(
+            items = visibleSeriesPosterTargets,
+            watchedItems = watchedUiState.items,
+            progressEntries = watchProgressUiState.entries,
+        )
+    }
     val hasRenderableCollectionRows = remember(enabledHomeItems, collectionsMap) {
         enabledHomeItems.any { item ->
             item.isCollection && collectionsMap[item.key] != null
@@ -896,6 +908,7 @@ fun HomeScreen(
                                                 null
                                             },
                                             watchedKeys = watchedUiState.watchedKeys,
+                                            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                             onPosterClick = onPosterClick,
                                             onPosterLongClick = onPosterLongClick,
                                         )
@@ -918,6 +931,56 @@ private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 private const val OPTIMISTIC_NEXT_UP_SEED_WINDOW_MS = 3L * 60L * 1000L
 private const val NEXT_UP_RESOLUTION_CONCURRENCY = 4
 private const val NEXT_UP_RESOLUTION_BATCH_SIZE = NEXT_UP_RESOLUTION_CONCURRENCY
+
+private suspend fun reconcileVisibleSeriesPosterBadges(
+    items: List<MetaPreview>,
+    watchedItems: List<WatchedItem>,
+    progressEntries: List<WatchProgressEntry>,
+) {
+    if (items.isEmpty()) return
+    val watchedKeys = watchedItems.mapTo(linkedSetOf()) { item ->
+        watchedItemKey(item.type, item.id, item.season, item.episode)
+    }
+    val touchedSeriesIds = buildSet {
+        watchedItems.forEach { item ->
+            if (item.type.isHomeSeriesLikeType() && item.season != null && item.episode != null) {
+                add(item.id)
+            }
+        }
+        progressEntries.forEach { entry ->
+            if (entry.parentMetaType.isHomeSeriesLikeType() && entry.isEpisode && entry.isEffectivelyCompleted) {
+                add(entry.parentMetaId)
+            }
+        }
+    }
+    if (touchedSeriesIds.isEmpty()) return
+    val todayIsoDate = CurrentDateProvider.todayIsoDate()
+    withContext(Dispatchers.Default) {
+        items
+            .filter { item -> item.id in touchedSeriesIds }
+            .forEach { item ->
+                val meta = runCatching {
+                    MetaDetailsRepository.fetch(type = item.type, id = item.id)
+                }.getOrNull() ?: return@forEach
+                WatchedRepository.reconcileFullyWatchedSeriesState(
+                    meta = meta,
+                    todayIsoDate = todayIsoDate,
+                    isEpisodeWatched = { episode ->
+                        watchedItemKey(meta.type, meta.id, episode.season, episode.episode) in watchedKeys
+                    },
+                    isEpisodeCompleted = { episode ->
+                        val playbackId = meta.episodePlaybackId(episode)
+                        progressEntries.any { entry ->
+                            entry.videoId == playbackId && entry.isEffectivelyCompleted
+                        }
+                    },
+                )
+            }
+    }
+}
+
+private fun String.isHomeSeriesLikeType(): Boolean =
+    trim().lowercase() in setOf("series", "show", "tv", "tvshow")
 
 internal data class HomeNextUpResolutionPlan(
     val initialCandidates: List<CompletedSeriesCandidate>,
@@ -1057,6 +1120,23 @@ private suspend fun resolveHomeNextUpCandidate(
     } else {
         watchedItems
     }
+    val resolvedWatchedKeys = resolvedWatchedItems.mapTo(linkedSetOf()) { item ->
+        watchedItemKey(item.type, item.id, item.season, item.episode)
+    }
+
+    WatchedRepository.reconcileFullyWatchedSeriesState(
+        meta = meta,
+        todayIsoDate = todayIsoDate,
+        isEpisodeWatched = { episode ->
+            watchedItemKey(meta.type, meta.id, episode.season, episode.episode) in resolvedWatchedKeys
+        },
+        isEpisodeCompleted = { episode ->
+            val playbackId = meta.episodePlaybackId(episode)
+            resolvedProgressEntries.any { entry ->
+                entry.videoId == playbackId && entry.isEffectivelyCompleted
+            }
+        },
+    )
 
     val action = meta.seriesPrimaryAction(
         content = completedEntry.content,

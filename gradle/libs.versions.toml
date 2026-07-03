@@ -20,6 +20,7 @@ junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinx-serialization = "1.8.1"
 atomicfu = "0.32.1"
+kmpalette = "4.0.0-beta02"
 ktor = "3.4.1"
 material3 = "1.11.0-alpha07"
 androidx-media3 = "1.8.0"
@@ -57,6 +58,7 @@ coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.r
 coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version.ref = "atomicfu" }
+kmpalette-core = { module = "com.materialkolor.palette:core", version.ref = "kmpalette" }
 ktor-client-android = { module = "io.ktor:ktor-client-android", version.ref = "ktor" }
 kermit = { module = "co.touchlab:kermit", version.ref = "kermit" }
 ktor-client-darwin = { module = "io.ktor:ktor-client-darwin", version.ref = "ktor" }

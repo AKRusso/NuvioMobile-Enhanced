@@ -57,6 +57,15 @@ object SearchHistoryRepository {
         persist()
     }
 
+    fun clearAll() {
+        ensureLoaded()
+        if (recentSearches.isEmpty()) return
+
+        recentSearches = emptyList()
+        publish()
+        persist()
+    }
+
     private fun loadFromDisk() {
         hasLoaded = true
         val payload = SearchHistoryStorage.loadPayload().orEmpty().trim()

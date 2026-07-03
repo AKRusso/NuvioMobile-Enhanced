@@ -408,6 +408,8 @@
     <string name="compose_search_placeholder">Film, dizi ara...</string>
     <string name="compose_search_recent_searches">Son aramalar</string>
     <string name="compose_search_remove_recent_search">Son aramayı kaldır</string>
+    <string name="search_tmdb_fallback_title">Yerleşik TMDB araması</string>
+    <string name="search_tmdb_fallback_subtitle">Eklentiler yanıt veremediğinde TMDB sonuçları</string>
     <string name="compose_settings_category_about">Hakkında</string>
     <string name="compose_settings_category_general">Genel</string>
     <string name="compose_settings_page_account">Hesap</string>
@@ -731,6 +733,8 @@
     <string name="settings_meta_episodes_description">Diziler için sezon ve bölüm listesi.</string>
     <string name="settings_meta_blur_unwatched_episodes">İzlenmemiş Bölümleri Bulanıklaştır</string>
     <string name="settings_meta_blur_unwatched_episodes_description">Sürprizbozanları önlemek için bölümler izlenene kadar küçük resimlerini bulanıklaştır.</string>
+    <string name="settings_meta_show_episode_ratings">Bölüm puanlarını göster</string>
+    <string name="settings_meta_show_episode_ratings_description">Detay ekranındaki bölüm kartlarında IMDb puanlarını göster.</string>
     <string name="settings_meta_group_label">Grup %1$d</string>
     <string name="settings_meta_more_like_this">Buna benzerler</string>
     <string name="settings_meta_more_like_this_description">Öneriler alanı.</string>
@@ -1114,6 +1118,8 @@
     <string name="details_servers_unreachable">Cihazın internete bağlı ama Nuvio gerekli sunuculara ulaşamadı.</string>
     <string name="details_show_less">Daha az göster</string>
     <string name="details_show_more">Daha fazla göster ▾</string>
+    <string name="details_total_seasons">%1$d sezon</string>
+    <string name="details_total_episodes">%1$d bölüm</string>
     <string name="details_writer">Yazar</string>
     <string name="discover_all_genres">Tüm türler</string>
     <string name="discover_catalog">Katalog</string>
@@ -1183,10 +1189,18 @@
     <string name="profile_choose_avatar">Avatar seç</string>
     <string name="profile_choose_avatar_below">Aşağıdan bir avatar seç.</string>
     <string name="profile_create_profile">Profil oluştur</string>
+    <string name="profile_max_profiles_reached">Zaten izin verilen en fazla profil sayısına ulaştın.</string>
+    <string name="profile_save_failed">Profil kaydedilemedi. Tekrar dene.</string>
+    <string name="profile_loading_welcome">Hoş geldin, %1$s!</string>
+    <string name="profile_loading_message">Bir saniye, güç seviyeleri artırılıyor...</string>
     <string name="profile_custom_avatar_selected">Özel profil resmi URL'si seçildi.</string>
     <string name="profile_custom_avatar_url">Özel profil resmi URL'si</string>
     <string name="profile_custom_avatar_url_description">Bir görsel bağlantısı yapıştır ya da yerleşik profil resimlerini kullanmak için burayı boş bırak.</string>
     <string name="profile_custom_avatar_url_placeholder">https://ornek.com/avatar.png</string>
+    <string name="profile_custom_background_url">Özel arka plan URL'si</string>
+    <string name="profile_custom_background_url_description">Profil seçim ekranında kullanmak üzere bir arka plan görseli bağlantısı yapıştır.</string>
+    <string name="profile_custom_background_url_placeholder">https://ornek.com/arka-plan.jpg</string>
+    <string name="profile_background_url_invalid">Geçerli bir http:// veya https:// arka plan görseli URL'si gir.</string>
     <string name="profile_delete_confirm_message">&quot;%1$s&quot; için tüm veriler kalıcı olarak silinecek.</string>
     <string name="profile_delete_title">Profili sil</string>
     <string name="profile_edit_add_title">Profil ekle</string>
@@ -1210,7 +1224,7 @@
     <string name="profile_set_pin_lock">PIN kilidi koy</string>
     <string name="profile_unnamed">Adsız profil</string>
     <string name="profile_use_primary_addons">Ana eklentileri kullan</string>
-    <string name="profile_use_primary_addons_description">Ayrı bir liste yönetmek yerine ana profilin eklenti ayarlarını paylaş.</string>
+    <string name="profile_use_primary_addons_description">Ayrı kaynaklar yönetmek yerine ana profilin eklenti, plugin ve Live TV ayarlarını paylaş.</string>
     <string name="profile_who_is_watching">Kim izliyor?</string>
     <string name="provider_downloaded">İndirildi</string>
     <string name="resume_prompt_action">Devam et</string>
@@ -1307,7 +1321,7 @@
     <string name="profile_pin_offline_verification_requires_online">Bu PIN bu cihazda henüz çevrimdışı doğrulanamaz. Önce bir kez bağlanıp çevrimiçi kilidini aç.</string>
     <string name="profile_pin_set_failed">PIN ayarlanamadı. Tekrar dene.</string>
     <string name="profile_pin_set_requires_internet">PIN ayarlamak için internete bağlan.</string>
-    <string name="profile_primary_addons_required">Bu profil ana eklentileri kullanıyor.</string>
+    <string name="profile_primary_addons_required">Bu profil ana eklenti, plugin ve Live TV ayarlarını kullanıyor.</string>
     <string name="streams_failed_to_load_scraper">%1$s yüklenemedi</string>
     <string name="stream_default_name">Yayın</string>
     <string name="source_embedded">Gömülü</string>
@@ -1505,7 +1519,10 @@
     <string name="library_group_watched">İzlenenler</string>
     <string name="library_group_unwatched">İzlenmeyenler</string>
     <string name="settings_advanced_section_startup">BAŞLANGIÇ</string>
+    <string name="settings_advanced_section_network">AĞ</string>
     <string name="settings_advanced_section_cache">ÖNBELLEK</string>
+    <string name="settings_advanced_doh_description">Desteklendiği yerde Android eklenti isteklerini bu DNS over HTTPS çözücüsünden geçirir.</string>
+    <string name="settings_advanced_doh_selected">DNS over HTTPS için seçili.</string>
     <string name="settings_advanced_hero_auto_scroll">Hero Karuselini Otomatik Kaydır</string>
     <string name="settings_advanced_hero_auto_scroll_description">Ana sayfadaki hero önerilerini otomatik olarak değiştirir.</string>
     <string name="settings_advanced_hero_motion_preview">Hero Hareket Önizlemesi</string>

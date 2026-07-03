@@ -591,6 +591,14 @@ actual object PluginRepository {
 
     private fun resolveEffectiveProfileId(profileId: Int): Int {
         val active = ProfileRepository.state.value.activeProfile
-        return if (active != null && !active.id.isBlank() && active.usesPrimaryPlugins) 1 else profileId
+        return if (
+            active != null &&
+            active.profileIndex != 1 &&
+            (active.usesPrimaryPlugins || active.usesPrimaryAddons)
+        ) {
+            1
+        } else {
+            profileId
+        }
     }
 }

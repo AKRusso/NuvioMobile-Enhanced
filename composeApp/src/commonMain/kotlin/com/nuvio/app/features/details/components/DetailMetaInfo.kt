@@ -81,10 +81,44 @@ fun DetailMetaInfo(
         val releaseLine = formatMetaReleaseLineForDetails(meta)
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
+        val seasonCountLabel = remember(meta.type, meta.videos) {
+            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
+            if (!isSeriesLike) {
+                null
+            } else {
+                meta.videos
+                    .mapNotNull { video -> video.season?.takeIf { it > 0 } }
+                    .distinct()
+                    .size
+                    .takeIf { it > 0 }
+                    ?.let { count -> runBlocking { getString(Res.string.details_total_seasons, count) } }
+            }
+        }
+        val totalEpisodesLabel = remember(meta.type, meta.videos) {
+            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
+            if (!isSeriesLike) {
+                null
+            } else {
+                meta.videos
+                    .map { video ->
+                        when {
+                            video.season != null || video.episode != null -> "${video.season ?: -1}:${video.episode ?: -1}"
+                            video.id.isNotBlank() -> video.id
+                            else -> video.title
+                        }
+                    }
+                    .distinct()
+                    .size
+                    .takeIf { it > 0 }
+                    ?.let { count -> runBlocking { getString(Res.string.details_total_episodes, count) } }
+            }
+        }
         val hasMdbImdbRating = meta.externalRatings.any { it.source == PROVIDER_IMDB }
         val validImdbRating = meta.imdbRating
             ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
         val hasMetaRow = releaseLine != null ||
+            seasonCountLabel != null ||
+            totalEpisodesLabel != null ||
             runtimeText != null ||
             ageBadge != null ||
             (validImdbRating != null && !hasMdbImdbRating)
@@ -96,6 +130,22 @@ fun DetailMetaInfo(
                 releaseLine?.let { line ->
                     Text(
                         text = line,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                seasonCountLabel?.let { seasons ->
+                    Text(
+                        text = seasons,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                totalEpisodesLabel?.let { totalEpisodes ->
+                    Text(
+                        text = totalEpisodes,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         fontWeight = FontWeight.Bold,

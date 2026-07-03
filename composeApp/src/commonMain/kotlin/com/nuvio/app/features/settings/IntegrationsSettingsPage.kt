@@ -67,7 +67,6 @@ internal fun LazyListScope.integrationsContent(
                 SettingsNavigationRow(
                     title = stringResource(Res.string.compose_settings_page_debrid),
                     description = stringResource(Res.string.settings_integrations_debrid_description),
-                    icon = Icons.Rounded.CloudQueue,
                     isTablet = isTablet,
                     onClick = onDebridClick,
                 )

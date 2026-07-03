@@ -99,6 +99,7 @@ fun DetailSeriesContent(
     watchedKeys: Set<String> = emptySet(),
     episodeRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     blurUnwatchedEpisodes: Boolean = false,
+    showEpisodeRatings: Boolean = true,
     onEpisodeClick: ((MetaVideo) -> Unit)? = null,
     onEpisodeLongPress: ((MetaVideo) -> Unit)? = null,
     onSeasonLongPress: ((Int) -> Unit)? = null,
@@ -291,6 +292,7 @@ fun DetailSeriesContent(
                             progressByVideoId = progressByVideoId,
                             episodeRatings = episodeRatings,
                             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                            showEpisodeRatings = showEpisodeRatings,
                             preferredEpisodeNumber = preferredEpisodeNumber,
                             onEpisodeClick = onEpisodeClick,
                             onEpisodeLongPress = onEpisodeLongPress,
@@ -317,8 +319,9 @@ fun DetailSeriesContent(
                                             metaType = meta.type,
                                             metaId = meta.id,
                                             episode = episode,
-                                        ),
+                                    ),
                                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                                    showEpisodeRatings = showEpisodeRatings,
                                     sizing = sizing,
                                     onClick = { onEpisodeClick?.invoke(episode) },
                                     onLongPress = { onEpisodeLongPress?.invoke(episode) },
@@ -584,6 +587,7 @@ private fun EpisodeHorizontalRow(
     progressByVideoId: Map<String, WatchProgressEntry>,
     episodeRatings: Map<Pair<Int, Int>, Double>,
     blurUnwatchedEpisodes: Boolean,
+    showEpisodeRatings: Boolean,
     preferredEpisodeNumber: Int? = null,
     onEpisodeClick: ((MetaVideo) -> Unit)?,
     onEpisodeLongPress: ((MetaVideo) -> Unit)?,
@@ -637,6 +641,7 @@ private fun EpisodeHorizontalRow(
                         episode = episode,
                     ),
                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                showEpisodeRatings = showEpisodeRatings,
                 metrics = rowMetrics,
                 onClick = { onEpisodeClick?.invoke(episode) },
                 onLongPress = { onEpisodeLongPress?.invoke(episode) },
@@ -654,12 +659,15 @@ private fun EpisodeHorizontalCard(
     imdbRating: Double?,
     isWatched: Boolean,
     blurUnwatchedEpisodes: Boolean,
+    showEpisodeRatings: Boolean,
     metrics: EpisodeHorizontalCardMetrics,
     onClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
     val cardShape = RoundedCornerShape(metrics.cornerRadius)
-    val ratingLabel = remember(imdbRating) { imdbRating?.takeIf { it > 0.0 }?.let(::formatEpisodeRating) }
+    val ratingLabel = remember(imdbRating, showEpisodeRatings) {
+        imdbRating?.takeIf { showEpisodeRatings && it > 0.0 }?.let(::formatEpisodeRating)
+    }
     val formattedDate = remember(video.released) { video.released?.let { formatReleaseDateForDisplay(it) } }
     val runtimeLabel = remember(video.runtime) { video.runtime?.takeIf { it > 0 }?.let(::formatEpisodeRuntime) }
     Box(
@@ -1022,13 +1030,16 @@ private fun EpisodeListCard(
     imdbRating: Double?,
     isWatched: Boolean,
     blurUnwatchedEpisodes: Boolean,
+    showEpisodeRatings: Boolean,
     sizing: SeriesContentSizing,
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
     val cardShape = RoundedCornerShape(sizing.cardRadius)
-    val ratingLabel = remember(imdbRating) { imdbRating?.takeIf { it > 0.0 }?.let(::formatEpisodeRating) }
+    val ratingLabel = remember(imdbRating, showEpisodeRatings) {
+        imdbRating?.takeIf { showEpisodeRatings && it > 0.0 }?.let(::formatEpisodeRating)
+    }
     val formattedDate = remember(video.released) { video.released?.let { formatReleaseDateForDisplay(it) } }
     Box(
         modifier = modifier

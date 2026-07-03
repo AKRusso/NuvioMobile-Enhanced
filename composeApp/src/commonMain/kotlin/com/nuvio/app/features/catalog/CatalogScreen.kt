@@ -93,6 +93,7 @@ fun CatalogScreen(
     val selectedLibraryFilter = remember(selectedLibraryFilterName) {
         runCatching { LibraryFilter.valueOf(selectedLibraryFilterName) }.getOrDefault(LibraryFilter.All)
     }
+    val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val initialScrollPosition = remember(
         target,
         homeCatalogSettingsUiState.hideUnreleasedContent,
@@ -213,12 +214,14 @@ fun CatalogScreen(
                             WatchingState.isPosterWatched(
                                 watchedKeys = watchedUiState.watchedKeys,
                                 item = item,
+                                fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                             )
                         }
                         val unwatchedItems = uiState.items.filterNot { item ->
                             WatchingState.isPosterWatched(
                                 watchedKeys = watchedUiState.watchedKeys,
                                 item = item,
+                                fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                             )
                         }
                         val filteredItems = when (selectedLibraryFilter) {
@@ -238,6 +241,7 @@ fun CatalogScreen(
                                 isWatched = WatchingState.isPosterWatched(
                                     watchedKeys = watchedUiState.watchedKeys,
                                     item = item,
+                                    fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                 ),
                                 onClick = onPosterClick?.let { { it(item) } },
                                 onLongClick = onPosterLongClick?.let { { it(item) } },
@@ -256,6 +260,7 @@ fun CatalogScreen(
                                 isWatched = WatchingState.isPosterWatched(
                                     watchedKeys = watchedUiState.watchedKeys,
                                     item = item,
+                                    fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                                 ),
                                 onClick = onPosterClick?.let { { it(item) } },
                                 onLongClick = onPosterLongClick?.let { { it(item) } },
@@ -284,6 +289,7 @@ fun CatalogScreen(
                         WatchingState.isPosterWatched(
                             watchedKeys = watchedUiState.watchedKeys,
                             item = it,
+                            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                         )
                     }
                 })",
@@ -292,6 +298,7 @@ fun CatalogScreen(
                         !WatchingState.isPosterWatched(
                             watchedKeys = watchedUiState.watchedKeys,
                             item = it,
+                            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
                         )
                     }
                 })",

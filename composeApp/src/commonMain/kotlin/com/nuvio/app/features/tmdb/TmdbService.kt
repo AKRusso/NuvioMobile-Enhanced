@@ -2,6 +2,9 @@ package com.nuvio.app.features.tmdb
 
 import co.touchlab.kermit.Logger
 import com.nuvio.app.features.addons.httpGetText
+import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.home.PosterShape
+import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
@@ -53,6 +56,28 @@ object TmdbService {
             imdbToTmdbCache["$imdbId:${normalizeMediaType(mediaType)}"] = tmdbId.toString()
         }
         return imdbId
+    }
+
+    suspend fun search(query: String, limit: Int = 24): List<MetaPreview> {
+        val apiKey = currentApiKey() ?: return emptyList()
+        val normalizedQuery = query.trim().takeIf { it.isNotBlank() } ?: return emptyList()
+        val language = TmdbSettingsRepository.snapshot().language.takeIf { it.isNotBlank() } ?: "en"
+        val body = fetch<TmdbSearchResponse>(
+            endpoint = "search/multi",
+            apiKey = apiKey,
+            query = mapOf(
+                "query" to normalizedQuery,
+                "language" to language,
+                "include_adult" to "false",
+            ),
+        ) ?: return emptyList()
+
+        return body.results
+            .asSequence()
+            .filter { result -> result.mediaType == "movie" || result.mediaType == "tv" }
+            .mapNotNull { result -> result.toMetaPreview() }
+            .take(limit)
+            .toList()
     }
 
     private suspend fun imdbToTmdb(imdbId: String, mediaType: String, apiKey: String): String? {
@@ -126,9 +151,17 @@ internal fun buildTmdbUrl(
         append(endpoint.removePrefix("/"))
         if (params.isNotEmpty()) {
             append("?")
-            append(params.entries.joinToString("&") { (key, value) -> "$key=$value" })
+            append(params.entries.joinToString("&") { (key, value) ->
+                "${key.encodeURLParameter()}=${value.encodeURLParameter()}"
+            })
         }
     }
+}
+
+private fun buildTmdbImageUrl(path: String?, size: String): String? {
+    val clean = path?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    if (clean.startsWith("http://") || clean.startsWith("https://")) return clean
+    return "https://image.tmdb.org/t/p/$size${clean.removePrefix("/")}"
 }
 
 @Serializable
@@ -146,3 +179,58 @@ private data class TmdbExternalResult(
 private data class TmdbExternalIdsResponse(
     @SerialName("imdb_id") val imdbId: String? = null,
 )
+
+@Serializable
+private data class TmdbSearchResponse(
+    val results: List<TmdbSearchResult> = emptyList(),
+)
+
+@Serializable
+private data class TmdbSearchResult(
+    val id: Int,
+    @SerialName("media_type") val mediaType: String? = null,
+    val title: String? = null,
+    val name: String? = null,
+    @SerialName("original_title") val originalTitle: String? = null,
+    @SerialName("original_name") val originalName: String? = null,
+    @SerialName("poster_path") val posterPath: String? = null,
+    @SerialName("backdrop_path") val backdropPath: String? = null,
+    val overview: String? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    @SerialName("first_air_date") val firstAirDate: String? = null,
+    @SerialName("vote_average") val voteAverage: Double? = null,
+    @SerialName("vote_count") val voteCount: Int? = null,
+) {
+    fun toMetaPreview(): MetaPreview? {
+        val normalizedType = when (mediaType) {
+            "tv" -> "series"
+            "movie" -> "movie"
+            else -> return null
+        }
+        val displayName = title?.takeIf { it.isNotBlank() }
+            ?: name?.takeIf { it.isNotBlank() }
+            ?: originalTitle?.takeIf { it.isNotBlank() }
+            ?: originalName?.takeIf { it.isNotBlank() }
+            ?: return null
+        val release = when (mediaType) {
+            "tv" -> firstAirDate
+            else -> releaseDate
+        }?.takeIf { it.isNotBlank() }
+        val rating = voteAverage
+            ?.takeIf { score -> score > 0.0 }
+            ?.let { score -> ((score * 10).toInt() / 10.0).toString() }
+        return MetaPreview(
+            id = "tmdb:$id",
+            type = normalizedType,
+            name = displayName,
+            poster = buildTmdbImageUrl(posterPath, "w500"),
+            banner = buildTmdbImageUrl(backdropPath, "w1280"),
+            posterShape = PosterShape.Poster,
+            description = overview?.takeIf { it.isNotBlank() },
+            releaseInfo = release?.take(4),
+            rawReleaseDate = release,
+            voteCount = voteCount,
+            imdbRating = rating,
+        )
+    }
+}

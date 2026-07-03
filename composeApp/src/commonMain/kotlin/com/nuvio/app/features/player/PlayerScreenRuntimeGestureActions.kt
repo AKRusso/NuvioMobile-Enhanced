@@ -66,7 +66,6 @@ internal fun PlayerScreenRuntime.lockPlayerControls() {
     showAudioModal = false
     showSubtitleModal = false
     showVideoSettingsModal = false
-    showLiveTvChannelsPanel = false
     showSourcesPanel = false
     showEpisodesPanel = false
     episodeStreamsPanelState = EpisodeStreamsPanelState()
@@ -162,6 +161,22 @@ internal fun PlayerScreenRuntime.togglePlayback() {
         playerController?.play()
     }
     controlsVisible = true
+}
+
+internal fun PlayerScreenRuntime.togglePlaybackFromDoubleTap() {
+    if (playbackSnapshot.isPlaying) {
+        shouldPlay = false
+        playerController?.pause()
+        pausedOverlayVisible = true
+    } else {
+        if (playbackSnapshot.isEnded) {
+            playerController?.seekTo(0L)
+        }
+        shouldPlay = true
+        playerController?.play()
+        pausedOverlayVisible = false
+    }
+    controlsVisible = false
 }
 
 internal fun PlayerScreenRuntime.seekBy(offsetMs: Long) {
@@ -291,7 +306,7 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
             offset.x > layoutSize.width * PlayerRightGestureBoundary -> {
                 handleDoubleTapSeek(PlayerSeekDirection.Forward)
             }
-            else -> controlsVisible = !controlsVisible
+            else -> togglePlaybackFromDoubleTap()
         }
     }
     return PlayerSurfaceGestureCallbacks(
