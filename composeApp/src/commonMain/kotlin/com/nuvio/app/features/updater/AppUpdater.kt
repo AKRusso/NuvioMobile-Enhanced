@@ -110,7 +110,11 @@ private class NoChannelReleaseException : IllegalStateException(
     runBlocking { getString(Res.string.updates_no_channel_release) },
 )
 
-private object VersionUtils {
+internal object VersionUtils {
+    private val semanticVersionRegex = Regex("""(?i)(?:^|[^0-9])v?(\d+(?:\.\d+){1,3})""")
+    private val buildCodeRegex = Regex("""(?i)(?:^|[^a-z0-9])build[-_ ]?(\d+)(?:\D|$)""")
+    private val trailingBuildCodeRegex = Regex("""(?:^|[-_])(\d+)$""")
+
     fun normalize(raw: String?): String {
         if (raw.isNullOrBlank()) return ""
         return raw.trim().removePrefix("v").removePrefix("V")
@@ -120,14 +124,38 @@ private object VersionUtils {
         val normalized = normalize(raw)
         if (normalized.isBlank()) return null
 
-        val parts = normalized.split('.', '-', '_')
+        val versionToken = semanticVersionRegex.find(normalized)
+            ?.groups
+            ?.get(1)
+            ?.value
+            ?: normalized
+
+        val parts = versionToken.split('.', '-', '_')
             .filter { it.isNotBlank() }
             .mapNotNull { token -> token.takeWhile { it.isDigit() }.toIntOrNull() }
 
         return parts.takeIf { it.isNotEmpty() }
     }
 
-    fun isRemoteNewer(remote: String?, local: String?): Boolean {
+    fun parseBuildCode(raw: String?): Int? {
+        val normalized = normalize(raw)
+        if (normalized.isBlank()) return null
+
+        buildCodeRegex.find(normalized)
+            ?.groups
+            ?.get(1)
+            ?.value
+            ?.toIntOrNull()
+            ?.let { return it }
+
+        return trailingBuildCodeRegex.find(normalized)
+            ?.groups
+            ?.get(1)
+            ?.value
+            ?.toIntOrNull()
+    }
+
+    fun isRemoteNewer(remote: String?, local: String?, localBuildCode: Int? = null): Boolean {
         val remoteParts = parseVersionParts(remote)
         val localParts = parseVersionParts(local)
 
@@ -143,7 +171,13 @@ private object VersionUtils {
             val localValue = localParts.getOrElse(index) { 0 }
             if (remoteValue != localValue) return remoteValue > localValue
         }
-        return false
+
+        val remoteBuildCode = parseBuildCode(remote)
+        return if (remoteBuildCode != null && localBuildCode != null) {
+            remoteBuildCode > localBuildCode
+        } else {
+            false
+        }
     }
 }
 
@@ -257,7 +291,11 @@ class AppUpdaterController internal constructor(
             val result = AppUpdaterRepository.getLatestChannelUpdate()
 
             result.onSuccess { update ->
-                val remoteNewer = VersionUtils.isRemoteNewer(update.tag, AppVersionConfig.VERSION_NAME)
+                val remoteNewer = VersionUtils.isRemoteNewer(
+                    remote = update.tag,
+                    local = AppVersionConfig.VERSION_NAME,
+                    localBuildCode = AppVersionConfig.VERSION_CODE,
+                )
                 val ignored = ignoredTag != null && ignoredTag == update.tag
                 val shouldShowDialog = force || (remoteNewer && !ignored)
 

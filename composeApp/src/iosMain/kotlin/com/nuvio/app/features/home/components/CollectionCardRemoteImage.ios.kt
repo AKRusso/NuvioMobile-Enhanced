@@ -38,13 +38,19 @@ private val gifHttpClient = HttpClient(Darwin)
 private val gifDecodeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 private const val MaxCachedGifImages = 12
 private const val DefaultGifFrameDelayCentiseconds = 10
-private val gifImageCache = mutableMapOf<String, UIImage>()
+private val gifImageCache = mutableMapOf<String, DecodedGifImage>()
 private val gifImageCacheOrder = mutableListOf<String>()
-private val gifImageInFlight = mutableMapOf<String, Deferred<UIImage?>>()
+private val gifImageInFlight = mutableMapOf<String, Deferred<DecodedGifImage?>>()
 
 private data class GifFrame(
     val image: UIImage,
     val delayCentiseconds: Int,
+)
+
+private data class DecodedGifImage(
+    val poster: UIImage,
+    val frames: List<UIImage>,
+    val durationSeconds: Double,
 )
 
 private data class ExpandedGifFrames(
@@ -57,6 +63,7 @@ private class GifImageViewHolder {
 
     fun clear() {
         imageView?.stopAnimating()
+        imageView?.animationImages = null
         imageView?.image = null
         imageView = null
     }
@@ -82,9 +89,18 @@ internal actual fun CollectionCardRemoteImage(
     }
 
     var gifImage by remember(imageUrl) { mutableStateOf(cachedGifImage(imageUrl)) }
-
     LaunchedEffect(imageUrl) {
         gifImage = loadGifImage(imageUrl)
+    }
+
+    if (gifImage == null) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = contentScale,
+        )
+        return
     }
 
     val imageViewHolder = remember(imageUrl) { GifImageViewHolder() }
@@ -116,24 +132,30 @@ internal actual fun CollectionCardRemoteImage(
     )
 }
 
-private fun UIImageView.updateGifImage(image: UIImage?) {
-    if (this.image != image) {
+private fun UIImageView.updateGifImage(image: DecodedGifImage?) {
+    if (image == null) {
         stopAnimating()
-        this.image = image
+        animationImages = null
+        this.image = null
+        return
     }
-    if (image != null) {
-        startAnimating()
-    }
+
+    stopAnimating()
+    this.image = image.poster
+    animationImages = image.frames
+    animationDuration = image.durationSeconds
+    animationRepeatCount = 0
+    startAnimating()
 }
 
-private fun cachedGifImage(imageUrl: String): UIImage? {
+private fun cachedGifImage(imageUrl: String): DecodedGifImage? {
     val image = gifImageCache[imageUrl] ?: return null
     gifImageCacheOrder.remove(imageUrl)
     gifImageCacheOrder.add(imageUrl)
     return image
 }
 
-private fun storeGifImage(imageUrl: String, image: UIImage) {
+private fun storeGifImage(imageUrl: String, image: DecodedGifImage) {
     gifImageCache[imageUrl] = image
     gifImageCacheOrder.remove(imageUrl)
     gifImageCacheOrder.add(imageUrl)
@@ -145,7 +167,7 @@ private fun storeGifImage(imageUrl: String, image: UIImage) {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-private suspend fun loadGifImage(imageUrl: String): UIImage? {
+private suspend fun loadGifImage(imageUrl: String): DecodedGifImage? {
     cachedGifImage(imageUrl)?.let { return it }
 
     val request = gifImageInFlight[imageUrl] ?: gifDecodeScope.async {
@@ -191,7 +213,7 @@ private fun ByteArray.toCFData() =
 private fun UIImage.Companion.gifImageWithData(
     data: kotlinx.cinterop.CPointer<cnames.structs.__CFData>?,
     frameDurations: List<Int>,
-): UIImage? {
+): DecodedGifImage? {
     return runCatching {
         val source = data?.let { CGImageSourceCreateWithData(it, null) } ?: return null
         val count = CGImageSourceGetCount(source).toInt()
@@ -217,7 +239,11 @@ private fun UIImage.Companion.gifImageWithData(
 
         val expanded = expandedGifFrames(frames)
         val durationSeconds = (expanded.images.size * expanded.tickCentiseconds) / 100.0
-        UIImage.animatedImageWithImages(expanded.images, durationSeconds)
+        DecodedGifImage(
+            poster = frames.first().image,
+            frames = expanded.images,
+            durationSeconds = durationSeconds,
+        )
     }.getOrNull()
 }
 
