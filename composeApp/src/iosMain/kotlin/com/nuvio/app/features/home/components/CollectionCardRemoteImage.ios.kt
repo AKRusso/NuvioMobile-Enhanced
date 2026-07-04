@@ -36,9 +36,9 @@ import kotlinx.cinterop.usePinned
 
 private val gifHttpClient = HttpClient(Darwin)
 private val gifDecodeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-private const val MaxCachedGifImages = 12
-private const val MaxDecodedGifFrames = 48
-private const val MaxExpandedGifFrames = 72
+private const val MaxCachedGifImages = 6
+private const val MaxDecodedGifFrames = 32
+private const val MaxExpandedGifFrames = 48
 private const val DefaultGifFrameDelayCentiseconds = 10
 private val gifImageCache = mutableMapOf<String, DecodedGifImage>()
 private val gifImageCacheOrder = mutableListOf<String>()
@@ -62,12 +62,14 @@ private data class ExpandedGifFrames(
 
 private class GifImageViewHolder {
     var imageView: UIImageView? = null
+    var renderedImage: DecodedGifImage? = null
 
     fun clear() {
         imageView?.stopAnimating()
         imageView?.animationImages = null
         imageView?.image = null
         imageView = null
+        renderedImage = null
     }
 }
 
@@ -122,15 +124,23 @@ internal actual fun CollectionCardRemoteImage(
                 userInteractionEnabled = false
                 tag = imageUrl.hashCode().toLong()
                 imageViewHolder.imageView = this
+                imageViewHolder.renderedImage = gifImage
                 updateGifImage(gifImage)
             }
         },
         update = { imageView ->
-            imageViewHolder.imageView = imageView
+            if (imageViewHolder.imageView !== imageView) {
+                imageViewHolder.imageView = imageView
+                imageViewHolder.renderedImage = null
+            }
             if (imageView.tag != imageUrl.hashCode().toLong()) {
                 imageView.tag = imageUrl.hashCode().toLong()
+                imageViewHolder.renderedImage = null
             }
-            imageView.updateGifImage(gifImage)
+            if (imageViewHolder.renderedImage !== gifImage) {
+                imageView.updateGifImage(gifImage)
+                imageViewHolder.renderedImage = gifImage
+            }
         },
     )
 }

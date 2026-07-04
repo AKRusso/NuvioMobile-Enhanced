@@ -1036,12 +1036,16 @@ private fun LatestChangesCard(
                 }
             }
             listOf(
+                stringResource(Res.string.nuvio_enhanced_latest_change_premium_home),
+                stringResource(Res.string.nuvio_enhanced_latest_change_release_radar),
+                stringResource(Res.string.nuvio_enhanced_latest_change_profile),
+                stringResource(Res.string.nuvio_enhanced_latest_change_details),
                 stringResource(Res.string.nuvio_enhanced_latest_change_settings),
-                stringResource(Res.string.nuvio_enhanced_latest_change_resume),
-                stringResource(Res.string.nuvio_enhanced_latest_change_home),
-                stringResource(Res.string.nuvio_enhanced_latest_change_hero),
                 stringResource(Res.string.nuvio_enhanced_latest_change_backup),
-                stringResource(Res.string.nuvio_enhanced_latest_change_changelog),
+                stringResource(Res.string.nuvio_enhanced_latest_change_community),
+                stringResource(Res.string.nuvio_enhanced_latest_change_accessibility),
+                stringResource(Res.string.nuvio_enhanced_latest_change_reliability),
+                stringResource(Res.string.nuvio_enhanced_latest_change_performance),
             ).forEach { change ->
                 Text(
                     text = "• $change",

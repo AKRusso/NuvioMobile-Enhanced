@@ -2,6 +2,7 @@ package com.nuvio.app.features.addons
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.nuvio.app.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.network.toOkHttpDns
 import kotlinx.coroutines.Dispatchers
@@ -94,6 +95,7 @@ private fun addonHttpClient(): OkHttpClient {
             .writeTimeout(60, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
+            .addInterceptor(SentryNetworkBreadcrumbInterceptor())
             .proxy(Proxy.NO_PROXY)
             .build()
             .also { client ->

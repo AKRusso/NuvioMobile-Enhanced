@@ -582,7 +582,7 @@ private fun AvatarChoiceItem(
             contentDescription = avatar.displayName,
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,
-            animateIfPossible = true,
+            animateIfPossible = false,
         )
 
         if (isSelected) {
