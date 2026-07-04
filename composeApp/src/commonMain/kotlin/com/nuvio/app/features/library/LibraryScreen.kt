@@ -103,6 +103,8 @@ import com.nuvio.app.features.home.components.HomePosterCard
 import com.nuvio.app.features.home.components.HomeReleaseRadarSection
 import com.nuvio.app.features.home.components.HomeSkeletonRow
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
+import com.nuvio.app.features.settings.filteredByNuvioEnhancedReleaseRadar
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watching.application.WatchingState
@@ -143,6 +145,10 @@ fun LibraryScreen(
     val homeCatalogSettingsUiState by remember {
         HomeCatalogSettingsRepository.snapshot()
         HomeCatalogSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val nuvioEnhancedSettings by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var observedOfflineState by remember { mutableStateOf(false) }
@@ -253,6 +259,7 @@ fun LibraryScreen(
         todayIsoDate,
         uiState.items,
         releaseRadarDetailsByKey,
+        nuvioEnhancedSettings,
     ) {
         buildHomeReleaseRadarItems(
             todayIsoDate = todayIsoDate,
@@ -261,6 +268,13 @@ fun LibraryScreen(
             catalogSections = emptyList(),
             resolvedLibraryDetails = releaseRadarDetailsByKey,
             includeRecentPastReleases = false,
+        ).filteredByNuvioEnhancedReleaseRadar(nuvioEnhancedSettings)
+    }
+    val libraryHealthReport = remember(uiState.items, releaseRadarItems, todayIsoDate) {
+        buildLibraryHealthReport(
+            items = uiState.items,
+            releaseRadarItems = releaseRadarItems,
+            todayIsoDate = todayIsoDate,
         )
     }
 
@@ -417,12 +431,24 @@ fun LibraryScreen(
                             onSectionViewAllClick = onSectionViewAllClick,
                             onPosterLongClick = onPosterLongClick,
                         )
+                        if (
+                            nuvioEnhancedSettings.enhancedHomeFeaturesEnabled &&
+                            nuvioEnhancedSettings.libraryHealthEnabled
+                        ) {
+                            item(key = LIBRARY_HEALTH_SECTION_KEY) {
+                                LibraryHealthCard(
+                                    report = libraryHealthReport,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
                         if (releaseRadarItems.isNotEmpty()) {
                             item(key = LIBRARY_RELEASE_RADAR_SECTION_KEY) {
                                 HomeReleaseRadarSection(
                                     items = releaseRadarItems,
                                     modifier = Modifier.padding(bottom = 12.dp),
                                     sectionPadding = 16.dp,
+                                    showDigest = nuvioEnhancedSettings.releaseRadarDigestEnabled,
                                     onPosterClick = onPosterClick?.let { posterClick ->
                                         { preview -> posterClick(preview.toLibraryItem(savedAtEpochMs = 0L)) }
                                     },
@@ -2033,6 +2059,192 @@ private fun defaultLibraryCalendarSelection(
 private fun displayLibraryCalendarEventDate(date: LibraryCalendarDate): String =
     "${localizedMonthName(date.month)} ${date.day}, ${date.year}"
 
+@Composable
+private fun LibraryHealthCard(
+    report: LibraryHealthReport,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(28.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = shape,
+        color = colorScheme.surface.copy(alpha = 0.84f),
+        border = BorderStroke(1.dp, colorScheme.onSurface.copy(alpha = 0.10f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            colorScheme.primary.copy(alpha = 0.18f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(colorScheme.primary.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null,
+                        tint = colorScheme.primary,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Library Health",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = report.summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    text = "${report.score}%",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+            LinearProgressIndicator(
+                progress = { report.score / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(999.dp)),
+                color = colorScheme.primary,
+                trackColor = colorScheme.onSurface.copy(alpha = 0.08f),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                LibraryHealthMetric(
+                    value = report.missingArtwork.toString(),
+                    label = "artwork gaps",
+                    modifier = Modifier.weight(1f),
+                )
+                LibraryHealthMetric(
+                    value = report.thinMetadata.toString(),
+                    label = "thin metadata",
+                    modifier = Modifier.weight(1f),
+                )
+                LibraryHealthMetric(
+                    value = report.upcomingSignals.toString(),
+                    label = "radar signals",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryHealthMetric(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(colorScheme.onSurface.copy(alpha = 0.055f))
+            .border(1.dp, colorScheme.onSurface.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private data class LibraryHealthReport(
+    val score: Int,
+    val missingArtwork: Int,
+    val thinMetadata: Int,
+    val upcomingSignals: Int,
+    val summary: String,
+)
+
+private fun buildLibraryHealthReport(
+    items: List<LibraryItem>,
+    releaseRadarItems: List<com.nuvio.app.features.home.HomeReleaseRadarItem>,
+    todayIsoDate: String,
+): LibraryHealthReport {
+    if (items.isEmpty()) {
+        return LibraryHealthReport(
+            score = 100,
+            missingArtwork = 0,
+            thinMetadata = 0,
+            upcomingSignals = 0,
+            summary = "No saved titles to scan yet.",
+        )
+    }
+
+    val missingArtwork = items.count { item -> item.poster.isNullOrBlank() && item.banner.isNullOrBlank() }
+    val thinMetadata = items.count { item ->
+        item.description.isNullOrBlank() ||
+            item.genres.isEmpty() ||
+            item.imdbRating.isNullOrBlank()
+    }
+    val futureLibraryDates = items.count { item ->
+        item.releaseInfo
+            ?.let(::parseLibraryCalendarDate)
+            ?.iso
+            ?.let { iso -> iso >= todayIsoDate } == true
+    }
+    val issueWeight = missingArtwork + thinMetadata
+    val score = (100 - ((issueWeight.toFloat() / (items.size * 2f)) * 100f).toInt()).coerceIn(0, 100)
+    val summary = when {
+        missingArtwork == 0 && thinMetadata == 0 && releaseRadarItems.isNotEmpty() ->
+            "Your library looks polished and has active upcoming-release coverage."
+        missingArtwork == 0 && thinMetadata == 0 ->
+            "Your saved titles look polished. Radar will light up when upcoming releases appear."
+        else ->
+            "Found ${missingArtwork + thinMetadata} quality signals across ${items.size} saved titles."
+    }
+
+    return LibraryHealthReport(
+        score = score,
+        missingArtwork = missingArtwork,
+        thinMetadata = thinMetadata,
+        upcomingSignals = (releaseRadarItems.size + futureLibraryDates).coerceAtLeast(releaseRadarItems.size),
+        summary = summary,
+    )
+}
+
 private fun libraryCalendarCells(month: LibraryCalendarMonth): List<LibraryCalendarDate?> {
     val firstDayOffset = firstLibraryCalendarWeekdayOffset(month.year, month.month)
     val days = daysInLibraryCalendarMonth(month.year, month.month)
@@ -2124,6 +2336,7 @@ private fun LazyListScope.librarySections(
 }
 
 private const val LIBRARY_SECTION_PREVIEW_LIMIT = 18
+private const val LIBRARY_HEALTH_SECTION_KEY = "library_health"
 private const val LIBRARY_RELEASE_RADAR_SECTION_KEY = "library_release_radar"
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4

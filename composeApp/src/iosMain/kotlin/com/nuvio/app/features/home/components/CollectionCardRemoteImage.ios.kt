@@ -37,6 +37,8 @@ import kotlinx.cinterop.usePinned
 private val gifHttpClient = HttpClient(Darwin)
 private val gifDecodeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 private const val MaxCachedGifImages = 12
+private const val MaxDecodedGifFrames = 48
+private const val MaxExpandedGifFrames = 72
 private const val DefaultGifFrameDelayCentiseconds = 10
 private val gifImageCache = mutableMapOf<String, DecodedGifImage>()
 private val gifImageCacheOrder = mutableListOf<String>()
@@ -78,7 +80,7 @@ internal actual fun CollectionCardRemoteImage(
     contentScale: ContentScale,
     animateIfPossible: Boolean,
 ) {
-    if (!animateIfPossible) {
+    if (!animateIfPossible || !imageUrl.looksLikeGifUrl()) {
         AsyncImage(
             model = imageUrl,
             contentDescription = contentDescription,
@@ -112,6 +114,7 @@ internal actual fun CollectionCardRemoteImage(
 
     UIKitView(
         modifier = modifier,
+        interactive = false,
         factory = {
             UIImageView().apply {
                 contentMode = UIViewContentMode.UIViewContentModeScaleAspectFill
@@ -174,7 +177,7 @@ private suspend fun loadGifImage(imageUrl: String): DecodedGifImage? {
         runCatching {
             val bytes = gifHttpClient.get(imageUrl).body<ByteArray>()
             bytes
-                .takeIf { it.isNotEmpty() }
+                .takeIf { it.hasGifHeader() }
                 ?.let { gifBytes ->
                     UIImage.gifImageWithData(
                         data = gifBytes.toCFData(),
@@ -199,6 +202,14 @@ private suspend fun loadGifImage(imageUrl: String): DecodedGifImage? {
     return image
 }
 
+private fun String.looksLikeGifUrl(): Boolean {
+    val normalized = substringBefore('#').lowercase()
+    return ".gif" in normalized ||
+        "format=gif" in normalized ||
+        "fm=gif" in normalized ||
+        "image/gif" in normalized
+}
+
 @OptIn(ExperimentalForeignApi::class)
 private fun ByteArray.toCFData() =
     usePinned { pinned ->
@@ -217,19 +228,28 @@ private fun UIImage.Companion.gifImageWithData(
     return runCatching {
         val source = data?.let { CGImageSourceCreateWithData(it, null) } ?: return null
         val count = CGImageSourceGetCount(source).toInt()
+        if (count < 2) return null
+
+        val samplingStep = ((count + MaxDecodedGifFrames - 1) / MaxDecodedGifFrames).coerceAtLeast(1)
         val frames = mutableListOf<GifFrame>()
+        var accumulatedDelayCentiseconds = 0
 
         for (index in 0 until count) {
+            accumulatedDelayCentiseconds += frameDurations.getOrNull(index)
+                ?.coerceAtLeast(1)
+                ?: DefaultGifFrameDelayCentiseconds
+            val shouldDecodeFrame = index % samplingStep == 0 || index == count - 1
+            if (!shouldDecodeFrame) continue
+
             val imageRef: CGImageRef = CGImageSourceCreateImageAtIndex(source, index.toULong(), null) ?: continue
             try {
                 frames.add(
                     GifFrame(
                         image = UIImage.imageWithCGImage(imageRef),
-                        delayCentiseconds = frameDurations.getOrNull(index)
-                            ?.coerceAtLeast(1)
-                            ?: DefaultGifFrameDelayCentiseconds,
+                        delayCentiseconds = accumulatedDelayCentiseconds.coerceAtLeast(1),
                     )
                 )
+                accumulatedDelayCentiseconds = 0
             } finally {
                 CGImageRelease(imageRef)
             }
@@ -251,6 +271,12 @@ private fun expandedGifFrames(frames: List<GifFrame>): ExpandedGifFrames {
     val normalizedDelays = frames.map { it.delayCentiseconds.coerceAtLeast(1) }
     val tickCentiseconds = normalizedDelays.reduce(::greatestCommonDivisor)
     val expandedSize = normalizedDelays.sumOf { it / tickCentiseconds }
+    if (expandedSize > MaxExpandedGifFrames) {
+        return ExpandedGifFrames(
+            images = frames.map(GifFrame::image),
+            tickCentiseconds = (normalizedDelays.sum() / frames.size.coerceAtLeast(1)).coerceAtLeast(1),
+        )
+    }
     val expandedFrames = ArrayList<UIImage>(expandedSize)
 
     frames.forEach { frame ->

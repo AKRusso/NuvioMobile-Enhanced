@@ -43,6 +43,8 @@ import com.nuvio.app.features.profiles.ProfileStorage
 import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.ThemeSettingsStorage
+import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsStorage
 import com.nuvio.app.features.trakt.TraktAuthStorage
 import com.nuvio.app.features.trakt.TraktCommentsStorage
 import com.nuvio.app.features.trakt.TraktLibraryStorage
@@ -68,6 +70,7 @@ class MainActivity : AppCompatActivity() {
             ),
         )
         ThemeSettingsStorage.initialize(applicationContext)
+        NuvioEnhancedSettingsStorage.initialize(applicationContext)
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawableResource(R.color.nuvio_background)
         SyncClientIdentityStorage.initialize(applicationContext)
@@ -117,6 +120,7 @@ class MainActivity : AppCompatActivity() {
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
+        NuvioEnhancedBackupFileBridge.bindActivity(this)
         handleIncomingAppIntent(intent)
 
         setContent {
@@ -145,7 +149,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
+        NuvioEnhancedBackupFileBridge.unbindActivity(this)
         super.onDestroy()
+    }
+
+    @Deprecated("Deprecated in Android platform APIs, still used for Storage Access Framework callbacks here.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (NuvioEnhancedBackupFileBridge.handleActivityResult(requestCode, resultCode, data)) {
+            return
+        }
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onRequestPermissionsResult(

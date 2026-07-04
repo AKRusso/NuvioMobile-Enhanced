@@ -73,6 +73,8 @@ import kotlin.math.roundToInt
 fun DetailMetaInfo(
     meta: MetaDetails,
     modifier: Modifier = Modifier,
+    showNuvioReading: Boolean = true,
+    showNuvioSpotlight: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -138,12 +140,16 @@ fun DetailMetaInfo(
         val hasPremiumOverview = hasMetaRow ||
             meta.externalRatings.isNotEmpty() ||
             !meta.description.isNullOrBlank()
-        if (hasPremiumOverview) {
+        if (showNuvioReading && hasPremiumOverview) {
             DetailPremiumOverviewCard(
                 pills = overviewPills,
                 ratings = meta.externalRatings,
                 description = meta.description,
             )
+        }
+
+        if (showNuvioSpotlight) {
+            DetailNuvioSpotlightCard(meta = meta)
         }
 
         if (meta.director.isNotEmpty()) {
@@ -160,6 +166,117 @@ fun DetailMetaInfo(
             )
         }
 
+    }
+}
+
+@Composable
+private fun DetailNuvioSpotlightCard(
+    meta: MetaDetails,
+) {
+    val isSeriesLike = meta.type.equals("series", ignoreCase = true) ||
+        meta.videos.any { video -> video.season != null || video.episode != null }
+    val rating = meta.imdbRating
+        ?.trim()
+        ?.replace(',', '.')
+        ?.substringBefore('/')
+        ?.toDoubleOrNull()
+    val topGenre = meta.genres.firstOrNull { genre -> genre.isNotBlank() }?.trim()
+    val spotlightTitle = when {
+        rating != null && rating >= 8.0 -> "High-confidence watch"
+        isSeriesLike && meta.videos.isNotEmpty() -> "Series momentum"
+        topGenre != null -> "$topGenre signal"
+        else -> "Nuvio Spotlight"
+    }
+    val spotlightBody = when {
+        rating != null && rating >= 8.0 ->
+            "Strong audience signal, clear metadata and premium artwork make this one of the safer picks on the page."
+        isSeriesLike && meta.videos.isNotEmpty() ->
+            "Episode structure is ready, so this title works well for follow-up sessions and longer watch plans."
+        !meta.description.isNullOrBlank() ->
+            "The story summary has enough context to make this a good detail-page decision without extra searching."
+        else ->
+            "This card highlights the strongest available signal once richer metadata is available."
+    }
+    val chips = buildList {
+        topGenre?.let(::add)
+        rating?.takeIf { it > 0.0 }?.let { add("IMDb ${formatSpotlightRating(it)}") }
+        if (isSeriesLike) {
+            val seasons = meta.videos.mapNotNull { video -> video.season?.takeIf { it > 0 } }.distinct().size
+            if (seasons > 0) add("$seasons seasons")
+        } else {
+            formatRuntimeForDisplay(meta.runtime)?.let(::add)
+        }
+    }.filter(String::isNotBlank).take(3)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 4.dp, height = 48.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = "NUVIO SPOTLIGHT",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Black,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = spotlightTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Text(
+                text = spotlightBody,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.86f),
+                lineHeight = 22.sp,
+            )
+            if (chips.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    chips.forEach { chip ->
+                        DetailPremiumOverviewPill(text = chip)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -244,6 +361,13 @@ private fun DetailPremiumOverviewCard(
             }
         }
     }
+}
+
+private fun formatSpotlightRating(value: Double): String {
+    val rounded = (value * 10).roundToInt()
+    val whole = rounded / 10
+    val decimal = (rounded % 10).absoluteValue
+    return "$whole.$decimal"
 }
 
 @Composable

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.Favorite
@@ -18,10 +19,13 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_about_version_format
@@ -43,6 +47,9 @@ import nuvio.composeapp.generated.resources.compose_settings_root_downloads_titl
 import nuvio.composeapp.generated.resources.compose_settings_root_general_section
 import nuvio.composeapp.generated.resources.compose_settings_root_integrations_description
 import nuvio.composeapp.generated.resources.compose_settings_root_notifications_description
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_description
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_section
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_trakt_description
@@ -63,6 +70,7 @@ internal fun LazyListScope.settingsRootContent(
     onAdvancedClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onContentDiscoveryClick: () -> Unit,
+    onNuvioEnhancedClick: () -> Unit,
     onIntegrationsClick: () -> Unit,
     onSupportersContributorsClick: () -> Unit,
     onLicensesAttributionsClick: () -> Unit,
@@ -71,6 +79,7 @@ internal fun LazyListScope.settingsRootContent(
     onAccountClick: () -> Unit,
     onSwitchProfileClick: (() -> Unit)? = null,
     showAccountSection: Boolean = true,
+    showEnhancedSection: Boolean = true,
     showGeneralSection: Boolean = true,
     showAboutSection: Boolean = true,
     showAdvancedSection: Boolean = true,
@@ -99,6 +108,29 @@ internal fun LazyListScope.settingsRootContent(
                         icon = Icons.Rounded.AccountCircle,
                         isTablet = isTablet,
                         onClick = onAccountClick,
+                    )
+                }
+            }
+        }
+    }
+    if (showEnhancedSection) {
+        item {
+            val enhancedSettings by remember {
+                NuvioEnhancedSettingsRepository.ensureLoaded()
+                NuvioEnhancedSettingsRepository.uiState
+            }.collectAsStateWithLifecycle()
+            SettingsSection(
+                title = stringResource(Res.string.settings_nuvio_enhanced_section),
+                isTablet = isTablet,
+            ) {
+                SettingsGroup(isTablet = isTablet) {
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.settings_nuvio_enhanced_title),
+                        description = stringResource(Res.string.settings_nuvio_enhanced_description),
+                        icon = Icons.Rounded.AutoAwesome,
+                        isTablet = isTablet,
+                        highlighted = enhancedSettings.hasNewFeatures,
+                        onClick = onNuvioEnhancedClick,
                     )
                 }
             }

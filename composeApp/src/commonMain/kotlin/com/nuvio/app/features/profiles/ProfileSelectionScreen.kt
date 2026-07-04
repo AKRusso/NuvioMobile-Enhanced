@@ -59,6 +59,7 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.ui.ProfileMeshBackground
+import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.settings.AppLanguage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import kotlinx.coroutines.delay
@@ -413,11 +414,12 @@ private fun ProfileAvatarCard(
                 contentAlignment = Alignment.Center,
             ) {
                 if (avatarImageUrl != null) {
-                    AsyncImage(
-                        model = avatarImageUrl,
+                    CollectionCardRemoteImage(
+                        imageUrl = avatarImageUrl,
                         contentDescription = avatarItem?.displayName ?: profile.name,
                         modifier = Modifier.size(100.dp).clip(CircleShape),
                         contentScale = ContentScale.Crop,
+                        animateIfPossible = true,
                     )
                 } else if (profile.name.isNotBlank()) {
                     Text(

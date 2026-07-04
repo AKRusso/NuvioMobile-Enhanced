@@ -17,6 +17,7 @@ import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepositor
 import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleStorage
 import com.nuvio.app.features.settings.ThemeSettingsStorage
@@ -50,6 +51,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -163,6 +165,24 @@ object ProfileSettingsSync {
         }
     }
 
+    fun exportBackupJson(): String {
+        ensureRepositoriesLoaded()
+        return json.encodeToString(MobileProfileSettingsBlob.serializer(), exportSettingsBlob())
+    }
+
+    fun importBackupJson(payload: String): Result<Unit> =
+        runCatching {
+            val blob = json.decodeFromString<MobileProfileSettingsBlob>(payload.trim())
+            ensureRepositoriesLoaded()
+            isApplyingRemoteBlob = true
+            try {
+                applyRemoteBlob(blob)
+                skipNextPushSignature = currentObservedStateSignature()
+            } finally {
+                isApplyingRemoteBlob = false
+            }
+        }
+
     @OptIn(FlowPreview::class)
     private fun observeLocalChangesAndPush() {
         val signatureFlows = listOf(
@@ -181,6 +201,7 @@ object ProfileSettingsSync {
             TraktSettingsRepository.uiState.map { "trakt_settings" },
             TraktCommentsSettings.enabled.map { "trakt_comments" },
             EpisodeReleaseNotificationsRepository.uiState.map { "episode_release_alerts" },
+            NuvioEnhancedSettingsRepository.uiState.map { "nuvio_enhanced" },
         )
 
         observeJob = scope.launch {
@@ -231,6 +252,7 @@ object ProfileSettingsSync {
                 notificationsSettings = NotificationsSettingsPayload(
                     episodeReleaseAlertsEnabled = EpisodeReleaseNotificationsRepository.uiState.value.isEnabled,
                 ),
+                nuvioEnhancedSettingsPayload = NuvioEnhancedSettingsRepository.exportPayload(),
             ),
         )
     }
@@ -274,6 +296,8 @@ object ProfileSettingsSync {
         TraktCommentsSettings.onProfileChanged()
 
         EpisodeReleaseNotificationsRepository.applyFromSyncEnabled(blob.features.notificationsSettings.episodeReleaseAlertsEnabled)
+
+        NuvioEnhancedSettingsRepository.replacePayload(blob.features.nuvioEnhancedSettingsPayload)
     }
 
     private fun ensureRepositoriesLoaded() {
@@ -290,6 +314,7 @@ object ProfileSettingsSync {
         TraktSettingsRepository.ensureLoaded()
         TraktCommentsSettings.ensureLoaded()
         EpisodeReleaseNotificationsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.ensureLoaded()
     }
 
     private fun buildSignature(blob: MobileProfileSettingsBlob): String =
@@ -314,6 +339,7 @@ object ProfileSettingsSync {
         "trakt_settings=${TraktSettingsRepository.uiState.value}",
         "trakt_comments=${TraktCommentsSettings.enabled.value}",
         "episode_release_alerts=${EpisodeReleaseNotificationsRepository.uiState.value.isEnabled}",
+        "nuvio_enhanced=${NuvioEnhancedSettingsRepository.uiState.value}",
     ).joinToString(separator = "||")
 }
 
@@ -338,6 +364,7 @@ private data class MobileProfileSettingsFeatures(
     @SerialName("trakt_settings_payload") val traktSettingsPayload: String = "",
     @SerialName("trakt_comments_settings") val traktCommentsSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("notifications_settings") val notificationsSettings: NotificationsSettingsPayload = NotificationsSettingsPayload(),
+    @SerialName("nuvio_enhanced_settings_payload") val nuvioEnhancedSettingsPayload: String = "",
 )
 
 @Serializable

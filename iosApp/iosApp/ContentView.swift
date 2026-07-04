@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import ComposeApp
+import ImageIO
 
 private enum NuvioNativeTabIcon {
     static let home = vectorIcon(
@@ -61,7 +62,43 @@ private enum NuvioNativeTabIcon {
             .prefix(1)
             .uppercased() ?? ""
 
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        if let frames = avatarImage?.images, !frames.isEmpty {
+            let duration = avatarImage?.duration ?? (Double(frames.count) * 0.1)
+            let renderedFrames = frames.map { frame in
+                renderProfileAvatarFrame(
+                    size: size,
+                    fillColor: fillColor,
+                    borderColor: borderColor,
+                    baseColor: baseColor,
+                    initial: initial,
+                    avatarImage: frame
+                )
+            }
+            return UIImage.animatedImage(
+                with: renderedFrames,
+                duration: max(duration, Double(renderedFrames.count) * 0.08)
+            )?.withRenderingMode(.alwaysOriginal) ?? renderedFrames.first?.withRenderingMode(.alwaysOriginal) ?? profileFallback
+        }
+
+        return renderProfileAvatarFrame(
+            size: size,
+            fillColor: fillColor,
+            borderColor: borderColor,
+            baseColor: baseColor,
+            initial: initial,
+            avatarImage: avatarImage
+        ).withRenderingMode(.alwaysOriginal)
+    }
+
+    private static func renderProfileAvatarFrame(
+        size: CGSize,
+        fillColor: UIColor,
+        borderColor: UIColor,
+        baseColor: UIColor,
+        initial: String,
+        avatarImage: UIImage?
+    ) -> UIImage {
+        UIGraphicsImageRenderer(size: size).image { _ in
             let rect = CGRect(origin: .zero, size: size).insetBy(dx: 1, dy: 1)
             fillColor.setFill()
             UIBezierPath(ovalIn: rect).fill()
@@ -93,7 +130,7 @@ private enum NuvioNativeTabIcon {
             let borderPath = UIBezierPath(ovalIn: rect.insetBy(dx: 0.75, dy: 0.75))
             borderPath.lineWidth = 1.5
             borderPath.stroke()
-        }.withRenderingMode(.alwaysOriginal)
+        }
     }
 
     private static func drawInViewport(
@@ -323,6 +360,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
 
     private static let liquidGlassEnabledKey = "NuvioLiquidGlassNativeTabBarEnabled"
     private static let nativeTabBarVisibleKey = "NuvioNativeTabBarVisible"
+    private static let nativeLiveTvEnabledKey = "NuvioNativeLiveTvEnabled"
     private static let nativeSelectedTabKey = "NuvioNativeSelectedTab"
     private static let nativeTabAccentColorKey = "NuvioNativeTabAccentColor"
     private static let nativeProfileNameKey = "NuvioNativeProfileName"
@@ -471,18 +509,22 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             UserDefaults.standard.bool(forKey: Self.nativeTabBarVisibleKey)
     }
 
+    private var liveTvTabEnabled: Bool {
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: Self.nativeLiveTvEnabledKey) == nil {
+            return true
+        }
+        return defaults.bool(forKey: Self.nativeLiveTvEnabledKey)
+    }
+
+    private var visibleNativeTabs: [NativeTab] {
+        liveTvTabEnabled ? NativeTab.allCases : NativeTab.allCases.filter { $0 != .liveTv }
+    }
+
     private func configureNativeTabBar() {
         tabBar.delegate = self
         tabBar.translatesAutoresizingMaskIntoConstraints = false
-        tabBar.items = NativeTab.allCases.map { tab in
-            let item = UITabBarItem(
-                title: tab.localizedTitle(),
-                image: tab.iconImage,
-                selectedImage: tab.iconImage
-            )
-            item.tag = tab.tag
-            return item
-        }
+        tabBar.items = makeNativeTabItems(for: visibleNativeTabs)
         tabBar.selectedItem = tabBar.items?.first
         applyNativeTabBarAppearance()
         tabBar.alpha = 0
@@ -529,6 +571,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
 
     private func syncNativeTabChrome(animated: Bool) {
         updateTabBarHeight()
+        syncNativeTabItems()
         applyNativeTabBarAppearance()
         syncSelectedNativeTab()
 
@@ -568,6 +611,35 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
         tabBar.selectedItem = tabBar.items?.first(where: { $0.tag == currentNativeSelectedTab.tag })
     }
 
+    private func makeNativeTabItems(for tabs: [NativeTab]) -> [UITabBarItem] {
+        tabs.map { tab in
+            let item = UITabBarItem(
+                title: tab.localizedTitle(),
+                image: tab.iconImage,
+                selectedImage: tab.iconImage
+            )
+            item.tag = tab.tag
+            return item
+        }
+    }
+
+    private func syncNativeTabItems() {
+        let tabs = visibleNativeTabs
+        let currentTags = tabBar.items?.map(\.tag) ?? []
+        let expectedTags = tabs.map(\.tag)
+        guard currentTags != expectedTags else { return }
+
+        tabBar.items = makeNativeTabItems(for: tabs)
+        let rawSelectedTab = UserDefaults.standard.string(forKey: Self.nativeSelectedTabKey)
+        if rawSelectedTab == NativeTab.liveTv.rawValue && !liveTvTabEnabled {
+            UserDefaults.standard.set(NativeTab.home.rawValue, forKey: Self.nativeSelectedTabKey)
+            DispatchQueue.main.async {
+                NativeTabBridgeKt.nativeTabSelect(tabName: NativeTab.home.rawValue)
+            }
+        }
+        updateProfileTabTouchOverlayFrame()
+    }
+
     @objc private func handleNativeProfileTabLongPress(_ recognizer: UILongPressGestureRecognizer) {
         guard recognizer.state == .began else { return }
 
@@ -602,10 +674,15 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
 
     private var currentNativeSelectedTab: NativeTab {
         let rawValue = UserDefaults.standard.string(forKey: Self.nativeSelectedTabKey) ?? NativeTab.home.rawValue
-        return NativeTab(rawValue: rawValue) ?? .home
+        let tab = NativeTab(rawValue: rawValue) ?? .home
+        if tab == .liveTv && !liveTvTabEnabled {
+            return .home
+        }
+        return tab
     }
 
     private func selectNativeTab(_ tab: NativeTab) {
+        guard visibleNativeTabs.contains(tab) else { return }
         tabBar.selectedItem = tabBar.items?.first(where: { $0.tag == tab.tag })
         UserDefaults.standard.set(tab.rawValue, forKey: Self.nativeSelectedTabKey)
         NativeTabBridgeKt.nativeTabSelect(tabName: tab.rawValue)
@@ -654,19 +731,24 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
     }
 
     private func updateProfileTabTouchOverlayFrame() {
-        let tabCount = CGFloat(NativeTab.allCases.count)
+        let tabs = visibleNativeTabs
+        let tabCount = CGFloat(tabs.count)
         guard tabCount > 0, tabBar.bounds.width > 0 else {
+            profileTabTouchOverlay.frame = .zero
+            return
+        }
+        guard let settingsIndex = tabs.firstIndex(of: .settings) else {
             profileTabTouchOverlay.frame = .zero
             return
         }
 
         let itemWidth = tabBar.bounds.width / tabCount
-        let settingsIndex = CGFloat(NativeTab.settings.tag)
+        let settingsVisualIndex = CGFloat(settingsIndex)
         let visualIndex: CGFloat
         if tabBar.effectiveUserInterfaceLayoutDirection == .rightToLeft {
-            visualIndex = tabCount - 1 - settingsIndex
+            visualIndex = tabCount - 1 - settingsVisualIndex
         } else {
-            visualIndex = settingsIndex
+            visualIndex = settingsVisualIndex
         }
         let overlayFrameInTabBar = CGRect(
             x: itemWidth * visualIndex,
@@ -755,7 +837,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             guard
                 let self,
                 let data,
-                let image = UIImage(data: data)
+                let image = Self.profileAvatarImage(from: data)
             else { return }
 
             DispatchQueue.main.async {
@@ -765,6 +847,22 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             }
         }
         profileAvatarImageTask?.resume()
+    }
+
+    private static func profileAvatarImage(from data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+            return UIImage(data: data)
+        }
+
+        let frameCount = CGImageSourceGetCount(source)
+        guard frameCount > 0 else {
+            return UIImage(data: data)
+        }
+
+        guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+            return UIImage(data: data)
+        }
+        return UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up)
     }
 }
 

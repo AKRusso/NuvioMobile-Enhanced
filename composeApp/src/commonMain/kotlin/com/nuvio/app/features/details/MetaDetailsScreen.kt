@@ -96,6 +96,7 @@ import com.nuvio.app.features.ai.AiAssistantSettingsRepository
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbService
@@ -150,6 +151,10 @@ fun MetaDetailsScreen(
     val metaScreenSettingsUiState by remember {
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val nuvioEnhancedSettings by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val traktAuthUiState by remember {
         TraktAuthRepository.ensureLoaded()
@@ -1108,6 +1113,9 @@ fun MetaDetailsScreen(
                                 watchedKeys = watchedUiState.watchedKeys,
                                 blurUnwatchedEpisodes = metaScreenSettingsUiState.blurUnwatchedEpisodes,
                                 showEpisodeRatings = metaScreenSettingsUiState.showEpisodeRatings,
+                                showNuvioReading = nuvioEnhancedSettings.nuvioReadingEnabled,
+                                showNuvioSpotlight = nuvioEnhancedSettings.enhancedHomeFeaturesEnabled &&
+                                    nuvioEnhancedSettings.nuvioSpotlightEnabled,
                                 onEpisodeClick = onEpisodePlayClick,
                                 onEpisodeLongPress = { video -> selectedEpisodeForActions = video },
                                 onSeasonLongPress = { season -> selectedSeasonForActions = season },
@@ -1567,6 +1575,8 @@ private fun LazyListScope.configuredMetaSectionItems(
     watchedKeys: Set<String>,
     blurUnwatchedEpisodes: Boolean,
     showEpisodeRatings: Boolean,
+    showNuvioReading: Boolean,
+    showNuvioSpotlight: Boolean,
     onEpisodeClick: (MetaVideo) -> Unit,
     onEpisodeLongPress: (MetaVideo) -> Unit,
     onSeasonLongPress: (Int) -> Unit,
@@ -1644,6 +1654,8 @@ private fun LazyListScope.configuredMetaSectionItems(
                     watchedKeys = watchedKeys,
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     showEpisodeRatings = showEpisodeRatings,
+                    showNuvioReading = showNuvioReading,
+                    showNuvioSpotlight = showNuvioSpotlight,
                     onEpisodeClick = onEpisodeClick,
                     onEpisodeLongPress = onEpisodeLongPress,
                     onSeasonLongPress = onSeasonLongPress,
@@ -1794,6 +1806,8 @@ private fun ConfiguredMetaSections(
     watchedKeys: Set<String>,
     blurUnwatchedEpisodes: Boolean,
     showEpisodeRatings: Boolean,
+    showNuvioReading: Boolean,
+    showNuvioSpotlight: Boolean,
     onEpisodeClick: (MetaVideo) -> Unit,
     onEpisodeLongPress: (MetaVideo) -> Unit,
     onSeasonLongPress: (Int) -> Unit,
@@ -1865,7 +1879,11 @@ private fun ConfiguredMetaSections(
                 )
             }
             MetaScreenSectionKey.OVERVIEW -> {
-                DetailMetaInfo(meta = meta)
+                DetailMetaInfo(
+                    meta = meta,
+                    showNuvioReading = showNuvioReading,
+                    showNuvioSpotlight = showNuvioSpotlight,
+                )
             }
             MetaScreenSectionKey.PRODUCTION -> {
                 if (hasProductionSection) {

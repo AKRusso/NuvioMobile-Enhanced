@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.CollectionsBookmark
@@ -88,6 +89,7 @@ internal fun settingsSearchEntries(
 ): List<SettingsSearchEntry> {
     val accountCategory = stringResource(SettingsCategory.Account.labelRes)
     val generalCategory = stringResource(SettingsCategory.General.labelRes)
+    val enhancedCategory = stringResource(SettingsCategory.Enhanced.labelRes)
     val aboutCategory = stringResource(SettingsCategory.About.labelRes)
     val advancedCategory = stringResource(SettingsCategory.Advanced.labelRes)
 
@@ -101,6 +103,7 @@ internal fun settingsSearchEntries(
     val streamsPage = stringResource(Res.string.compose_settings_page_streams)
     val integrationsPage = stringResource(Res.string.compose_settings_page_integrations)
     val notificationsPage = stringResource(Res.string.compose_settings_page_notifications)
+    val nuvioEnhancedPage = stringResource(Res.string.settings_nuvio_enhanced_title)
     val supportersPage = stringResource(Res.string.compose_settings_page_supporters_contributors)
     val licensesPage = stringResource(Res.string.compose_settings_page_licenses_attributions)
     val homeLayoutPage = stringResource(Res.string.compose_settings_page_homescreen)
@@ -264,6 +267,14 @@ internal fun settingsSearchEntries(
         description = stringResource(Res.string.compose_settings_root_notifications_description),
         icon = Icons.Rounded.Notifications,
     )
+    addPage(
+        page = SettingsPage.NuvioEnhanced,
+        key = "nuvio-enhanced",
+        title = nuvioEnhancedPage,
+        description = stringResource(Res.string.settings_nuvio_enhanced_description),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
     if (supportersContributorsPageEnabled) {
         addPage(
             page = SettingsPage.SupportersContributors,
@@ -398,16 +409,6 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.Advanced,
-        key = "hero-auto-scroll",
-        title = stringResource(Res.string.settings_advanced_hero_auto_scroll),
-        description = stringResource(Res.string.settings_advanced_hero_auto_scroll_description),
-        pageLabel = advancedPage,
-        section = stringResource(Res.string.settings_advanced_section_startup),
-        category = advancedCategory,
-        icon = Icons.Rounded.Tune,
-    )
-    addRow(
-        page = SettingsPage.Advanced,
         key = "remember-last-profile",
         title = stringResource(Res.string.settings_advanced_remember_last_profile),
         description = stringResource(Res.string.settings_advanced_remember_last_profile_description),
@@ -425,6 +426,56 @@ internal fun settingsSearchEntries(
         section = stringResource(Res.string.settings_advanced_section_cache),
         category = advancedCategory,
         icon = Icons.Rounded.Tune,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "hero-auto-scroll",
+        title = stringResource(Res.string.settings_advanced_hero_auto_scroll),
+        description = stringResource(Res.string.settings_advanced_hero_auto_scroll_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "hero-motion-preview",
+        title = stringResource(Res.string.settings_advanced_hero_motion_preview),
+        description = stringResource(Res.string.settings_advanced_hero_motion_preview_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "network-dns-over-https",
+        title = stringResource(Res.string.settings_advanced_section_network),
+        description = stringResource(Res.string.settings_advanced_doh_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_network),
+        category = enhancedCategory,
+        icon = Icons.Rounded.Link,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "random-episode-button",
+        title = stringResource(Res.string.settings_meta_random_episode_button),
+        description = stringResource(Res.string.settings_meta_random_episode_button_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "show-episode-ratings",
+        title = stringResource(Res.string.settings_meta_show_episode_ratings),
+        description = stringResource(Res.string.settings_meta_show_episode_ratings_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
     )
     addPage(
         page = SettingsPage.ContinueWatching,

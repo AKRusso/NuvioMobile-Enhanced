@@ -70,6 +70,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.stableKey
+import com.nuvio.app.features.settings.NuvioHeroDisplayMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -84,8 +85,8 @@ private const val HERO_SCROLL_PARALLAX = 0.3f
 private const val HERO_SCROLL_DOWN_SCALE_MULTIPLIER = 0.0001f
 private const val HERO_SCROLL_UP_SCALE_MULTIPLIER = 0.002f
 private const val HERO_SCROLL_MAX_SCALE = 1.3f
-private const val HERO_CINEMATIC_PAN_PX = 18f
-private const val HERO_CINEMATIC_SCALE = 0.035f
+private const val HERO_CINEMATIC_PAN_PX = 34f
+private const val HERO_CINEMATIC_SCALE = 0.055f
 private const val HERO_SWIPE_THRESHOLD_FRACTION = 0.16f
 private const val HERO_SWIPE_VELOCITY_THRESHOLD = 300f
 private const val HERO_AUTO_SCROLL_INTERVAL_MS = 5500L
@@ -105,7 +106,7 @@ internal data class HomeHeroLayout(
 )
 
 @Composable
-fun HomeHeroSection(
+internal fun HomeHeroSection(
     items: List<MetaPreview>,
     modifier: Modifier = Modifier,
     viewportHeight: Dp? = null,
@@ -113,6 +114,9 @@ fun HomeHeroSection(
     listState: LazyListState? = null,
     autoScrollEnabled: Boolean = true,
     motionPreviewEnabled: Boolean = false,
+    heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
+    compactMetadata: Boolean = true,
+    showOverview: Boolean = true,
     metadataRefreshKey: String? = null,
     onItemClick: ((MetaPreview) -> Unit)? = null,
 ) {
@@ -188,6 +192,44 @@ fun HomeHeroSection(
             ?.page
             ?.let(items::get)
             ?: items[currentPage]
+        val backgroundColor = MaterialTheme.colorScheme.background
+        val mainOverlayStops = when (heroDisplayMode) {
+            NuvioHeroDisplayMode.Cinematic -> arrayOf(
+                0f to backgroundColor.copy(alpha = 0.01f),
+                0.36f to backgroundColor.copy(alpha = 0.04f),
+                0.68f to backgroundColor.copy(alpha = 0.18f),
+                1f to backgroundColor.copy(alpha = 0.68f),
+            )
+            NuvioHeroDisplayMode.Balanced -> arrayOf(
+                0f to backgroundColor.copy(alpha = 0.02f),
+                0.34f to backgroundColor.copy(alpha = 0.05f),
+                0.66f to backgroundColor.copy(alpha = 0.22f),
+                1f to backgroundColor.copy(alpha = 0.74f),
+            )
+            NuvioHeroDisplayMode.InfoRich -> arrayOf(
+                0f to backgroundColor.copy(alpha = 0.04f),
+                0.34f to backgroundColor.copy(alpha = 0.08f),
+                0.64f to backgroundColor.copy(alpha = 0.30f),
+                1f to backgroundColor.copy(alpha = 0.82f),
+            )
+        }
+        val bottomOverlayStops = when (heroDisplayMode) {
+            NuvioHeroDisplayMode.Cinematic -> arrayOf(
+                0f to Color.Transparent,
+                0.48f to backgroundColor.copy(alpha = 0.24f),
+                1f to backgroundColor.copy(alpha = 0.90f),
+            )
+            NuvioHeroDisplayMode.Balanced -> arrayOf(
+                0f to Color.Transparent,
+                0.42f to backgroundColor.copy(alpha = 0.31f),
+                1f to backgroundColor.copy(alpha = 0.94f),
+            )
+            NuvioHeroDisplayMode.InfoRich -> arrayOf(
+                0f to Color.Transparent,
+                0.40f to backgroundColor.copy(alpha = 0.38f),
+                1f to backgroundColor.copy(alpha = 0.97f),
+            )
+        }
         LaunchedEffect(itemKeys, metadataRefreshKey, currentPage) {
             val prioritizedItems = items
                 .withIndex()
@@ -245,10 +287,8 @@ fun HomeHeroSection(
             ) {
                 visiblePages.forEach { layer ->
                     val layerItem = items[layer.page]
-                    val layerDetail = detailMetas[layerItem.stableKey()]
-                    val layerMotionEnabled = motionPreviewEnabled && layerDetail?.trailers?.isNotEmpty() == true
-                    val motionVisibility = if (layerMotionEnabled) layer.visibility else 0f
-                    val motionPulse = if (layerMotionEnabled) cinematicPulse else 0.5f
+                    val motionVisibility = if (motionPreviewEnabled) layer.visibility else 0f
+                    val motionPulse = if (motionPreviewEnabled) cinematicPulse else 0.5f
                     AsyncImage(
                         model = layerItem.banner ?: layerItem.poster,
                         contentDescription = layerItem.name,
@@ -273,10 +313,7 @@ fun HomeHeroSection(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                0f to MaterialTheme.colorScheme.background.copy(alpha = 0.03f),
-                                0.34f to MaterialTheme.colorScheme.background.copy(alpha = 0.07f),
-                                0.64f to MaterialTheme.colorScheme.background.copy(alpha = 0.26f),
-                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.78f),
+                                colorStops = mainOverlayStops,
                             ),
                         ),
                 )
@@ -288,9 +325,7 @@ fun HomeHeroSection(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                0.40f to MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
-                                1f to MaterialTheme.colorScheme.background.copy(alpha = 0.96f),
+                                colorStops = bottomOverlayStops,
                             ),
                         ),
                 )
@@ -326,6 +361,9 @@ fun HomeHeroSection(
                                     item = items[layer.page],
                                     layout = layout,
                                     detailMeta = detailMetas[items[layer.page].stableKey()],
+                                    heroDisplayMode = heroDisplayMode,
+                                    compactMetadata = compactMetadata,
+                                    showOverview = showOverview,
                                     onItemClick = onItemClick,
                                 )
                             }
@@ -419,6 +457,9 @@ private fun HeroContentBlock(
     item: MetaPreview,
     layout: HomeHeroLayout,
     detailMeta: MetaDetails?,
+    heroDisplayMode: NuvioHeroDisplayMode,
+    compactMetadata: Boolean,
+    showOverview: Boolean,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
     val logoUrl = detailMeta?.logo?.takeIf { it.isNotBlank() } ?: item.logo?.takeIf { it.isNotBlank() }
@@ -433,7 +474,12 @@ private fun HeroContentBlock(
     val fallbackGenres = item.genres
         .map(String::trim)
         .filter(String::isNotBlank)
-    val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(2)
+    val maxGenres = when {
+        heroDisplayMode == NuvioHeroDisplayMode.Cinematic -> 1
+        compactMetadata -> 1
+        else -> 2
+    }
+    val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(maxGenres)
     val displayRelease = detailMeta?.releaseInfo?.takeIf { it.isNotBlank() } ?: item.releaseInfo
     val displayImdb = (detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating)
         ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
@@ -442,6 +488,11 @@ private fun HeroContentBlock(
         ?.takeIf { it.isNotBlank() }
         ?: item.description?.trim()?.takeIf { it.isNotBlank() }
     val displayTypeLabel = heroTypeLabel(displayType)
+    val metaLimit = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> 3
+        NuvioHeroDisplayMode.Balanced -> if (compactMetadata) 4 else 5
+        NuvioHeroDisplayMode.InfoRich -> 5
+    }
     val heroMetaItems = buildList {
         add(HeroMetaItem(text = displayTypeLabel, emphasized = true))
         displayGenres.forEach { genre ->
@@ -453,6 +504,16 @@ private fun HeroContentBlock(
         displayImdb?.takeIf { it.isNotBlank() }?.let { rating ->
             add(HeroMetaItem(text = "IMDb $rating"))
         }
+    }.take(metaLimit)
+    val logoHeight = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 96.dp else 82.dp
+        NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 104.dp else 88.dp
+        NuvioHeroDisplayMode.InfoRich -> if (layout.isTablet) 112.dp else 96.dp
+    }
+    val logoWidthBoost = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> 0.08f
+        NuvioHeroDisplayMode.Balanced -> if (compactMetadata) 0.12f else 0.16f
+        NuvioHeroDisplayMode.InfoRich -> 0.18f
     }
 
     Column(
@@ -467,12 +528,12 @@ private fun HeroContentBlock(
                 modifier = Modifier
                     .fillMaxWidth(
                         if (layout.isTablet) {
-                            (layout.logoWidthFraction + 0.1f).coerceAtMost(0.82f)
+                            (layout.logoWidthFraction + logoWidthBoost).coerceAtMost(0.82f)
                         } else {
-                            (layout.logoWidthFraction + 0.18f).coerceAtMost(0.94f)
+                            (layout.logoWidthFraction + logoWidthBoost).coerceAtMost(0.94f)
                         },
                     )
-                    .height(if (layout.isTablet) 110.dp else 96.dp)
+                    .height(logoHeight)
                     .clip(RoundedCornerShape(999.dp))
                     .background(
                         Brush.radialGradient(
@@ -520,13 +581,17 @@ private fun HeroContentBlock(
         HeroMetaGlassRail(
             items = heroMetaItems,
             layout = layout,
+            heroDisplayMode = heroDisplayMode,
+            compact = compactMetadata,
         )
 
-        displaySummary?.let { summary ->
-            Spacer(modifier = Modifier.height(12.dp))
+        if (showOverview) displaySummary?.let { summary ->
+            Spacer(modifier = Modifier.height(if (compactMetadata || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 9.dp else 12.dp))
             HeroSummaryCard(
                 summary = summary,
                 layout = layout,
+                heroDisplayMode = heroDisplayMode,
+                compact = compactMetadata,
             )
         }
     }
@@ -536,9 +601,26 @@ private fun HeroContentBlock(
 private fun HeroSummaryCard(
     summary: String,
     layout: HomeHeroLayout,
+    heroDisplayMode: NuvioHeroDisplayMode,
+    compact: Boolean,
 ) {
     val summaryLabel = stringResource(Res.string.meta_section_overview_title)
-    val summaryShape = RoundedCornerShape(24.dp)
+    val summaryShape = RoundedCornerShape(if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 20.dp else 24.dp)
+    val backgroundAlphaStart = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> 0.34f
+        NuvioHeroDisplayMode.Balanced -> 0.46f
+        NuvioHeroDisplayMode.InfoRich -> 0.58f
+    }
+    val backgroundAlphaEnd = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> 0.50f
+        NuvioHeroDisplayMode.Balanced -> 0.62f
+        NuvioHeroDisplayMode.InfoRich -> 0.76f
+    }
+    val summaryMaxLines = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 2 else 1
+        NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 3 else 2
+        NuvioHeroDisplayMode.InfoRich -> if (layout.isTablet) 4 else 2
+    }
 
     Box(
         modifier = Modifier
@@ -547,8 +629,8 @@ private fun HeroSummaryCard(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.58f),
-                        MaterialTheme.colorScheme.background.copy(alpha = 0.76f),
+                        MaterialTheme.colorScheme.background.copy(alpha = backgroundAlphaStart),
+                        MaterialTheme.colorScheme.background.copy(alpha = backgroundAlphaEnd),
                     ),
                 ),
             )
@@ -562,14 +644,23 @@ private fun HeroSummaryCard(
             },
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(
+                horizontal = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 12.dp else 14.dp,
+                vertical = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 8.dp else 10.dp,
+            ),
+            horizontalArrangement = Arrangement.spacedBy(if (compact) 9.dp else 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(
                 modifier = Modifier
                     .width(3.dp)
-                    .height(if (layout.isTablet) 62.dp else 44.dp)
+                    .height(
+                        when {
+                            heroDisplayMode == NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 44.dp else 34.dp
+                            compact -> if (layout.isTablet) 54.dp else 38.dp
+                            else -> if (layout.isTablet) 62.dp else 44.dp
+                        },
+                    )
                     .clip(RoundedCornerShape(999.dp))
                     .background(
                         Brush.verticalGradient(
@@ -602,7 +693,7 @@ private fun HeroSummaryCard(
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.96f),
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Start,
-                    maxLines = if (layout.isTablet) 4 else 2,
+                    maxLines = summaryMaxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -615,23 +706,40 @@ private fun HeroSummaryCard(
 private fun HeroMetaGlassRail(
     items: List<HeroMetaItem>,
     layout: HomeHeroLayout,
+    heroDisplayMode: NuvioHeroDisplayMode,
+    compact: Boolean,
 ) {
     if (items.isEmpty()) return
 
     val railShape = RoundedCornerShape(999.dp)
+    val railWidthFraction = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 0.72f else 0.78f
+        NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 0.80f else 0.84f
+        NuvioHeroDisplayMode.InfoRich -> if (layout.isTablet) 0.88f else 0.92f
+    }
+    val railMaxWidth = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 470.dp else 350.dp
+        NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 520.dp else 390.dp
+        NuvioHeroDisplayMode.InfoRich -> if (layout.isTablet) 560.dp else 430.dp
+    }
+    val backgroundAlphaStart = when (heroDisplayMode) {
+        NuvioHeroDisplayMode.Cinematic -> 0.24f
+        NuvioHeroDisplayMode.Balanced -> 0.30f
+        NuvioHeroDisplayMode.InfoRich -> 0.36f
+    }
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(if (layout.isTablet) 0.88f else 0.92f)
-                .widthIn(max = if (layout.isTablet) 560.dp else 430.dp)
+                .fillMaxWidth(railWidthFraction)
+                .widthIn(max = railMaxWidth)
                 .clip(railShape)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.36f),
+                            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlphaStart),
                             MaterialTheme.colorScheme.background.copy(alpha = 0.20f),
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                         ),
@@ -646,15 +754,21 @@ private fun HeroMetaGlassRail(
             FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 7.dp),
+                    .padding(
+                        horizontal = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 7.dp else 8.dp,
+                        vertical = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 5.dp else 7.dp,
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(
-                    space = 7.dp,
+                    space = if (compact) 6.dp else 7.dp,
                     alignment = if (layout.isTablet) Alignment.Start else Alignment.CenterHorizontally,
                 ),
                 verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 items.forEach { item ->
-                    HeroMetaLabel(item = item)
+                    HeroMetaLabel(
+                        item = item,
+                        compact = compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic,
+                    )
                 }
             }
         }
@@ -672,23 +786,24 @@ private suspend fun fetchHeroDetailMeta(item: MetaPreview): MetaDetails? =
 @Composable
 private fun HeroMetaLabel(
     item: HeroMetaItem,
+    compact: Boolean,
 ) {
     val modifier = if (item.emphasized) {
         Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .padding(horizontal = if (compact) 9.dp else 10.dp, vertical = if (compact) 3.dp else 4.dp)
     } else {
         Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.08f))
-            .padding(horizontal = 9.dp, vertical = 4.dp)
+            .padding(horizontal = if (compact) 8.dp else 9.dp, vertical = if (compact) 3.dp else 4.dp)
     }
 
     Text(
         text = item.text,
         modifier = modifier,
-        style = MaterialTheme.typography.labelMedium,
+        style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
         color = if (item.emphasized) {
             MaterialTheme.colorScheme.onPrimary
         } else {

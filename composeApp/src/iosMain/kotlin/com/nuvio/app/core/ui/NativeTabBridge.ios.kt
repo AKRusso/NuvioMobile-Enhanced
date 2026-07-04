@@ -7,6 +7,7 @@ import platform.UIKit.UIUserInterfaceIdiomPhone
 
 private const val liquidGlassNativeTabBarEnabledKey = "NuvioLiquidGlassNativeTabBarEnabled"
 private const val nativeTabBarVisibleKey = "NuvioNativeTabBarVisible"
+private const val nativeLiveTvEnabledKey = "NuvioNativeLiveTvEnabled"
 private const val nativeSelectedTabKey = "NuvioNativeSelectedTab"
 private const val nativeTabAccentColorKey = "NuvioNativeTabAccentColor"
 private const val nativeTabTitleHomeKey = "NuvioNativeTabTitleHome"
@@ -31,6 +32,10 @@ internal actual fun publishLiquidGlassNativeTabBarEnabled(enabled: Boolean) {
 
 internal actual fun publishNativeTabBarVisible(visible: Boolean) {
     publishBool(nativeTabBarVisibleKey, visible)
+}
+
+internal actual fun publishNativeLiveTvEnabled(enabled: Boolean) {
+    publishBool(nativeLiveTvEnabledKey, enabled)
 }
 
 internal actual fun publishNativeSelectedTab(tabName: String) {

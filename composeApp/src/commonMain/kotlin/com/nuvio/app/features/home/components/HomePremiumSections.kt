@@ -59,6 +59,8 @@ import com.nuvio.app.features.home.HomeConciergeStatType
 import com.nuvio.app.features.home.HomeConciergeUiState
 import com.nuvio.app.features.home.HomeReleaseRadarCategory
 import com.nuvio.app.features.home.HomeReleaseRadarItem
+import com.nuvio.app.features.home.HomeSmartShelf
+import com.nuvio.app.features.home.HomeSmartResumeSignal
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import kotlin.math.absoluteValue
@@ -339,7 +341,15 @@ private fun HomeConciergePrimaryCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            HomeConciergeReasonPill(reason = card.reason)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HomeConciergeReasonPill(reason = card.reason)
+                card.smartSignal?.let { signal ->
+                    HomeConciergeSmartSignalPill(signal = signal)
+                }
+            }
             Text(
                 text = card.title,
                 style = MaterialTheme.typography.titleLarge,
@@ -427,7 +437,7 @@ private fun HomeConciergeMiniCard(
             verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Text(
-                text = card.reason.localizedReason(),
+                text = card.smartSignal?.localizedSmartSignal() ?: card.reason.localizedReason(),
                 style = MaterialTheme.typography.labelSmall,
                 color = tokens.colors.accent,
                 maxLines = 1,
@@ -512,6 +522,25 @@ private fun HomeConciergeReasonPill(reason: HomeConciergeReason) {
 }
 
 @Composable
+private fun HomeConciergeSmartSignalPill(signal: HomeSmartResumeSignal) {
+    val tokens = MaterialTheme.nuvio
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(tokens.colors.accent.copy(alpha = 0.22f))
+            .border(1.dp, tokens.colors.accent.copy(alpha = 0.42f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = signal.localizedSmartSignal(),
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
 private fun HomeConciergeActionPill(card: HomeConciergeCard) {
     val tokens = MaterialTheme.nuvio
     Row(
@@ -570,10 +599,222 @@ private fun HomeConciergeArtwork(
 }
 
 @Composable
+internal fun HomeSmartShelfComposerSection(
+    shelves: List<HomeSmartShelf>,
+    modifier: Modifier = Modifier,
+    sectionPadding: Dp? = null,
+    onPosterClick: ((MetaPreview) -> Unit)? = null,
+) {
+    if (shelves.isEmpty()) return
+
+    if (sectionPadding != null) {
+        HomeSmartShelfComposerContent(
+            shelves = shelves,
+            modifier = modifier.fillMaxWidth(),
+            sectionPadding = sectionPadding,
+            onPosterClick = onPosterClick,
+        )
+    } else {
+        BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+            HomeSmartShelfComposerContent(
+                shelves = shelves,
+                modifier = Modifier.fillMaxWidth(),
+                sectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value),
+                onPosterClick = onPosterClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HomeSmartShelfComposerContent(
+    shelves: List<HomeSmartShelf>,
+    modifier: Modifier,
+    sectionPadding: Dp,
+    onPosterClick: ((MetaPreview) -> Unit)?,
+) {
+    val tokens = MaterialTheme.nuvio
+    val shape = RoundedCornerShape(30.dp)
+    Column(
+        modifier = modifier
+            .padding(horizontal = sectionPadding)
+            .clip(shape)
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        Color(0xFF101726),
+                        tokens.colors.accent.copy(alpha = 0.20f),
+                        tokens.colors.surface.copy(alpha = 0.88f),
+                    ),
+                ),
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.11f), shape)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(tokens.colors.accent.copy(alpha = 0.18f))
+                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        modifier = Modifier.size(15.dp),
+                        tint = tokens.colors.accent,
+                    )
+                    Text(
+                        text = "Smart Shelf Composer",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                text = "Shelves built from your signals",
+                style = MaterialTheme.typography.titleLarge,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = "Progress, library, catalog quality and taste clusters are composed into opt-in discovery rails.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.colors.textMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(end = 4.dp),
+        ) {
+            items(shelves, key = HomeSmartShelf::key) { shelf ->
+                HomeSmartShelfCard(
+                    shelf = shelf,
+                    modifier = Modifier.width(258.dp),
+                    onPosterClick = onPosterClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HomeSmartShelfCard(
+    shelf: HomeSmartShelf,
+    modifier: Modifier = Modifier,
+    onPosterClick: ((MetaPreview) -> Unit)?,
+) {
+    val tokens = MaterialTheme.nuvio
+    val shape = RoundedCornerShape(24.dp)
+    val primary = shelf.items.firstOrNull()
+    Column(
+        modifier = modifier
+            .heightIn(min = 238.dp)
+            .clip(shape)
+            .background(Color.Black.copy(alpha = 0.20f))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .then(
+                if (primary != null && onPosterClick != null) {
+                    Modifier.clickable { onPosterClick(primary) }
+                } else {
+                    Modifier
+                },
+            )
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(18.dp))
+                .background(tokens.colors.surface),
+        ) {
+            HomeConciergeArtwork(
+                imageUrl = primary?.banner ?: primary?.poster,
+                title = primary?.name ?: shelf.title,
+                modifier = Modifier.matchParentSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.70f),
+                            ),
+                        ),
+                    ),
+            )
+            Text(
+                text = shelf.signal,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(tokens.colors.accent)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = shelf.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = shelf.subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.colors.textMuted,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            shelf.items.take(3).forEach { item ->
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.84f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 internal fun HomeReleaseRadarSection(
     items: List<HomeReleaseRadarItem>,
     modifier: Modifier = Modifier,
     sectionPadding: Dp? = null,
+    showDigest: Boolean = false,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
@@ -584,6 +825,7 @@ internal fun HomeReleaseRadarSection(
             items = items,
             modifier = modifier.fillMaxWidth(),
             sectionPadding = sectionPadding,
+            showDigest = showDigest,
             onPosterClick = onPosterClick,
             onContinueWatchingClick = onContinueWatchingClick,
         )
@@ -593,6 +835,7 @@ internal fun HomeReleaseRadarSection(
                 items = items,
                 modifier = Modifier.fillMaxWidth(),
                 sectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value),
+                showDigest = showDigest,
                 onPosterClick = onPosterClick,
                 onContinueWatchingClick = onContinueWatchingClick,
             )
@@ -605,6 +848,7 @@ private fun HomeReleaseRadarSectionContent(
     items: List<HomeReleaseRadarItem>,
     modifier: Modifier,
     sectionPadding: Dp,
+    showDigest: Boolean,
     onPosterClick: ((MetaPreview) -> Unit)?,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)?,
 ) {
@@ -663,7 +907,9 @@ private fun HomeReleaseRadarSectionContent(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            HomeReleaseRadarDigestRow(digest = digest)
+            if (showDigest) {
+                HomeReleaseRadarDigestRow(digest = digest)
+            }
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
@@ -926,6 +1172,19 @@ private fun HomeConciergeReason.localizedReason(): String =
         HomeConciergeReason.ReleaseRadar -> stringResource(Res.string.home_concierge_reason_release)
         HomeConciergeReason.LibraryPick -> stringResource(Res.string.home_concierge_reason_library)
         HomeConciergeReason.CatalogSignal -> stringResource(Res.string.home_concierge_reason_catalog)
+    }
+
+@Composable
+private fun HomeSmartResumeSignal.localizedSmartSignal(): String =
+    when (this) {
+        HomeSmartResumeSignal.ContinueNow -> stringResource(Res.string.home_smart_resume_signal_continue_now)
+        HomeSmartResumeSignal.NextEpisodeReady -> stringResource(Res.string.home_smart_resume_signal_next_episode)
+        HomeSmartResumeSignal.AlmostFinished -> stringResource(Res.string.home_smart_resume_signal_almost_finished)
+        HomeSmartResumeSignal.QuickResume -> stringResource(Res.string.home_smart_resume_signal_quick_resume)
+        HomeSmartResumeSignal.NewEpisode -> stringResource(Res.string.home_smart_resume_signal_new_episode)
+        HomeSmartResumeSignal.NewSeason -> stringResource(Res.string.home_smart_resume_signal_new_season)
+        HomeSmartResumeSignal.Scheduled -> stringResource(Res.string.home_smart_resume_signal_scheduled)
+        HomeSmartResumeSignal.ResumeReady -> stringResource(Res.string.home_smart_resume_signal_resume_ready)
     }
 
 @Composable

@@ -31,6 +31,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -42,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -61,6 +64,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -142,6 +146,7 @@ import com.nuvio.app.features.tmdb.TmdbEntityKind
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeScreen
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.LibrarySection
@@ -188,6 +193,8 @@ import com.nuvio.app.features.settings.PluginsSettingsScreen
 import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
 import com.nuvio.app.features.settings.LicensesAttributionsSettingsScreen
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
+import com.nuvio.app.features.settings.SettingsPage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.collection.CollectionManagementScreen
 import com.nuvio.app.features.collection.CollectionEditorScreen
@@ -240,6 +247,8 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+private const val NuvioDiscordInviteUrl = "https://discord.gg/at8xffxuRU"
 
 @Serializable
 object TabsRoute
@@ -392,6 +401,11 @@ private enum class AppGateScreen {
     Main,
 }
 
+private enum class ProfileEditReturnTarget {
+    ProfileSelection,
+    ProfileSettings,
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
@@ -454,6 +468,9 @@ fun App() {
         var editingProfile by remember { mutableStateOf<NuvioProfile?>(null) }
         var isNewProfile by remember { mutableStateOf(false) }
         var autoSkipProfileSelection by rememberSaveable { mutableStateOf(false) }
+        var profileEditReturnTarget by rememberSaveable { mutableStateOf(ProfileEditReturnTarget.ProfileSelection.name) }
+        var pendingMainInitialTabName by rememberSaveable { mutableStateOf<String?>(null) }
+        var pendingMainSettingsPageName by rememberSaveable { mutableStateOf<String?>(null) }
 
         fun rememberedStartupProfile(profiles: List<NuvioProfile>): NuvioProfile? {
             val currentProfileState = ProfileRepository.state.value
@@ -581,6 +598,16 @@ fun App() {
             }
         }
 
+        fun closeProfileEdit() {
+            if (profileEditReturnTarget == ProfileEditReturnTarget.ProfileSettings.name) {
+                pendingMainInitialTabName = AppScreenTab.Settings.name
+                pendingMainSettingsPageName = SettingsPage.Profile.name
+                gateScreen = AppGateScreen.Main.name
+            } else {
+                gateScreen = AppGateScreen.ProfileSelection.name
+            }
+        }
+
         AnimatedContent(
             targetState = gateScreen,
             label = "app_gate",
@@ -620,11 +647,13 @@ fun App() {
                         onEditProfile = { profile ->
                             editingProfile = profile
                             isNewProfile = false
+                            profileEditReturnTarget = ProfileEditReturnTarget.ProfileSelection.name
                             gateScreen = AppGateScreen.ProfileEdit.name
                         },
                         onAddProfile = {
                             editingProfile = null
                             isNewProfile = true
+                            profileEditReturnTarget = ProfileEditReturnTarget.ProfileSelection.name
                             gateScreen = AppGateScreen.ProfileEdit.name
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -632,20 +661,40 @@ fun App() {
                 }
                 AppGateScreen.ProfileEdit.name -> {
                     PlatformBackHandler(enabled = gateScreen == AppGateScreen.ProfileEdit.name) {
-                        gateScreen = AppGateScreen.ProfileSelection.name
+                        closeProfileEdit()
                     }
                     ProfileEditScreen(
                         profile = editingProfile,
-                        onBack = { gateScreen = AppGateScreen.ProfileSelection.name },
-                        onSaved = { gateScreen = AppGateScreen.ProfileSelection.name },
+                        onBack = ::closeProfileEdit,
+                        onSaved = ::closeProfileEdit,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
                 AppGateScreen.Main.name -> {
                     MainAppContent(
+                        initialSelectedTab = pendingMainInitialTabName
+                            ?.let { runCatching { AppScreenTab.valueOf(it) }.getOrNull() }
+                            ?: AppScreenTab.Home,
+                        initialSettingsPageName = pendingMainSettingsPageName,
+                        onInitialNavigationConsumed = {
+                            pendingMainInitialTabName = null
+                            pendingMainSettingsPageName = null
+                        },
                         onSwitchProfile = {
                             autoSkipProfileSelection = false
                             gateScreen = AppGateScreen.ProfileSelection.name
+                        },
+                        onEditProfile = {
+                            val activeProfile = ProfileRepository.state.value.activeProfile
+                            if (activeProfile != null) {
+                                editingProfile = activeProfile
+                                isNewProfile = false
+                                profileEditReturnTarget = ProfileEditReturnTarget.ProfileSettings.name
+                                gateScreen = AppGateScreen.ProfileEdit.name
+                            } else {
+                                autoSkipProfileSelection = false
+                                gateScreen = AppGateScreen.ProfileSelection.name
+                            }
                         },
                     )
                 }
@@ -657,7 +706,11 @@ fun App() {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 private fun MainAppContent(
+    initialSelectedTab: AppScreenTab = AppScreenTab.Home,
+    initialSettingsPageName: String? = null,
+    onInitialNavigationConsumed: () -> Unit = {},
     onSwitchProfile: () -> Unit = {},
+    onEditProfile: () -> Unit = {},
 ) {
         val navController = rememberNavController()
         val appUpdaterController = rememberAppUpdaterController()
@@ -672,8 +725,9 @@ private fun MainAppContent(
         }
         val hapticFeedback = LocalHapticFeedback.current
         val focusManager = LocalFocusManager.current
+        val uriHandler = LocalUriHandler.current
         val coroutineScope = rememberCoroutineScope()
-        var selectedTab by rememberSaveable { mutableStateOf(AppScreenTab.Home) }
+        var selectedTab by rememberSaveable { mutableStateOf(initialSelectedTab) }
         var searchFocusRequestCount by remember { mutableStateOf(0) }
         val homeScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val searchScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
@@ -684,11 +738,16 @@ private fun MainAppContent(
         val liquidGlassNativeTabBarEnabled by remember {
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
         }.collectAsStateWithLifecycle()
+        val nuvioEnhancedSettings by remember {
+            NuvioEnhancedSettingsRepository.ensureLoaded()
+            NuvioEnhancedSettingsRepository.uiState
+        }.collectAsStateWithLifecycle()
+        val liveTvEnabled = nuvioEnhancedSettings.liveTvEnabled
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
         var selectedContinueWatchingForActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
-        var requestedSettingsPageName by rememberSaveable { mutableStateOf<String?>(null) }
+        var requestedSettingsPageName by rememberSaveable { mutableStateOf(initialSettingsPageName) }
         var showLibraryListPicker by remember { mutableStateOf(false) }
         var pickerItem by remember { mutableStateOf<LibraryItem?>(null) }
         var pickerTitle by remember { mutableStateOf("") }
@@ -705,6 +764,13 @@ private fun MainAppContent(
             LibraryRepository.uiState
         }.collectAsStateWithLifecycle()
         val authState by AuthRepository.state.collectAsStateWithLifecycle()
+        LaunchedEffect(initialSelectedTab, initialSettingsPageName) {
+            if (initialSelectedTab != AppScreenTab.Home || initialSettingsPageName != null) {
+                selectedTab = initialSelectedTab
+                requestedSettingsPageName = initialSettingsPageName
+            }
+            onInitialNavigationConsumed()
+        }
         val openPosterActions: (PosterActionTarget) -> Unit = { target ->
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
             focusManager.clearFocus(force = true)
@@ -771,10 +837,26 @@ private fun MainAppContent(
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
 
     fun handleRootTabClick(tab: AppScreenTab) {
-        if (selectedTab != tab) {
-            selectedTab = tab
+        if (tab == AppScreenTab.LiveTv && !liveTvEnabled) {
             return
         }
+        val wasAlreadySelected = selectedTab == tab
+        val tabsRouteActive = currentBackStackEntry?.destination?.hasRoute<TabsRoute>() == true
+        selectedTab = tab
+
+        if (!tabsRouteActive) {
+            navController.navigate(TabsRoute) {
+                launchSingleTop = true
+                restoreState = true
+                popUpTo<TabsRoute> {
+                    inclusive = false
+                    saveState = true
+                }
+            }
+            return
+        }
+
+        if (!wasAlreadySelected) return
 
         when (tab) {
             AppScreenTab.Home -> homeScrollToTopRequests.tryEmit(Unit)
@@ -788,10 +870,22 @@ private fun MainAppContent(
         }
     }
 
-    LaunchedEffect(liquidGlassNativeTabBarSupported, liquidGlassNativeTabBarEnabled) {
+    fun dismissDiscordWelcome() {
+        NuvioEnhancedSettingsRepository.markDiscordWelcomeSeen()
+    }
+
+    fun openDiscordWelcome() {
+        dismissDiscordWelcome()
+        uriHandler.openUri(NuvioDiscordInviteUrl)
+    }
+
+    LaunchedEffect(liquidGlassNativeTabBarSupported, liquidGlassNativeTabBarEnabled, liveTvEnabled) {
         NativeTabBridge.requestedTabs.collectLatest { requestedTab ->
             if (liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled) {
-                handleRootTabClick(requestedTab.toAppScreenTab())
+                val appTab = requestedTab.toAppScreenTab()
+                if (appTab != AppScreenTab.LiveTv || liveTvEnabled) {
+                    handleRootTabClick(appTab)
+                }
             }
         }
     }
@@ -824,6 +918,13 @@ private fun MainAppContent(
         NativeTabBridge.publishSelectedTab(selectedTab.toNativeNavigationTab())
         if (selectedTab != AppScreenTab.Search) {
             searchFocusRequestCount = 0
+        }
+    }
+
+    LaunchedEffect(liveTvEnabled, selectedTab) {
+        NativeTabBridge.publishLiveTvEnabled(liveTvEnabled)
+        if (!liveTvEnabled && selectedTab == AppScreenTab.LiveTv) {
+            selectedTab = AppScreenTab.Home
         }
     }
 
@@ -1570,12 +1671,14 @@ private fun MainAppContent(
                                             icon = Res.drawable.sidebar_search,
                                             contentDescription = stringResource(Res.string.compose_nav_search),
                                         )
-                                        NavItem(
-                                            selected = selectedTab == AppScreenTab.LiveTv,
-                                            onClick = { handleRootTabClick(AppScreenTab.LiveTv) },
-                                            icon = Icons.Filled.Tv,
-                                            contentDescription = stringResource(Res.string.compose_nav_live_tv),
-                                        )
+                                        if (liveTvEnabled) {
+                                            NavItem(
+                                                selected = selectedTab == AppScreenTab.LiveTv,
+                                                onClick = { handleRootTabClick(AppScreenTab.LiveTv) },
+                                                icon = Icons.Filled.Tv,
+                                                contentDescription = stringResource(Res.string.compose_nav_live_tv),
+                                            )
+                                        }
                                         NavItem(
                                             selected = selectedTab == AppScreenTab.Library,
                                             onClick = { handleRootTabClick(AppScreenTab.Library) },
@@ -1678,6 +1781,7 @@ private fun MainAppContent(
                                         onContinueWatchingClick = onContinueWatchingClick,
                                         onContinueWatchingLongPress = onContinueWatchingLongPress,
                                         onSwitchProfile = onSwitchProfile,
+                                        onEditProfile = onEditProfile,
                                         onHomescreenSettingsClick = { navController.navigate(HomescreenSettingsRoute) },
                                         onMetaScreenSettingsClick = { navController.navigate(MetaScreenSettingsRoute) },
                                         onContinueWatchingSettingsClick = { navController.navigate(ContinueWatchingSettingsRoute) },
@@ -1722,6 +1826,7 @@ private fun MainAppContent(
                                 if (isTabletLayout && !useNativeBottomTabs) {
                                     TabletFloatingTopBar(
                                         selectedTab = selectedTab,
+                                        liveTvEnabled = liveTvEnabled,
                                         onTabSelected = ::handleRootTabClick,
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = {
@@ -3070,6 +3175,12 @@ private fun MainAppContent(
                     .zIndex(15f),
             )
 
+            NuvioDiscordWelcomeDialog(
+                visible = !nuvioEnhancedSettings.discordWelcomeSeen,
+                onJoinDiscord = ::openDiscordWelcome,
+                onDismiss = ::dismissDiscordWelcome,
+            )
+
             NuvioToastHost(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -3083,6 +3194,55 @@ private fun MainAppContent(
                     .zIndex(25f),
             )
         }
+}
+
+@Composable
+private fun NuvioDiscordWelcomeDialog(
+    visible: Boolean,
+    onJoinDiscord: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (!visible) return
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF5865F2)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.discord_mark),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(28.dp),
+                )
+            }
+        },
+        title = {
+            Text("Join the Nuvio Discord")
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Updates, polls, feature requests and community feedback now live in the Nuvio Discord.",
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onJoinDiscord) {
+                Text("Join Discord")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Not now")
+            }
+        },
+    )
 }
 
 @Composable
@@ -3128,6 +3288,7 @@ private fun AppTabHost(
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
     onSwitchProfile: (() -> Unit)? = null,
+    onEditProfile: (() -> Unit)? = null,
     onHomescreenSettingsClick: () -> Unit = {},
     onMetaScreenSettingsClick: () -> Unit = {},
     onContinueWatchingSettingsClick: () -> Unit = {},
@@ -3201,6 +3362,7 @@ private fun AppTabHost(
                         onRequestedPageConsumed = onRequestedSettingsPageConsumed,
                         rootActionsEnabled = rootActionsEnabled,
                         onSwitchProfile = onSwitchProfile,
+                        onEditProfile = onEditProfile,
                         onHomescreenClick = onHomescreenSettingsClick,
                         onMetaScreenClick = onMetaScreenSettingsClick,
                         onContinueWatchingClick = onContinueWatchingSettingsClick,
@@ -3222,6 +3384,7 @@ private fun AppTabHost(
 @Composable
 private fun TabletFloatingTopBar(
     selectedTab: AppScreenTab,
+    liveTvEnabled: Boolean,
     onTabSelected: (AppScreenTab) -> Unit,
     onProfileSelected: (NuvioProfile) -> Unit,
     onAddProfileRequested: () -> Unit,
@@ -3281,23 +3444,25 @@ private fun TabletFloatingTopBar(
                         )
                     },
                 )
-                TabletTopPillItem(
-                    label = stringResource(Res.string.compose_nav_live_tv),
-                    selected = selectedTab == AppScreenTab.LiveTv,
-                    onClick = { onTabSelected(AppScreenTab.LiveTv) },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.Tv,
-                            contentDescription = stringResource(Res.string.compose_nav_live_tv),
-                            modifier = Modifier.size(NuvioTokens.Space.s18),
-                            tint = if (selectedTab == AppScreenTab.LiveTv) {
-                                tokens.colors.textPrimary
-                            } else {
-                                tokens.colors.textMuted
-                            },
-                        )
-                    },
-                )
+                if (liveTvEnabled) {
+                    TabletTopPillItem(
+                        label = stringResource(Res.string.compose_nav_live_tv),
+                        selected = selectedTab == AppScreenTab.LiveTv,
+                        onClick = { onTabSelected(AppScreenTab.LiveTv) },
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Filled.Tv,
+                                contentDescription = stringResource(Res.string.compose_nav_live_tv),
+                                modifier = Modifier.size(NuvioTokens.Space.s18),
+                                tint = if (selectedTab == AppScreenTab.LiveTv) {
+                                    tokens.colors.textPrimary
+                                } else {
+                                    tokens.colors.textMuted
+                                },
+                            )
+                        },
+                    )
+                }
                 TabletTopPillItem(
                     label = stringResource(Res.string.compose_nav_library),
                     selected = selectedTab == AppScreenTab.Library,
@@ -3435,13 +3600,14 @@ private fun AppLaunchOverlay(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (avatarImageUrl != null) {
-                        AsyncImage(
-                            model = avatarImageUrl,
+                        CollectionCardRemoteImage(
+                            imageUrl = avatarImageUrl,
                             contentDescription = profileName,
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(CircleShape),
                             contentScale = ContentScale.Crop,
+                            animateIfPossible = false,
                         )
                     } else {
                         Text(

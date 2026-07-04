@@ -32,6 +32,7 @@ internal data class HomeConciergeCard(
     val reason: HomeConciergeReason,
     val preview: MetaPreview?,
     val continueWatchingItem: ContinueWatchingItem?,
+    val smartSignal: HomeSmartResumeSignal? = null,
 )
 
 internal enum class HomeConciergeReason {
@@ -40,6 +41,17 @@ internal enum class HomeConciergeReason {
     ReleaseRadar,
     LibraryPick,
     CatalogSignal,
+}
+
+internal enum class HomeSmartResumeSignal {
+    ContinueNow,
+    NextEpisodeReady,
+    AlmostFinished,
+    QuickResume,
+    NewEpisode,
+    NewSeason,
+    Scheduled,
+    ResumeReady,
 }
 
 internal data class HomeConciergeStat(
@@ -92,46 +104,44 @@ internal fun buildHomeConciergeState(
     releaseRadarItems: List<HomeReleaseRadarItem>,
     libraryItems: List<LibraryItem>,
     catalogSections: List<HomeCatalogSection>,
+    smartResumeEnabled: Boolean = true,
+    releaseRadarEnabled: Boolean = true,
+    profileStatsEnabled: Boolean = true,
 ): HomeConciergeUiState? {
     val cards = buildList {
-        continueWatchingItems
-            .firstOrNull { item -> !item.isNextUp && item.progressFraction in 0.05f..0.95f }
-            ?.let { item ->
-                add(
-                    item.toConciergeCard(
-                        reason = HomeConciergeReason.Resume,
-                        keyPrefix = "resume",
+        if (smartResumeEnabled) {
+            continueWatchingItems
+                .smartResumeCandidates()
+                .take(HomeSmartResumeCandidateLimit)
+                .forEach { item ->
+                    add(
+                        item.toConciergeCard(
+                            reason = if (item.isNextUp) HomeConciergeReason.NextUp else HomeConciergeReason.Resume,
+                            keyPrefix = "smart_resume",
+                            smartSignal = item.smartResumeSignal(),
+                        )
                     )
-                )
-            }
+                }
+        }
 
-        releaseRadarItems
-            .firstOrNull { item -> item.daysFromToday != null && item.daysFromToday in 0..7 }
-            ?.let { item ->
-                add(
-                    HomeConciergeCard(
-                        key = "release:${item.key}",
-                        title = item.title,
-                        subtitle = item.subtitle,
-                        imageUrl = item.imageUrl,
-                        logoUrl = item.logoUrl,
-                        reason = HomeConciergeReason.ReleaseRadar,
-                        preview = item.preview,
-                        continueWatchingItem = item.continueWatchingItem,
+        if (releaseRadarEnabled) {
+            releaseRadarItems
+                .firstOrNull { item -> item.daysFromToday != null && item.daysFromToday in 0..7 }
+                ?.let { item ->
+                    add(
+                        HomeConciergeCard(
+                            key = "release:${item.key}",
+                            title = item.title,
+                            subtitle = item.subtitle,
+                            imageUrl = item.imageUrl,
+                            logoUrl = item.logoUrl,
+                            reason = HomeConciergeReason.ReleaseRadar,
+                            preview = item.preview,
+                            continueWatchingItem = item.continueWatchingItem,
+                        )
                     )
-                )
-            }
-
-        continueWatchingItems
-            .firstOrNull { item -> item.isNextUp }
-            ?.let { item ->
-                add(
-                    item.toConciergeCard(
-                        reason = HomeConciergeReason.NextUp,
-                        keyPrefix = "next_up",
-                    )
-                )
-            }
+                }
+        }
 
         libraryItems
             .asSequence()
@@ -187,20 +197,24 @@ internal fun buildHomeConciergeState(
         .flatMap { section -> section.items }
         .count { item -> (item.imdbRating.ratingScoreOrNull() ?: 0.0) >= HomeConciergeHighSignalRating }
 
-    val stats = listOfNotNull(
-        continueWatchingItems.size.takeIf { it > 0 }?.let {
-            HomeConciergeStat(HomeConciergeStatType.ContinueWatching, it)
-        },
-        releaseRadarItems.size.takeIf { it > 0 }?.let {
-            HomeConciergeStat(HomeConciergeStatType.ReleaseRadar, it)
-        },
-        libraryItems.size.takeIf { it > 0 }?.let {
-            HomeConciergeStat(HomeConciergeStatType.Library, it)
-        },
-        highSignalCount.takeIf { it > 0 }?.let {
-            HomeConciergeStat(HomeConciergeStatType.HighSignal, it)
-        },
-    ).take(HomeConciergeStatLimit)
+    val stats = if (profileStatsEnabled) {
+        listOfNotNull(
+            continueWatchingItems.size.takeIf { it > 0 }?.let {
+                HomeConciergeStat(HomeConciergeStatType.ContinueWatching, it)
+            },
+            releaseRadarItems.size.takeIf { releaseRadarEnabled && it > 0 }?.let {
+                HomeConciergeStat(HomeConciergeStatType.ReleaseRadar, it)
+            },
+            libraryItems.size.takeIf { it > 0 }?.let {
+                HomeConciergeStat(HomeConciergeStatType.Library, it)
+            },
+            highSignalCount.takeIf { it > 0 }?.let {
+                HomeConciergeStat(HomeConciergeStatType.HighSignal, it)
+            },
+        ).take(HomeConciergeStatLimit)
+    } else {
+        emptyList()
+    }
 
     if (cards.isEmpty() && stats.isEmpty()) return null
 
@@ -216,9 +230,9 @@ internal fun buildHomeConciergeState(
 
     val chips = buildList {
         if (!profileName.isNullOrBlank()) add(HomeConciergeChip(HomeConciergeChipType.ProfileAware))
-        if (continueWatchingItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.WatchProgress))
+        if (smartResumeEnabled && continueWatchingItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.WatchProgress))
         if (libraryItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.LibraryAware))
-        if (releaseRadarItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.ReleaseAware))
+        if (releaseRadarEnabled && releaseRadarItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.ReleaseAware))
     }.take(HomeConciergeChipLimit)
 
     return HomeConciergeUiState(
@@ -334,9 +348,10 @@ internal fun List<LibraryItem>.homeRadarDetailsRequestKey(): String =
 private fun ContinueWatchingItem.toConciergeCard(
     reason: HomeConciergeReason,
     keyPrefix: String,
+    smartSignal: HomeSmartResumeSignal? = null,
 ): HomeConciergeCard =
     HomeConciergeCard(
-        key = "$keyPrefix:$videoId",
+        key = listOfNotNull(keyPrefix, smartSignal?.name, videoId).joinToString(separator = ":"),
         title = title,
         subtitle = subtitle.takeIf { it.isNotBlank() },
         imageUrl = firstNonBlank(background, episodeThumbnail, imageUrl, poster),
@@ -352,7 +367,64 @@ private fun ContinueWatchingItem.toConciergeCard(
             releaseInfo = released,
         ),
         continueWatchingItem = this,
+        smartSignal = smartSignal,
     )
+
+private fun List<ContinueWatchingItem>.smartResumeCandidates(): List<ContinueWatchingItem> =
+    mapIndexed { index, item -> index to item }
+        .filter { (_, item) ->
+            item.isReleaseAlert ||
+                item.isNextUp ||
+                (!item.isNextUp && item.progressFraction in 0.05f..0.95f)
+        }
+        .sortedWith(
+            compareByDescending<Pair<Int, ContinueWatchingItem>> { (index, item) -> item.smartResumeScore(index) }
+                .thenBy { (index, _) -> index }
+        )
+        .map { (_, item) -> item }
+
+private fun ContinueWatchingItem.smartResumeSignal(): HomeSmartResumeSignal =
+    when {
+        isReleaseAlert && isNewSeasonRelease -> HomeSmartResumeSignal.NewSeason
+        isReleaseAlert -> HomeSmartResumeSignal.NewEpisode
+        isNextUp && !released.isNullOrBlank() -> HomeSmartResumeSignal.Scheduled
+        isNextUp -> HomeSmartResumeSignal.NextEpisodeReady
+        remainingMinutesOrNull()?.let { it <= HomeSmartResumeAlmostFinishedMinutes } == true -> {
+            HomeSmartResumeSignal.AlmostFinished
+        }
+        remainingMinutesOrNull()?.let { it <= HomeSmartResumeQuickResumeMinutes } == true -> {
+            HomeSmartResumeSignal.QuickResume
+        }
+        progressFraction >= HomeSmartResumeContinueNowProgress -> HomeSmartResumeSignal.ContinueNow
+        else -> HomeSmartResumeSignal.ResumeReady
+    }
+
+private fun ContinueWatchingItem.smartResumeScore(index: Int): Int {
+    var score = HomeSmartResumeBaseScore - (index * HomeSmartResumeIndexPenalty)
+    if (isReleaseAlert) score += HomeSmartResumeReleaseScore
+    if (isNewSeasonRelease) score += HomeSmartResumeNewSeasonScore
+    if (isNextUp) score += HomeSmartResumeNextUpScore
+    if (!isNextUp && progressFraction in 0.05f..0.95f) score += HomeSmartResumeInProgressScore
+    val remainingMinutes = remainingMinutesOrNull()
+    if (remainingMinutes != null) {
+        score += when {
+            remainingMinutes <= HomeSmartResumeAlmostFinishedMinutes -> HomeSmartResumeAlmostFinishedScore
+            remainingMinutes <= HomeSmartResumeQuickResumeMinutes -> HomeSmartResumeQuickResumeScore
+            else -> 0
+        }
+    }
+    if (progressFraction >= HomeSmartResumeContinueNowProgress) score += HomeSmartResumeContinueNowScore
+    if (progressFraction < 0.05f && !isNextUp) score -= HomeSmartResumeColdStartPenalty
+    if (progressFraction > 0.95f && !isNextUp) score -= HomeSmartResumeCompletedPenalty
+    return score
+}
+
+private fun ContinueWatchingItem.remainingMinutesOrNull(): Long? {
+    if (durationMs <= 0L || progressFraction <= 0f) return null
+    val progressPositionMs = (durationMs * progressFraction.coerceIn(0f, 1f)).toLong()
+    val effectivePositionMs = if (resumePositionMs > 0L) resumePositionMs else progressPositionMs
+    return ((durationMs - effectivePositionMs).coerceAtLeast(0L) / 60_000L).coerceAtLeast(1L)
+}
 
 private fun ContinueWatchingItem.toReleaseRadarItem(
     releaseIsoDate: String,
@@ -550,6 +622,21 @@ private const val HomeConciergeCardLimit = 4
 private const val HomeConciergeStatLimit = 4
 private const val HomeConciergeChipLimit = 4
 private const val HomeConciergeHighSignalRating = 8.0
+private const val HomeSmartResumeCandidateLimit = 3
+private const val HomeSmartResumeBaseScore = 120
+private const val HomeSmartResumeIndexPenalty = 5
+private const val HomeSmartResumeReleaseScore = 70
+private const val HomeSmartResumeNewSeasonScore = 15
+private const val HomeSmartResumeNextUpScore = 55
+private const val HomeSmartResumeInProgressScore = 30
+private const val HomeSmartResumeAlmostFinishedScore = 34
+private const val HomeSmartResumeQuickResumeScore = 24
+private const val HomeSmartResumeContinueNowScore = 16
+private const val HomeSmartResumeColdStartPenalty = 30
+private const val HomeSmartResumeCompletedPenalty = 40
+private const val HomeSmartResumeAlmostFinishedMinutes = 30L
+private const val HomeSmartResumeQuickResumeMinutes = 75L
+private const val HomeSmartResumeContinueNowProgress = 0.70f
 internal const val HomeReleaseRadarUpcomingWindowDays = 45
 private const val HomeReleaseRadarRecentWindowDays = 7
 private const val HomeReleaseRadarItemLimit = 18

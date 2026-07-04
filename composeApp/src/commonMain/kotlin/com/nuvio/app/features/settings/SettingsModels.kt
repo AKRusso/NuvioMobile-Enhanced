@@ -2,6 +2,7 @@ package com.nuvio.app.features.settings
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
@@ -10,6 +11,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_category_about
 import nuvio.composeapp.generated.resources.compose_settings_category_general
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_category
 import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_ai_assistant
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
@@ -34,6 +36,7 @@ import nuvio.composeapp.generated.resources.compose_settings_page_supporters_con
 import nuvio.composeapp.generated.resources.compose_settings_page_tmdb_enrichment
 import nuvio.composeapp.generated.resources.compose_settings_page_trakt
 import nuvio.composeapp.generated.resources.settings_account
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import org.jetbrains.compose.resources.StringResource
 
 internal enum class SettingsCategory(
@@ -42,6 +45,7 @@ internal enum class SettingsCategory(
 ) {
     Account(Res.string.settings_account, Icons.Rounded.AccountCircle),
     General(Res.string.compose_settings_category_general, Icons.Rounded.Settings),
+    Enhanced(Res.string.settings_nuvio_enhanced_category, Icons.Rounded.AutoAwesome),
     About(Res.string.compose_settings_category_about, Icons.Rounded.Info),
     Advanced(Res.string.compose_settings_page_advanced, Icons.Rounded.Tune),
 }
@@ -99,6 +103,11 @@ internal enum class SettingsPage(
     Notifications(
         titleRes = Res.string.compose_settings_page_notifications,
         category = SettingsCategory.General,
+        parentPage = Root,
+    ),
+    NuvioEnhanced(
+        titleRes = Res.string.settings_nuvio_enhanced_title,
+        category = SettingsCategory.Enhanced,
         parentPage = Root,
     ),
     ContinueWatching(

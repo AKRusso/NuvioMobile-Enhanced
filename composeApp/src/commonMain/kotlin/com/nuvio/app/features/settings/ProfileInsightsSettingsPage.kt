@@ -21,12 +21,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CollectionsBookmark
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +52,11 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioPrimaryButton
 import com.nuvio.app.core.ui.NuvioSurfaceCard
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.home.buildHomeConciergeState
+import com.nuvio.app.features.home.buildHomeReleaseRadarItems
+import com.nuvio.app.features.home.components.CollectionCardRemoteImage
+import com.nuvio.app.features.home.components.HomeConciergeSection
+import com.nuvio.app.features.settings.filteredByNuvioEnhancedReleaseRadar
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.LibraryUiState
@@ -66,18 +74,18 @@ import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.WatchProgressUiState
+import com.nuvio.app.features.watchprogress.toContinueWatchingItem
 import kotlin.math.roundToInt
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.*
 import nuvio.composeapp.generated.resources.compose_nav_profile
 import nuvio.composeapp.generated.resources.home_hero_type_movie
 import nuvio.composeapp.generated.resources.home_hero_type_series
-import nuvio.composeapp.generated.resources.profile_insights_badge
+import nuvio.composeapp.generated.resources.profile_insights_edit_profile
 import nuvio.composeapp.generated.resources.profile_insights_hours
 import nuvio.composeapp.generated.resources.profile_insights_minutes
 import nuvio.composeapp.generated.resources.profile_insights_resume_progress
 import nuvio.composeapp.generated.resources.profile_insights_section_overview
-import nuvio.composeapp.generated.resources.profile_insights_section_smart_resume
 import nuvio.composeapp.generated.resources.profile_insights_section_taste
 import nuvio.composeapp.generated.resources.profile_insights_smart_resume_empty_subtitle
 import nuvio.composeapp.generated.resources.profile_insights_smart_resume_empty_title
@@ -104,11 +112,13 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LazyListScope.profileInsightsContent(
     isTablet: Boolean,
     onSwitchProfile: (() -> Unit)?,
+    onEditProfile: (() -> Unit)?,
 ) {
     item {
         ProfileInsightsBody(
             isTablet = isTablet,
             onSwitchProfile = onSwitchProfile,
+            onEditProfile = onEditProfile,
         )
     }
 }
@@ -117,8 +127,8 @@ internal fun LazyListScope.profileInsightsContent(
 private fun ProfileInsightsBody(
     isTablet: Boolean,
     onSwitchProfile: (() -> Unit)?,
+    onEditProfile: (() -> Unit)?,
 ) {
-    val tokens = MaterialTheme.nuvio
     val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
     val avatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
     val watchProgressState by remember {
@@ -132,6 +142,10 @@ private fun ProfileInsightsBody(
     val libraryState by remember {
         LibraryRepository.ensureLoaded()
         LibraryRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val nuvioEnhancedSettings by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val todayIsoDate = remember { CurrentDateProvider.todayIsoDate() }
 
@@ -159,11 +173,67 @@ private fun ProfileInsightsBody(
             todayIsoDate = todayIsoDate,
         )
     }
+    val continueWatchingItems = remember(watchProgressState.entries) {
+        watchProgressState.entries
+            .asSequence()
+            .filter { entry -> entry.isResumable && entry.progressFraction >= 0.02f }
+            .sortedByDescending { entry -> entry.lastUpdatedEpochMs }
+            .take(ProfileConciergeContinueWatchingLimit)
+            .map(WatchProgressEntry::toContinueWatchingItem)
+            .toList()
+    }
+    val profileRadarItems = remember(
+        todayIsoDate,
+        continueWatchingItems,
+        libraryState.items,
+        nuvioEnhancedSettings,
+    ) {
+        if (!nuvioEnhancedSettings.releaseRadarHomeSignalsEnabled) {
+            emptyList()
+        } else {
+            buildHomeReleaseRadarItems(
+                todayIsoDate = todayIsoDate,
+                continueWatchingItems = continueWatchingItems,
+                libraryItems = libraryState.items,
+                catalogSections = emptyList(),
+                resolvedLibraryDetails = emptyMap(),
+            ).filteredByNuvioEnhancedReleaseRadar(nuvioEnhancedSettings)
+        }
+    }
+    val conciergeState = remember(
+        profileName,
+        continueWatchingItems,
+        profileRadarItems,
+        libraryState.items,
+        nuvioEnhancedSettings,
+    ) {
+        if (!nuvioEnhancedSettings.enhancedHomeFeaturesEnabled || !nuvioEnhancedSettings.nuvioConciergeEnabled) {
+            null
+        } else {
+            buildHomeConciergeState(
+                profileName = profileName,
+                continueWatchingItems = continueWatchingItems,
+                releaseRadarItems = profileRadarItems,
+                libraryItems = libraryState.items,
+                catalogSections = emptyList(),
+                smartResumeEnabled = nuvioEnhancedSettings.smartResumeEnabled,
+                releaseRadarEnabled = nuvioEnhancedSettings.releaseRadarHomeSignalsEnabled,
+                profileStatsEnabled = nuvioEnhancedSettings.profileStatsEnabled,
+            )
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(if (isTablet) 18.dp else 14.dp),
     ) {
+        if (onSwitchProfile != null || onEditProfile != null) {
+            ProfileManagementActions(
+                isTablet = isTablet,
+                onSwitchProfile = onSwitchProfile,
+                onEditProfile = onEditProfile,
+            )
+        }
         ProfileInsightsHero(
             profile = activeProfile,
             avatarItem = avatarItem,
@@ -181,23 +251,70 @@ private fun ProfileInsightsBody(
             )
         }
         SettingsSection(
-            title = stringResource(Res.string.profile_insights_section_smart_resume),
-            isTablet = isTablet,
-        ) {
-            ProfileSmartResumeCard(signal = stats.smartResume)
-        }
-        SettingsSection(
             title = stringResource(Res.string.profile_insights_section_taste),
             isTablet = isTablet,
         ) {
             ProfileTasteCard(stats = stats)
         }
+        if (conciergeState != null) {
+            SettingsSection(
+                title = "Nuvio Concierge",
+                isTablet = isTablet,
+            ) {
+                HomeConciergeSection(
+                    state = conciergeState,
+                    sectionPadding = 0.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileManagementActions(
+    isTablet: Boolean,
+    onSwitchProfile: (() -> Unit)?,
+    onEditProfile: (() -> Unit)?,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = tokens.spacing.controlGap),
+        horizontalArrangement = Arrangement.spacedBy(if (isTablet) 14.dp else 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         if (onSwitchProfile != null) {
             NuvioPrimaryButton(
                 text = stringResource(Res.string.profile_insights_switch_profile),
                 onClick = onSwitchProfile,
-                modifier = Modifier.padding(top = tokens.spacing.controlGap),
+                modifier = Modifier.weight(1f),
             )
+        }
+        if (onEditProfile != null) {
+            OutlinedButton(
+                onClick = onEditProfile,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(54.dp),
+                shape = tokens.shapes.button,
+                border = BorderStroke(1.dp, tokens.colors.borderSubtle),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = tokens.colors.textPrimary,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Edit,
+                    contentDescription = null,
+                    tint = tokens.colors.accent,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(Res.string.profile_insights_edit_profile),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -292,10 +409,6 @@ private fun ProfileInsightsHero(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ProfileInsightPill(
-                        text = stringResource(Res.string.profile_insights_badge),
-                        icon = Icons.Rounded.AutoAwesome,
-                    )
                     Text(
                         text = stringResource(Res.string.profile_insights_title, profileName),
                         style = if (isTablet) {
@@ -365,13 +478,14 @@ private fun ProfileHeroAvatar(
         contentAlignment = Alignment.Center,
     ) {
         if (!avatarImageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = avatarImageUrl,
+            CollectionCardRemoteImage(
+                imageUrl = avatarImageUrl,
                 contentDescription = profileName,
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop,
+                animateIfPossible = false,
             )
         } else {
             Text(
@@ -1196,3 +1310,4 @@ private fun ProfileTasteDnaChip.localizedLabel(): String =
 
 private const val ProfileInsightsMinuteMs = 60_000L
 private const val ProfileInsightsRecentWindowMs = 7L * 24L * 60L * 60L * 1000L
+private const val ProfileConciergeContinueWatchingLimit = 36

@@ -54,6 +54,7 @@ import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -459,18 +460,20 @@ private fun ProfileIdentityCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     if (customAvatarUrl != null) {
-                        AsyncImage(
-                            model = customAvatarUrl,
+                        CollectionCardRemoteImage(
+                            imageUrl = customAvatarUrl,
                             contentDescription = name,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
+                            animateIfPossible = true,
                         )
                     } else if (selectedAvatar != null) {
-                        AsyncImage(
-                            model = avatarStorageUrl(selectedAvatar.storagePath),
+                        CollectionCardRemoteImage(
+                            imageUrl = avatarStorageUrl(selectedAvatar.storagePath),
                             contentDescription = selectedAvatar.displayName,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
+                            animateIfPossible = true,
                         )
                     } else if (name.isNotBlank()) {
                         Text(
@@ -574,11 +577,12 @@ private fun AvatarChoiceItem(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        AsyncImage(
-            model = avatarStorageUrl(avatar.storagePath),
+        CollectionCardRemoteImage(
+            imageUrl = avatarStorageUrl(avatar.storagePath),
             contentDescription = avatar.displayName,
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,
+            animateIfPossible = true,
         )
 
         if (isSelected) {

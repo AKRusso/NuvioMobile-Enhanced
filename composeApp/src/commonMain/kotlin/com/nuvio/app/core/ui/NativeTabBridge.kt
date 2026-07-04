@@ -40,6 +40,10 @@ internal object NativeTabBridge {
         publishNativeTabBarVisible(visible && isLiquidGlassNativeTabBarSupported())
     }
 
+    fun publishLiveTvEnabled(enabled: Boolean) {
+        publishNativeLiveTvEnabled(enabled)
+    }
+
     fun publishLiquidGlassEnabled(enabled: Boolean) {
         publishLiquidGlassNativeTabBarEnabled(enabled && isLiquidGlassNativeTabBarSupported())
     }
@@ -86,6 +90,8 @@ internal expect fun isLiquidGlassNativeTabBarSupported(): Boolean
 internal expect fun publishLiquidGlassNativeTabBarEnabled(enabled: Boolean)
 
 internal expect fun publishNativeTabBarVisible(visible: Boolean)
+
+internal expect fun publishNativeLiveTvEnabled(enabled: Boolean)
 
 internal expect fun publishNativeSelectedTab(tabName: String)
 

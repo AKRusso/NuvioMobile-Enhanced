@@ -73,8 +73,6 @@ import nuvio.composeapp.generated.resources.settings_meta_details
 import nuvio.composeapp.generated.resources.settings_meta_details_description
 import nuvio.composeapp.generated.resources.settings_meta_hero_trailer_playback
 import nuvio.composeapp.generated.resources.settings_meta_hero_trailer_playback_description
-import nuvio.composeapp.generated.resources.settings_meta_random_episode_button
-import nuvio.composeapp.generated.resources.settings_meta_random_episode_button_description
 import nuvio.composeapp.generated.resources.settings_meta_episode_cards
 import nuvio.composeapp.generated.resources.settings_meta_episode_cards_description
 import nuvio.composeapp.generated.resources.settings_meta_episode_style_horizontal
@@ -103,8 +101,6 @@ import nuvio.composeapp.generated.resources.settings_meta_production
 import nuvio.composeapp.generated.resources.settings_meta_production_description
 import nuvio.composeapp.generated.resources.settings_meta_section_appearance
 import nuvio.composeapp.generated.resources.settings_meta_section_sections
-import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings
-import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings_description
 import nuvio.composeapp.generated.resources.settings_meta_tab_group_format
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout_description
@@ -145,14 +141,6 @@ internal fun LazyListScope.metaScreenSettingsContent(
                 }
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
-                    title = stringResource(Res.string.settings_meta_random_episode_button),
-                    description = stringResource(Res.string.settings_meta_random_episode_button_description),
-                    checked = uiState.randomEpisodeButton,
-                    isTablet = isTablet,
-                    onCheckedChange = { MetaScreenSettingsRepository.setRandomEpisodeButton(it) },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
-                SettingsSwitchRow(
                     title = stringResource(Res.string.settings_meta_tab_layout),
                     description = stringResource(Res.string.settings_meta_tab_layout_description),
                     checked = uiState.tabLayout,
@@ -172,14 +160,6 @@ internal fun LazyListScope.metaScreenSettingsContent(
                     checked = uiState.blurUnwatchedEpisodes,
                     isTablet = isTablet,
                     onCheckedChange = { MetaScreenSettingsRepository.setBlurUnwatchedEpisodes(it) },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
-                SettingsSwitchRow(
-                    title = stringResource(Res.string.settings_meta_show_episode_ratings),
-                    description = stringResource(Res.string.settings_meta_show_episode_ratings_description),
-                    checked = uiState.showEpisodeRatings,
-                    isTablet = isTablet,
-                    onCheckedChange = { MetaScreenSettingsRepository.setShowEpisodeRatings(it) },
                 )
             }
         }

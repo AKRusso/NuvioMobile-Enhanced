@@ -46,8 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nuvio.app.core.network.DnsOverHttpsSettings
-import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.ui.AppTheme
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NuvioScreen
@@ -122,6 +120,7 @@ fun SettingsScreen(
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
+    onEditProfile: (() -> Unit)? = null,
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
@@ -144,10 +143,6 @@ fun SettingsScreen(
         val tmdbSettings by remember {
             TmdbSettingsRepository.ensureLoaded()
             TmdbSettingsRepository.uiState
-        }.collectAsStateWithLifecycle()
-        val dnsOverHttpsSettings by remember {
-            DnsOverHttpsSettingsRepository.ensureLoaded()
-            DnsOverHttpsSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
         val aiAssistantSettings by remember {
             AiAssistantSettingsRepository.ensureLoaded()
@@ -312,7 +307,6 @@ fun SettingsScreen(
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
                 tmdbSettings = tmdbSettings,
-                dnsOverHttpsSettings = dnsOverHttpsSettings,
                 aiAssistantSettings = aiAssistantSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
@@ -320,8 +314,6 @@ fun SettingsScreen(
                 traktCommentsEnabled = traktCommentsEnabled,
                 traktSettingsUiState = traktSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
-                homescreenHeroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
-                homescreenHeroMotionPreviewEnabled = homescreenSettingsUiState.heroMotionPreviewEnabled,
                 homescreenHideUnreleasedContent = homescreenSettingsUiState.hideUnreleasedContent,
                 homescreenHideCatalogUnderline = homescreenSettingsUiState.hideCatalogUnderline,
                 homescreenItems = homescreenSettingsUiState.items,
@@ -329,6 +321,7 @@ fun SettingsScreen(
                 continueWatchingPreferencesUiState = continueWatchingPreferencesUiState,
                 posterCardStyleUiState = posterCardStyleUiState,
                 onSwitchProfile = onSwitchProfile,
+                onEditProfile = onEditProfile,
                 onDownloadsClick = onDownloadsClick,
                 onSupportersContributorsClick = onSupportersContributorsClick,
                 onLicensesAttributionsClick = onLicensesAttributionsClick,
@@ -371,7 +364,6 @@ fun SettingsScreen(
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
                 tmdbSettings = tmdbSettings,
-                dnsOverHttpsSettings = dnsOverHttpsSettings,
                 aiAssistantSettings = aiAssistantSettings,
                 mdbListSettings = mdbListSettings,
                 debridSettings = debridSettings,
@@ -379,8 +371,6 @@ fun SettingsScreen(
                 traktCommentsEnabled = traktCommentsEnabled,
                 traktSettingsUiState = traktSettingsUiState,
                 homescreenHeroEnabled = homescreenSettingsUiState.heroEnabled,
-                homescreenHeroAutoScrollEnabled = homescreenSettingsUiState.heroAutoScrollEnabled,
-                homescreenHeroMotionPreviewEnabled = homescreenSettingsUiState.heroMotionPreviewEnabled,
                 homescreenHideUnreleasedContent = homescreenSettingsUiState.hideUnreleasedContent,
                 homescreenHideCatalogUnderline = homescreenSettingsUiState.hideCatalogUnderline,
                 homescreenItems = homescreenSettingsUiState.items,
@@ -388,6 +378,7 @@ fun SettingsScreen(
                 continueWatchingPreferencesUiState = continueWatchingPreferencesUiState,
                 posterCardStyleUiState = posterCardStyleUiState,
                 onSwitchProfile = onSwitchProfile,
+                onEditProfile = onEditProfile,
                 onHomescreenClick = onHomescreenClick,
                 onMetaScreenClick = onMetaScreenClick,
                 onContinueWatchingClick = onContinueWatchingClick,
@@ -440,7 +431,6 @@ private fun MobileSettingsScreen(
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
     tmdbSettings: TmdbSettings,
-    dnsOverHttpsSettings: DnsOverHttpsSettings,
     aiAssistantSettings: AiAssistantSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
@@ -448,8 +438,6 @@ private fun MobileSettingsScreen(
     traktCommentsEnabled: Boolean,
     traktSettingsUiState: TraktSettingsUiState,
     homescreenHeroEnabled: Boolean,
-    homescreenHeroAutoScrollEnabled: Boolean,
-    homescreenHeroMotionPreviewEnabled: Boolean,
     homescreenHideUnreleasedContent: Boolean,
     homescreenHideCatalogUnderline: Boolean,
     homescreenItems: List<HomeCatalogSettingsItem>,
@@ -457,6 +445,7 @@ private fun MobileSettingsScreen(
     continueWatchingPreferencesUiState: ContinueWatchingPreferencesUiState,
     posterCardStyleUiState: PosterCardStyleUiState,
     onSwitchProfile: (() -> Unit)? = null,
+    onEditProfile: (() -> Unit)? = null,
     onHomescreenClick: () -> Unit = {},
     onMetaScreenClick: () -> Unit = {},
     onContinueWatchingClick: () -> Unit = {},
@@ -572,6 +561,7 @@ private fun MobileSettingsScreen(
                             onAdvancedClick = { onPageChange(SettingsPage.Advanced) },
                             onNotificationsClick = { onPageChange(SettingsPage.Notifications) },
                             onContentDiscoveryClick = { onPageChange(SettingsPage.ContentDiscovery) },
+                            onNuvioEnhancedClick = { onPageChange(SettingsPage.NuvioEnhanced) },
                             onIntegrationsClick = { onPageChange(SettingsPage.Integrations) },
                             onSupportersContributorsClick = onSupportersContributorsClick,
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
@@ -593,6 +583,7 @@ private fun MobileSettingsScreen(
                 SettingsPage.Profile -> profileInsightsContent(
                     isTablet = false,
                     onSwitchProfile = onSwitchProfile,
+                    onEditProfile = onEditProfile,
                 )
                 SettingsPage.SupportersContributors -> {
                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -646,15 +637,15 @@ private fun MobileSettingsScreen(
                     onPosterCustomizationClick = { onPageChange(SettingsPage.PosterCustomization) },
                 )
                     SettingsPage.Advanced -> advancedSettingsContent(
-                        isTablet = false,
-                        rememberLastProfileEnabled = rememberLastProfileEnabled,
-                        heroAutoScrollEnabled = homescreenHeroAutoScrollEnabled,
-                        heroMotionPreviewEnabled = homescreenHeroMotionPreviewEnabled,
-                        dnsOverHttpsProvider = dnsOverHttpsSettings.provider,
-                    )
+                    isTablet = false,
+                    rememberLastProfileEnabled = rememberLastProfileEnabled,
+                )
                 SettingsPage.Notifications -> notificationsSettingsContent(
                     isTablet = false,
                     uiState = episodeReleaseNotificationsUiState,
+                )
+                SettingsPage.NuvioEnhanced -> nuvioEnhancedSettingsContent(
+                    isTablet = false,
                 )
                 SettingsPage.ContinueWatching -> continueWatchingSettingsContent(
                     isTablet = false,
@@ -804,7 +795,6 @@ private fun TabletSettingsScreen(
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
     tmdbSettings: TmdbSettings,
-    dnsOverHttpsSettings: DnsOverHttpsSettings,
     aiAssistantSettings: AiAssistantSettings,
     mdbListSettings: MdbListSettings,
     debridSettings: DebridSettings,
@@ -812,8 +802,6 @@ private fun TabletSettingsScreen(
     traktCommentsEnabled: Boolean,
     traktSettingsUiState: TraktSettingsUiState,
     homescreenHeroEnabled: Boolean,
-    homescreenHeroAutoScrollEnabled: Boolean,
-    homescreenHeroMotionPreviewEnabled: Boolean,
     homescreenHideUnreleasedContent: Boolean,
     homescreenHideCatalogUnderline: Boolean,
     homescreenItems: List<HomeCatalogSettingsItem>,
@@ -821,6 +809,7 @@ private fun TabletSettingsScreen(
     continueWatchingPreferencesUiState: ContinueWatchingPreferencesUiState,
     posterCardStyleUiState: PosterCardStyleUiState,
     onSwitchProfile: (() -> Unit)? = null,
+    onEditProfile: (() -> Unit)? = null,
     onDownloadsClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
     onLicensesAttributionsClick: () -> Unit = {},
@@ -990,6 +979,7 @@ private fun TabletSettingsScreen(
                                 onAdvancedClick = { openInlinePage(SettingsPage.Advanced) },
                                 onNotificationsClick = { openInlinePage(SettingsPage.Notifications) },
                                 onContentDiscoveryClick = { openInlinePage(SettingsPage.ContentDiscovery) },
+                                onNuvioEnhancedClick = { openInlinePage(SettingsPage.NuvioEnhanced) },
                                 onIntegrationsClick = { openInlinePage(SettingsPage.Integrations) },
                                 onSupportersContributorsClick = { openInlinePage(SettingsPage.SupportersContributors) },
                                 onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
@@ -1002,6 +992,7 @@ private fun TabletSettingsScreen(
                                     null
                                 },
                                 showAccountSection = activeCategory == SettingsCategory.Account,
+                                showEnhancedSection = activeCategory == SettingsCategory.Enhanced,
                                 showGeneralSection = activeCategory == SettingsCategory.General,
                                 showAboutSection = activeCategory == SettingsCategory.About,
                                 showAdvancedSection = activeCategory == SettingsCategory.Advanced,
@@ -1015,6 +1006,7 @@ private fun TabletSettingsScreen(
                     SettingsPage.Profile -> profileInsightsContent(
                         isTablet = true,
                         onSwitchProfile = onSwitchProfile,
+                        onEditProfile = onEditProfile,
                     )
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -1070,13 +1062,13 @@ private fun TabletSettingsScreen(
                     SettingsPage.Advanced -> advancedSettingsContent(
                         isTablet = true,
                         rememberLastProfileEnabled = rememberLastProfileEnabled,
-                        heroAutoScrollEnabled = homescreenHeroAutoScrollEnabled,
-                        heroMotionPreviewEnabled = homescreenHeroMotionPreviewEnabled,
-                        dnsOverHttpsProvider = dnsOverHttpsSettings.provider,
                     )
                     SettingsPage.Notifications -> notificationsSettingsContent(
                         isTablet = true,
                         uiState = episodeReleaseNotificationsUiState,
+                    )
+                    SettingsPage.NuvioEnhanced -> nuvioEnhancedSettingsContent(
+                        isTablet = true,
                     )
                     SettingsPage.ContinueWatching -> continueWatchingSettingsContent(
                         isTablet = true,
