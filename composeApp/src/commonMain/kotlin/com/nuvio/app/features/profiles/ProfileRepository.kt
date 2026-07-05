@@ -45,6 +45,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.add
@@ -117,7 +119,11 @@ object ProfileRepository {
         _state.value = ProfileState()
     }
 
-    suspend fun pullProfiles(backgroundOverrides: Map<Int, String?> = emptyMap()): Boolean {
+    suspend fun pullProfiles(
+        backgroundOverrides: Map<Int, String?> = emptyMap(),
+        avatarUrlOverrides: Map<Int, String?> = emptyMap(),
+        avatarIdOverrides: Map<Int, String?> = emptyMap(),
+    ): Boolean {
         if (AuthRepository.state.value.isAnonymous) {
             if (!_state.value.isLoaded) {
                 _state.value = _state.value.copy(isLoaded = true)
@@ -129,6 +135,8 @@ object ProfileRepository {
             val profiles = mergeLocalProfileOverrides(
                 remoteProfiles = result.decodeList<NuvioProfile>(),
                 backgroundOverrides = backgroundOverrides,
+                avatarUrlOverrides = avatarUrlOverrides,
+                avatarIdOverrides = avatarIdOverrides,
             )
             _state.value = _state.value.copy(
                 profiles = profiles.sortedBy { it.profileIndex },
@@ -269,13 +277,24 @@ object ProfileRepository {
             val backgroundOverrides = profiles.associate { payload ->
                 payload.profileIndex to normalizedProfileBackgroundUrl(payload.backgroundUrl)
             }
+            val avatarUrlOverrides = profiles.associate { payload ->
+                payload.profileIndex to normalizedAvatarUrl(payload.avatarUrl)
+            }
+            val avatarIdOverrides = profiles.associate { payload ->
+                payload.profileIndex to payload.avatarId
+            }
             val params = buildJsonObject {
                 put("p_client_max_profiles", MAX_PROFILES)
                 put("p_profiles", buildRemotePushProfilesPayload(profiles))
                 putSyncOriginClientId()
             }
             SupabaseProvider.client.postgrest.rpc("sync_push_profiles", params)
-            if (!pullProfiles(backgroundOverrides = backgroundOverrides)) {
+            if (!pullProfiles(
+                    backgroundOverrides = backgroundOverrides,
+                    avatarUrlOverrides = avatarUrlOverrides,
+                    avatarIdOverrides = avatarIdOverrides,
+                )
+            ) {
                 applyPayloadsLocally(profiles)
             }
             return ProfileMutationResult(success = true)
@@ -526,8 +545,8 @@ object ProfileRepository {
                     put("avatar_color_hex", payload.avatarColorHex)
                     put("uses_primary_addons", payload.usesPrimaryAddons)
                     put("uses_primary_plugins", payload.usesPrimaryPlugins)
-                    payload.avatarId?.let { put("avatar_id", it) }
-                    payload.avatarUrl?.let { put("avatar_url", it) }
+                    put("avatar_id", payload.avatarId?.let(::JsonPrimitive) ?: JsonNull)
+                    put("avatar_url", normalizedAvatarUrl(payload.avatarUrl)?.let(::JsonPrimitive) ?: JsonNull)
                 },
             )
         }
@@ -536,6 +555,8 @@ object ProfileRepository {
     private fun mergeLocalProfileOverrides(
         remoteProfiles: List<NuvioProfile>,
         backgroundOverrides: Map<Int, String?> = emptyMap(),
+        avatarUrlOverrides: Map<Int, String?> = emptyMap(),
+        avatarIdOverrides: Map<Int, String?> = emptyMap(),
     ): List<NuvioProfile> {
         val inMemoryBackgrounds = _state.value.profiles.associate { profile ->
             profile.profileIndex to normalizedProfileBackgroundUrl(profile.backgroundUrl)
@@ -560,7 +581,21 @@ object ProfileRepository {
                         ?: cachedBackgrounds[profile.profileIndex]
                 }
             }
-            profile.copy(backgroundUrl = resolvedBackground)
+            val resolvedAvatarUrl = if (avatarUrlOverrides.containsKey(profile.profileIndex)) {
+                avatarUrlOverrides[profile.profileIndex]
+            } else {
+                normalizedAvatarUrl(profile.avatarUrl)
+            }
+            val resolvedAvatarId = if (avatarIdOverrides.containsKey(profile.profileIndex)) {
+                avatarIdOverrides[profile.profileIndex]
+            } else {
+                profile.avatarId
+            }
+            profile.copy(
+                avatarId = resolvedAvatarId,
+                avatarUrl = resolvedAvatarUrl,
+                backgroundUrl = resolvedBackground,
+            )
         }
     }
 

@@ -94,9 +94,17 @@ fun ProfileEditScreen(
         AvatarRepository.fetchAvatars()
         AvatarRepository.refreshAvatars()
     }
-    LaunchedEffect(isNew, avatars, selectedAvatarId, avatarUrl) {
-        if (isNew && avatarUrl.isBlank() && selectedAvatarId == null && avatars.isNotEmpty()) {
-            selectedAvatarId = avatars.first().id
+    LaunchedEffect(isNew, avatars, selectedAvatarId, avatarUrl, currentProfile?.avatarId, currentProfile?.avatarUrl) {
+        if (
+            avatarUrl.isBlank() &&
+            selectedAvatarId == null &&
+            avatars.isNotEmpty() &&
+            (isNew || !currentProfile?.avatarUrl.isNullOrBlank())
+        ) {
+            selectedAvatarId = currentProfile
+                ?.avatarId
+                ?.takeIf { avatarId -> avatars.any { it.id == avatarId } }
+                ?: avatars.first().id
         }
     }
 
@@ -159,6 +167,11 @@ fun ProfileEditScreen(
                             avatarUrl = value
                             if (value.isNotBlank()) {
                                 selectedAvatarId = null
+                            } else if (selectedAvatarId == null && avatars.isNotEmpty()) {
+                                selectedAvatarId = currentProfile
+                                    ?.avatarId
+                                    ?.takeIf { avatarId -> avatars.any { it.id == avatarId } }
+                                    ?: avatars.first().id
                             }
                         },
                         placeholder = stringResource(Res.string.profile_custom_avatar_url_placeholder),
