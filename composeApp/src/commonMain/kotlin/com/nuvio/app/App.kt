@@ -116,7 +116,9 @@ import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NativeTabBridge
+import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
+import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioBottomNavigationBarInsets
@@ -3226,7 +3228,7 @@ private fun NuvioDiscordWelcomeDialog(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painter = painterResource(Res.drawable.discord_mark),
+                    painter = appIconPainter(AppIconResource.DiscordMark),
                     contentDescription = null,
                     tint = Color.Unspecified,
                     modifier = Modifier.size(28.dp),

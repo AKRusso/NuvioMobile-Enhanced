@@ -59,15 +59,15 @@ import com.nuvio.app.core.build.AppVersionConfig
 import com.nuvio.app.core.network.DnsOverHttpsProvider
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.sync.ProfileSettingsSync
+import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.*
-import nuvio.composeapp.generated.resources.discord_mark
-import nuvio.composeapp.generated.resources.github_mark
 import nuvio.composeapp.generated.resources.settings_advanced_doh_description
 import nuvio.composeapp.generated.resources.settings_advanced_doh_selected
 import nuvio.composeapp.generated.resources.settings_advanced_hero_auto_scroll
@@ -79,7 +79,6 @@ import nuvio.composeapp.generated.resources.settings_meta_random_episode_button_
 import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings
 import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings_description
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val NuvioEnhancedGithubUrl = "https://github.com/yesnt10/NuvioMobile-Enhanced"
@@ -856,14 +855,14 @@ private fun EnhancedCommunityFooter(
                 EnhancedFooterLink(
                     title = stringResource(Res.string.nuvio_enhanced_footer_github),
                     subtitle = stringResource(Res.string.nuvio_enhanced_footer_releases),
-                    icon = painterResource(Res.drawable.github_mark),
+                    icon = appIconPainter(AppIconResource.GithubMark),
                     modifier = Modifier.weight(1f),
                     onClick = onGithubClick,
                 )
                 EnhancedFooterLink(
                     title = stringResource(Res.string.nuvio_enhanced_footer_discord),
                     subtitle = stringResource(Res.string.nuvio_enhanced_footer_community),
-                    icon = painterResource(Res.drawable.discord_mark),
+                    icon = appIconPainter(AppIconResource.DiscordMark),
                     modifier = Modifier.weight(1f),
                     onClick = onDiscordClick,
                 )

@@ -3,6 +3,8 @@ package com.nuvio.app.core.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.painter.Painter
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.discord_mark
+import nuvio.composeapp.generated.resources.github_mark
 import nuvio.composeapp.generated.resources.ic_player_aspect_ratio
 import nuvio.composeapp.generated.resources.ic_player_audio_filled
 import nuvio.composeapp.generated.resources.ic_player_pause
@@ -15,6 +17,8 @@ import org.jetbrains.compose.resources.painterResource
 actual fun appIconPainter(icon: AppIconResource): Painter =
     painterResource(
         when (icon) {
+            AppIconResource.DiscordMark -> Res.drawable.discord_mark
+            AppIconResource.GithubMark -> Res.drawable.github_mark
             AppIconResource.PlayerPlay -> Res.drawable.ic_player_play
             AppIconResource.PlayerPause -> Res.drawable.ic_player_pause
             AppIconResource.PlayerAspectRatio -> Res.drawable.ic_player_aspect_ratio

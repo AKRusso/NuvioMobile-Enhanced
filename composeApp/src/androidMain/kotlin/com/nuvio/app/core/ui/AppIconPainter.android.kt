@@ -9,6 +9,8 @@ import com.nuvio.app.R
 actual fun appIconPainter(icon: AppIconResource): Painter =
     painterResource(
         id = when (icon) {
+            AppIconResource.DiscordMark -> R.drawable.discord_mark
+            AppIconResource.GithubMark -> R.drawable.github_mark
             AppIconResource.PlayerPlay -> R.drawable.ic_player_play
             AppIconResource.PlayerPause -> R.drawable.ic_player_pause
             AppIconResource.PlayerAspectRatio -> R.drawable.ic_player_aspect_ratio
