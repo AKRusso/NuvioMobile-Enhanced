@@ -152,40 +152,112 @@ object ProfileRepository {
     }
 
     fun selectProfile(profileIndex: Int) {
-        activeProfileIndex = profileIndex
         val selectedProfile = _state.value.profiles.find { it.profileIndex == profileIndex }
+        if (selectedProfile == null) {
+            log.w { "Ignoring profile selection for missing profile index $profileIndex" }
+            return
+        }
+
+        val alreadyActive =
+            _state.value.activeProfile?.profileIndex == profileIndex &&
+                _state.value.hasEverSelectedProfile
+
+        activeProfileIndex = profileIndex
         _state.value = _state.value.copy(
             activeProfile = selectedProfile,
-            hasEverSelectedProfile = selectedProfile != null || _state.value.hasEverSelectedProfile,
+            hasEverSelectedProfile = true,
         )
         persist()
-        WatchedRepository.onProfileChanged(profileIndex)
-        TraktSettingsRepository.onProfileChanged()
-        TraktAuthRepository.onProfileChanged()
-        LibraryRepository.onProfileChanged(profileIndex)
-        WatchProgressRepository.onProfileChanged(profileIndex)
-        AddonRepository.onProfileChanged(profileIndex)
-        if (com.nuvio.app.core.build.AppFeaturePolicy.pluginsEnabled) {
-            PluginRepository.onProfileChanged(profileIndex)
+
+        if (alreadyActive) return
+
+        notifyProfileChanged(profileIndex)
+    }
+
+    private fun notifyProfileChanged(profileIndex: Int) {
+        runProfileChangeStep("watched") {
+            WatchedRepository.onProfileChanged(profileIndex)
         }
-        ThemeSettingsRepository.onProfileChanged()
-        PosterCardStyleRepository.onProfileChanged()
-        PlayerSettingsRepository.onProfileChanged()
-        StreamBadgeSettingsRepository.onProfileChanged()
-        P2pSettingsRepository.onProfileChanged()
-        HomeCatalogSettingsRepository.onProfileChanged()
-        HomeRepository.clear()
-        MetaScreenSettingsRepository.onProfileChanged()
-        ContinueWatchingPreferencesRepository.onProfileChanged()
-        com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentCache.onProfileChanged()
-        EpisodeReleaseNotificationsRepository.onProfileChanged()
-        TmdbSettingsRepository.onProfileChanged()
-        MdbListSettingsRepository.onProfileChanged()
-        SearchHistoryRepository.onProfileChanged()
-        CollectionRepository.onProfileChanged()
-        CollectionMobileSettingsRepository.onProfileChanged()
-        DownloadsRepository.onProfileChanged()
-        LiveTvRepository.onProfileChanged()
+        runProfileChangeStep("trakt_settings") {
+            TraktSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("trakt_auth") {
+            TraktAuthRepository.onProfileChanged()
+        }
+        runProfileChangeStep("library") {
+            LibraryRepository.onProfileChanged(profileIndex)
+        }
+        runProfileChangeStep("watch_progress") {
+            WatchProgressRepository.onProfileChanged(profileIndex)
+        }
+        runProfileChangeStep("addons") {
+            AddonRepository.onProfileChanged(profileIndex)
+        }
+        if (com.nuvio.app.core.build.AppFeaturePolicy.pluginsEnabled) {
+            runProfileChangeStep("plugins") {
+                PluginRepository.onProfileChanged(profileIndex)
+            }
+        }
+        runProfileChangeStep("theme") {
+            ThemeSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("poster_card_style") {
+            PosterCardStyleRepository.onProfileChanged()
+        }
+        runProfileChangeStep("player_settings") {
+            PlayerSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("stream_badges") {
+            StreamBadgeSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("p2p") {
+            P2pSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("home_catalog_settings") {
+            HomeCatalogSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("home") {
+            HomeRepository.clear()
+        }
+        runProfileChangeStep("meta_screen_settings") {
+            MetaScreenSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("continue_watching_preferences") {
+            ContinueWatchingPreferencesRepository.onProfileChanged()
+        }
+        runProfileChangeStep("continue_watching_enrichment") {
+            com.nuvio.app.features.watchprogress.ContinueWatchingEnrichmentCache.onProfileChanged()
+        }
+        runProfileChangeStep("episode_release_notifications") {
+            EpisodeReleaseNotificationsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("tmdb_settings") {
+            TmdbSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("mdblist_settings") {
+            MdbListSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("search_history") {
+            SearchHistoryRepository.onProfileChanged()
+        }
+        runProfileChangeStep("collections") {
+            CollectionRepository.onProfileChanged()
+        }
+        runProfileChangeStep("collection_mobile_settings") {
+            CollectionMobileSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("downloads") {
+            DownloadsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("live_tv") {
+            LiveTvRepository.onProfileChanged()
+        }
+    }
+
+    private fun runProfileChangeStep(label: String, block: () -> Unit) {
+        runCatching(block).onFailure { error ->
+            log.e(error) { "Profile change step failed: $label" }
+        }
     }
 
     suspend fun pushProfiles(profiles: List<ProfilePushPayload>): ProfileMutationResult {

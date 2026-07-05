@@ -368,6 +368,8 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
     private static let nativeProfileAvatarURLKey = "NuvioNativeProfileAvatarURL"
     private static let nativeProfileAvatarBackgroundColorKey = "NuvioNativeProfileAvatarBackgroundColor"
     private static let nativeTabChromeDidChangeNotification = Notification.Name("NuvioNativeTabChromeDidChange")
+    private static let maxProfileAvatarDataBytes = 2 * 1024 * 1024
+    private static let profileAvatarThumbnailPixels = 112
 
     private let contentController: UIViewController
     private let tabBar = UITabBar()
@@ -833,10 +835,15 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
 
         guard let urlString, let url = URL(string: urlString) else { return }
 
-        profileAvatarImageTask = URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+        profileAvatarImageTask = URLSession.shared.dataTask(with: url) { [weak self] data, response, _ in
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200..<300).contains(httpResponse.statusCode) {
+                return
+            }
             guard
                 let self,
                 let data,
+                data.count <= Self.maxProfileAvatarDataBytes,
                 let image = Self.profileAvatarImage(from: data)
             else { return }
 
@@ -850,7 +857,15 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
     }
 
     private static func profileAvatarImage(from data: Data) -> UIImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else {
+        guard data.count <= maxProfileAvatarDataBytes else {
+            return nil
+        }
+
+        let sourceOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else {
             return UIImage(data: data)
         }
 
@@ -859,7 +874,14 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             return UIImage(data: data)
         }
 
-        guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+        let thumbnailOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: profileAvatarThumbnailPixels,
+            kCGImageSourceShouldCache: false,
+            kCGImageSourceShouldCacheImmediately: false
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else {
             return UIImage(data: data)
         }
         return UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up)
