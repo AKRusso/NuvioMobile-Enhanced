@@ -847,9 +847,15 @@ object TmdbMetadataService {
             localizedTitle = localizedTitle,
             description = description,
             genres = genres,
-            backdrop = buildImageUrl(details.backdropPath, "w1280"),
+            backdrop = buildImageUrl(
+                images?.backdrops.orEmpty().selectBestTextlessImagePath(normalizedLanguage),
+                "w1280",
+            ) ?: buildImageUrl(details.backdropPath, "w1280"),
             logo = buildImageUrl(images?.logos.orEmpty().selectBestLocalizedImagePath(normalizedLanguage), "w500"),
-            poster = buildImageUrl(details.posterPath, "w500"),
+            poster = buildImageUrl(
+                images?.posters.orEmpty().selectBestTextlessImagePath(normalizedLanguage),
+                "w780",
+            ) ?: buildImageUrl(details.posterPath, "w500"),
             people = people,
             director = directors,
             writer = writers,
@@ -1363,6 +1369,22 @@ private fun List<TmdbImage>.selectBestLocalizedImagePath(normalizedLanguage: Str
     ).firstOrNull()?.filePath
 }
 
+private fun List<TmdbImage>.selectBestTextlessImagePath(normalizedLanguage: String): String? {
+    if (isEmpty()) return null
+    val languageCode = normalizedLanguage.substringBefore("-")
+    val regionCode = normalizedLanguage.substringAfter("-", "").uppercase().takeIf { it.length == 2 }
+        ?: defaultLanguageRegions[languageCode]
+    return sortedWith(
+        compareByDescending<TmdbImage> { it.iso6391 == null }
+            .thenByDescending { it.iso6391 == languageCode && it.iso31661 == regionCode }
+            .thenByDescending { it.iso6391 == languageCode && it.iso31661 == null }
+            .thenByDescending { it.iso6391 == languageCode }
+            .thenByDescending { it.iso6391 == "en" }
+            .thenByDescending { it.voteAverage ?: 0.0 }
+            .thenByDescending { it.voteCount ?: 0 },
+    ).firstOrNull()?.filePath
+}
+
 private val defaultLanguageRegions = mapOf(
     "pt" to "PT",
     "es" to "ES",
@@ -1534,6 +1556,8 @@ private data class TmdbCrewMember(
 @Serializable
 private data class TmdbImagesResponse(
     val logos: List<TmdbImage> = emptyList(),
+    val posters: List<TmdbImage> = emptyList(),
+    val backdrops: List<TmdbImage> = emptyList(),
 )
 
 @Serializable
@@ -1541,6 +1565,8 @@ private data class TmdbImage(
     @SerialName("file_path") val filePath: String? = null,
     @SerialName("iso_639_1") val iso6391: String? = null,
     @SerialName("iso_3166_1") val iso31661: String? = null,
+    @SerialName("vote_average") val voteAverage: Double? = null,
+    @SerialName("vote_count") val voteCount: Int? = null,
 )
 
 @Serializable

@@ -43,6 +43,12 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     @get:Input
     abstract val realtimeSyncEnabled: Property<Boolean>
 
+    @get:Input
+    abstract val tenorApiKey: Property<String>
+
+    @get:Input
+    abstract val tenorSearchEndpoint: Property<String>
+
     @TaskAction
     fun generate() {
         val props = Properties()
@@ -148,6 +154,20 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
+        outDir.resolve("com/nuvio/app/features/profiles").apply {
+            mkdirs()
+            resolve("GifSearchConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.profiles
+                |
+                |object GifSearchConfig {
+                |    const val TENOR_API_KEY = "${tenorApiKey.get()}"
+                |    const val TENOR_SEARCH_ENDPOINT = "${tenorSearchEndpoint.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
+
         outDir.resolve("com/nuvio/app/core/build").apply {
             mkdirs()
             resolve("AppVersionConfig.kt").writeText(
@@ -215,7 +235,7 @@ val iosDistribution = (
     providers.gradleProperty("nuvio.ios.distribution").orNull
         ?: System.getenv("NUVIO_IOS_DISTRIBUTION")
         ?: supabaseProps.getProperty("NUVIO_IOS_DISTRIBUTION")
-        ?: "appstore"
+        ?: "full"
     ).trim().lowercase()
 require(iosDistribution == "appstore" || iosDistribution == "full") {
     "NUVIO_IOS_DISTRIBUTION must be 'appstore' or 'full'."
@@ -307,6 +327,14 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
         }
     )
     realtimeSyncEnabled.set(runtimeConfigBoolean("NUVIO_REALTIME_SYNC_ENABLED", true))
+    tenorApiKey.set(runtimeConfigValue("NUVIO_TENOR_API_KEY", "TENOR_API_KEY", fallback = "LIVDSRZULELA"))
+    tenorSearchEndpoint.set(
+        runtimeConfigValue(
+            "NUVIO_TENOR_SEARCH_ENDPOINT",
+            "TENOR_SEARCH_ENDPOINT",
+            fallback = "https://g.tenor.com/v1/search",
+        )
+    )
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {

@@ -23,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Email
@@ -317,6 +318,18 @@ private fun NuvioEnhancedSettingsPageContent(
                         NuvioEnhancedSettingsRepository.setLiveTvEnabled(it)
                     },
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_content_warnings_title),
+                    description = stringResource(Res.string.nuvio_enhanced_content_warnings_desc),
+                    checked = settings.contentWarningsEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.ContentWarnings),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.ContentWarnings)
+                        NuvioEnhancedSettingsRepository.setContentWarningsEnabled(it)
+                    },
+                )
             }
         }
 
@@ -348,6 +361,28 @@ private fun NuvioEnhancedSettingsPageContent(
                     onSelected = {
                         markSeen(NuvioEnhancedFeature.HeroExperienceControls)
                         NuvioEnhancedSettingsRepository.setHeroDisplayMode(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                EnhancedChoiceRow(
+                    title = stringResource(Res.string.nuvio_enhanced_hero_artwork_title),
+                    description = stringResource(Res.string.nuvio_enhanced_hero_artwork_desc),
+                    selected = settings.heroArtworkSource,
+                    options = listOf(
+                        EnhancedChoiceOption(
+                            NuvioHeroArtworkSource.Backdrop,
+                            stringResource(Res.string.nuvio_enhanced_hero_artwork_backdrop),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioHeroArtworkSource.Poster,
+                            stringResource(Res.string.nuvio_enhanced_hero_artwork_poster),
+                        ),
+                    ),
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onSelected = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setHeroArtworkSource(it)
                     },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
@@ -514,14 +549,9 @@ private fun NuvioEnhancedSettingsPageContent(
                     if (index > 0) {
                         SettingsGroupDivider(isTablet = isTablet)
                     }
-                    SettingsNavigationRow(
-                        title = provider.label,
-                        description = if (provider == dnsOverHttpsSettings.provider) {
-                            stringResource(Res.string.settings_advanced_doh_selected)
-                        } else {
-                            stringResource(Res.string.settings_advanced_doh_description)
-                        },
-                        icon = Icons.Rounded.Link,
+                    EnhancedDnsProviderRow(
+                        provider = provider,
+                        selected = provider == dnsOverHttpsSettings.provider,
                         isTablet = isTablet,
                         highlighted = isNew(NuvioEnhancedFeature.NetworkControls),
                         onClick = {
@@ -699,6 +729,103 @@ private fun NuvioEnhancedSettingsPageContent(
                 importBackupPayload(importPayload)
             },
         )
+    }
+}
+
+@Composable
+private fun EnhancedDnsProviderRow(
+    provider: DnsOverHttpsProvider,
+    selected: Boolean,
+    isTablet: Boolean,
+    highlighted: Boolean,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val iconSize = if (isTablet) 42.dp else 36.dp
+    val rowShape = RoundedCornerShape(if (isTablet) NuvioTokens.Radius.lg else NuvioTokens.Radius.md)
+    val rowColor = when {
+        selected -> tokens.colors.accent.copy(alpha = 0.13f)
+        highlighted -> tokens.colors.accent.copy(alpha = 0.08f)
+        else -> Color.Transparent
+    }
+    val borderColor = when {
+        selected -> tokens.colors.accent.copy(alpha = 0.86f)
+        highlighted -> tokens.colors.accent.copy(alpha = 0.72f)
+        else -> Color.Transparent
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(rowColor, rowShape)
+            .border(tokens.borders.hairline, borderColor, rowShape)
+            .clickable(onClick = onClick)
+            .padding(
+                horizontal = if (isTablet) 20.dp else 16.dp,
+                vertical = if (isTablet) 16.dp else 14.dp,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.size(iconSize),
+            color = if (selected) {
+                tokens.colors.accent.copy(alpha = 0.22f)
+            } else {
+                tokens.colors.accent.copy(alpha = tokens.opacity.pressed)
+            },
+            shape = tokens.shapes.compactCard,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Link,
+                    contentDescription = null,
+                    tint = tokens.colors.accent,
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = provider.label,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = tokens.colors.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (highlighted) {
+                    EnhancedNewBadge()
+                }
+            }
+            Text(
+                text = if (selected) {
+                    stringResource(Res.string.settings_advanced_doh_selected)
+                } else {
+                    stringResource(Res.string.settings_advanced_doh_description)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = tokens.colors.textMuted,
+            )
+        }
+
+        if (selected) {
+            Icon(
+                imageVector = Icons.Rounded.CheckCircle,
+                contentDescription = stringResource(Res.string.settings_advanced_doh_selected),
+                tint = tokens.colors.accent,
+            )
+        }
     }
 }
 
@@ -1035,16 +1162,14 @@ private fun LatestChangesCard(
                 }
             }
             listOf(
-                stringResource(Res.string.nuvio_enhanced_latest_change_premium_home),
-                stringResource(Res.string.nuvio_enhanced_latest_change_release_radar),
-                stringResource(Res.string.nuvio_enhanced_latest_change_profile),
-                stringResource(Res.string.nuvio_enhanced_latest_change_details),
-                stringResource(Res.string.nuvio_enhanced_latest_change_settings),
-                stringResource(Res.string.nuvio_enhanced_latest_change_backup),
-                stringResource(Res.string.nuvio_enhanced_latest_change_community),
-                stringResource(Res.string.nuvio_enhanced_latest_change_accessibility),
-                stringResource(Res.string.nuvio_enhanced_latest_change_reliability),
-                stringResource(Res.string.nuvio_enhanced_latest_change_performance),
+                stringResource(Res.string.nuvio_enhanced_latest_change_upstream_019),
+                stringResource(Res.string.nuvio_enhanced_latest_change_plugins),
+                stringResource(Res.string.nuvio_enhanced_latest_change_hero_artwork),
+                stringResource(Res.string.nuvio_enhanced_latest_change_hero_cleanup),
+                stringResource(Res.string.nuvio_enhanced_latest_change_content_warnings),
+                stringResource(Res.string.nuvio_enhanced_latest_change_package_identity),
+                stringResource(Res.string.nuvio_enhanced_latest_change_doh_highlight),
+                stringResource(Res.string.nuvio_enhanced_latest_change_gif_search),
             ).forEach { change ->
                 Text(
                     text = "• $change",

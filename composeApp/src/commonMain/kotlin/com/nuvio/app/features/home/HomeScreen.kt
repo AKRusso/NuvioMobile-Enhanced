@@ -1,5 +1,9 @@
 package com.nuvio.app.features.home
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -7,16 +11,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
@@ -738,8 +746,61 @@ fun HomeScreen(
         }
     }
     val hasPremiumHomeRows = smartShelves.isNotEmpty()
+    val pullRefreshState = rememberPullToRefreshState()
+    val isHomeRefreshInProgress = homeUiState.isLoading || isRefreshingEnabledAddons || manualRefreshRequested
+    var suppressHeroPullStretchUntilReset by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    LaunchedEffect(isHomeRefreshInProgress) {
+        if (isHomeRefreshInProgress) {
+            suppressHeroPullStretchUntilReset = true
+        } else if (pullRefreshState.distanceFraction <= HOME_HERO_PULL_STRETCH_RESET_EPSILON) {
+            suppressHeroPullStretchUntilReset = false
+        }
+    }
+
+    LaunchedEffect(pullRefreshState) {
+        snapshotFlow { pullRefreshState.distanceFraction }
+            .collect { distanceFraction ->
+                if (
+                    suppressHeroPullStretchUntilReset &&
+                    distanceFraction <= HOME_HERO_PULL_STRETCH_RESET_EPSILON
+                ) {
+                    suppressHeroPullStretchUntilReset = false
+                }
+            }
+    }
+
+    val rawHeroPullStretchFraction by remember(
+        pullRefreshState,
+        isHomeRefreshInProgress,
+        suppressHeroPullStretchUntilReset,
+    ) {
+        derivedStateOf {
+            val distanceFraction = pullRefreshState.distanceFraction
+            if (
+                !isHomeRefreshInProgress &&
+                !suppressHeroPullStretchUntilReset &&
+                distanceFraction > HOME_HERO_PULL_STRETCH_RESET_EPSILON
+            ) {
+                distanceFraction.coerceIn(0f, HOME_HERO_PULL_STRETCH_MAX_FRACTION)
+            } else {
+                0f
+            }
+        }
+    }
+    val heroPullStretchFraction by animateFloatAsState(
+        targetValue = rawHeroPullStretchFraction,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessHigh,
+        ),
+        label = "homeHeroPullStretch",
+    )
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
         val viewportHeight = maxHeight
         val homeSectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value)
         val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value)
@@ -783,12 +844,15 @@ fun HomeScreen(
                     HomeRepository.refresh(addonsUiState.addons.enabledAddons(), force = true)
                 }
             },
+            state = pullRefreshState,
+            indicator = {},
             modifier = Modifier.fillMaxSize(),
         ) {
             NuvioScreen(
                 modifier = Modifier.fillMaxSize(),
                 horizontalPadding = 0.dp,
                 topPadding = if (showHeroSlot) 0.dp else null,
+                backgroundColor = Color.Transparent,
                 listState = homeListState,
             ) {
                 if (showHeroSlot) {
@@ -809,10 +873,12 @@ fun HomeScreen(
                                 autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled,
                                 motionPreviewEnabled = homeSettingsUiState.heroMotionPreviewEnabled,
                                 heroDisplayMode = nuvioEnhancedSettings.heroDisplayMode,
+                                heroArtworkSource = nuvioEnhancedSettings.heroArtworkSource,
                                 compactMetadata = nuvioEnhancedSettings.compactHeroMetadata,
                                 showOverview = nuvioEnhancedSettings.showHeroOverview &&
                                     !nuvioEnhancedSettings.quietHomeModeEnabled,
                                 metadataRefreshKey = tmdbSettingsUiState.language,
+                                pullStretchFraction = heroPullStretchFraction,
                                 onItemClick = onPosterClick,
                             )
 
@@ -945,6 +1011,8 @@ fun HomeScreen(
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
 private const val HOME_SMART_SHELVES_SECTION_KEY = "home_smart_shelves"
+private const val HOME_HERO_PULL_STRETCH_MAX_FRACTION = 1.35f
+private const val HOME_HERO_PULL_STRETCH_RESET_EPSILON = 0.015f
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
 internal const val HomeNextUpInitialResolutionLimit = 32
 private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L

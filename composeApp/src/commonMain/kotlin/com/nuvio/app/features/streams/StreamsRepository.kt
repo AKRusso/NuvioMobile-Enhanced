@@ -15,6 +15,7 @@ import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.plugins.pluginContentId
 import com.nuvio.app.features.plugins.PluginsUiState
+import com.nuvio.app.features.plugins.isExcludedByPluginQualityFilter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -85,7 +86,8 @@ object StreamsRepository {
             episode = episode,
             manualSelection = manualSelection,
         )
-        val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}"
+        val pluginQualityKey = pluginUiState.excludedQualities.sorted().joinToString(",")
+        val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}::pluginQuality=$pluginQualityKey"
         val currentState = _uiState.value
         if (
             !forceRefresh &&
@@ -488,9 +490,12 @@ object StreamsRepository {
                             episode = episode,
                         ).fold(
                             onSuccess = { results ->
+                                val filteredResults = results.filterNot { result ->
+                                    result.isExcludedByPluginQualityFilter(pluginUiState.excludedQualities)
+                                }
                                 StreamLoadCompletion.PluginScraper(
                                     addonId = providerGroup.addonId,
-                                    streams = results.map { result ->
+                                    streams = filteredResults.map { result ->
                                         result.toStreamItem(
                                             scraper = scraper,
                                             addonName = providerGroup.addonName,
@@ -799,4 +804,3 @@ object StreamsRepository {
         _uiState.update { it.copy(showDirectAutoPlayOverlay = visible, overlayMessage = message) }
     }
 }
-

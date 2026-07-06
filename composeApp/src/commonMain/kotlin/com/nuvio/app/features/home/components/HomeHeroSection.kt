@@ -70,6 +70,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.stableKey
+import com.nuvio.app.features.settings.NuvioHeroArtworkSource
 import com.nuvio.app.features.settings.NuvioHeroDisplayMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.isActive
@@ -78,13 +79,14 @@ import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
 
-private const val HERO_BACKGROUND_PARALLAX = 0.055f
 private const val HERO_BACKGROUND_SCALE = 1.14f
-private const val HERO_CONTENT_PARALLAX = 0.18f
 private const val HERO_SCROLL_PARALLAX = 0.3f
 private const val HERO_SCROLL_DOWN_SCALE_MULTIPLIER = 0.0001f
 private const val HERO_SCROLL_UP_SCALE_MULTIPLIER = 0.002f
 private const val HERO_SCROLL_MAX_SCALE = 1.3f
+private const val HERO_PULL_STRETCH_HEIGHT_RATIO = 0.16f
+private const val HERO_PULL_STRETCH_MAX_HEIGHT_DP = 128f
+private const val HERO_PULL_STRETCH_BACKGROUND_SCALE = 0.075f
 private const val HERO_CINEMATIC_PAN_PX = 34f
 private const val HERO_CINEMATIC_SCALE = 0.055f
 private const val HERO_SWIPE_THRESHOLD_FRACTION = 0.16f
@@ -115,9 +117,11 @@ internal fun HomeHeroSection(
     autoScrollEnabled: Boolean = true,
     motionPreviewEnabled: Boolean = false,
     heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
+    heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     compactMetadata: Boolean = true,
     showOverview: Boolean = true,
     metadataRefreshKey: String? = null,
+    pullStretchFraction: Float = 0f,
     onItemClick: ((MetaPreview) -> Unit)? = null,
 ) {
     if (items.isEmpty()) return
@@ -146,16 +150,23 @@ internal fun HomeHeroSection(
                 itemCount = items.size,
                 coroutineScope = coroutineScope,
                 onInteractionChanged = { isUserInteracting = it },
-            )
-            .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)),
+            ),
     ) {
+        val heroShape = RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp)
         val layout = homeHeroLayout(
             maxWidthDp = maxWidth.value,
             viewportHeightDp = viewportHeight?.value,
             mobileBelowSectionHeightHintDp = mobileBelowSectionHeightHint?.value,
         )
-        val heroWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
-        val heroHeightPx = with(LocalDensity.current) { layout.heroHeight.toPx() }
+        val pullStretchProgress = pullStretchFraction.coerceIn(0f, 1.35f)
+        val pullStretchHeight = (layout.heroHeight.value * HERO_PULL_STRETCH_HEIGHT_RATIO * pullStretchProgress)
+            .dp
+            .coerceAtMost(HERO_PULL_STRETCH_MAX_HEIGHT_DP.dp)
+        val stretchedHeroHeight = layout.heroHeight + pullStretchHeight
+        val density = LocalDensity.current
+        val heroHeightPx = with(density) { layout.heroHeight.toPx() }
+        val pullStretchHeightPx = with(density) { pullStretchHeight.toPx() }
+        val pullStretchImageScale = 1f + (HERO_PULL_STRETCH_BACKGROUND_SCALE * pullStretchProgress)
         val scrollOffsetPx by remember(listState, heroHeightPx) {
             derivedStateOf {
                 when {
@@ -167,31 +178,22 @@ internal fun HomeHeroSection(
         }
         val heroScrollScale = heroBackgroundScrollScale(scrollOffsetPx)
         val heroScrollTranslationY = heroBackgroundScrollTranslationY(scrollOffsetPx)
-        val currentPage = pagerState.currentPage.coerceIn(items.indices)
-        val visiblePages = listOf(
-            currentPage,
-            (currentPage - 1).coerceIn(items.indices),
-            (currentPage + 1).coerceIn(items.indices),
-        ).distinct()
-            .mapNotNull { index ->
-                val pageOffset = heroPageOffset(pagerState, index)
-                val visibility = (1f - abs(pageOffset)).coerceIn(0f, 1f)
-                if (visibility <= 0f) {
-                    null
+        val displayPage by remember(pagerState, items.size) {
+            derivedStateOf {
+                val targetPage = if (pagerState.isScrollInProgress) {
+                    pagerState.targetPage
                 } else {
-                    HeroPageLayer(
-                        page = index,
-                        visibility = visibility,
-                        offset = pageOffset,
-                    )
+                    pagerState.currentPage
                 }
+                targetPage.coerceIn(items.indices)
             }
-            .sortedBy(HeroPageLayer::visibility)
-        val currentItem = visiblePages
-            .lastOrNull()
-            ?.page
-            ?.let(items::get)
-            ?: items[currentPage]
+        }
+        val currentItem = items[displayPage]
+        val currentDetailMeta = detailMetas[currentItem.stableKey()]
+        val currentArtworkUrl = currentItem.heroArtworkUrl(
+            source = heroArtworkSource,
+            detailMeta = currentDetailMeta,
+        )
         val backgroundColor = MaterialTheme.colorScheme.background
         val mainOverlayStops = when (heroDisplayMode) {
             NuvioHeroDisplayMode.Cinematic -> arrayOf(
@@ -230,10 +232,10 @@ internal fun HomeHeroSection(
                 1f to backgroundColor.copy(alpha = 0.97f),
             )
         }
-        LaunchedEffect(itemKeys, metadataRefreshKey, currentPage) {
+        LaunchedEffect(itemKeys, metadataRefreshKey, displayPage) {
             val prioritizedItems = items
                 .withIndex()
-                .sortedBy { (index, _) -> abs(index - currentPage) }
+                .sortedBy { (index, _) -> abs(index - displayPage) }
                 .map { it.value }
 
             prioritizedItems.firstOrNull()?.let { item ->
@@ -270,8 +272,34 @@ internal fun HomeHeroSection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(layout.heroHeight),
+                .height(stretchedHeroHeight),
         ) {
+            if (pullStretchProgress > 0f && pullStretchHeight > 0.dp) {
+                val motionPulse = if (motionPreviewEnabled) cinematicPulse else 0.5f
+                val motionVisibility = if (motionPreviewEnabled) 1f else 0f
+                val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
+                AsyncImage(
+                    model = currentArtworkUrl,
+                    contentDescription = currentItem.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(pullStretchHeight)
+                        .graphicsLayer {
+                            alpha = (pullStretchProgress / 0.12f).coerceIn(0f, 1f)
+                            translationY = -pullStretchHeightPx
+                            scaleX = HERO_BACKGROUND_SCALE * cinematicScale * pullStretchImageScale
+                            scaleY = HERO_BACKGROUND_SCALE * cinematicScale * pullStretchImageScale
+                        },
+                    alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
+                    contentScale = ContentScale.Crop,
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(heroShape),
+            ) {
             HorizontalPager(
                 state = pagerState,
                 userScrollEnabled = false,
@@ -285,28 +313,27 @@ internal fun HomeHeroSection(
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                visiblePages.forEach { layer ->
-                    val layerItem = items[layer.page]
-                    val motionVisibility = if (motionPreviewEnabled) layer.visibility else 0f
-                    val motionPulse = if (motionPreviewEnabled) cinematicPulse else 0.5f
-                    AsyncImage(
-                        model = layerItem.banner ?: layerItem.poster,
-                        contentDescription = layerItem.name,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                alpha = layer.visibility
-                                translationX = (-layer.offset * heroWidthPx * HERO_BACKGROUND_PARALLAX) +
-                                    ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
-                                translationY = heroScrollTranslationY
-                                val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
-                                scaleX = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
-                                scaleY = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
-                            },
-                        alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
-                        contentScale = ContentScale.Crop,
-                    )
-                }
+                val motionVisibility = if (motionPreviewEnabled) 1f else 0f
+                val motionPulse = if (motionPreviewEnabled) cinematicPulse else 0.5f
+                AsyncImage(
+                    model = currentArtworkUrl,
+                    contentDescription = currentItem.name,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            alpha = 1f
+                            translationX = ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
+                            val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
+                            val backgroundScale =
+                                HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale * pullStretchImageScale
+                            val verticalBleedPx = ((backgroundScale - 1f).coerceAtLeast(0f) * heroHeightPx) / 2f
+                            translationY = heroScrollTranslationY.coerceIn(-verticalBleedPx, verticalBleedPx)
+                            scaleX = backgroundScale
+                            scaleY = backgroundScale
+                        },
+                    alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
+                    contentScale = ContentScale.Crop,
+                )
 
                 Box(
                     modifier = Modifier
@@ -346,28 +373,15 @@ internal fun HomeHeroSection(
                             .widthIn(max = layout.contentMaxWidth),
                         contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
                     ) {
-                        visiblePages.forEach { layer ->
-                            Box(
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = layer.visibility
-                                    translationX = -layer.offset * heroWidthPx * HERO_CONTENT_PARALLAX
-                                    translationY = (1f - layer.visibility) * 18f
-                                    val contentScale = 0.96f + (0.04f * layer.visibility)
-                                    scaleX = contentScale
-                                    scaleY = contentScale
-                                },
-                            ) {
-                                HeroContentBlock(
-                                    item = items[layer.page],
-                                    layout = layout,
-                                    detailMeta = detailMetas[items[layer.page].stableKey()],
-                                    heroDisplayMode = heroDisplayMode,
-                                    compactMetadata = compactMetadata,
-                                    showOverview = showOverview,
-                                    onItemClick = onItemClick,
-                                )
-                            }
-                        }
+                        HeroContentBlock(
+                            item = currentItem,
+                            layout = layout,
+                            detailMeta = detailMetas[currentItem.stableKey()],
+                            heroDisplayMode = heroDisplayMode,
+                            compactMetadata = compactMetadata,
+                            showOverview = showOverview,
+                            onItemClick = onItemClick,
+                        )
                     }
 
                     if (!layout.isTablet) {
@@ -386,9 +400,8 @@ internal fun HomeHeroSection(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             items.forEachIndexed { index, _ ->
-                                val activeFraction = heroPageVisibility(pagerState, index)
-                                HeroPageIndicator(
-                                    activeFraction = activeFraction,
+                                    HeroPageIndicator(
+                                    activeFraction = if (index == displayPage) 1f else 0f,
                                     onClick = {
                                         coroutineScope.launch {
                                             pagerState.animateScrollToPage(index)
@@ -400,32 +413,15 @@ internal fun HomeHeroSection(
                     }
                 }
             }
+            }
         }
     }
 }
-
-private data class HeroPageLayer(
-    val page: Int,
-    val visibility: Float,
-    val offset: Float,
-)
 
 private data class HeroMetaItem(
     val text: String,
     val emphasized: Boolean = false,
 )
-
-private fun heroPageOffset(
-    pagerState: PagerState,
-    page: Int,
-): Float = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-
-private fun heroPageVisibility(
-    pagerState: PagerState,
-    page: Int,
-): Float {
-    return (1f - abs(heroPageOffset(pagerState, page))).coerceIn(0f, 1f)
-}
 
 @Composable
 fun HomeHeroReservedSpace(
@@ -449,6 +445,23 @@ fun HomeHeroReservedSpace(
                 .fillMaxWidth()
                 .height(layout.heroHeight),
         )
+    }
+}
+
+private fun MetaPreview.heroArtworkUrl(
+    source: NuvioHeroArtworkSource,
+    detailMeta: MetaDetails?,
+): String? {
+    val detailBackdrop = detailMeta?.background?.takeIf(String::isNotBlank)
+    val detailPoster = detailMeta?.poster?.takeIf(String::isNotBlank)
+    val previewBackdrop = banner?.takeIf(String::isNotBlank)
+    val previewPoster = poster?.takeIf(String::isNotBlank)
+
+    return when (source) {
+        NuvioHeroArtworkSource.Backdrop ->
+            detailBackdrop ?: previewBackdrop ?: detailPoster ?: previewPoster
+        NuvioHeroArtworkSource.Poster ->
+            detailPoster ?: previewPoster ?: detailBackdrop ?: previewBackdrop
     }
 }
 

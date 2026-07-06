@@ -31,9 +31,15 @@ actual object PluginRepository {
 
     actual fun toggleScraper(scraperId: String, enabled: Boolean) = Unit
 
+    actual fun toggleRepositoryScrapers(repositoryUrl: String, enabled: Boolean) = Unit
+
+    actual fun toggleAllScrapers(enabled: Boolean) = Unit
+
     actual fun setPluginsEnabled(enabled: Boolean) = Unit
 
     actual fun setGroupStreamsByRepository(enabled: Boolean) = Unit
+
+    actual fun setQualityExcluded(qualityId: String, excluded: Boolean) = Unit
 
     actual fun getEnabledScrapersForType(type: String): List<PluginScraper> = emptyList()
 

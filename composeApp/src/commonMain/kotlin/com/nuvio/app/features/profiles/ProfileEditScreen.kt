@@ -14,20 +14,32 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,9 +55,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.ui.NuvioInputField
@@ -87,6 +99,7 @@ fun ProfileEditScreen(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showPinSetup by remember { mutableStateOf(false) }
     var showPinClear by remember { mutableStateOf(false) }
+    var showGifSearch by remember { mutableStateOf(false) }
     val authState by AuthRepository.state.collectAsStateWithLifecycle()
 
     val avatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
@@ -176,6 +189,27 @@ fun ProfileEditScreen(
                         },
                         placeholder = stringResource(Res.string.profile_custom_avatar_url_placeholder),
                     )
+                    Button(
+                        onClick = { showGifSearch = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(Res.string.profile_gif_search_button),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                     if (avatarUrlIsInvalid) {
                         Text(
                             text = stringResource(Res.string.profile_avatar_url_invalid),
@@ -428,6 +462,269 @@ fun ProfileEditScreen(
             },
         )
     }
+
+    if (showGifSearch) {
+        ProfileGifSearchDialog(
+            onSelect = { item ->
+                avatarUrl = item.gifUrl
+                selectedAvatarId = null
+                showGifSearch = false
+            },
+            onDismiss = { showGifSearch = false },
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileGifSearchDialog(
+    onSelect: (ProfileGifSearchItem) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var query by rememberSaveable { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<ProfileGifSearchItem>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val searchFailedMessage = stringResource(Res.string.profile_gif_search_error)
+    val notConfiguredMessage = stringResource(Res.string.profile_gif_search_not_configured)
+
+    fun runSearch() {
+        val cleanQuery = query.trim()
+        if (cleanQuery.isBlank() || isSearching) return
+        isSearching = true
+        errorMessage = null
+        scope.launch {
+            val result = ProfileGifSearchService.search(cleanQuery)
+            isSearching = false
+            result.fold(
+                onSuccess = {
+                    results = it
+                    errorMessage = null
+                },
+                onFailure = { throwable ->
+                    results = emptyList()
+                    errorMessage = if (throwable is ProfileGifSearchNotConfiguredException) {
+                        notConfiguredMessage
+                    } else {
+                        searchFailedMessage
+                    }
+                },
+            )
+        }
+    }
+
+    BasicAlertDialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shadowElevation = 18.dp,
+        ) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 680.dp)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = stringResource(Res.string.profile_gif_search_title),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = stringResource(Res.string.profile_gif_search_description),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = stringResource(Res.string.action_cancel),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    NuvioInputField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = stringResource(Res.string.profile_gif_search_placeholder),
+                    )
+                    Button(
+                        onClick = ::runSearch,
+                        enabled = query.isNotBlank() && !isSearching,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (isSearching) {
+                                stringResource(Res.string.profile_gif_search_loading)
+                            } else {
+                                stringResource(Res.string.profile_gif_search_submit)
+                            },
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+
+                errorMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    when {
+                        !isSearching && results.isEmpty() && errorMessage == null -> {
+                            ProfileGifSearchEmptyState(
+                                text = if (query.isBlank()) {
+                                    stringResource(Res.string.profile_gif_search_empty)
+                                } else {
+                                    stringResource(Res.string.profile_gif_search_no_results)
+                                },
+                            )
+                        }
+
+                        results.isNotEmpty() -> {
+                            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val spacing = 10.dp
+                                val itemWidth = (maxWidth - spacing) / 2
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                                    verticalArrangement = Arrangement.spacedBy(spacing),
+                                    maxItemsInEachRow = 2,
+                                ) {
+                                    results.forEach { item ->
+                                        ProfileGifResultCard(
+                                            item = item,
+                                            modifier = Modifier.width(itemWidth),
+                                            onClick = { onSelect(item) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.profile_gif_search_powered_by),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = onDismiss) {
+                        Text(text = stringResource(Res.string.action_cancel))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileGifResultCard(
+    item: ProfileGifSearchItem,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = modifier
+            .height(150.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            CollectionCardRemoteImage(
+                imageUrl = item.previewUrl,
+                contentDescription = item.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                animateIfPossible = false,
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.46f))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileGifSearchEmptyState(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 18.dp),
+        )
+    }
 }
 
 @Composable
@@ -478,7 +775,7 @@ private fun ProfileIdentityCard(
                             contentDescription = name,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
-                            animateIfPossible = true,
+                            animateIfPossible = false,
                         )
                     } else if (selectedAvatar != null) {
                         CollectionCardRemoteImage(
@@ -486,7 +783,7 @@ private fun ProfileIdentityCard(
                             contentDescription = selectedAvatar.displayName,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
-                            animateIfPossible = true,
+                            animateIfPossible = false,
                         )
                     } else if (name.isNotBlank()) {
                         Text(
@@ -595,7 +892,7 @@ private fun AvatarChoiceItem(
             contentDescription = avatar.displayName,
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,
-            animateIfPossible = true,
+            animateIfPossible = false,
         )
 
         if (isSelected) {

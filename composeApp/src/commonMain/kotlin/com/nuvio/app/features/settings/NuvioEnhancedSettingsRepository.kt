@@ -18,6 +18,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
+    val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
@@ -26,6 +27,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val libraryHealthEnabled: Boolean = false,
     val nuvioSpotlightEnabled: Boolean = false,
     val nuvioReadingEnabled: Boolean = true,
+    val contentWarningsEnabled: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -46,6 +48,11 @@ internal enum class NuvioHeroDisplayMode {
     InfoRich,
 }
 
+internal enum class NuvioHeroArtworkSource {
+    Backdrop,
+    Poster,
+}
+
 internal enum class NuvioReleaseRadarContentFilter {
     All,
     Episodes,
@@ -63,6 +70,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     HeroExperienceControls("hero_experience_controls"),
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
+    ContentWarnings("content_warnings"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
     PremiumLabs("premium_labs"),
@@ -83,6 +91,7 @@ private data class StoredNuvioEnhancedSettings(
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
+    val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
@@ -91,6 +100,7 @@ private data class StoredNuvioEnhancedSettings(
     val libraryHealthEnabled: Boolean = false,
     val nuvioSpotlightEnabled: Boolean = false,
     val nuvioReadingEnabled: Boolean = true,
+    val contentWarningsEnabled: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -171,6 +181,10 @@ internal object NuvioEnhancedSettingsRepository {
         copy(heroDisplayMode = mode)
     }
 
+    fun setHeroArtworkSource(source: NuvioHeroArtworkSource) = update {
+        copy(heroArtworkSource = source)
+    }
+
     fun setCompactHeroMetadata(enabled: Boolean) = update {
         copy(compactHeroMetadata = enabled)
     }
@@ -201,6 +215,10 @@ internal object NuvioEnhancedSettingsRepository {
 
     fun setNuvioReadingEnabled(enabled: Boolean) = update {
         copy(nuvioReadingEnabled = enabled)
+    }
+
+    fun setContentWarningsEnabled(enabled: Boolean) = update {
+        copy(contentWarningsEnabled = enabled)
     }
 
     fun setReleaseRadarLibraryOnly(enabled: Boolean) = update {
@@ -256,6 +274,7 @@ internal object NuvioEnhancedSettingsRepository {
             profileStatsEnabled = stored.profileStatsEnabled,
             liveTvEnabled = stored.liveTvEnabled,
             heroDisplayMode = stored.heroDisplayMode,
+            heroArtworkSource = stored.heroArtworkSource,
             compactHeroMetadata = stored.compactHeroMetadata,
             showHeroOverview = stored.showHeroOverview,
             smartShelvesEnabled = stored.smartShelvesEnabled,
@@ -264,6 +283,7 @@ internal object NuvioEnhancedSettingsRepository {
             libraryHealthEnabled = stored.libraryHealthEnabled,
             nuvioSpotlightEnabled = stored.nuvioSpotlightEnabled,
             nuvioReadingEnabled = stored.nuvioReadingEnabled,
+            contentWarningsEnabled = stored.contentWarningsEnabled,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,
             releaseRadarWindowDays = stored.releaseRadarWindowDays.coerceIn(7, 45),
             releaseRadarContentFilter = stored.releaseRadarContentFilter,

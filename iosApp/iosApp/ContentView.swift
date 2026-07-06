@@ -381,6 +381,10 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
     private var profileAvatarImageURL: String?
     private var profileAvatarImageTask: URLSessionDataTask?
     private var profileAvatarImage: UIImage?
+    private var profileAvatarAnimationFrames: [UIImage]?
+    private var profileAvatarAnimationFrameIndex = 0
+    private var profileAvatarAnimationFrameDelay: TimeInterval = 0.1
+    private var profileAvatarAnimationTimer: Timer?
 
     init(contentController: UIViewController) {
         self.contentController = contentController
@@ -425,6 +429,7 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             NotificationCenter.default.removeObserver(tabChromeObserver)
         }
         profileAvatarImageTask?.cancel()
+        profileAvatarAnimationTimer?.invalidate()
     }
 
     override func viewSafeAreaInsetsDidChange() {
@@ -761,9 +766,13 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
         view.bringSubviewToFront(profileTabTouchOverlay)
     }
 
-    private func applyNativeTabBarAppearance() {
-        let accent = UIColor(hexString: UserDefaults.standard.string(forKey: Self.nativeTabAccentColorKey)) ??
+    private var nativeTabAccentColor: UIColor {
+        UIColor(hexString: UserDefaults.standard.string(forKey: Self.nativeTabAccentColorKey)) ??
             UIColor(red: 0.96, green: 0.96, blue: 0.96, alpha: 1)
+    }
+
+    private func applyNativeTabBarAppearance() {
+        let accent = nativeTabAccentColor
         let unselected = UIColor(red: 150 / 255, green: 156 / 255, blue: 163 / 255, alpha: 1)
 
         updateNativeTabTitles()
@@ -795,6 +804,15 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             guard let tab = NativeTab(tag: item.tag) else { return }
             item.image = nativeTabImage(for: tab, selected: false, accent: accent)
             item.selectedImage = nativeTabImage(for: tab, selected: true, accent: accent)
+        }
+    }
+
+    private func updateNativeProfileTabImage() {
+        let accent = nativeTabAccentColor
+        tabBar.items?.forEach { item in
+            guard NativeTab(tag: item.tag) == .settings else { return }
+            item.image = nativeTabImage(for: .settings, selected: false, accent: accent)
+            item.selectedImage = nativeTabImage(for: .settings, selected: true, accent: accent)
         }
     }
 
@@ -830,6 +848,9 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
         profileAvatarImageTask = nil
         profileAvatarImageURL = urlString
         profileAvatarImage = nil
+        profileAvatarAnimationFrames = nil
+        profileAvatarAnimationFrameIndex = 0
+        stopProfileAvatarAnimation()
 
         guard let urlString, let url = URL(string: urlString) else { return }
 
@@ -842,11 +863,51 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
 
             DispatchQueue.main.async {
                 guard self.profileAvatarImageURL == urlString else { return }
-                self.profileAvatarImage = image
+                if let frames = image.images, frames.count > 1 {
+                    self.profileAvatarAnimationFrames = frames
+                    self.profileAvatarAnimationFrameIndex = 0
+                    self.profileAvatarAnimationFrameDelay = max(image.duration / Double(frames.count), 0.08)
+                    self.profileAvatarImage = frames.first
+                } else {
+                    self.profileAvatarAnimationFrames = nil
+                    self.profileAvatarAnimationFrameIndex = 0
+                    self.profileAvatarImage = image
+                }
                 self.applyNativeTabBarAppearance()
+                self.startProfileAvatarAnimationIfNeeded()
             }
         }
         profileAvatarImageTask?.resume()
+    }
+
+    private func startProfileAvatarAnimationIfNeeded() {
+        stopProfileAvatarAnimation()
+        guard let frames = profileAvatarAnimationFrames, frames.count > 1 else { return }
+        scheduleNextProfileAvatarFrame()
+    }
+
+    private func stopProfileAvatarAnimation() {
+        profileAvatarAnimationTimer?.invalidate()
+        profileAvatarAnimationTimer = nil
+    }
+
+    private func scheduleNextProfileAvatarFrame() {
+        guard let frames = profileAvatarAnimationFrames, frames.count > 1 else { return }
+
+        let timer = Timer(timeInterval: profileAvatarAnimationFrameDelay, repeats: false) { [weak self] _ in
+            self?.advanceProfileAvatarAnimationFrame()
+        }
+        profileAvatarAnimationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func advanceProfileAvatarAnimationFrame() {
+        guard let frames = profileAvatarAnimationFrames, frames.count > 1 else { return }
+
+        profileAvatarAnimationFrameIndex = (profileAvatarAnimationFrameIndex + 1) % frames.count
+        profileAvatarImage = frames[profileAvatarAnimationFrameIndex]
+        updateNativeProfileTabImage()
+        scheduleNextProfileAvatarFrame()
     }
 
     private static func profileAvatarImage(from data: Data) -> UIImage? {
@@ -859,10 +920,45 @@ final class RootComposeViewController: UIViewController, UITabBarDelegate {
             return UIImage(data: data)
         }
 
+        if frameCount > 1 {
+            let thumbnailOptions: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 96,
+            ]
+            var frames: [UIImage] = []
+            var duration: TimeInterval = 0
+
+            for index in 0..<frameCount {
+                guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, index, thumbnailOptions as CFDictionary) ??
+                    CGImageSourceCreateImageAtIndex(source, index, nil) else {
+                    continue
+                }
+                frames.append(UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up))
+                duration += gifFrameDelay(source: source, index: index)
+            }
+
+            if !frames.isEmpty {
+                return UIImage.animatedImage(
+                    with: frames,
+                    duration: max(duration, Double(frames.count) * 0.08)
+                ) ?? frames.first
+            }
+        }
+
         guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
             return UIImage(data: data)
         }
         return UIImage(cgImage: cgImage, scale: UIScreen.main.scale, orientation: .up)
+    }
+
+    private static func gifFrameDelay(source: CGImageSource, index: Int) -> TimeInterval {
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, index, nil) as? [CFString: Any]
+        let gifProperties = properties?[kCGImagePropertyGIFDictionary] as? [CFString: Any]
+        let unclampedDelay = gifProperties?[kCGImagePropertyGIFUnclampedDelayTime] as? NSNumber
+        let clampedDelay = gifProperties?[kCGImagePropertyGIFDelayTime] as? NSNumber
+        let delay = unclampedDelay?.doubleValue ?? clampedDelay?.doubleValue ?? 0.1
+        return delay < 0.02 ? 0.1 : delay
     }
 }
 

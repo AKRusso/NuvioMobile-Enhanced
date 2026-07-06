@@ -359,11 +359,13 @@ private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
 
 @Composable
 private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
-    LaunchedEffect(activeVideoId, activeSeasonNumber, activeEpisodeNumber, parentMetaId, parentMetaType) {
+    LaunchedEffect(activeVideoId, activeSeasonNumber, activeEpisodeNumber, parentMetaId, parentMetaType, nuvioEnhancedSettingsUiState.contentWarningsEnabled) {
         parentalWarnings = emptyList()
         showParentalGuide = false
         parentalGuideHasShown = false
         playbackStartedForParentalGuide = false
+
+        if (!nuvioEnhancedSettingsUiState.contentWarningsEnabled) return@LaunchedEffect
 
         val imdbId = resolveParentalGuideImdbId() ?: return@LaunchedEffect
         val guide = ParentalGuideRepository.getParentalGuide(imdbId) ?: return@LaunchedEffect
@@ -374,8 +376,8 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         }
     }
 
-    LaunchedEffect(playbackSnapshot.isPlaying, parentalWarnings) {
-        if (playbackSnapshot.isPlaying) {
+    LaunchedEffect(playbackSnapshot.isPlaying, parentalWarnings, nuvioEnhancedSettingsUiState.contentWarningsEnabled) {
+        if (playbackSnapshot.isPlaying && nuvioEnhancedSettingsUiState.contentWarningsEnabled) {
             tryShowParentalGuide()
         }
     }

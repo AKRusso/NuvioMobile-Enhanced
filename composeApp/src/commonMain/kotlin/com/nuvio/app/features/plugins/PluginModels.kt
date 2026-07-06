@@ -92,6 +92,7 @@ data class PluginSubtitleResult(
 data class PluginsUiState(
     val pluginsEnabled: Boolean = true,
     val groupStreamsByRepository: Boolean = false,
+    val excludedQualities: Set<String> = emptySet(),
     val repositories: List<PluginRepositoryItem> = emptyList(),
     val scrapers: List<PluginScraper> = emptyList(),
 )
@@ -105,6 +106,7 @@ sealed interface AddPluginRepositoryResult {
 internal data class StoredPluginsState(
     val pluginsEnabled: Boolean = true,
     val groupStreamsByRepository: Boolean = false,
+    val excludedQualities: Set<String> = emptySet(),
     val repositories: List<StoredPluginRepository> = emptyList(),
     val scrapers: List<StoredPluginScraper> = emptyList(),
 )
@@ -142,3 +144,42 @@ internal fun normalizePluginType(value: String): String =
         "series", "show", "other" -> "tv"
         else -> value.lowercase()
     }
+
+data class PluginQualityFilterOption(
+    val id: String,
+    val label: String,
+    val tokens: List<String>,
+)
+
+val PluginQualityFilterOptions = listOf(
+    PluginQualityFilterOption("auto", "Auto", listOf("auto")),
+    PluginQualityFilterOption("adaptive", "Adaptive", listOf("adaptive")),
+    PluginQualityFilterOption("2160p", "2160p", listOf("2160p", "2160")),
+    PluginQualityFilterOption("4k", "4K", listOf("4k", "uhd")),
+    PluginQualityFilterOption("1080p", "1080p", listOf("1080p", "1080")),
+    PluginQualityFilterOption("720p", "720p", listOf("720p", "720")),
+    PluginQualityFilterOption("480p", "480p", listOf("480p", "480")),
+    PluginQualityFilterOption("360p", "360p", listOf("360p", "360")),
+    PluginQualityFilterOption("dv", "DV", listOf("dolby vision", "dolbyvision", " dv ", "[dv]", ".dv.")),
+    PluginQualityFilterOption("hdr", "HDR", listOf("hdr", "hdr10", "hdr10+")),
+    PluginQualityFilterOption("remux", "REMUX", listOf("remux")),
+    PluginQualityFilterOption("cam", "CAM", listOf("camrip", "hdcam", " cam ", "[cam]", ".cam.")),
+    PluginQualityFilterOption("ts", "TS", listOf("telesync", "hdts", " ts ", "[ts]", ".ts.")),
+)
+
+fun PluginRuntimeResult.isExcludedByPluginQualityFilter(excludedQualities: Set<String>): Boolean {
+    if (excludedQualities.isEmpty()) return false
+    val haystack = listOfNotNull(quality, title, name, provider, type)
+        .joinToString(separator = " ")
+        .lowercase()
+        .let { " $it " }
+
+    return PluginQualityFilterOptions
+        .asSequence()
+        .filter { it.id in excludedQualities }
+        .any { option ->
+            option.tokens.any { token ->
+                haystack.contains(token.lowercase())
+            }
+        }
+}

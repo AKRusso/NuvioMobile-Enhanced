@@ -15,6 +15,7 @@ import com.nuvio.app.features.p2p.P2pSettingsUiState
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.player.skip.NextEpisodeInfo
 import com.nuvio.app.features.player.skip.SkipInterval
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsUiState
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.trakt.TraktScrobbleItem
 import com.nuvio.app.features.watched.WatchedUiState
@@ -66,6 +67,7 @@ internal class PlayerScreenRuntime(
     lateinit var hapticFeedback: HapticFeedback
 
     var playerSettingsUiState: PlayerSettingsUiState = PlayerSettingsUiState()
+    var nuvioEnhancedSettingsUiState: NuvioEnhancedSettingsUiState = NuvioEnhancedSettingsUiState()
     var p2pSettingsUiState: P2pSettingsUiState = P2pSettingsUiState()
     var p2pStreamingState: P2pStreamingState = P2pStreamingState.Idle
     var metaScreenSettingsUiState: MetaScreenSettingsUiState = MetaScreenSettingsUiState()

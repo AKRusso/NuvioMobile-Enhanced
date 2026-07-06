@@ -23,9 +23,15 @@ expect object PluginRepository {
 
     fun toggleScraper(scraperId: String, enabled: Boolean)
 
+    fun toggleRepositoryScrapers(repositoryUrl: String, enabled: Boolean)
+
+    fun toggleAllScrapers(enabled: Boolean)
+
     fun setPluginsEnabled(enabled: Boolean)
 
     fun setGroupStreamsByRepository(enabled: Boolean)
+
+    fun setQualityExcluded(qualityId: String, excluded: Boolean)
 
     fun getEnabledScrapersForType(type: String): List<PluginScraper>
 
