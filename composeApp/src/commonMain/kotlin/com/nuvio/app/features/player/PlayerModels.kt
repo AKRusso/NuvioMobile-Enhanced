@@ -225,3 +225,9 @@ data class PlayerPlaybackSnapshot(
     val bufferedPositionMs: Long = 0L,
     val playbackSpeed: Float = 1f,
 )
+
+data class PlayerNowPlayingInfo(
+    val title: String,
+    val subtitle: String? = null,
+    val artworkUrl: String? = null,
+)
