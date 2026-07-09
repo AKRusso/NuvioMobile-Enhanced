@@ -1660,9 +1660,18 @@ private fun MainAppContent(
                         val isTabletLayout = maxWidth >= 768.dp || tvModeActive
                         val currentDensity = LocalDensity.current
                         val contentDensity = if (tvModeActive) {
+                            val densityScale = when {
+                                maxWidth >= 1200.dp -> 1.34f
+                                maxWidth >= 900.dp -> 1.28f
+                                else -> 1.18f
+                            }
+                            val textScale = when {
+                                maxWidth >= 900.dp -> 1.10f
+                                else -> 1.06f
+                            }
                             Density(
-                                density = (currentDensity.density * 0.74f).coerceAtLeast(1f),
-                                fontScale = (currentDensity.fontScale * 1.06f).coerceAtMost(1.22f),
+                                density = currentDensity.density * densityScale,
+                                fontScale = (currentDensity.fontScale * textScale).coerceAtMost(1.28f),
                             )
                         } else {
                             currentDensity
@@ -1755,11 +1764,11 @@ private fun MainAppContent(
                                 }
                             },
                         ) { innerPadding ->
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                CompositionLocalProvider(
-                                    LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
-                                    LocalDensity provides contentDensity,
-                                ) {
+                            CompositionLocalProvider(
+                                LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
+                                LocalDensity provides contentDensity,
+                            ) {
+                                Box(modifier = Modifier.fillMaxSize()) {
                                     AppTabHost(
                                         modifier = Modifier
                                             .fillMaxSize()
@@ -1877,38 +1886,38 @@ private fun MainAppContent(
                                         },
                                         onInitialHomeContentRendered = { initialHomeReady = true },
                                     )
-                                }
 
-                                if (isTabletLayout && !useNativeBottomTabs) {
-                                    TabletFloatingTopBar(
-                                        selectedTab = selectedTab,
-                                        liveTvEnabled = liveTvEnabled,
-                                        tvModeAvailable = tvModeAvailable,
-                                        tvModeEnabled = tvModeEnabled,
-                                        onTabSelected = ::handleRootTabClick,
-                                        onTvModeClick = ::toggleTvMode,
-                                        onProfileSelected = onProfileSelected,
-                                        onAddProfileRequested = {
-                                            nativeProfileSwitcherVisible = false
-                                            onSwitchProfile()
-                                        },
-                                    )
-                                }
+                                    if (isTabletLayout && !useNativeBottomTabs) {
+                                        TabletFloatingTopBar(
+                                            selectedTab = selectedTab,
+                                            liveTvEnabled = liveTvEnabled,
+                                            tvModeAvailable = tvModeAvailable,
+                                            tvModeEnabled = tvModeEnabled,
+                                            onTabSelected = ::handleRootTabClick,
+                                            onTvModeClick = ::toggleTvMode,
+                                            onProfileSelected = onProfileSelected,
+                                            onAddProfileRequested = {
+                                                nativeProfileSwitcherVisible = false
+                                                onSwitchProfile()
+                                            },
+                                        )
+                                    }
 
-                                if (!isTabletLayout && useNativeBottomTabs && tabsRouteActive) {
-                                    NativeProfileSwitcherPopup(
-                                        visible = nativeProfileSwitcherVisible,
-                                        isSwitchingProfile = profileSwitchLoading,
-                                        onDismissRequest = { nativeProfileSwitcherVisible = false },
-                                        onProfileSelected = onProfileSelected,
-                                        onAddProfileRequested = {
-                                            nativeProfileSwitcherVisible = false
-                                            onSwitchProfile()
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(bottom = nativeProfileTabAnchorBottomPadding),
-                                    )
+                                    if (!isTabletLayout && useNativeBottomTabs && tabsRouteActive) {
+                                        NativeProfileSwitcherPopup(
+                                            visible = nativeProfileSwitcherVisible,
+                                            isSwitchingProfile = profileSwitchLoading,
+                                            onDismissRequest = { nativeProfileSwitcherVisible = false },
+                                            onProfileSelected = onProfileSelected,
+                                            onAddProfileRequested = {
+                                                nativeProfileSwitcherVisible = false
+                                                onSwitchProfile()
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(bottom = nativeProfileTabAnchorBottomPadding),
+                                        )
+                                    }
                                 }
                             }
                         }

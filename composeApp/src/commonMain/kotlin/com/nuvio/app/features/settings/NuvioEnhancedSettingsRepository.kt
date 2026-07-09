@@ -74,7 +74,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
     PlayerExperienceControls("player_experience_controls"),
-    PlayerTimeOverlay("player_time_overlay"),
+    PlayerTimeOverlay("player_time_overlay_v2"),
     SubtitleSyncMenu("subtitle_sync_menu"),
     TvMode("tv_mode"),
     ContentWarnings("content_warnings"),
