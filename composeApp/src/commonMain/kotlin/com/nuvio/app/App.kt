@@ -2763,6 +2763,7 @@ private fun MainAppContent(
                         initialProgressFraction = launch.initialProgressFraction,
                         contentLanguage = launch.contentLanguage,
                         randomEpisodeMode = launch.randomEpisodeMode,
+                        tvModeEnabled = tvModeEnabled,
                         onBack = {
                             ResumePromptRepository.markPlayerExitedNormally()
                             PlayerLaunchStore.remove(route.launchId)
