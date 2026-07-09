@@ -326,8 +326,6 @@
     <string name="compose_nav_library">Biblioteca</string>
     <string name="compose_nav_profile">Perfil</string>
     <string name="compose_nav_search">Pesquisar</string>
-    <string name="compose_nav_tv_mode">TV mode</string>
-    <string name="compose_nav_mobile_mode">Mobile mode</string>
     <string name="compose_player_audio_tracks">Faixas de áudio</string>
     <string name="compose_player_audio">Áudio</string>
     <string name="compose_player_auto_sync">Sincronização automática</string>
@@ -1857,6 +1855,4 @@
     <string name="nuvio_enhanced_player_clock_desc">Show time details while controls are visible.</string>
     <string name="nuvio_enhanced_subtitle_sync_title">Subtitle sync</string>
     <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle sync controls.</string>
-    <string name="nuvio_enhanced_tv_mode_title">TV mode</string>
-    <string name="nuvio_enhanced_tv_mode_desc">Show a larger layout option in landscape.</string>
 </resources>

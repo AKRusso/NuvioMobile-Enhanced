@@ -35,26 +35,6 @@ internal data class PlayerLayoutMetrics(
     val playIconSize: Dp,
 ) {
     companion object {
-        fun tvMode(): PlayerLayoutMetrics =
-            PlayerLayoutMetrics(
-                horizontalPadding = 44.dp,
-                verticalPadding = 34.dp,
-                titleSize = 36.sp,
-                episodeInfoSize = 22.sp,
-                metadataSize = 20.sp,
-                centerGap = 156.dp,
-                centerLift = 36.dp,
-                sliderBottomOffset = 40.dp,
-                sliderTouchHeight = 42.dp,
-                sliderScaleY = 0.92f,
-                timeSize = 20.sp,
-                headerIconSize = 34.dp,
-                sideButtonPadding = 20.dp,
-                sideIconSize = 48.dp,
-                playButtonPadding = 28.dp,
-                playIconSize = 66.dp,
-            )
-
         fun fromWidth(width: Dp): PlayerLayoutMetrics =
             when {
                 width >= 1440.dp -> PlayerLayoutMetrics(

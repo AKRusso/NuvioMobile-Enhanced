@@ -339,8 +339,6 @@
     <string name="compose_nav_live_tv">Live TV</string>
     <string name="compose_nav_profile">Profile</string>
     <string name="compose_nav_search">Search</string>
-    <string name="compose_nav_tv_mode">TV mode</string>
-    <string name="compose_nav_mobile_mode">Mobile mode</string>
     <string name="live_tv_title">Live TV</string>
     <string name="live_tv_source_title">M3U playlist</string>
     <string name="live_tv_source_hint">https://example.com/playlist.m3u</string>
@@ -2246,8 +2244,6 @@
     <string name="nuvio_enhanced_player_clock_desc">Show time details while controls are visible.</string>
     <string name="nuvio_enhanced_subtitle_sync_title">Subtitle sync</string>
     <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle sync controls.</string>
-    <string name="nuvio_enhanced_tv_mode_title">TV mode</string>
-    <string name="nuvio_enhanced_tv_mode_desc">Show a larger layout option in landscape.</string>
     <string name="nuvio_enhanced_smart_shelf_title">Smart Shelf Composer</string>
     <string name="nuvio_enhanced_smart_shelf_desc">Adds opt-in intelligent home shelves built from your progress, library and catalog signals.</string>
     <string name="nuvio_enhanced_release_digest_title">Release Radar Digest</string>

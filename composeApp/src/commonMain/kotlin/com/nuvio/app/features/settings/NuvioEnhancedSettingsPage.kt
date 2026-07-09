@@ -253,19 +253,6 @@ private fun NuvioEnhancedSettingsPageContent(
                         NuvioEnhancedSettingsRepository.setSubtitleSyncMenuEnabled(it)
                     },
                 )
-                SettingsGroupDivider(isTablet = isTablet)
-                SettingsSwitchRow(
-                    title = stringResource(Res.string.nuvio_enhanced_tv_mode_title),
-                    description = stringResource(Res.string.nuvio_enhanced_tv_mode_desc),
-                    checked = settings.tvModeEnabled,
-                    enabled = settings.enhancedHomeFeaturesEnabled,
-                    isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.TvMode),
-                    onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.TvMode)
-                        NuvioEnhancedSettingsRepository.setTvModeEnabled(it)
-                    },
-                )
             }
         }
 

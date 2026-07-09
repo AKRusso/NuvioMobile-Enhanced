@@ -62,13 +62,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
@@ -115,7 +113,6 @@ import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioTokens
-import com.nuvio.app.core.ui.NuvioTvModeButton
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NativeTabBridge
@@ -750,7 +747,6 @@ private fun MainAppContent(
             NuvioEnhancedSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
         val liveTvEnabled = nuvioEnhancedSettings.liveTvEnabled
-        val tvModeEnabled = nuvioEnhancedSettings.enhancedHomeFeaturesEnabled && nuvioEnhancedSettings.tvModeEnabled
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
@@ -885,11 +881,6 @@ private fun MainAppContent(
     fun openDiscordWelcome() {
         dismissDiscordWelcome()
         uriHandler.openUri(NuvioDiscordInviteUrl)
-    }
-
-    fun toggleTvMode() {
-        NuvioEnhancedSettingsRepository.markFeatureSeen(NuvioEnhancedFeature.TvMode)
-        NuvioEnhancedSettingsRepository.setTvModeEnabled(!tvModeEnabled)
     }
 
     LaunchedEffect(liquidGlassNativeTabBarSupported, liquidGlassNativeTabBarEnabled, liveTvEnabled) {
@@ -1655,28 +1646,7 @@ private fun MainAppContent(
                     )
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val tvModeAvailable = maxWidth > maxHeight && maxWidth >= 560.dp
-                        val tvModeLargeScreen = maxWidth >= 900.dp && maxHeight >= 520.dp
-                        val tvModeActive = tvModeEnabled && tvModeAvailable && tvModeLargeScreen
-                        val isTabletLayout = maxWidth >= 768.dp || tvModeActive
-                        val currentDensity = LocalDensity.current
-                        val contentDensity = if (tvModeActive) {
-                            val densityScale = when {
-                                maxWidth >= 1200.dp -> 1.34f
-                                maxWidth >= 900.dp -> 1.28f
-                                else -> 1.18f
-                            }
-                            val textScale = when {
-                                maxWidth >= 900.dp -> 1.10f
-                                else -> 1.06f
-                            }
-                            Density(
-                                density = currentDensity.density * densityScale,
-                                fontScale = (currentDensity.fontScale * textScale).coerceAtMost(1.28f),
-                            )
-                        } else {
-                            currentDensity
-                        }
+                        val isTabletLayout = maxWidth >= 768.dp
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val nativeTabSafeBottomPadding = nuvioBottomNavigationBarInsets()
@@ -1740,34 +1710,12 @@ private fun MainAppContent(
                                                 onAddProfileRequested = onSwitchProfile,
                                             )
                                         }
-                                        if (tvModeAvailable) {
-                                            TvModeItem(
-                                                selected = tvModeActive,
-                                                onClick = ::toggleTvMode,
-                                                label = stringResource(
-                                                    if (tvModeActive) {
-                                                        Res.string.compose_nav_mobile_mode
-                                                    } else {
-                                                        Res.string.compose_nav_tv_mode
-                                                    },
-                                                ),
-                                                contentDescription = stringResource(
-                                                    if (tvModeActive) {
-                                                        Res.string.compose_nav_mobile_mode
-                                                    } else {
-                                                        Res.string.compose_nav_tv_mode
-                                                    },
-                                                ),
-                                                icon = Icons.Filled.Tv,
-                                            )
-                                        }
                                     }
                                 }
                             },
                         ) { innerPadding ->
                             CompositionLocalProvider(
                                 LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
-                                LocalDensity provides contentDensity,
                             ) {
                                 Box(modifier = Modifier.fillMaxSize()) {
                                     AppTabHost(
@@ -1892,10 +1840,7 @@ private fun MainAppContent(
                                         TabletFloatingTopBar(
                                             selectedTab = selectedTab,
                                             liveTvEnabled = liveTvEnabled,
-                                            tvModeAvailable = tvModeAvailable,
-                                            tvModeEnabled = tvModeActive,
                                             onTabSelected = ::handleRootTabClick,
-                                            onTvModeClick = ::toggleTvMode,
                                             onProfileSelected = onProfileSelected,
                                             onAddProfileRequested = {
                                                 nativeProfileSwitcherVisible = false
@@ -2773,7 +2718,6 @@ private fun MainAppContent(
                         initialProgressFraction = launch.initialProgressFraction,
                         contentLanguage = launch.contentLanguage,
                         randomEpisodeMode = launch.randomEpisodeMode,
-                        tvModeEnabled = tvModeEnabled,
                         onBack = {
                             ResumePromptRepository.markPlayerExitedNormally()
                             PlayerLaunchStore.remove(route.launchId)
@@ -3456,10 +3400,7 @@ private fun AppTabHost(
 private fun TabletFloatingTopBar(
     selectedTab: AppScreenTab,
     liveTvEnabled: Boolean,
-    tvModeAvailable: Boolean,
-    tvModeEnabled: Boolean,
     onTabSelected: (AppScreenTab) -> Unit,
-    onTvModeClick: () -> Unit,
     onProfileSelected: (NuvioProfile) -> Unit,
     onAddProfileRequested: () -> Unit,
     modifier: Modifier = Modifier,
@@ -3584,27 +3525,6 @@ private fun TabletFloatingTopBar(
                             },
                         )
                     }
-                }
-                if (tvModeAvailable) {
-                    NuvioTvModeButton(
-                        selected = tvModeEnabled,
-                        onClick = onTvModeClick,
-                        label = stringResource(
-                            if (tvModeEnabled) {
-                                Res.string.compose_nav_mobile_mode
-                            } else {
-                                Res.string.compose_nav_tv_mode
-                            },
-                        ),
-                        contentDescription = stringResource(
-                            if (tvModeEnabled) {
-                                Res.string.compose_nav_mobile_mode
-                            } else {
-                                Res.string.compose_nav_tv_mode
-                            },
-                        ),
-                        icon = Icons.Filled.Tv,
-                    )
                 }
             }
         }
