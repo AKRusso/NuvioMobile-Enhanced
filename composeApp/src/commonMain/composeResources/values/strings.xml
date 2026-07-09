@@ -340,6 +340,7 @@
     <string name="compose_nav_profile">Profile</string>
     <string name="compose_nav_search">Search</string>
     <string name="compose_nav_tv_mode">TV mode</string>
+    <string name="compose_nav_mobile_mode">Mobile mode</string>
     <string name="live_tv_title">Live TV</string>
     <string name="live_tv_source_title">M3U playlist</string>
     <string name="live_tv_source_hint">https://example.com/playlist.m3u</string>

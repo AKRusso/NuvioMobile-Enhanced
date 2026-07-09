@@ -62,11 +62,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
@@ -1656,6 +1658,15 @@ private fun MainAppContent(
                         val tvModeAvailable = maxWidth > maxHeight && maxWidth >= 560.dp
                         val tvModeActive = tvModeEnabled && tvModeAvailable
                         val isTabletLayout = maxWidth >= 768.dp || tvModeActive
+                        val currentDensity = LocalDensity.current
+                        val contentDensity = if (tvModeActive) {
+                            Density(
+                                density = (currentDensity.density * 0.74f).coerceAtLeast(1f),
+                                fontScale = (currentDensity.fontScale * 1.06f).coerceAtMost(1.22f),
+                            )
+                        } else {
+                            currentDensity
+                        }
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val nativeTabSafeBottomPadding = nuvioBottomNavigationBarInsets()
@@ -1723,8 +1734,20 @@ private fun MainAppContent(
                                             TvModeItem(
                                                 selected = tvModeEnabled,
                                                 onClick = ::toggleTvMode,
-                                                label = stringResource(Res.string.compose_nav_tv_mode),
-                                                contentDescription = stringResource(Res.string.compose_nav_tv_mode),
+                                                label = stringResource(
+                                                    if (tvModeEnabled) {
+                                                        Res.string.compose_nav_mobile_mode
+                                                    } else {
+                                                        Res.string.compose_nav_tv_mode
+                                                    },
+                                                ),
+                                                contentDescription = stringResource(
+                                                    if (tvModeEnabled) {
+                                                        Res.string.compose_nav_mobile_mode
+                                                    } else {
+                                                        Res.string.compose_nav_tv_mode
+                                                    },
+                                                ),
                                                 icon = Icons.Filled.Tv,
                                             )
                                         }
@@ -1735,6 +1758,7 @@ private fun MainAppContent(
                             Box(modifier = Modifier.fillMaxSize()) {
                                 CompositionLocalProvider(
                                     LocalNuvioBottomNavigationOverlayPadding provides if (useNativeBottomTabs) 49.dp else 0.dp,
+                                    LocalDensity provides contentDensity,
                                 ) {
                                     AppTabHost(
                                         modifier = Modifier
@@ -3554,8 +3578,20 @@ private fun TabletFloatingTopBar(
                     NuvioTvModeButton(
                         selected = tvModeEnabled,
                         onClick = onTvModeClick,
-                        label = stringResource(Res.string.compose_nav_tv_mode),
-                        contentDescription = stringResource(Res.string.compose_nav_tv_mode),
+                        label = stringResource(
+                            if (tvModeEnabled) {
+                                Res.string.compose_nav_mobile_mode
+                            } else {
+                                Res.string.compose_nav_tv_mode
+                            },
+                        ),
+                        contentDescription = stringResource(
+                            if (tvModeEnabled) {
+                                Res.string.compose_nav_mobile_mode
+                            } else {
+                                Res.string.compose_nav_tv_mode
+                            },
+                        ),
                         icon = Icons.Filled.Tv,
                     )
                 }

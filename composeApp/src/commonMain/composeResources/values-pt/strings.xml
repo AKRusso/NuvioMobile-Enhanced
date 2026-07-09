@@ -327,6 +327,7 @@
     <string name="compose_nav_profile">Perfil</string>
     <string name="compose_nav_search">Pesquisar</string>
     <string name="compose_nav_tv_mode">TV mode</string>
+    <string name="compose_nav_mobile_mode">Mobile mode</string>
     <string name="compose_player_audio_tracks">Faixas de áudio</string>
     <string name="compose_player_audio">Áudio</string>
     <string name="compose_player_auto_sync">Sincronização automática</string>
