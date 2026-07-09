@@ -220,8 +220,8 @@ private class NuvioNavigationBarScopeImpl(
                 contentDescription = contentDescription,
                 icon = icon,
                 modifier = modifier
-                    .widthIn(min = 104.dp, max = 132.dp)
-                    .weight(1.35f, fill = false),
+                    .widthIn(min = 118.dp, max = 156.dp)
+                    .weight(1.5f, fill = false),
             )
         }
     }
@@ -304,6 +304,18 @@ fun NuvioTvModeButton(
             contentDescription = contentDescription,
             modifier = Modifier.size(NuvioTokens.Space.s18),
             tint = Color.White,
+        )
+        Text(
+            text = "BETA",
+            maxLines = 1,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .clip(shape)
+                .background(Color.White.copy(alpha = 0.18f), shape)
+                .border(1.dp, Color.White.copy(alpha = 0.26f), shape)
+                .padding(horizontal = NuvioTokens.Space.s6, vertical = 2.dp),
         )
     }
 }
