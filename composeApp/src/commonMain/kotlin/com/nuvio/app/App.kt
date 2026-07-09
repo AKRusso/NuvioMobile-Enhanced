@@ -1656,18 +1656,25 @@ private fun MainAppContent(
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val tvModeAvailable = maxWidth > maxHeight && maxWidth >= 560.dp
-                        val tvModeLargeScreen = maxWidth >= 900.dp && maxHeight >= 520.dp
+                        val currentDensity = LocalDensity.current
+                        val tvModeExternalLikeScreen = with(currentDensity) {
+                            maxWidth.toPx() >= 1200f &&
+                                maxHeight.toPx() >= 650f &&
+                                this.density <= 2.2f
+                        }
+                        val tvModeLargeScreen = (maxWidth >= 900.dp && maxHeight >= 520.dp) || tvModeExternalLikeScreen
                         val tvModeActive = tvModeEnabled && tvModeAvailable && tvModeLargeScreen
                         val isTabletLayout = maxWidth >= 768.dp || tvModeActive
-                        val currentDensity = LocalDensity.current
                         val contentDensity = if (tvModeActive) {
                             val densityScale = when {
-                                maxWidth >= 1200.dp -> 1.34f
-                                maxWidth >= 900.dp -> 1.28f
+                                tvModeExternalLikeScreen -> 1.52f
+                                maxWidth >= 1200.dp -> 1.44f
+                                maxWidth >= 900.dp -> 1.34f
                                 else -> 1.18f
                             }
                             val textScale = when {
-                                maxWidth >= 900.dp -> 1.10f
+                                tvModeExternalLikeScreen -> 1.16f
+                                maxWidth >= 900.dp -> 1.12f
                                 else -> 1.06f
                             }
                             Density(

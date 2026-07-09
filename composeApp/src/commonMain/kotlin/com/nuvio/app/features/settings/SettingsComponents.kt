@@ -376,6 +376,7 @@ internal fun SettingsSwitchRow(
     enabled: Boolean = true,
     isTablet: Boolean,
     highlighted: Boolean = false,
+    badgeText: String? = null,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
@@ -403,6 +404,7 @@ internal fun SettingsSwitchRow(
             SettingsRowTitle(
                 title = title,
                 highlighted = highlighted,
+                badgeText = badgeText,
             )
             if (!description.isNullOrBlank()) {
                 Text(
@@ -435,6 +437,7 @@ internal fun SettingsSwitchRow(
 private fun SettingsRowTitle(
     title: String,
     highlighted: Boolean,
+    badgeText: String? = null,
 ) {
     val tokens = MaterialTheme.nuvio
     Row(
@@ -451,21 +454,30 @@ private fun SettingsRowTitle(
             overflow = TextOverflow.Ellipsis,
         )
         if (highlighted) {
-            Surface(
-                color = tokens.colors.accent.copy(alpha = 0.18f),
-                shape = RoundedCornerShape(999.dp),
-                border = BorderStroke(1.dp, tokens.colors.accent.copy(alpha = 0.32f)),
-            ) {
-                Text(
-                    text = stringResource(Res.string.settings_new_feature_badge),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = tokens.colors.accent,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                )
-            }
+            SettingsRowBadge(text = stringResource(Res.string.settings_new_feature_badge))
         }
+        if (!badgeText.isNullOrBlank()) {
+            SettingsRowBadge(text = badgeText)
+        }
+    }
+}
+
+@Composable
+private fun SettingsRowBadge(text: String) {
+    val tokens = MaterialTheme.nuvio
+    Surface(
+        color = tokens.colors.accent.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(1.dp, tokens.colors.accent.copy(alpha = 0.32f)),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = tokens.colors.accent,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
     }
 }
 

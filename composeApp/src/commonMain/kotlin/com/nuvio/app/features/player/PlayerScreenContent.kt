@@ -85,10 +85,14 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
     ) {
         val density = LocalDensity.current
         val horizontalSafePadding = playerHorizontalSafePadding()
+        val tvModeExternalLikeScreen = with(density) {
+            maxWidth.toPx() >= 1200f &&
+                maxHeight.toPx() >= 650f &&
+                this.density <= 2.2f
+        }
         val tvModeControls = args.tvModeEnabled &&
             maxWidth > maxHeight &&
-            maxWidth >= 900.dp &&
-            maxHeight >= 520.dp
+            ((maxWidth >= 900.dp && maxHeight >= 520.dp) || tvModeExternalLikeScreen)
         val metrics = remember(maxWidth, tvModeControls) {
             if (tvModeControls) {
                 PlayerLayoutMetrics.tvMode()

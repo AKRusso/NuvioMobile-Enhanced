@@ -544,6 +544,12 @@ private fun ProgressControls(
     val aspectRatioPainter = appIconPainter(AppIconResource.PlayerAspectRatio)
     val subtitlesPainter = appIconPainter(AppIconResource.PlayerSubtitles)
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
+    val largeControls = metrics.headerIconSize >= 30.dp
+    val actionContainerShape = RoundedCornerShape(if (largeControls) 34.dp else 24.dp)
+    val actionContainerPadding = PaddingValues(
+        horizontal = if (largeControls) 8.dp else 4.dp,
+        vertical = if (largeControls) 6.dp else 2.dp,
+    )
 
     Column(modifier = modifier) {
         Box(
@@ -585,32 +591,35 @@ private fun ProgressControls(
         ) {
             Surface(
                 color = Color.Black.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(24.dp),
+                shape = actionContainerShape,
                 modifier = Modifier.border(
                     width = 1.dp,
                     color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = actionContainerShape,
                 ),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    modifier = Modifier.padding(actionContainerPadding),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlayerActionPillButton(
                         label = stringResource(resizeMode.labelRes),
                         painter = aspectRatioPainter,
+                        metrics = metrics,
                         onClick = onResizeModeClick,
                     )
                     PlayerActionPillButton(
                         label = formatPlaybackSpeedLabel(playbackSnapshot.playbackSpeed),
                         icon = Icons.Rounded.Speed,
+                        metrics = metrics,
                         onClick = onSpeedClick,
                     )
                     if (onSubtitleClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_subs),
                             painter = subtitlesPainter,
+                            metrics = metrics,
                             onClick = onSubtitleClick,
                         )
                     }
@@ -618,6 +627,7 @@ private fun ProgressControls(
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_audio),
                             painter = audioPainter,
+                            metrics = metrics,
                             onClick = onAudioClick,
                         )
                     }
@@ -625,6 +635,7 @@ private fun ProgressControls(
                         PlayerActionPillButton(
                             label = stringResource(Res.string.live_tv_player_channels),
                             icon = Icons.Rounded.Tv,
+                            metrics = metrics,
                             onClick = onChannelsClick,
                         )
                     }
@@ -632,6 +643,7 @@ private fun ProgressControls(
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_sources),
                             icon = Icons.Rounded.SwapHoriz,
+                            metrics = metrics,
                             onClick = onSourcesClick,
                         )
                     }
@@ -639,6 +651,7 @@ private fun ProgressControls(
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_episodes),
                             icon = Icons.Rounded.VideoLibrary,
+                            metrics = metrics,
                             onClick = onEpisodesClick,
                         )
                     }
@@ -810,13 +823,20 @@ private fun PlayerActionPillButton(
     onClick: () -> Unit,
     icon: ImageVector? = null,
     painter: Painter? = null,
+    metrics: PlayerLayoutMetrics,
 ) {
+    val largeControls = metrics.headerIconSize >= 30.dp
+    val iconSize = if (largeControls) 26.dp else 18.dp
+    val horizontalPadding = if (largeControls) 18.dp else 12.dp
+    val verticalPadding = if (largeControls) 16.dp else 12.dp
+    val gap = if (largeControls) 10.dp else 8.dp
+
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        horizontalArrangement = Arrangement.spacedBy(gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
@@ -824,19 +844,22 @@ private fun PlayerActionPillButton(
                 painter = painter,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(iconSize),
             )
 
             icon != null -> Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(iconSize),
             )
         }
         Text(
             text = label,
-            style = MaterialTheme.nuvioTypeScale.labelSm,
+            style = MaterialTheme.nuvioTypeScale.labelSm.copy(
+                fontSize = metrics.timeSize,
+                lineHeight = metrics.timeSize * 1.2f,
+            ),
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

@@ -261,6 +261,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     enabled = settings.enhancedHomeFeaturesEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.TvMode),
+                    badgeText = "BETA",
                     onCheckedChange = {
                         markSeen(NuvioEnhancedFeature.TvMode)
                         NuvioEnhancedSettingsRepository.setTvModeEnabled(it)
