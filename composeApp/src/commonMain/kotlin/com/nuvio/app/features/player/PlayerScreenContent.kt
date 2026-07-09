@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.details.MetaDetailsRepository
@@ -84,7 +85,10 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
     ) {
         val density = LocalDensity.current
         val horizontalSafePadding = playerHorizontalSafePadding()
-        val tvModeControls = args.tvModeEnabled && maxWidth > maxHeight
+        val tvModeControls = args.tvModeEnabled &&
+            maxWidth > maxHeight &&
+            maxWidth >= 900.dp &&
+            maxHeight >= 520.dp
         val metrics = remember(maxWidth, tvModeControls) {
             if (tvModeControls) {
                 PlayerLayoutMetrics.tvMode()

@@ -1656,7 +1656,8 @@ private fun MainAppContent(
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                         val tvModeAvailable = maxWidth > maxHeight && maxWidth >= 560.dp
-                        val tvModeActive = tvModeEnabled && tvModeAvailable
+                        val tvModeLargeScreen = maxWidth >= 900.dp && maxHeight >= 520.dp
+                        val tvModeActive = tvModeEnabled && tvModeAvailable && tvModeLargeScreen
                         val isTabletLayout = maxWidth >= 768.dp || tvModeActive
                         val currentDensity = LocalDensity.current
                         val contentDensity = if (tvModeActive) {
@@ -1741,17 +1742,17 @@ private fun MainAppContent(
                                         }
                                         if (tvModeAvailable) {
                                             TvModeItem(
-                                                selected = tvModeEnabled,
+                                                selected = tvModeActive,
                                                 onClick = ::toggleTvMode,
                                                 label = stringResource(
-                                                    if (tvModeEnabled) {
+                                                    if (tvModeActive) {
                                                         Res.string.compose_nav_mobile_mode
                                                     } else {
                                                         Res.string.compose_nav_tv_mode
                                                     },
                                                 ),
                                                 contentDescription = stringResource(
-                                                    if (tvModeEnabled) {
+                                                    if (tvModeActive) {
                                                         Res.string.compose_nav_mobile_mode
                                                     } else {
                                                         Res.string.compose_nav_tv_mode
@@ -1892,7 +1893,7 @@ private fun MainAppContent(
                                             selectedTab = selectedTab,
                                             liveTvEnabled = liveTvEnabled,
                                             tvModeAvailable = tvModeAvailable,
-                                            tvModeEnabled = tvModeEnabled,
+                                            tvModeEnabled = tvModeActive,
                                             onTabSelected = ::handleRootTabClick,
                                             onTvModeClick = ::toggleTvMode,
                                             onProfileSelected = onProfileSelected,
