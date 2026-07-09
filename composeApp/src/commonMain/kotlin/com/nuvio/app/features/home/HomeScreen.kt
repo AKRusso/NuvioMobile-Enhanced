@@ -167,7 +167,6 @@ fun HomeScreen(
     var observedOfflineState by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     var manualRefreshRequested by remember { mutableStateOf(false) }
-
     LaunchedEffect(scrollToTopRequests) {
         scrollToTopRequests.collect {
             homeListState.animateScrollToItem(0)

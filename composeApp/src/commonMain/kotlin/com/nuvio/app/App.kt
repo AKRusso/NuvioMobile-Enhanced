@@ -113,6 +113,7 @@ import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.NuvioTvModeButton
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NativeTabBridge
@@ -197,6 +198,7 @@ import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
 import com.nuvio.app.features.settings.LicensesAttributionsSettingsScreen
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
+import com.nuvio.app.features.settings.NuvioEnhancedFeature
 import com.nuvio.app.features.settings.SettingsPage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.collection.CollectionManagementScreen
@@ -746,6 +748,7 @@ private fun MainAppContent(
             NuvioEnhancedSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
         val liveTvEnabled = nuvioEnhancedSettings.liveTvEnabled
+        val tvModeEnabled = nuvioEnhancedSettings.enhancedHomeFeaturesEnabled && nuvioEnhancedSettings.tvModeEnabled
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
@@ -880,6 +883,11 @@ private fun MainAppContent(
     fun openDiscordWelcome() {
         dismissDiscordWelcome()
         uriHandler.openUri(NuvioDiscordInviteUrl)
+    }
+
+    fun toggleTvMode() {
+        NuvioEnhancedSettingsRepository.markFeatureSeen(NuvioEnhancedFeature.TvMode)
+        NuvioEnhancedSettingsRepository.setTvModeEnabled(!tvModeEnabled)
     }
 
     LaunchedEffect(liquidGlassNativeTabBarSupported, liquidGlassNativeTabBarEnabled, liveTvEnabled) {
@@ -1645,7 +1653,9 @@ private fun MainAppContent(
                     )
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val isTabletLayout = maxWidth >= 768.dp
+                        val tvModeAvailable = maxWidth > maxHeight && maxWidth >= 560.dp
+                        val tvModeActive = tvModeEnabled && tvModeAvailable
+                        val isTabletLayout = maxWidth >= 768.dp || tvModeActive
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
                         val nativeTabSafeBottomPadding = nuvioBottomNavigationBarInsets()
@@ -1707,6 +1717,15 @@ private fun MainAppContent(
                                                 onClick = { handleRootTabClick(AppScreenTab.Settings) },
                                                 onProfileSelected = onProfileSelected,
                                                 onAddProfileRequested = onSwitchProfile,
+                                            )
+                                        }
+                                        if (tvModeAvailable) {
+                                            TvModeItem(
+                                                selected = tvModeEnabled,
+                                                onClick = ::toggleTvMode,
+                                                label = stringResource(Res.string.compose_nav_tv_mode),
+                                                contentDescription = stringResource(Res.string.compose_nav_tv_mode),
+                                                icon = Icons.Filled.Tv,
                                             )
                                         }
                                     }
@@ -1840,7 +1859,10 @@ private fun MainAppContent(
                                     TabletFloatingTopBar(
                                         selectedTab = selectedTab,
                                         liveTvEnabled = liveTvEnabled,
+                                        tvModeAvailable = tvModeAvailable,
+                                        tvModeEnabled = tvModeEnabled,
                                         onTabSelected = ::handleRootTabClick,
+                                        onTvModeClick = ::toggleTvMode,
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = {
                                             nativeProfileSwitcherVisible = false
@@ -2716,6 +2738,7 @@ private fun MainAppContent(
                         initialPositionMs = launch.initialPositionMs,
                         initialProgressFraction = launch.initialProgressFraction,
                         contentLanguage = launch.contentLanguage,
+                        randomEpisodeMode = launch.randomEpisodeMode,
                         onBack = {
                             ResumePromptRepository.markPlayerExitedNormally()
                             PlayerLaunchStore.remove(route.launchId)
@@ -3398,7 +3421,10 @@ private fun AppTabHost(
 private fun TabletFloatingTopBar(
     selectedTab: AppScreenTab,
     liveTvEnabled: Boolean,
+    tvModeAvailable: Boolean,
+    tvModeEnabled: Boolean,
     onTabSelected: (AppScreenTab) -> Unit,
+    onTvModeClick: () -> Unit,
     onProfileSelected: (NuvioProfile) -> Unit,
     onAddProfileRequested: () -> Unit,
     modifier: Modifier = Modifier,
@@ -3523,6 +3549,15 @@ private fun TabletFloatingTopBar(
                             },
                         )
                     }
+                }
+                if (tvModeAvailable) {
+                    NuvioTvModeButton(
+                        selected = tvModeEnabled,
+                        onClick = onTvModeClick,
+                        label = stringResource(Res.string.compose_nav_tv_mode),
+                        contentDescription = stringResource(Res.string.compose_nav_tv_mode),
+                        icon = Icons.Filled.Tv,
+                    )
                 }
             }
         }

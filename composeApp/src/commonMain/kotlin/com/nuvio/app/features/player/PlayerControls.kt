@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forward10
@@ -96,6 +97,8 @@ internal fun PlayerControlsShell(
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
     onOpenInExternalPlayer: (() -> Unit)? = null,
+    randomNextEpisodeMode: Boolean = false,
+    onRandomNextEpisodeModeToggle: (() -> Unit)? = null,
     onSubmitIntroClick: (() -> Unit)? = null,
     parentalWarnings: List<ParentalWarning> = emptyList(),
     showParentalGuide: Boolean = false,
@@ -158,6 +161,8 @@ internal fun PlayerControlsShell(
                 onLockToggle = onLockToggle,
                 onVideoSettingsClick = onVideoSettingsClick,
                 onOpenInExternalPlayer = onOpenInExternalPlayer,
+                randomNextEpisodeMode = randomNextEpisodeMode,
+                onRandomNextEpisodeModeToggle = onRandomNextEpisodeModeToggle,
                 onBack = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -227,6 +232,8 @@ private fun PlayerHeader(
     onLockToggle: () -> Unit,
     onVideoSettingsClick: (() -> Unit)?,
     onOpenInExternalPlayer: (() -> Unit)?,
+    randomNextEpisodeMode: Boolean,
+    onRandomNextEpisodeModeToggle: (() -> Unit)?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -335,6 +342,20 @@ private fun PlayerHeader(
                             onClick = onOpenInExternalPlayer,
                         )
                     }
+                    if (onRandomNextEpisodeModeToggle != null) {
+                        PlayerHeaderIconButton(
+                            icon = Icons.Default.Shuffle,
+                            contentDescription = if (randomNextEpisodeMode) {
+                                stringResource(Res.string.player_random_next_enabled)
+                            } else {
+                                stringResource(Res.string.player_random_next_disabled)
+                            },
+                            buttonSize = metrics.headerIconSize + 16.dp,
+                            iconSize = metrics.headerIconSize,
+                            selected = randomNextEpisodeMode,
+                            onClick = onRandomNextEpisodeModeToggle,
+                        )
+                    }
                     PlayerHeaderIconButton(
                         icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
                         contentDescription = if (isLocked) {
@@ -375,20 +396,31 @@ private fun PlayerHeaderIconButton(
     contentDescription: String,
     buttonSize: androidx.compose.ui.unit.Dp,
     iconSize: androidx.compose.ui.unit.Dp,
+    selected: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
+    } else {
+        Color.Black.copy(alpha = 0.35f)
+    }
+    val iconColor = if (selected) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        Color.White
+    }
     Box(
         modifier = Modifier
             .size(buttonSize)
             .clip(CircleShape)
-            .background(Color.Black.copy(alpha = 0.35f))
+            .background(containerColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = iconColor,
             modifier = Modifier.size(iconSize),
         )
     }

@@ -309,6 +309,7 @@
     <string name="compose_nav_library">Biblioteca</string>
     <string name="compose_nav_profile">Perfil</string>
     <string name="compose_nav_search">Busca</string>
+    <string name="compose_nav_tv_mode">TV mode</string>
     <string name="compose_player_audio_tracks">Faixas de Áudio</string>
     <string name="compose_player_audio">Áudio</string>
     <string name="compose_player_built_in">Incorporado</string>
@@ -1341,4 +1342,17 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
+    <string name="compose_player_sync">Sync</string>
+    <string name="compose_player_auto_sync_capture_hint">Select a subtitle line.</string>
+    <string name="settings_playback_player_clock_end_time">Player time</string>
+    <string name="settings_playback_player_clock_end_time_description">Show time details in the player.</string>
+    <string name="player_clock_ends_at">Ends at %1$s</string>
+    <string name="player_random_next_enabled">Shuffle next on</string>
+    <string name="player_random_next_disabled">Shuffle next off</string>
+    <string name="nuvio_enhanced_player_clock_title">Player time</string>
+    <string name="nuvio_enhanced_player_clock_desc">Show time details while controls are visible.</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Subtitle sync</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle sync controls.</string>
+    <string name="nuvio_enhanced_tv_mode_title">TV mode</string>
+    <string name="nuvio_enhanced_tv_mode_desc">Show a larger layout option in landscape.</string>
 </resources>

@@ -21,6 +21,9 @@ internal data class NuvioEnhancedSettingsUiState(
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
+    val playerClockEndTimeEnabled: Boolean = true,
+    val subtitleSyncMenuEnabled: Boolean = true,
+    val tvModeEnabled: Boolean = false,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
@@ -70,6 +73,10 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     HeroExperienceControls("hero_experience_controls"),
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
+    PlayerExperienceControls("player_experience_controls"),
+    PlayerTimeOverlay("player_time_overlay"),
+    SubtitleSyncMenu("subtitle_sync_menu"),
+    TvMode("tv_mode"),
     ContentWarnings("content_warnings"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
@@ -94,6 +101,9 @@ private data class StoredNuvioEnhancedSettings(
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
+    val playerClockEndTimeEnabled: Boolean = true,
+    val subtitleSyncMenuEnabled: Boolean = true,
+    val tvModeEnabled: Boolean = false,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
@@ -193,6 +203,18 @@ internal object NuvioEnhancedSettingsRepository {
         copy(showHeroOverview = enabled)
     }
 
+    fun setPlayerClockEndTimeEnabled(enabled: Boolean) = update {
+        copy(playerClockEndTimeEnabled = enabled)
+    }
+
+    fun setSubtitleSyncMenuEnabled(enabled: Boolean) = update {
+        copy(subtitleSyncMenuEnabled = enabled)
+    }
+
+    fun setTvModeEnabled(enabled: Boolean) = update {
+        copy(tvModeEnabled = enabled)
+    }
+
     fun setSmartShelvesEnabled(enabled: Boolean) = update {
         copy(smartShelvesEnabled = enabled)
     }
@@ -277,6 +299,9 @@ internal object NuvioEnhancedSettingsRepository {
             heroArtworkSource = stored.heroArtworkSource,
             compactHeroMetadata = stored.compactHeroMetadata,
             showHeroOverview = stored.showHeroOverview,
+            playerClockEndTimeEnabled = stored.playerClockEndTimeEnabled,
+            subtitleSyncMenuEnabled = stored.subtitleSyncMenuEnabled,
+            tvModeEnabled = stored.tvModeEnabled,
             smartShelvesEnabled = stored.smartShelvesEnabled,
             releaseRadarDigestEnabled = stored.releaseRadarDigestEnabled,
             quietHomeModeEnabled = stored.quietHomeModeEnabled,

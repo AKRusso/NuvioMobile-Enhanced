@@ -339,6 +339,7 @@
     <string name="compose_nav_live_tv">Live TV</string>
     <string name="compose_nav_profile">Profile</string>
     <string name="compose_nav_search">Search</string>
+    <string name="compose_nav_tv_mode">TV mode</string>
     <string name="live_tv_title">Live TV</string>
     <string name="live_tv_source_title">M3U playlist</string>
     <string name="live_tv_source_hint">https://example.com/playlist.m3u</string>
@@ -374,6 +375,7 @@
     <string name="compose_player_audio_tracks">Audio Tracks</string>
     <string name="compose_player_audio">Audio</string>
     <string name="compose_player_auto_sync">Auto Sync</string>
+    <string name="compose_player_auto_sync_capture_hint">Select a subtitle line.</string>
     <string name="compose_player_bold">Bold</string>
     <string name="compose_player_built_in">Built-in</string>
     <string name="compose_player_bottom_offset">Bottom Offset</string>
@@ -418,6 +420,7 @@
     <string name="compose_player_seek_forward_10">Seek forward 10 seconds</string>
     <string name="compose_player_sources">Sources</string>
     <string name="compose_player_style">Style</string>
+    <string name="compose_player_sync">Sync</string>
     <string name="compose_player_select_addon_subtitle_first">Select an addon subtitle first</string>
     <string name="compose_player_subs">Subs</string>
     <string name="compose_player_subtitle_delay">Subtitle Delay</string>
@@ -1005,6 +1008,8 @@
     <string name="settings_playback_player_preference_internal">Internal</string>
     <string name="settings_playback_player_preference_external">External</string>
     <string name="settings_playback_player_preference_description">Choose which player handles new playback.</string>
+    <string name="settings_playback_player_clock_end_time">Player time</string>
+    <string name="settings_playback_player_clock_end_time_description">Show time details in the player.</string>
     <string name="settings_playback_hold_speed">Hold Speed</string>
     <string name="settings_playback_hold_to_speed">Hold To Speed</string>
     <string name="settings_playback_hold_to_speed_description">Long-press anywhere on the player surface to temporarily boost playback speed.</string>
@@ -1230,6 +1235,9 @@
     <string name="player_next_episode_finding_source">Finding source…</string>
     <string name="player_next_episode_playing_via_countdown">Playing via %1$s in %2$d…</string>
     <string name="player_next_episode_thumbnail">Next episode thumbnail</string>
+    <string name="player_clock_ends_at">Ends at %1$s</string>
+    <string name="player_random_next_enabled">Shuffle next on</string>
+    <string name="player_random_next_disabled">Shuffle next off</string>
     <string name="player_next_episode_unaired">Unaired</string>
     <string name="player_skip">Skip</string>
     <string name="player_skip_intro">Skip Intro</string>
@@ -2233,6 +2241,12 @@
     <string name="nuvio_enhanced_release_signals_desc">Lets upcoming releases influence Concierge cards and profile stats. Library Release Radar remains available.</string>
     <string name="nuvio_enhanced_profile_stats_title">Concierge profile stats</string>
     <string name="nuvio_enhanced_profile_stats_desc">Shows small counts like watch queue, radar items and library size inside the Concierge panel.</string>
+    <string name="nuvio_enhanced_player_clock_title">Player time</string>
+    <string name="nuvio_enhanced_player_clock_desc">Show time details while controls are visible.</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Subtitle sync</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle sync controls.</string>
+    <string name="nuvio_enhanced_tv_mode_title">TV mode</string>
+    <string name="nuvio_enhanced_tv_mode_desc">Show a larger layout option in landscape.</string>
     <string name="nuvio_enhanced_smart_shelf_title">Smart Shelf Composer</string>
     <string name="nuvio_enhanced_smart_shelf_desc">Adds opt-in intelligent home shelves built from your progress, library and catalog signals.</string>
     <string name="nuvio_enhanced_release_digest_title">Release Radar Digest</string>

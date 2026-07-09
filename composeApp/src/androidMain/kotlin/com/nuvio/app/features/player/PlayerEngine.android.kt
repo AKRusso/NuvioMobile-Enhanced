@@ -694,6 +694,10 @@ private fun ExoPlayerSurface(
                 override fun setSubtitleDelayMs(delayMs: Int) {
                     subtitleDelayMs = delayMs.coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS)
                 }
+
+                override fun refreshSubtitlePosition(positionMs: Long) {
+                    exoPlayer.seekTo(positionMs.coerceAtLeast(0L))
+                }
             }
         )
     }

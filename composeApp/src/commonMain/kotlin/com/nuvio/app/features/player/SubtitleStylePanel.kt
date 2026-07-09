@@ -3,14 +3,21 @@ package com.nuvio.app.features.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,11 +29,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import nuvio.composeapp.generated.resources.*
@@ -38,15 +47,10 @@ import kotlin.math.roundToInt
 fun SubtitleStylePanel(
     style: SubtitleStyleState,
     subtitleDelayMs: Int,
-    selectedAddonSubtitle: AddonSubtitle?,
-    subtitleAutoSyncState: SubtitleAutoSyncUiState,
     isCompact: Boolean,
     onStyleChanged: (SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
-    onAutoSyncCapture: () -> Unit,
-    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
-    onAutoSyncReload: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val sectionPadding = if (isCompact) 12.dp else 16.dp
@@ -58,17 +62,12 @@ fun SubtitleStylePanel(
         StyleControlsCard(
             style = style,
             subtitleDelayMs = subtitleDelayMs,
-            selectedAddonSubtitle = selectedAddonSubtitle,
-            subtitleAutoSyncState = subtitleAutoSyncState,
             isCompact = isCompact,
             sectionPadding = sectionPadding,
             colorScheme = colorScheme,
             onStyleChanged = onStyleChanged,
             onSubtitleDelayChanged = onSubtitleDelayChanged,
             onSubtitleDelayReset = onSubtitleDelayReset,
-            onAutoSyncCapture = onAutoSyncCapture,
-            onAutoSyncCueSelected = onAutoSyncCueSelected,
-            onAutoSyncReload = onAutoSyncReload,
         )
     }
 }
@@ -77,17 +76,12 @@ fun SubtitleStylePanel(
 private fun StyleControlsCard(
     style: SubtitleStyleState,
     subtitleDelayMs: Int,
-    selectedAddonSubtitle: AddonSubtitle?,
-    subtitleAutoSyncState: SubtitleAutoSyncUiState,
     isCompact: Boolean,
     sectionPadding: androidx.compose.ui.unit.Dp,
     colorScheme: androidx.compose.material3.ColorScheme,
     onStyleChanged: (SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
-    onAutoSyncCapture: () -> Unit,
-    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
-    onAutoSyncReload: () -> Unit,
 ) {
     val btnSize = if (isCompact) 28.dp else 32.dp
     val btnRadius = if (isCompact) 14.dp else 16.dp
@@ -139,15 +133,6 @@ private fun StyleControlsCard(
                 onClick = onSubtitleDelayReset,
             )
         }
-
-        AutoSyncControls(
-            selectedAddonSubtitle = selectedAddonSubtitle,
-            state = subtitleAutoSyncState,
-            isCompact = isCompact,
-            onCapture = onAutoSyncCapture,
-            onCueSelected = onAutoSyncCueSelected,
-            onReload = onAutoSyncReload,
-        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -303,35 +288,78 @@ private fun StyleControlsCard(
 }
 
 @Composable
+fun SubtitleSyncPanel(
+    subtitleDelayMs: Int,
+    selectedAddonSubtitle: AddonSubtitle?,
+    subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    isCompact: Boolean,
+    isPlaying: Boolean,
+    currentPlaybackPositionMs: Long,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
+    onAutoSyncCapture: () -> Unit,
+    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
+    onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val sectionPadding = if (isCompact) 12.dp else 16.dp
+
+    AutoSyncControls(
+        subtitleDelayMs = subtitleDelayMs,
+        selectedAddonSubtitle = selectedAddonSubtitle,
+        state = subtitleAutoSyncState,
+        isCompact = isCompact,
+        sectionPadding = sectionPadding,
+        colorScheme = colorScheme,
+        isPlaying = isPlaying,
+        currentPlaybackPositionMs = currentPlaybackPositionMs,
+        onSubtitleDelayChanged = onSubtitleDelayChanged,
+        onSubtitleDelayReset = onSubtitleDelayReset,
+        onCapture = onAutoSyncCapture,
+        onCueSelected = onAutoSyncCueSelected,
+        onReload = onAutoSyncReload,
+        onTogglePlayback = onTogglePlayback,
+    )
+}
+
+@Composable
 private fun AutoSyncControls(
+    subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     state: SubtitleAutoSyncUiState,
     isCompact: Boolean,
+    sectionPadding: androidx.compose.ui.unit.Dp,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    isPlaying: Boolean,
+    currentPlaybackPositionMs: Long,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
     onCapture: () -> Unit,
     onCueSelected: (SubtitleSyncCue) -> Unit,
     onReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
 ) {
-    val colorScheme = MaterialTheme.colorScheme
     val capturedPositionMs = state.capturedPositionMs
-    val nearestCues = if (capturedPositionMs == null) {
-        emptyList()
-    } else {
-        state.cues.sortedBy { abs(it.startTimeMs - capturedPositionMs) }.take(5)
+    val sortedCues = state.cues.sortedBy { it.startTimeMs }
+    val liveSubtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
+    val visibleCues = subtitleSyncCueWindow(sortedCues, liveSubtitlePositionMs)
+    val currentCue = sortedCues.lastOrNull { cue -> cue.startTimeMs <= liveSubtitlePositionMs }
+    val suggestedCue = capturedPositionMs?.let { position ->
+        sortedCues.minByOrNull { cue -> abs(cue.startTimeMs - position) }
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(colorScheme.surface.copy(alpha = 0.55f))
-            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-            .padding(if (isCompact) 10.dp else 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(sectionPadding),
+        verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 14.dp),
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
                 text = stringResource(Res.string.compose_player_auto_sync),
@@ -339,7 +367,17 @@ private fun AutoSyncControls(
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+            ) {
+                SmallActionPill(
+                    text = if (isPlaying) stringResource(Res.string.compose_action_pause)
+                    else stringResource(Res.string.action_play),
+                    enabled = selectedAddonSubtitle != null,
+                    selected = isPlaying,
+                    onClick = onTogglePlayback,
+                )
                 SmallActionPill(
                     text = stringResource(Res.string.compose_player_reload),
                     enabled = selectedAddonSubtitle != null,
@@ -378,34 +416,218 @@ private fun AutoSyncControls(
             )
         }
 
-        if (capturedPositionMs != null && nearestCues.isNotEmpty()) {
-            nearestCues.forEach { cue ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colorScheme.surfaceVariant.copy(alpha = 0.52f))
-                        .clickable { onCueSelected(cue) }
-                        .padding(horizontal = 8.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = formatCueTimestamp(cue.startTimeMs),
-                        color = colorScheme.primary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = cue.text,
-                        color = colorScheme.onSurface,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                    )
-                }
+        if (isCompact) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SubtitleSyncCuePreview(
+                    cues = visibleCues,
+                    anchorPositionMs = liveSubtitlePositionMs,
+                    currentCue = currentCue,
+                    suggestedCue = suggestedCue,
+                    isCompact = true,
+                    onCueSelected = onCueSelected,
+                )
+                SubtitleSyncDelayPanel(
+                    subtitleDelayMs = subtitleDelayMs,
+                    capturedPositionMs = capturedPositionMs,
+                    isCompact = true,
+                    onSubtitleDelayChanged = onSubtitleDelayChanged,
+                    onSubtitleDelayReset = onSubtitleDelayReset,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                SubtitleSyncCuePreview(
+                    cues = visibleCues,
+                    anchorPositionMs = liveSubtitlePositionMs,
+                    currentCue = currentCue,
+                    suggestedCue = suggestedCue,
+                    isCompact = false,
+                    modifier = Modifier.weight(1f),
+                    onCueSelected = onCueSelected,
+                )
+                SubtitleSyncDelayPanel(
+                    subtitleDelayMs = subtitleDelayMs,
+                    capturedPositionMs = capturedPositionMs,
+                    isCompact = false,
+                    modifier = Modifier.width(190.dp),
+                    onSubtitleDelayChanged = onSubtitleDelayChanged,
+                    onSubtitleDelayReset = onSubtitleDelayReset,
+                )
             }
         }
     }
+}
+
+@Composable
+private fun SubtitleSyncCuePreview(
+    cues: List<SubtitleSyncCue>,
+    anchorPositionMs: Long?,
+    currentCue: SubtitleSyncCue?,
+    suggestedCue: SubtitleSyncCue?,
+    isCompact: Boolean,
+    modifier: Modifier = Modifier,
+    onCueSelected: (SubtitleSyncCue) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val minHeight = if (isCompact) 220.dp else 300.dp
+    val maxHeight = if (isCompact) 420.dp else 520.dp
+    val listState = rememberLazyListState()
+    val currentIndex = cues.indexOf(currentCue)
+
+    LaunchedEffect(currentIndex, cues.size) {
+        if (currentIndex >= 0) {
+            listState.scrollToItem((currentIndex - 1).coerceAtLeast(0))
+        }
+    }
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = minHeight, max = maxHeight)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.86f))
+            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
+            .padding(if (isCompact) 8.dp else 10.dp),
+        state = listState,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (anchorPositionMs == null) {
+            item {
+                Text(
+                    text = stringResource(Res.string.compose_player_auto_sync_capture_hint),
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 12.sp,
+                )
+            }
+            return@LazyColumn
+        }
+
+        if (cues.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(Res.string.compose_player_no_subtitle_lines_found),
+                    color = Color.White.copy(alpha = 0.72f),
+                    fontSize = 12.sp,
+                )
+            }
+            return@LazyColumn
+        }
+
+        items(
+            items = cues,
+            key = { cue -> "${cue.startTimeMs}:${cue.text.hashCode()}" },
+        ) { cue ->
+            val current = cue == currentCue
+            val suggested = cue == suggestedCue
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when {
+                            current -> colorScheme.primary.copy(alpha = 0.30f)
+                            suggested -> colorScheme.primary.copy(alpha = 0.14f)
+                            else -> Color.Transparent
+                        }
+                    )
+                    .border(
+                        1.dp,
+                        when {
+                            current -> colorScheme.primary.copy(alpha = 0.92f)
+                            suggested -> colorScheme.primary.copy(alpha = 0.58f)
+                            else -> Color.White.copy(alpha = 0.08f)
+                        },
+                        RoundedCornerShape(8.dp),
+                    )
+                    .clickable { onCueSelected(cue) }
+                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = formatCueTimestamp(cue.startTimeMs),
+                    color = if (current || suggested) colorScheme.primary else Color.White.copy(alpha = 0.54f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = cue.text,
+                    color = Color.White,
+                    fontSize = if (isCompact) 11.sp else 12.sp,
+                    textDecoration = if (current) TextDecoration.Underline else null,
+                    maxLines = 2,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubtitleSyncDelayPanel(
+    subtitleDelayMs: Int,
+    capturedPositionMs: Long?,
+    isCompact: Boolean,
+    modifier: Modifier = Modifier,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val btnSize = if (isCompact) 28.dp else 32.dp
+    val btnRadius = if (isCompact) 14.dp else 16.dp
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(colorScheme.surface.copy(alpha = 0.68f))
+            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.72f), RoundedCornerShape(12.dp))
+            .padding(if (isCompact) 10.dp else 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.compose_player_subtitle_delay),
+            color = colorScheme.onSurface,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        StepperControl(
+            value = formatSubtitleDelay(subtitleDelayMs),
+            onMinus = {
+                onSubtitleDelayChanged((subtitleDelayMs - SUBTITLE_DELAY_STEP_MS).coerceAtLeast(SUBTITLE_DELAY_MIN_MS))
+            },
+            onPlus = {
+                onSubtitleDelayChanged((subtitleDelayMs + SUBTITLE_DELAY_STEP_MS).coerceAtMost(SUBTITLE_DELAY_MAX_MS))
+            },
+            buttonSize = btnSize,
+            buttonRadius = btnRadius,
+            minWidth = 82.dp,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            SmallActionPill(
+                text = stringResource(Res.string.compose_player_reset),
+                onClick = onSubtitleDelayReset,
+            )
+        }
+    }
+}
+
+private fun subtitleSyncCueWindow(
+    cues: List<SubtitleSyncCue>,
+    anchorPositionMs: Long?,
+): List<SubtitleSyncCue> {
+    if (anchorPositionMs == null || cues.isEmpty()) return emptyList()
+    val sortedCues = cues.sortedBy { it.startTimeMs }
+    val anchorIndex = sortedCues
+        .indexOfLast { it.startTimeMs <= anchorPositionMs }
+        .let { if (it >= 0) it else 0 }
+    val startIndex = (anchorIndex - 20).coerceAtLeast(0)
+    return sortedCues.drop(startIndex).take(41)
 }
 
 @Composable

@@ -21,20 +21,22 @@ object PlayerNextEpisodeRules {
         if (sortedEpisodes.isEmpty()) return null
 
         if (randomMode) {
-            val currentIndex = if (currentSeason != null && currentEpisode != null) {
-                sortedEpisodes.indexOfFirst {
-                    it.season == currentSeason && it.episode == currentEpisode
-                }
-            } else {
-                -1
+            val regularEpisodes = sortedEpisodes.filter { episode ->
+                val season = episode.season ?: return@filter false
+                val episodeNumber = episode.episode ?: return@filter false
+                season > 0 && episodeNumber > 0 && episode.available
             }
-            val currentEpisodeItem = sortedEpisodes.getOrNull(currentIndex)
-            val airedCandidates = sortedEpisodes.filter { hasEpisodeAired(it.released) }
+            val airedCandidates = regularEpisodes
+                .filter { hasEpisodeAired(it.released) }
+                .ifEmpty { regularEpisodes }
             val candidates = airedCandidates
                 .filterNot { episode ->
-                    currentEpisodeItem != null && episode.season == currentEpisodeItem.season && episode.episode == currentEpisodeItem.episode
+                    currentSeason != null &&
+                        currentEpisode != null &&
+                        episode.season == currentSeason &&
+                        episode.episode == currentEpisode
                 }
-                .ifEmpty { airedCandidates.ifEmpty { sortedEpisodes } }
+                .ifEmpty { airedCandidates.ifEmpty { regularEpisodes } }
 
             if (candidates.size == 1) return candidates.first()
 
@@ -48,7 +50,22 @@ object PlayerNextEpisodeRules {
                 })
             }.hashCode()
 
-            return candidates[Random(seed).nextInt(candidates.size)]
+            val random = Random(seed)
+            val episodesBySeason = candidates.groupBy { it.season }
+            val selectableSeasons = episodesBySeason.keys
+                .filterNotNull()
+                .filter { season -> episodesBySeason.getValue(season).isNotEmpty() }
+                .let { seasons ->
+                    seasons
+                        .filter { season -> currentSeason == null || season != currentSeason }
+                        .ifEmpty { seasons }
+                }
+                .sorted()
+            if (selectableSeasons.isEmpty()) return null
+
+            val selectedSeason = selectableSeasons[random.nextInt(selectableSeasons.size)]
+            val seasonEpisodes = episodesBySeason.getValue(selectedSeason).sortedBy { it.episode ?: Int.MAX_VALUE }
+            return seasonEpisodes[random.nextInt(seasonEpisodes.size)]
         }
 
         if (currentSeason == null || currentEpisode == null) return null
