@@ -142,5 +142,13 @@ class CloudStreamRepositoryParserTest {
         )
         assertEquals(listOf("s1e1", "s1e2", "s2e1", "unknown"), sorted.map { it.data })
     }
-}
 
+    @Test
+    fun cloudStreamRouteRoundTripsOpaqueProviderData() {
+        val provider = "https://example.com/repo.json#Provider"
+        val data = "https://service.example/watch/a:b?token=public"
+        val route = cloudStreamRouteId(provider, data)
+        assertEquals(CloudStreamRouteData(provider, data), parseCloudStreamRouteId(route))
+        assertNull(parseCloudStreamRouteId("cloudstream:broken"))
+    }
+}

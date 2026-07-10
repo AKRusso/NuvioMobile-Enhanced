@@ -14,6 +14,9 @@ import com.nuvio.app.features.catalog.fetchCatalogPage
 import com.nuvio.app.features.catalog.mergeCatalogItems
 import com.nuvio.app.features.catalog.nextCatalogPaginationState
 import com.nuvio.app.features.catalog.supportsPagination
+import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.MetaPreview
@@ -56,8 +59,10 @@ object SearchRepository {
             return
         }
 
+        CloudStreamRepository.initialize()
+        val cloudPlugins = CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable)
         val activeAddons = addons.enabledAddons().filter { it.manifest != null }
-        if (activeAddons.isEmpty()) {
+        if (activeAddons.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
             searchTmdbOnly(normalizedQuery, SearchEmptyStateReason.NoActiveAddons)
@@ -68,7 +73,7 @@ object SearchRepository {
             addons = activeAddons,
             query = normalizedQuery,
         )
-        if (requests.isEmpty()) {
+        if (requests.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
             searchTmdbOnly(normalizedQuery, SearchEmptyStateReason.NoSearchCatalogs)
@@ -79,6 +84,10 @@ object SearchRepository {
             append(normalizedQuery.lowercase())
             append('|')
             append(HomeCatalogSettingsRepository.snapshot().hideUnreleasedContent)
+            append('|')
+            append(CloudStreamRepository.uiState.value.registryRevision)
+            append('|')
+            append(cloudPlugins.joinToString(separator = ",") { it.metadata.id.value })
             append('|')
             append(
                 requests.joinToString(separator = "|") { request ->
@@ -142,14 +151,16 @@ object SearchRepository {
 
             val completedResults = results.filterNotNull()
             val sections = results.orderedSections()
+            val cloudSections = cloudSearchSections(normalizedQuery, cloudPlugins)
             val firstFailure = completedResults.firstNotNullOfOrNull { it.error?.message }
             val allFailed = completedResults.isNotEmpty() && completedResults.all { it.error != null }
-            val fallbackSections = if (sections.isEmpty() || allFailed) {
+            val providerSections = sections + cloudSections
+            val fallbackSections = if (providerSections.isEmpty() || (allFailed && cloudSections.isEmpty())) {
                 tmdbSearchSection(normalizedQuery)?.let(::listOf).orEmpty()
             } else {
                 emptyList()
             }
-            val finalSections = sections + fallbackSections
+            val finalSections = providerSections + fallbackSections
 
             _uiState.value = SearchUiState(
                 isLoading = false,
@@ -162,6 +173,35 @@ object SearchRepository {
                 errorMessage = if (allFailed) firstFailure else null,
             )
         }
+    }
+
+    private suspend fun cloudSearchSections(
+        query: String,
+        plugins: List<CloudStreamPluginItem>,
+    ): List<HomeCatalogSection> = plugins.mapNotNull { plugin ->
+        val result = CloudStreamRepository.search(query, plugin.metadata.id.value)
+            .firstOrNull()
+            ?.getOrNull()
+            .orEmpty()
+        if (result.isEmpty()) return@mapNotNull null
+        val previews = result.map { it.toMetaPreview() }
+        val contentType = result.first().type.nuvioType
+        HomeCatalogSection(
+            key = "cloudstream:${plugin.metadata.id.storageKey}:search:${query.lowercase()}",
+            title = "${plugin.metadata.name} · CloudStream",
+            subtitle = plugin.metadata.language?.uppercase() ?: "CloudStream",
+            addonName = plugin.metadata.name,
+            target = CatalogTarget.CloudStream(
+                providerId = plugin.metadata.id.value,
+                categoryName = "search",
+                searchQuery = query,
+                contentType = contentType,
+                supportsPagination = false,
+            ),
+            items = previews,
+            availableItemCount = previews.size,
+            hasMore = false,
+        )
     }
 
     private fun searchTmdbOnly(query: String, fallbackReason: SearchEmptyStateReason) {

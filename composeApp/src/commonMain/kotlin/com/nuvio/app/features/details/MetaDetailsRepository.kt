@@ -6,6 +6,10 @@ import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.buildAddonResourceUrl
 import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.addons.httpGetText
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRouteData
+import com.nuvio.app.features.cloudstream.parseCloudStreamRouteId
+import com.nuvio.app.features.cloudstream.toMetaDetails
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.filterReleasedItems
 import com.nuvio.app.features.mdblist.MdbListMetadataService
@@ -50,6 +54,10 @@ object MetaDetailsRepository {
     fun load(type: String, id: String) {
         log.d { "load() called — type=$type id=$id" }
         val requestKey = "$type:$id"
+        parseCloudStreamRouteId(id)?.let { route ->
+            loadCloudStream(requestKey = requestKey, route = route)
+            return
+        }
         val currentState = _uiState.value
         val mdbListSettings = MdbListSettingsRepository.snapshot()
         val metaScreenSettingsFingerprint = buildMetaScreenSettingsFingerprint(mdbListSettings)
@@ -197,6 +205,15 @@ object MetaDetailsRepository {
         val requestKey = "$type:$id"
         cachedMetaByRequestKey[requestKey]?.let { return it.baseMeta }
 
+        parseCloudStreamRouteId(id)?.let { route ->
+            return withTimeoutOrNull(FETCH_TIMEOUT_MS) {
+                CloudStreamRepository.load(route.providerId, route.data)
+                    .getOrNull()
+                    ?.toMetaDetails()
+                    ?.also { cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = it) }
+            }
+        }
+
         val metaLookupId = resolveMetaLookupId(itemId = id, itemType = type)
         val manifests = findReadyMetaManifests(type = type, id = metaLookupId)
 
@@ -219,6 +236,38 @@ object MetaDetailsRepository {
     private const val METADATA_PROVIDER_READY_TIMEOUT_MS = 10_000L
     private const val TMDB_ENRICH_TIMEOUT_MS = 5_000L
     private const val MDBLIST_ENRICH_TIMEOUT_MS = 5_000L
+
+    private fun loadCloudStream(
+        requestKey: String,
+        route: CloudStreamRouteData,
+    ) {
+        cachedMetaByRequestKey[requestKey]?.let { cached ->
+            _uiState.value = MetaDetailsUiState(meta = cached.baseMeta)
+            activeRequestKey = requestKey
+            return
+        }
+        if (_uiState.value.isLoading && activeRequestKey == requestKey) return
+        activeRequestKey = requestKey
+        _uiState.value = MetaDetailsUiState(isLoading = true)
+        scope.launch {
+            CloudStreamRepository.load(route.providerId, route.data)
+                .fold(
+                    onSuccess = { loaded ->
+                        val meta = loaded.toMetaDetails()
+                        cachedMetaByRequestKey[requestKey] = CachedMetaEntry(baseMeta = meta)
+                        _uiState.value = MetaDetailsUiState(meta = meta)
+                        activeRequestKey = requestKey
+                    },
+                    onFailure = { error ->
+                        log.w(error) { "CloudStream detail load failed provider=${route.providerId}" }
+                        _uiState.value = MetaDetailsUiState(
+                            errorMessage = error.message ?: "CloudStream detail could not be loaded",
+                        )
+                        activeRequestKey = null
+                    },
+                )
+        }
+    }
 
     private suspend fun tryFetchMeta(
         manifest: AddonManifest,

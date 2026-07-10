@@ -28,6 +28,14 @@ sealed interface CatalogTarget {
         override val contentType: String,
         override val supportsPagination: Boolean = false,
     ) : CatalogTarget
+
+    data class CloudStream(
+        val providerId: String,
+        val categoryName: String,
+        val searchQuery: String? = null,
+        override val contentType: String,
+        override val supportsPagination: Boolean = false,
+    ) : CatalogTarget
 }
 
 @Serializable
@@ -35,4 +43,5 @@ enum class CatalogTargetKind {
     ADDON,
     LIBRARY,
     COLLECTION_SOURCE,
+    CLOUDSTREAM,
 }
