@@ -242,6 +242,22 @@ actual suspend fun httpGetTextWithHeaders(
         headers = mapOf("Accept" to "application/json") + headers,
     )
 
+actual suspend fun httpGetBytesWithHeaders(
+    url: String,
+    headers: Map<String, String>,
+): ByteArray = withContext(Dispatchers.IO) {
+    val builder = Request.Builder().url(url)
+    headers.withoutAcceptEncoding().forEach { (key, value) ->
+        builder.header(key, value)
+    }
+    addonHttpClient().newCall(builder.get().build()).execute().use { response ->
+        if (!response.isSuccessful) {
+            error(runBlocking { getString(Res.string.network_request_failed_http, response.code) })
+        }
+        response.body.bytes()
+    }
+}
+
 actual suspend fun httpPostJsonWithHeaders(
     url: String,
     body: String,

@@ -9,6 +9,7 @@ import com.nuvio.app.core.sync.putSyncOriginClientId
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionRepository
+import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
@@ -204,6 +205,9 @@ object ProfileRepository {
         if (com.nuvio.app.core.build.AppFeaturePolicy.pluginsEnabled) {
             runProfileChangeStep("plugins") {
                 PluginRepository.onProfileChanged(profileIndex)
+            }
+            runProfileChangeStep("cloudstream") {
+                CloudStreamRepository.onProfileChanged(profileIndex)
             }
         }
         runProfileChangeStep("theme") {
