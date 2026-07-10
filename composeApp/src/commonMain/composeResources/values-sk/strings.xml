@@ -1922,4 +1922,12 @@
     <string name="settings_playback_libmpv_yuv420p">Kompatibilita libmpv YUV420P</string>
     <string name="settings_playback_libmpv_yuv420p_description">Vynútiť výstup YUV420P pre zariadenia s problémami renderera alebo farieb.</string>
     <string name="streams_loading_skip_segments">Načítavajú sa segmenty preskočenia…</string>
+    <string name="streams_pin_source_confirm">Pripnúť</string>
+    <string name="streams_pin_source_message">Presunúť %1$s na začiatok zoznamu zdrojov?</string>
+    <string name="streams_pin_source_title">Pripnúť zdroj?</string>
+    <string name="streams_unpin_source_confirm">Odstrániť</string>
+    <string name="streams_unpin_source_message">Odstrániť %1$s z pripnutých zdrojov?</string>
+    <string name="streams_unpin_source_title">Odstrániť pripnutý zdroj?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Pripnuté streamovacie zdroje</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Spýta sa pred pripnutím vybraného streamovacieho zdroja na začiatok výberu.</string>
 </resources>

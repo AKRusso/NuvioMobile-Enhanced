@@ -1892,4 +1892,12 @@
     <string name="trakt_error_add_list_failed">Добавянето към списък в Trakt не бе успешно</string>
     <string name="trakt_error_missing_ids">Липсват съвместими Trakt идентификатори</string>
     <string name="trakt_error_empty_response">Празно тяло на отговора</string>
+    <string name="streams_pin_source_confirm">Закачи</string>
+    <string name="streams_pin_source_message">Да се премести ли %1$s най-горе в списъка с източници?</string>
+    <string name="streams_pin_source_title">Закачане на източник?</string>
+    <string name="streams_unpin_source_confirm">Премахни</string>
+    <string name="streams_unpin_source_message">Да се премахне ли %1$s от закачените източници?</string>
+    <string name="streams_unpin_source_title">Премахване на закачен източник?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Закачени stream източници</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Пита преди избран stream източник да бъде закачен най-горе в избора.</string>
 </resources>

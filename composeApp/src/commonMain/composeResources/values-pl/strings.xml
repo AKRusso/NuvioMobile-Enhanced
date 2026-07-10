@@ -1869,4 +1869,12 @@
     <string name="updates_github_api_error">Błąd API GitHub releases: %1$d</string>
     <string name="updates_no_channel_release">Nie opublikowano jeszcze żadnej aktualizacji.</string>
     <string name="updates_release_missing_title">Wydanie nie ma tagu ani nazwy</string>
+    <string name="streams_pin_source_confirm">Przypnij</string>
+    <string name="streams_pin_source_message">Przenieść %1$s na początek listy źródeł?</string>
+    <string name="streams_pin_source_title">Przypiąć źródło?</string>
+    <string name="streams_unpin_source_confirm">Usuń</string>
+    <string name="streams_unpin_source_message">Usunąć %1$s z przypiętych źródeł?</string>
+    <string name="streams_unpin_source_title">Usunąć przypięte źródło?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Przypięte źródła streamów</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Pyta przed przypięciem wybranego źródła streamu na początku listy wyboru.</string>
 </resources>

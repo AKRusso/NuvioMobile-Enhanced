@@ -1923,4 +1923,12 @@
     <string name="player_torrent_starting_engine">Spouštění enginu P2P…</string>
     <string name="player_error_failed_start_torrent">Nepodařilo se spustit torrent: %1$s</string>
     <string name="player_error_torrent">Chyba torrentu: %1$s</string>
+    <string name="streams_pin_source_confirm">Připnout</string>
+    <string name="streams_pin_source_message">Přesunout %1$s na začátek seznamu zdrojů?</string>
+    <string name="streams_pin_source_title">Připnout zdroj?</string>
+    <string name="streams_unpin_source_confirm">Odebrat</string>
+    <string name="streams_unpin_source_message">Odebrat %1$s z připnutých zdrojů?</string>
+    <string name="streams_unpin_source_title">Odebrat připnutý zdroj?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Připnuté streamovací zdroje</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Zeptá se před připnutím vybraného streamovacího zdroje na začátek výběru.</string>
 </resources>

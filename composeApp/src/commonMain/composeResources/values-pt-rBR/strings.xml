@@ -1341,4 +1341,12 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
+    <string name="streams_pin_source_confirm">Fixar</string>
+    <string name="streams_pin_source_message">Mover %1$s para o topo da lista de fontes?</string>
+    <string name="streams_pin_source_title">Fixar fonte?</string>
+    <string name="streams_unpin_source_confirm">Remover</string>
+    <string name="streams_unpin_source_message">Remover %1$s das fontes fixadas?</string>
+    <string name="streams_unpin_source_title">Remover fonte fixada?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Fontes de stream fixadas</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Pergunta antes de fixar uma fonte de stream selecionada no topo do seletor.</string>
 </resources>

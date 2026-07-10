@@ -1519,4 +1519,12 @@
   <string name="supporters_contributors_donation_progress_complete">Coperto. Qualsiasi supporto ulteriore andrà allo sviluppo.</string>
   <string name="supporters_contributors_donation_progress_remaining">Dopo il 100%%, eventuale supporto in più andrà allo sviluppo.</string>
   <string name="supporters_contributors_donate_button">Dona a Nuvio</string>
+    <string name="streams_pin_source_confirm">Fissa</string>
+    <string name="streams_pin_source_message">Spostare %1$s in cima all'elenco delle fonti?</string>
+    <string name="streams_pin_source_title">Fissare fonte?</string>
+    <string name="streams_unpin_source_confirm">Rimuovi</string>
+    <string name="streams_unpin_source_message">Rimuovere %1$s dalle fonti fissate?</string>
+    <string name="streams_unpin_source_title">Rimuovere fonte fissata?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Fonti streaming fissate</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Chiede conferma prima di fissare una fonte streaming selezionata in cima al selettore.</string>
 </resources>

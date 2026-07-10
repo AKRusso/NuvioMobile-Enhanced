@@ -1442,4 +1442,12 @@
     <plurals name="cw_airs_in_days_short">
         <item quantity="other">%1$d hari lagi</item>
     </plurals>
+    <string name="streams_pin_source_confirm">Sematkan</string>
+    <string name="streams_pin_source_message">Pindahkan %1$s ke bagian atas daftar sumber?</string>
+    <string name="streams_pin_source_title">Sematkan sumber?</string>
+    <string name="streams_unpin_source_confirm">Hapus</string>
+    <string name="streams_unpin_source_message">Hapus %1$s dari sumber yang disematkan?</string>
+    <string name="streams_unpin_source_title">Hapus sumber yang disematkan?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Sumber stream yang disematkan</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Meminta konfirmasi sebelum menyematkan sumber stream yang dipilih ke bagian atas pemilih.</string>
 </resources>

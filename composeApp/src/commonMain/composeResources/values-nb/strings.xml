@@ -1368,4 +1368,12 @@
         <item quantity="one">Om %d dag</item>
         <item quantity="other">Om %d dager</item>
     </plurals>
+    <string name="streams_pin_source_confirm">Fest</string>
+    <string name="streams_pin_source_message">Flytte %1$s til toppen av kildelisten?</string>
+    <string name="streams_pin_source_title">Feste kilde?</string>
+    <string name="streams_unpin_source_confirm">Fjern</string>
+    <string name="streams_unpin_source_message">Fjerne %1$s fra festede kilder?</string>
+    <string name="streams_unpin_source_title">Fjerne festet kilde?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Festede streamkilder</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Spør før en valgt streamkilde festes øverst i velgeren.</string>
 </resources>

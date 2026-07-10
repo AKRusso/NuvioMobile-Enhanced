@@ -1918,4 +1918,12 @@
     <string name="player_torrent_starting_engine">P2Pエンジンを起動中…</string>
     <string name="player_error_failed_start_torrent">トレントの開始に失敗しました：%1$s</string>
     <string name="player_error_torrent">トレントエラー：%1$s</string>
+    <string name="streams_pin_source_confirm">固定</string>
+    <string name="streams_pin_source_message">%1$s をソース一覧の先頭に移動しますか？</string>
+    <string name="streams_pin_source_title">ソースを固定しますか？</string>
+    <string name="streams_unpin_source_confirm">削除</string>
+    <string name="streams_unpin_source_message">%1$s を固定済みソースから削除しますか？</string>
+    <string name="streams_unpin_source_title">固定済みソースを削除しますか？</string>
+    <string name="nuvio_enhanced_source_pinning_title">固定済みストリームソース</string>
+    <string name="nuvio_enhanced_source_pinning_desc">選択したストリームソースをピッカーの先頭に固定する前に確認します。</string>
 </resources>

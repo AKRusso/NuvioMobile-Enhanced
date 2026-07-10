@@ -1212,4 +1212,12 @@
     </plurals>
     <string name="cw_new_episode">Neue Folge</string>
     <string name="cw_new_season">Neue Staffel</string>
+    <string name="streams_pin_source_confirm">Anheften</string>
+    <string name="streams_pin_source_message">%1$s an den Anfang der Quellenliste verschieben?</string>
+    <string name="streams_pin_source_title">Quelle anheften?</string>
+    <string name="streams_unpin_source_confirm">Entfernen</string>
+    <string name="streams_unpin_source_message">%1$s aus angehefteten Stream-Quellen entfernen?</string>
+    <string name="streams_unpin_source_title">Angeheftete Quelle entfernen?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Angeheftete Stream-Quellen</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Fragt nach, bevor eine ausgewählte Stream-Quelle oben im Auswahlmenü angeheftet wird.</string>
 </resources>

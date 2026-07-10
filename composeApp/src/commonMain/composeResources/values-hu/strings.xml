@@ -1917,4 +1917,12 @@
         <item quantity="one">%d cím</item>
         <item quantity="other">%d cím</item>
     </plurals>
+    <string name="streams_pin_source_confirm">Kitűzés</string>
+    <string name="streams_pin_source_message">%1$s áthelyezése a forráslista elejére?</string>
+    <string name="streams_pin_source_title">Forrás kitűzése?</string>
+    <string name="streams_unpin_source_confirm">Eltávolítás</string>
+    <string name="streams_unpin_source_message">%1$s eltávolítása a kitűzött források közül?</string>
+    <string name="streams_unpin_source_title">Kitűzött forrás eltávolítása?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Kitűzött streamforrások</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Rákérdez, mielőtt a kiválasztott streamforrást a választó elejére tűzi.</string>
 </resources>

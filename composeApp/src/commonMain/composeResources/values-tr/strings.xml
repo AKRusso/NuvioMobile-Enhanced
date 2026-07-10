@@ -1774,4 +1774,12 @@
     <string name="plugins_repository_filter_desc">Repolar arasında hızlı geçiş yap, sonra tüm listeyi kaydırmadan görünen provider'ları aç veya kapat.</string>
     <string name="plugins_repository_filter_enable_visible">Görünenleri aç</string>
     <string name="plugins_repository_filter_disable_visible">Görünenleri kapat</string>
+    <string name="streams_pin_source_confirm">Sabitle</string>
+    <string name="streams_pin_source_message">%1$s kaynak listesinin en üstüne taşınsın mı?</string>
+    <string name="streams_pin_source_title">Kaynak sabitlensin mi?</string>
+    <string name="streams_unpin_source_confirm">Kaldır</string>
+    <string name="streams_unpin_source_message">%1$s sabitlenmiş kaynaklardan kaldırılsın mı?</string>
+    <string name="streams_unpin_source_title">Sabitlenmiş kaynak kaldırılsın mı?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Sabitlenmiş stream kaynakları</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Seçilen stream kaynağını seçicinin en üstüne sabitlemeden önce sorar.</string>
 </resources>

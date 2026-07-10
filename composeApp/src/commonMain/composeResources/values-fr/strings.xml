@@ -1941,4 +1941,12 @@
         <item quantity="one">%d titre</item>
         <item quantity="other">%d titres</item>
     </plurals>
+    <string name="streams_pin_source_confirm">Épingler</string>
+    <string name="streams_pin_source_message">Déplacer %1$s en haut de la liste des sources ?</string>
+    <string name="streams_pin_source_title">Épingler la source ?</string>
+    <string name="streams_unpin_source_confirm">Retirer</string>
+    <string name="streams_unpin_source_message">Retirer %1$s des sources épinglées ?</string>
+    <string name="streams_unpin_source_title">Retirer la source épinglée ?</string>
+    <string name="nuvio_enhanced_source_pinning_title">Sources de streaming épinglées</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Demande confirmation avant d’épingler une source de streaming sélectionnée en haut du sélecteur.</string>
 </resources>
