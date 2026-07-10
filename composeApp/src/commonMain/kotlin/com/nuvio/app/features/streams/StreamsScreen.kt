@@ -74,7 +74,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
@@ -978,7 +977,6 @@ private fun FilterChip(
                     fontSize = 14.sp,
                     fontWeight = if (isSelected || isPinned) FontWeight.Bold else FontWeight.SemiBold,
                     letterSpacing = 0.1.sp,
-                    textDecoration = if (isPinned) TextDecoration.Underline else TextDecoration.None,
                 ),
                 color = contentColor,
                 maxLines = 1,

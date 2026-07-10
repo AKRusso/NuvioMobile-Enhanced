@@ -45,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -776,9 +775,7 @@ private fun PluginRepositoryFilterChip(
                 }
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        textDecoration = if (isPinned) TextDecoration.Underline else TextDecoration.None,
-                    ),
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -822,7 +819,6 @@ private fun PinnedSourceLabel(
             text = text,
             style = style.copy(
                 fontWeight = if (pinned) FontWeight.Bold else style.fontWeight,
-                textDecoration = if (pinned) TextDecoration.Underline else TextDecoration.None,
             ),
             color = color,
             maxLines = maxLines,
