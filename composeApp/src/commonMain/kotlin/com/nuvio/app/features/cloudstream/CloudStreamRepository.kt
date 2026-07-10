@@ -12,6 +12,7 @@ data class CloudStreamPluginItem(
     val metadata: CloudStreamPluginMetadata,
     val compatibility: CloudStreamCompatibility,
     val installedVersion: Int? = null,
+    val installedAtEpochMs: Long = 0L,
     val enabled: Boolean = false,
     val verified: Boolean = false,
     val isInstalling: Boolean = false,

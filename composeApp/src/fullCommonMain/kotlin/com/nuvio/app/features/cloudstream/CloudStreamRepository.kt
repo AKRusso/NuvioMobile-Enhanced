@@ -6,6 +6,7 @@ import com.nuvio.app.features.addons.httpGetText
 import com.nuvio.app.features.plugins.currentEpochMillis
 import com.nuvio.app.features.profiles.ProfileRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -101,27 +102,31 @@ actual object CloudStreamRepository {
             )
         }
         lateinit var job: Job
-        job = scope.launch {
-            runCatching { fetchRepository(normalizedUrl) }
-                .fold(
-                    onSuccess = { (repository, plugins) -> applyRepositoryRefresh(repository, plugins) },
-                    onFailure = { error ->
-                        log.w(error) { "CloudStream repository refresh failed url=$normalizedUrl" }
-                        _uiState.update { current ->
-                            current.copy(
-                                repositories = current.repositories.map { item ->
-                                    if (item.manifest.sourceUrl == normalizedUrl) {
-                                        item.copy(isRefreshing = false, errorMessage = error.message ?: "Refresh failed")
-                                    } else item
-                                },
-                            )
-                        }
-                    },
-                )
-            persist()
-            if (refreshJobs[normalizedUrl] === job) refreshJobs.remove(normalizedUrl)
+        job = scope.launch(start = CoroutineStart.LAZY) {
+            try {
+                runCatching { fetchRepository(normalizedUrl) }
+                    .fold(
+                        onSuccess = { (repository, plugins) -> applyRepositoryRefresh(repository, plugins) },
+                        onFailure = { error ->
+                            log.w(error) { "CloudStream repository refresh failed url=$normalizedUrl" }
+                            _uiState.update { current ->
+                                current.copy(
+                                    repositories = current.repositories.map { item ->
+                                        if (item.manifest.sourceUrl == normalizedUrl) {
+                                            item.copy(isRefreshing = false, errorMessage = error.message ?: "Refresh failed")
+                                        } else item
+                                    },
+                                )
+                            }
+                        },
+                    )
+                persist()
+            } finally {
+                if (refreshJobs[normalizedUrl] === job) refreshJobs.remove(normalizedUrl)
+            }
         }
         refreshJobs[normalizedUrl] = job
+        job.start()
     }
 
     actual fun refreshAll() {
@@ -175,7 +180,13 @@ actual object CloudStreamRepository {
             current.copy(
                 plugins = current.plugins.map { item ->
                     if (item.metadata.id.value == pluginId) {
-                        item.copy(installedVersion = null, enabled = false, verified = false, errorMessage = null)
+                        item.copy(
+                            installedVersion = null,
+                            installedAtEpochMs = 0L,
+                            enabled = false,
+                            verified = false,
+                            errorMessage = null,
+                        )
                     } else item
                 },
                 registryRevision = current.registryRevision + 1,
@@ -233,6 +244,7 @@ actual object CloudStreamRepository {
             CloudStreamPlatformStorage.savePackageAtomically(item.metadata.id.storageKey, bytes)
             val installed = item.copy(
                 installedVersion = item.metadata.version,
+                installedAtEpochMs = currentEpochMillis(),
                 enabled = item.enabled && verified && item.compatibility.isRunnable,
                 verified = verified,
                 isInstalling = false,
@@ -339,6 +351,7 @@ actual object CloudStreamRepository {
                 metadata = metadata,
                 compatibility = compatibility,
                 installedVersion = plugin.installedVersion.takeIf { packageExists },
+                installedAtEpochMs = plugin.installedAtEpochMs.takeIf { packageExists } ?: 0L,
                 enabled = plugin.enabled && packageExists && plugin.verified && compatibility.isRunnable && metadata.status.canInstall,
                 verified = plugin.verified && packageExists,
             )
@@ -389,7 +402,7 @@ actual object CloudStreamRepository {
         fileHash = metadata.fileHash?.wireValue,
         enabled = enabled,
         verified = verified,
-        installedAtEpochMs = if (installedVersion != null) currentEpochMillis() else 0L,
+        installedAtEpochMs = installedAtEpochMs.takeIf { installedVersion != null } ?: 0L,
     )
 
     private fun StoredCloudStreamPlugin.toMetadata(): CloudStreamPluginMetadata = CloudStreamPluginMetadata(
