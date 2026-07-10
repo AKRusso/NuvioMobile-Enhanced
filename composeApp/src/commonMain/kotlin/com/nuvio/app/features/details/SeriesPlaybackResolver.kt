@@ -2,7 +2,6 @@ package com.nuvio.app.features.details
 
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watched.normalizeWatchedMarkedAtEpochMs
-import com.nuvio.app.features.watched.releasedPlayableEpisodes
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watching.domain.WatchingCompletedEpisode
 import com.nuvio.app.features.watching.domain.WatchingContentRef
@@ -18,7 +17,6 @@ import com.nuvio.app.features.watching.domain.playLabel
 import com.nuvio.app.features.watching.domain.resumeLabel
 import com.nuvio.app.features.watching.domain.shouldSurfaceNextEpisode
 import com.nuvio.app.features.watching.domain.upNextLabel
-import kotlin.random.Random
 
 internal fun MetaDetails.sortedPlayableEpisodes(): List<MetaVideo> =
     videos
@@ -52,60 +50,6 @@ internal fun MetaDetails.firstReleasedPlayableEpisode(todayIsoDate: String): Met
     sortedPlayableEpisodes().firstOrNull { video ->
         video.isReleasedBy(todayIsoDate)
     }
-
-internal fun MetaDetails.randomReleasedPlayableEpisode(
-    todayIsoDate: String,
-    currentSeason: Int? = null,
-    currentEpisode: Int? = null,
-): MetaVideo? {
-    val releasedEpisodes = releasedPlayableEpisodes(todayIsoDate)
-    if (releasedEpisodes.isEmpty()) return null
-
-    val currentPlaybackVideoId = if (currentSeason != null && currentEpisode != null) {
-        buildPlaybackVideoId(
-            content = WatchingContentRef(type = type, id = id),
-            seasonNumber = currentSeason,
-            episodeNumber = currentEpisode,
-        )
-    } else {
-        null
-    }
-
-    val candidates = releasedEpisodes
-        .filterNot { episode ->
-            currentPlaybackVideoId != null &&
-                buildPlaybackVideoId(
-                    content = WatchingContentRef(type = type, id = id),
-                    seasonNumber = episode.season,
-                    episodeNumber = episode.episode,
-                    fallbackVideoId = episode.id,
-                ) == currentPlaybackVideoId
-        }
-        .ifEmpty { releasedEpisodes }
-
-    if (candidates.size == 1) return candidates.first()
-
-    val seed = buildString {
-        append(id)
-        append(':')
-        append(type)
-        append(':')
-        append(currentSeason ?: -1)
-        append(':')
-        append(currentEpisode ?: -1)
-        append(':')
-        append(candidates.joinToString("|") { episode ->
-            buildPlaybackVideoId(
-                content = WatchingContentRef(type = type, id = id),
-                seasonNumber = episode.season,
-                episodeNumber = episode.episode,
-                fallbackVideoId = episode.id,
-            )
-        })
-    }.hashCode()
-
-    return candidates[Random(seed).nextInt(candidates.size)]
-}
 
 internal fun MetaDetails.nextReleasedEpisodeAfter(
     completedEntry: WatchProgressEntry,

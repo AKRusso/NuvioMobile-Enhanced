@@ -56,6 +56,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.build.AppVersionConfig
 import com.nuvio.app.core.network.DnsOverHttpsProvider
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
@@ -126,6 +128,8 @@ private fun NuvioEnhancedSettingsPageContent(
     val backupImportFailedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_import_failed)
     val backupCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_copied)
     val noEmailAppMessage = stringResource(Res.string.nuvio_enhanced_toast_no_email_app)
+    val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
+        AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
 
     fun isNew(feature: NuvioEnhancedFeature): Boolean = settings.isNew(feature)
     fun markSeen(feature: NuvioEnhancedFeature) {
@@ -286,19 +290,6 @@ private fun NuvioEnhancedSettingsPageContent(
                         NuvioEnhancedSettingsRepository.setLibraryHealthEnabled(it)
                     },
                 )
-                SettingsGroupDivider(isTablet = isTablet)
-                SettingsSwitchRow(
-                    title = stringResource(Res.string.nuvio_enhanced_spotlight_title),
-                    description = stringResource(Res.string.nuvio_enhanced_spotlight_desc),
-                    checked = settings.nuvioSpotlightEnabled,
-                    enabled = settings.enhancedHomeFeaturesEnabled,
-                    isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.NuvioSpotlight),
-                    onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.NuvioSpotlight)
-                        NuvioEnhancedSettingsRepository.setNuvioSpotlightEnabled(it)
-                    },
-                )
             }
         }
 
@@ -328,6 +319,30 @@ private fun NuvioEnhancedSettingsPageContent(
                     onCheckedChange = {
                         markSeen(NuvioEnhancedFeature.ContentWarnings)
                         NuvioEnhancedSettingsRepository.setContentWarningsEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_player_status_overlay_title),
+                    description = stringResource(Res.string.nuvio_enhanced_player_status_overlay_desc),
+                    checked = settings.playerStatusOverlayEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.PlayerStatusOverlay),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.PlayerStatusOverlay)
+                        NuvioEnhancedSettingsRepository.setPlayerStatusOverlayEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
+                    description = stringResource(Res.string.settings_continue_watching_ready_badge_description),
+                    checked = settings.showContinueWatchingReadyBadge,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HomeExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HomeExperienceControls)
+                        NuvioEnhancedSettingsRepository.setShowContinueWatchingReadyBadge(it)
                     },
                 )
             }
@@ -387,6 +402,58 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_poster_hero_title),
+                    description = stringResource(Res.string.nuvio_enhanced_poster_hero_desc),
+                    checked = settings.posterArtHeroEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setPosterArtHeroEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_showcase_hero_title),
+                    description = stringResource(Res.string.nuvio_enhanced_showcase_hero_desc),
+                    checked = settings.streamingShowcaseHeroEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setStreamingShowcaseHeroEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_title),
+                    description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_desc),
+                    checked = settings.streamingShowcaseVideoPreviewEnabled,
+                    enabled = settings.streamingShowcaseHeroEnabled && homeHeroVideoPreviewSupported,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setStreamingShowcaseVideoPreviewEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_title),
+                    description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_desc),
+                    checked = settings.streamingShowcaseVideoPreviewSoundEnabled,
+                    enabled = settings.streamingShowcaseHeroEnabled &&
+                        settings.streamingShowcaseVideoPreviewEnabled &&
+                        homeHeroVideoPreviewSupported,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setStreamingShowcaseVideoPreviewSoundEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_compact_hero_title),
                     description = stringResource(Res.string.nuvio_enhanced_compact_hero_desc),
                     checked = settings.compactHeroMetadata,
@@ -407,6 +474,18 @@ private fun NuvioEnhancedSettingsPageContent(
                     onCheckedChange = {
                         markSeen(NuvioEnhancedFeature.HeroExperienceControls)
                         NuvioEnhancedSettingsRepository.setShowHeroOverview(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_hero_refresh_haptics_title),
+                    description = stringResource(Res.string.nuvio_enhanced_hero_refresh_haptics_desc),
+                    checked = settings.heroRefreshHapticsEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setHeroRefreshHapticsEnabled(it)
                     },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
@@ -502,18 +581,6 @@ private fun NuvioEnhancedSettingsPageContent(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                SettingsSwitchRow(
-                    title = stringResource(Res.string.nuvio_enhanced_read_card_title),
-                    description = stringResource(Res.string.nuvio_enhanced_read_card_desc),
-                    checked = settings.nuvioReadingEnabled,
-                    isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.NuvioReading),
-                    onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.NuvioReading)
-                        NuvioEnhancedSettingsRepository.setNuvioReadingEnabled(it)
-                    },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_meta_random_episode_button),
                     description = stringResource(Res.string.settings_meta_random_episode_button_description),
@@ -1162,14 +1229,17 @@ private fun LatestChangesCard(
                 }
             }
             listOf(
-                stringResource(Res.string.nuvio_enhanced_latest_change_upstream_019),
-                stringResource(Res.string.nuvio_enhanced_latest_change_plugins),
-                stringResource(Res.string.nuvio_enhanced_latest_change_hero_artwork),
-                stringResource(Res.string.nuvio_enhanced_latest_change_hero_cleanup),
-                stringResource(Res.string.nuvio_enhanced_latest_change_content_warnings),
-                stringResource(Res.string.nuvio_enhanced_latest_change_package_identity),
-                stringResource(Res.string.nuvio_enhanced_latest_change_doh_highlight),
-                stringResource(Res.string.nuvio_enhanced_latest_change_gif_search),
+                stringResource(Res.string.nuvio_enhanced_latest_change_upstream_021),
+                stringResource(Res.string.nuvio_enhanced_latest_change_streaming_showcase),
+                stringResource(Res.string.nuvio_enhanced_latest_change_scroll_polish),
+                stringResource(Res.string.nuvio_enhanced_latest_change_gif_avatar_support),
+                stringResource(Res.string.nuvio_enhanced_latest_change_continue_watching),
+                stringResource(Res.string.nuvio_enhanced_latest_change_ios_player),
+                stringResource(Res.string.nuvio_enhanced_latest_change_deeplinks),
+                stringResource(Res.string.nuvio_enhanced_latest_change_performance),
+                stringResource(Res.string.nuvio_enhanced_latest_change_loading),
+                stringResource(Res.string.nuvio_enhanced_latest_change_languages),
+                stringResource(Res.string.nuvio_enhanced_latest_change_player_status),
             ).forEach { change ->
                 Text(
                     text = "• $change",

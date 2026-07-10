@@ -9,6 +9,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 internal fun Modifier.playerSurfaceTapGestures(
@@ -38,6 +39,8 @@ internal fun Modifier.playerSurfaceTapGestures(
         )
     }
 
+private const val PlayerGestureMaximumVolumeFraction = 2f
+
 internal fun Modifier.playerSurfaceDragGestures(
     gestureController: PlayerGestureController?,
     layoutSize: IntSize,
@@ -51,6 +54,8 @@ internal fun Modifier.playerSurfaceDragGestures(
     showHorizontalSeekPreviewState: State<(Long, Long) -> Unit>,
     showBrightnessFeedbackState: State<(Float) -> Unit>,
     showVolumeFeedbackState: State<(PlayerAudioLevel) -> Unit>,
+    currentVolumeBoostPercentState: State<Int>,
+    applyVolumeBoostPercentState: State<(Int) -> Unit>,
     clearLiveGestureFeedbackState: State<() -> Unit>,
     revealLockedOverlayState: State<() -> Unit>,
     commitHorizontalSeekState: State<(Long) -> Unit>,
@@ -94,6 +99,11 @@ internal fun Modifier.playerSurfaceDragGestures(
                 controller?.currentVolume()
             } else {
                 null
+            }
+            val initialVolumeBoostPercent = if (region == PlayerSideGesture.Volume) {
+                currentVolumeBoostPercentState.value.coerceIn(100, 200)
+            } else {
+                100
             }
 
             var totalDx = 0f
@@ -185,8 +195,33 @@ internal fun Modifier.playerSurfaceDragGestures(
                         val activeTotalDy = totalDy - verticalGestureActivationDy
                         val gestureDeltaFraction =
                             (-activeTotalDy / height) * PlayerVerticalGestureSensitivity
-                        controller?.setVolume((initialVolume?.fraction ?: 0f) + gestureDeltaFraction)
-                            ?.let(showVolumeFeedbackState.value)
+                        val targetCombinedFraction = (
+                            (initialVolume?.fraction ?: 0f) +
+                                ((initialVolumeBoostPercent - 100f) / 100f) +
+                                gestureDeltaFraction
+                            )
+                            .coerceIn(0f, PlayerGestureMaximumVolumeFraction)
+                        val targetSystemFraction = targetCombinedFraction.coerceIn(0f, 1f)
+                        val targetBoostPercent = if (targetCombinedFraction > 1f) {
+                            100 + ((targetCombinedFraction - 1f) * 100f).roundToInt()
+                        } else {
+                            100
+                        }.coerceIn(100, 200)
+
+                        val systemLevel = controller?.setVolume(targetSystemFraction) ?: continue
+                        if (currentVolumeBoostPercentState.value != targetBoostPercent) {
+                            applyVolumeBoostPercentState.value(targetBoostPercent)
+                        }
+                        showVolumeFeedbackState.value(
+                            PlayerAudioLevel(
+                                fraction = if (targetBoostPercent > 100) {
+                                    targetCombinedFraction
+                                } else {
+                                    systemLevel.fraction
+                                },
+                                isMuted = systemLevel.isMuted && targetBoostPercent == 100,
+                            ),
+                        )
                     }
                 }
                 change.consume()

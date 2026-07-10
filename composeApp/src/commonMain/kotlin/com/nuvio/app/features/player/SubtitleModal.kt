@@ -50,6 +50,7 @@ import nuvio.composeapp.generated.resources.compose_player_fetch_subtitles
 import nuvio.composeapp.generated.resources.compose_player_none
 import nuvio.composeapp.generated.resources.compose_player_style
 import nuvio.composeapp.generated.resources.compose_player_subtitles
+import nuvio.composeapp.generated.resources.compose_player_sync_short
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -157,18 +158,21 @@ fun SubtitleModal(
                                     onSubtitleSelected = onAddonSubtitleSelected,
                                     onFetch = onFetchAddonSubtitles,
                                 )
-                                SubtitleTab.Style -> SubtitleStylePanel(
-                                    style = subtitleStyle,
+                                SubtitleTab.Sync -> SubtitleSyncPanel(
                                     subtitleDelayMs = subtitleDelayMs,
                                     selectedAddonSubtitle = selectedAddonSubtitle,
                                     subtitleAutoSyncState = subtitleAutoSyncState,
                                     isCompact = isCompact,
-                                    onStyleChanged = onStyleChanged,
                                     onSubtitleDelayChanged = onSubtitleDelayChanged,
                                     onSubtitleDelayReset = onSubtitleDelayReset,
                                     onAutoSyncCapture = onAutoSyncCapture,
                                     onAutoSyncCueSelected = onAutoSyncCueSelected,
                                     onAutoSyncReload = onAutoSyncReload,
+                                )
+                                SubtitleTab.Style -> SubtitleStylePanel(
+                                    style = subtitleStyle,
+                                    isCompact = isCompact,
+                                    onStyleChanged = onStyleChanged,
                                 )
                             }
                         }
@@ -189,9 +193,9 @@ private fun SubtitleTabBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 70.dp)
+            .padding(horizontal = 20.dp)
             .padding(bottom = 20.dp),
-        horizontalArrangement = Arrangement.spacedBy(15.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         SubtitleTab.entries.forEach { tab ->
             val isSelected = tab == activeTab
@@ -217,6 +221,7 @@ private fun SubtitleTabBar(
                     text = when (tab) {
                         SubtitleTab.BuiltIn -> stringResource(Res.string.compose_player_built_in)
                         SubtitleTab.Addons -> stringResource(Res.string.addon_title)
+                        SubtitleTab.Sync -> stringResource(Res.string.compose_player_sync_short)
                         SubtitleTab.Style -> stringResource(Res.string.compose_player_style)
                     },
                     color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,

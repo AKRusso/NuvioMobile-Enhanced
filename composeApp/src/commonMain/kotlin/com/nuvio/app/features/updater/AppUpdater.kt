@@ -128,7 +128,8 @@ internal object VersionUtils {
             ?.groups
             ?.get(1)
             ?.value
-            ?: normalized
+            ?: normalized.takeIf { it.firstOrNull()?.isDigit() == true }
+            ?: return null
 
         val parts = versionToken.split('.', '-', '_')
             .filter { it.isNotBlank() }
@@ -158,11 +159,14 @@ internal object VersionUtils {
     fun isRemoteNewer(remote: String?, local: String?, localBuildCode: Int? = null): Boolean {
         val remoteParts = parseVersionParts(remote)
         val localParts = parseVersionParts(local)
+        val remoteBuildCode = parseBuildCode(remote)
 
         if (remoteParts == null || localParts == null) {
-            val remoteValue = normalize(remote)
-            val localValue = normalize(local)
-            return remoteValue.isNotBlank() && localValue.isNotBlank() && remoteValue != localValue
+            return if (remoteBuildCode != null && localBuildCode != null) {
+                remoteBuildCode > localBuildCode
+            } else {
+                false
+            }
         }
 
         val maxSize = maxOf(remoteParts.size, localParts.size)
@@ -172,7 +176,6 @@ internal object VersionUtils {
             if (remoteValue != localValue) return remoteValue > localValue
         }
 
-        val remoteBuildCode = parseBuildCode(remote)
         return if (remoteBuildCode != null && localBuildCode != null) {
             remoteBuildCode > localBuildCode
         } else {

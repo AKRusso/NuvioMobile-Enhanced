@@ -1,9 +1,10 @@
 package com.nuvio.app.features.home
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,14 +18,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
@@ -86,6 +88,7 @@ import com.nuvio.app.features.watching.domain.WatchingContentRef
 import com.nuvio.app.features.watching.domain.isReleasedBy
 import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.library.LibraryRepository
+import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.home.components.HomeCollectionRowSection
@@ -108,6 +111,7 @@ import com.nuvio.app.features.home.components.rememberContinueWatchingLayout
 import kotlinx.coroutines.CancellationException
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
+import kotlin.math.abs
 
 @Composable
 fun HomeScreen(
@@ -393,15 +397,79 @@ fun HomeScreen(
         }.toMap()
     }
     val cachedInProgressItems = remember(cachedSnapshots.second, isTraktProgressActive) {
-        cachedSnapshots.second.mapNotNull { cached ->
-            if (isTraktProgressActive && WatchProgressRepository.isDroppedShow(cached.contentId)) {
-                return@mapNotNull null
+        buildMap {
+            cachedSnapshots.second.forEach { cached ->
+                if (isTraktProgressActive && WatchProgressRepository.isDroppedShow(cached.contentId)) {
+                    return@forEach
+                }
+                if (cached.contentType.equals("live-tv", ignoreCase = true)) {
+                    return@forEach
+                }
+                putContinueWatchingFallbackAliases(
+                    videoId = cached.videoId,
+                    contentId = cached.contentId,
+                    contentType = cached.contentType,
+                    item = cached.toContinueWatchingItem(),
+                )
             }
-            if (cached.contentType.equals("live-tv", ignoreCase = true)) {
-                return@mapNotNull null
+        }
+    }
+    var resolvedInProgressItems by remember(activeProfileId) {
+        mutableStateOf<Map<String, ContinueWatchingItem>>(emptyMap())
+    }
+
+    LaunchedEffect(
+        activeProfileId,
+        visibleContinueWatchingEntries,
+    ) {
+        if (visibleContinueWatchingEntries.isEmpty()) {
+            resolvedInProgressItems = emptyMap()
+            return@LaunchedEffect
+        }
+
+        val visibleKeys = visibleContinueWatchingEntries
+            .flatMap { entry -> entry.continueWatchingFallbackKeys() }
+            .toSet()
+        val prunedResolvedItems = resolvedInProgressItems.filterKeys { key -> key in visibleKeys }
+        if (prunedResolvedItems.size != resolvedInProgressItems.size) {
+            resolvedInProgressItems = prunedResolvedItems
+        }
+
+        val candidates = visibleContinueWatchingEntries
+            .asSequence()
+            .filter(WatchProgressEntry::needsContinueWatchingMetadataResolution)
+            .filterNot { entry ->
+                entry.continueWatchingFallbackKeys().any { key -> key in prunedResolvedItems }
             }
-            cached.videoId to cached.toContinueWatchingItem()
-        }.toMap()
+            .take(HomeContinueWatchingMaxRecentProgressItems)
+            .toList()
+        if (candidates.isEmpty()) return@LaunchedEffect
+
+        val resolved = withContext(Dispatchers.Default) {
+            val semaphore = Semaphore(4)
+            candidates.map { entry ->
+                async {
+                    semaphore.withPermit {
+                        resolveContinueWatchingEntryMetadata(entry)?.let { item ->
+                            entry.continueWatchingFallbackKeys().associateWith { item }
+                        }.orEmpty()
+                    }
+                }
+            }.awaitAll().fold(mutableMapOf<String, ContinueWatchingItem>()) { acc, itemMap ->
+                acc.apply { putAll(itemMap) }
+            }
+        }
+
+        if (resolved.isNotEmpty()) {
+            resolvedInProgressItems = prunedResolvedItems + resolved
+            saveContinueWatchingSnapshots(
+                profileId = activeProfileId,
+                nextUpItemsBySeries = nextUpItemsBySeries,
+                visibleContinueWatchingEntries = visibleContinueWatchingEntries,
+                todayIsoDate = CurrentDateProvider.todayIsoDate(),
+                seedLastWatchedMap = emptyMap(),
+            )
+        }
     }
 
     val effectivNextUpItems = remember(
@@ -437,6 +505,7 @@ fun HomeScreen(
     val continueWatchingItems = remember(
         visibleContinueWatchingEntries,
         cachedInProgressItems,
+        resolvedInProgressItems,
         effectivNextUpItems,
         nextUpSuppressedSeriesIds,
         continueWatchingPreferences.sortMode,
@@ -444,7 +513,7 @@ fun HomeScreen(
     ) {
         buildHomeContinueWatchingItems(
             visibleEntries = visibleContinueWatchingEntries,
-            cachedInProgressByVideoId = cachedInProgressItems,
+            cachedInProgressByVideoId = cachedInProgressItems + resolvedInProgressItems,
             nextUpItemsBySeries = effectivNextUpItems,
             nextUpSuppressedSeriesIds = nextUpSuppressedSeriesIds,
             sortMode = continueWatchingPreferences.sortMode,
@@ -484,12 +553,8 @@ fun HomeScreen(
         HomeRepository.refresh(enabledAddons)
     }
 
-    LaunchedEffect(collections, enabledAddons) {
+    LaunchedEffect(collections) {
         HomeCatalogSettingsRepository.syncCollections(collections)
-        HomeRepository.applyCurrentSettings()
-        if (collections.any { it.folders.isNotEmpty() }) {
-            HomeRepository.refresh(enabledAddons, force = true)
-        }
     }
 
     LaunchedEffect(
@@ -684,12 +749,6 @@ fun HomeScreen(
         isResolvingHeroSources
     var firstCatalogReported by remember { mutableStateOf(false) }
 
-    LaunchedEffect(homeUiState.sections.firstOrNull()?.key, onFirstCatalogRendered) {
-        if (firstCatalogReported || homeUiState.sections.isEmpty()) return@LaunchedEffect
-        firstCatalogReported = true
-        onFirstCatalogRendered?.invoke()
-    }
-
     val visibleCollections = remember(collections) {
         collections.filter { it.folders.isNotEmpty() }
     }
@@ -746,55 +805,48 @@ fun HomeScreen(
         }
     }
     val hasPremiumHomeRows = smartShelves.isNotEmpty()
-    val pullRefreshState = rememberPullToRefreshState()
+    val hasInitialHomeContent = homeUiState.sections.isNotEmpty() ||
+        homeUiState.heroItems.isNotEmpty() ||
+        continueWatchingItems.isNotEmpty() ||
+        hasRenderableCollectionRows ||
+        hasPremiumHomeRows
+    LaunchedEffect(hasInitialHomeContent, onFirstCatalogRendered) {
+        if (firstCatalogReported || !hasInitialHomeContent) return@LaunchedEffect
+        firstCatalogReported = true
+        onFirstCatalogRendered?.invoke()
+    }
+    val hapticFeedback = LocalHapticFeedback.current
+    var heroRefreshHapticArmed by remember { mutableStateOf(true) }
+    var heroRefreshPullProgress by remember { mutableStateOf(0f) }
     val isHomeRefreshInProgress = homeUiState.isLoading || isRefreshingEnabledAddons || manualRefreshRequested
-    var suppressHeroPullStretchUntilReset by remember { mutableStateOf(false) }
-
     LaunchedEffect(isHomeRefreshInProgress) {
         if (isHomeRefreshInProgress) {
-            suppressHeroPullStretchUntilReset = true
-        } else if (pullRefreshState.distanceFraction <= HOME_HERO_PULL_STRETCH_RESET_EPSILON) {
-            suppressHeroPullStretchUntilReset = false
+            heroRefreshPullProgress = 0f
         }
     }
-
-    LaunchedEffect(pullRefreshState) {
-        snapshotFlow { pullRefreshState.distanceFraction }
-            .collect { distanceFraction ->
-                if (
-                    suppressHeroPullStretchUntilReset &&
-                    distanceFraction <= HOME_HERO_PULL_STRETCH_RESET_EPSILON
-                ) {
-                    suppressHeroPullStretchUntilReset = false
-                }
-            }
-    }
-
-    val rawHeroPullStretchFraction by remember(
-        pullRefreshState,
-        isHomeRefreshInProgress,
-        suppressHeroPullStretchUntilReset,
+    LaunchedEffect(
+        heroRefreshPullProgress,
+        nuvioEnhancedSettings.heroRefreshHapticsEnabled,
     ) {
-        derivedStateOf {
-            val distanceFraction = pullRefreshState.distanceFraction
-            if (
-                !isHomeRefreshInProgress &&
-                !suppressHeroPullStretchUntilReset &&
-                distanceFraction > HOME_HERO_PULL_STRETCH_RESET_EPSILON
-            ) {
-                distanceFraction.coerceIn(0f, HOME_HERO_PULL_STRETCH_MAX_FRACTION)
-            } else {
-                0f
+        if (!nuvioEnhancedSettings.heroRefreshHapticsEnabled) {
+            heroRefreshHapticArmed = true
+            return@LaunchedEffect
+        }
+        when {
+            heroRefreshPullProgress >= HOME_HERO_REFRESH_HAPTIC_THRESHOLD &&
+                heroRefreshHapticArmed -> {
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                heroRefreshHapticArmed = false
+            }
+            heroRefreshPullProgress < HOME_HERO_REFRESH_HAPTIC_RESET_THRESHOLD -> {
+                heroRefreshHapticArmed = true
             }
         }
     }
-    val heroPullStretchFraction by animateFloatAsState(
-        targetValue = rawHeroPullStretchFraction,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessHigh,
-        ),
-        label = "homeHeroPullStretch",
+    val heroRefreshVisualProgress by animateFloatAsState(
+        targetValue = heroRefreshPullProgress.coerceIn(0f, 1f),
+        animationSpec = tween(durationMillis = 150),
+        label = "homeHeroRefreshVisual",
     )
     BoxWithConstraints(
         modifier = modifier
@@ -807,6 +859,11 @@ fun HomeScreen(
         val posterCardStyle = rememberPosterCardStyleUiState()
         val continueWatchingCardHeight = remember(posterCardStyle.widthDp) {
             continueWatchingLandscapeCardHeight(posterCardStyle.widthDp)
+        }
+        val heroToContinueWatchingGap = if (nuvioEnhancedSettings.streamingShowcaseHeroEnabled) {
+            HOME_STREAMING_SHOWCASE_HERO_TO_CONTINUE_WATCHING_GAP
+        } else {
+            HOME_HERO_TO_CONTINUE_WATCHING_GAP
         }
         val nativeBottomNavigationOverlayHeight =
             if (LocalNuvioBottomNavigationOverlayPadding.current > 0.dp) {
@@ -835,18 +892,26 @@ fun HomeScreen(
                 bottomNavigationOverlayHeight = nativeBottomNavigationOverlayHeight,
             )
         }
-
-        PullToRefreshBox(
-            isRefreshing = homeUiState.isLoading || isRefreshingEnabledAddons || manualRefreshRequested,
-            onRefresh = {
-                coroutineScope.launch {
-                    manualRefreshRequested = true
-                    HomeRepository.refresh(addonsUiState.addons.enabledAddons(), force = true)
-                }
-            },
-            state = pullRefreshState,
-            indicator = {},
-            modifier = Modifier.fillMaxSize(),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .homePremiumHeroRefresh(
+                    enabled = showHeroSlot,
+                    isRefreshing = isHomeRefreshInProgress,
+                    isAtTop = {
+                        homeListState.firstVisibleItemIndex == 0 &&
+                            homeListState.firstVisibleItemScrollOffset == 0
+                    },
+                    onPullProgressChange = { progress ->
+                        heroRefreshPullProgress = progress
+                    },
+                    onRefresh = {
+                        coroutineScope.launch {
+                            manualRefreshRequested = true
+                            HomeRepository.refresh(addonsUiState.addons.enabledAddons(), force = true)
+                        }
+                    },
+                ),
         ) {
             NuvioScreen(
                 modifier = Modifier.fillMaxSize(),
@@ -862,6 +927,8 @@ fun HomeScreen(
                                 modifier = Modifier,
                                 viewportHeight = viewportHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
+                                posterArtHeroEnabled = nuvioEnhancedSettings.posterArtHeroEnabled,
+                                streamingShowcaseHeroEnabled = nuvioEnhancedSettings.streamingShowcaseHeroEnabled,
                             )
 
                             homeUiState.heroItems.isNotEmpty() -> HomeHeroSection(
@@ -870,22 +937,47 @@ fun HomeScreen(
                                 viewportHeight = viewportHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 listState = homeListState,
-                                autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled,
+                                autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled &&
+                                    heroRefreshVisualProgress <= 0.01f &&
+                                    !isHomeRefreshInProgress,
                                 motionPreviewEnabled = homeSettingsUiState.heroMotionPreviewEnabled,
                                 heroDisplayMode = nuvioEnhancedSettings.heroDisplayMode,
                                 heroArtworkSource = nuvioEnhancedSettings.heroArtworkSource,
+                                posterArtHeroEnabled = nuvioEnhancedSettings.posterArtHeroEnabled,
+                                streamingShowcaseHeroEnabled = nuvioEnhancedSettings.streamingShowcaseHeroEnabled,
+                                streamingShowcaseVideoPreviewEnabled =
+                                    nuvioEnhancedSettings.streamingShowcaseVideoPreviewEnabled,
+                                streamingShowcaseVideoPreviewSoundEnabled =
+                                    nuvioEnhancedSettings.streamingShowcaseVideoPreviewSoundEnabled,
                                 compactMetadata = nuvioEnhancedSettings.compactHeroMetadata,
-                                showOverview = nuvioEnhancedSettings.showHeroOverview &&
-                                    !nuvioEnhancedSettings.quietHomeModeEnabled,
+                                showOverview = nuvioEnhancedSettings.streamingShowcaseHeroEnabled ||
+                                    (
+                                        nuvioEnhancedSettings.showHeroOverview &&
+                                            !nuvioEnhancedSettings.quietHomeModeEnabled
+                                        ),
                                 metadataRefreshKey = tmdbSettingsUiState.language,
-                                pullStretchFraction = heroPullStretchFraction,
+                                refreshPullProgress = heroRefreshVisualProgress,
                                 onItemClick = onPosterClick,
+                                onPlayClick = onPosterClick,
+                                onSaveClick = { item ->
+                                    LibraryRepository.toggleSaved(item.toLibraryItem(savedAtEpochMs = 0L))
+                                },
+                                onStreamingShowcaseVideoPreviewSoundChange = { enabled ->
+                                    NuvioEnhancedSettingsRepository.setStreamingShowcaseVideoPreviewSoundEnabled(enabled)
+                                },
+                                isSaved = { item ->
+                                    libraryUiState.items.any { saved ->
+                                        saved.id == item.id && saved.type == item.type
+                                    } || LibraryRepository.isSaved(item.id, item.type)
+                                },
                             )
 
                             else -> HomeHeroReservedSpace(
                                 modifier = Modifier,
                                 viewportHeight = viewportHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
+                                posterArtHeroEnabled = nuvioEnhancedSettings.posterArtHeroEnabled,
+                                streamingShowcaseHeroEnabled = nuvioEnhancedSettings.streamingShowcaseHeroEnabled,
                             )
                         }
                     }
@@ -898,7 +990,12 @@ fun HomeScreen(
                             style = continueWatchingPreferences.style,
                             useEpisodeThumbnails = continueWatchingPreferences.useEpisodeThumbnails,
                             blurNextUp = continueWatchingPreferences.blurNextUp,
-                            modifier = Modifier.padding(bottom = 12.dp),
+                            showReadyBadge = nuvioEnhancedSettings.showContinueWatchingReadyBadge,
+                            modifier = Modifier
+                                .padding(
+                                    top = heroToContinueWatchingGap,
+                                    bottom = 12.dp,
+                                ),
                             sectionPadding = homeSectionPadding,
                             layout = continueWatchingLayout,
                             onItemClick = onContinueWatchingClick,
@@ -973,7 +1070,7 @@ fun HomeScreen(
                                             collection = collection,
                                             modifier = Modifier.padding(bottom = 12.dp),
                                             sectionPadding = homeSectionPadding,
-                                            animateGifs = animateCollectionGifs,
+                                            animateGifsProvider = { animateCollectionGifs },
                                             onFolderClick = onFolderClick,
                                         )
                                     }
@@ -1011,13 +1108,137 @@ fun HomeScreen(
 private const val HOME_CATALOG_PREVIEW_LIMIT = 18
 private const val HOME_CONTINUE_WATCHING_SECTION_KEY = "home_continue_watching"
 private const val HOME_SMART_SHELVES_SECTION_KEY = "home_smart_shelves"
-private const val HOME_HERO_PULL_STRETCH_MAX_FRACTION = 1.35f
-private const val HOME_HERO_PULL_STRETCH_RESET_EPSILON = 0.015f
+private const val HOME_HERO_REFRESH_HAPTIC_THRESHOLD = 1f
+private const val HOME_HERO_REFRESH_HAPTIC_RESET_THRESHOLD = 0.22f
+private val HOME_PREMIUM_REFRESH_TRIGGER_DISTANCE = 96.dp
+private val HOME_PREMIUM_REFRESH_MAX_PULL_DISTANCE = 168.dp
+private val HOME_STREAMING_SHOWCASE_HERO_TO_CONTINUE_WATCHING_GAP = 0.dp
+private val HOME_HERO_TO_CONTINUE_WATCHING_GAP = 32.dp
 internal const val HomeContinueWatchingMaxRecentProgressItems = 300
 internal const val HomeNextUpInitialResolutionLimit = 32
 private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1000L
 private const val OPTIMISTIC_NEXT_UP_SEED_WINDOW_MS = 3L * 60L * 1000L
 private const val NEXT_UP_RESOLUTION_CONCURRENCY = 4
+
+private fun Modifier.homePremiumHeroRefresh(
+    enabled: Boolean,
+    isRefreshing: Boolean,
+    isAtTop: () -> Boolean,
+    onPullProgressChange: (Float) -> Unit,
+    onRefresh: () -> Unit,
+): Modifier {
+    if (!enabled) return this
+
+    return pointerInput(enabled, isRefreshing) {
+        awaitEachGesture {
+            val down = awaitFirstDown(
+                requireUnconsumed = false,
+                pass = PointerEventPass.Initial,
+            )
+            if (isRefreshing) {
+                onPullProgressChange(0f)
+                if (isAtTop()) {
+                    var totalDx = 0f
+                    var totalDy = 0f
+                    var consumingRefreshPull = false
+
+                    while (true) {
+                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+
+                        val delta = change.position - change.previousPosition
+                        totalDx += delta.x
+                        totalDy += delta.y
+
+                        if (!consumingRefreshPull) {
+                            val horizontalDrag =
+                                abs(totalDx) > viewConfiguration.touchSlop && abs(totalDx) > abs(totalDy)
+                            val downwardDrag =
+                                totalDy > viewConfiguration.touchSlop && totalDy > abs(totalDx)
+                            val upwardDrag = totalDy < -viewConfiguration.touchSlop
+
+                            when {
+                                horizontalDrag || upwardDrag || !isAtTop() -> break
+                                downwardDrag -> consumingRefreshPull = true
+                                else -> continue
+                            }
+                        }
+
+                        if (consumingRefreshPull && delta.y > 0f && isAtTop()) {
+                            change.consume()
+                        }
+                    }
+                }
+                onPullProgressChange(0f)
+                return@awaitEachGesture
+            }
+            if (!isAtTop()) {
+                onPullProgressChange(0f)
+                return@awaitEachGesture
+            }
+
+            val triggerDistancePx = HOME_PREMIUM_REFRESH_TRIGGER_DISTANCE.toPx()
+            val maxPullDistancePx = HOME_PREMIUM_REFRESH_MAX_PULL_DISTANCE.toPx()
+            var totalDx = 0f
+            var totalDy = 0f
+            var pullDistancePx = 0f
+            var dragging = false
+            var refreshRequested = false
+
+            while (true) {
+                val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+
+                if (!change.pressed) {
+                    if (dragging && pullDistancePx >= triggerDistancePx && !refreshRequested) {
+                        refreshRequested = true
+                        onRefresh()
+                    }
+                    onPullProgressChange(0f)
+                    break
+                }
+
+                val delta = change.position - change.previousPosition
+                totalDx += delta.x
+                totalDy += delta.y
+
+                if (!dragging) {
+                    val horizontalDrag =
+                        abs(totalDx) > viewConfiguration.touchSlop && abs(totalDx) > abs(totalDy)
+                    val downwardDrag =
+                        totalDy > viewConfiguration.touchSlop && totalDy > abs(totalDx)
+                    val upwardDrag = totalDy < -viewConfiguration.touchSlop
+
+                    when {
+                        horizontalDrag || upwardDrag || !isAtTop() -> {
+                            onPullProgressChange(0f)
+                            break
+                        }
+                        downwardDrag -> {
+                            dragging = true
+                        }
+                        else -> continue
+                    }
+                }
+
+                val resistedDelta = if (delta.y > 0f) {
+                    val resistance = 1f - (pullDistancePx / maxPullDistancePx).coerceIn(0f, 0.82f)
+                    delta.y * (0.62f * resistance)
+                } else {
+                    delta.y * 0.9f
+                }
+                pullDistancePx = (pullDistancePx + resistedDelta).coerceIn(0f, maxPullDistancePx)
+                onPullProgressChange((pullDistancePx / triggerDistancePx).coerceIn(0f, 1f))
+                if (pullDistancePx > 0f) {
+                    change.consume()
+                }
+            }
+            onPullProgressChange(0f)
+        }
+    }
+}
+
 private const val NEXT_UP_RESOLUTION_BATCH_SIZE = NEXT_UP_RESOLUTION_CONCURRENCY
 
 private suspend fun reconcileVisibleSeriesPosterBadges(
@@ -1336,10 +1557,11 @@ internal fun buildHomeContinueWatchingItems(
         addAll(
             visibleEntries.map { entry ->
                 val liveItem = entry.toContinueWatchingItem()
+                val cachedFallback = cachedInProgressByVideoId.fallbackFor(entry)
                 HomeContinueWatchingCandidate(
                     lastUpdatedEpochMs = entry.lastUpdatedEpochMs,
                     item = liveItem
-                        .withFallbackMetadata(cachedInProgressByVideoId[entry.videoId])
+                        .withFallbackMetadata(cachedFallback)
                         .withCloudLibraryMetadata(cloudLibraryUiState),
                     isProgressEntry = true,
                 )
@@ -1462,19 +1684,24 @@ private fun saveContinueWatchingSnapshots(
         )
     }
     val inProgressCache = visibleContinueWatchingEntries.map { entry ->
+        val enrichedItem = entry.peekResolvedContinueWatchingItem()
         CachedInProgressItem(
             contentId = entry.parentMetaId,
             contentType = entry.contentType,
-            name = entry.title,
-            poster = entry.poster,
-            backdrop = entry.background,
-            logo = entry.logo,
+            name = when {
+                entry.title.isRawMetadataTitle() -> enrichedItem?.title ?: entry.title
+                entry.title.isBlank() -> enrichedItem?.title ?: entry.title
+                else -> entry.title
+            },
+            poster = entry.poster ?: enrichedItem?.poster,
+            backdrop = entry.background ?: enrichedItem?.background,
+            logo = entry.logo ?: enrichedItem?.logo,
             videoId = entry.videoId,
             season = entry.seasonNumber,
             episode = entry.episodeNumber,
-            episodeTitle = entry.episodeTitle,
-            episodeThumbnail = entry.episodeThumbnail,
-            pauseDescription = entry.pauseDescription,
+            episodeTitle = entry.episodeTitle ?: enrichedItem?.episodeTitle,
+            episodeThumbnail = entry.episodeThumbnail ?: enrichedItem?.episodeThumbnail,
+            pauseDescription = entry.pauseDescription ?: enrichedItem?.pauseDescription,
             position = entry.lastPositionMs,
             duration = entry.durationMs,
             lastWatched = entry.lastUpdatedEpochMs,
@@ -1507,7 +1734,7 @@ private fun CompletedSeriesCandidate.toContinueWatchingSeed(meta: com.nuvio.app.
     )
 
 private fun ContinueWatchingItem.shouldDisplayInContinueWatching(): Boolean =
-    isNextUp || progressFraction < 0.995f
+    (isNextUp || progressFraction < 0.995f) && hasRenderableMetadata()
 
 private fun CachedNextUpItem.toContinueWatchingItem(): ContinueWatchingItem? {
     val alertState = com.nuvio.app.features.watchprogress.calculateReleaseAlertState(
@@ -1595,12 +1822,12 @@ private fun ContinueWatchingItem.withFallbackMetadata(
     if (fallback == null) return this
     val fallbackTitle = fallback.title
         .takeIf { it.isNotBlank() }
-        ?.takeUnless { fallback.hasPlaceholderCloudTitle() }
+        ?.takeUnless { fallback.hasPlaceholderProgressTitle() }
 
     return copy(
         title = when {
             title.isBlank() -> fallback.title
-            hasPlaceholderCloudTitle() && fallbackTitle != null -> fallbackTitle
+            hasPlaceholderProgressTitle() && fallbackTitle != null -> fallbackTitle
             else -> title
         },
         subtitle = subtitle.ifBlank { fallback.subtitle },
@@ -1638,6 +1865,135 @@ private fun ContinueWatchingItem.hasPlaceholderCloudTitle(): Boolean {
     val normalizedTitle = title.trim()
     return normalizedTitle.equals(parentMetaId, ignoreCase = true) ||
         normalizedTitle.equals(videoId, ignoreCase = true)
+}
+
+private fun ContinueWatchingItem.hasPlaceholderProgressTitle(): Boolean {
+    val normalizedTitle = title.trim()
+    if (normalizedTitle.isEmpty()) return true
+    return hasPlaceholderCloudTitle() ||
+        normalizedTitle.isRawMetadataTitle() ||
+        normalizedTitle.equals(parentMetaId.trim(), ignoreCase = true) ||
+        normalizedTitle.equals(videoId.trim(), ignoreCase = true)
+}
+
+private fun ContinueWatchingItem.hasRenderableMetadata(): Boolean =
+    !hasPlaceholderProgressTitle() ||
+        imageUrl != null ||
+        logo != null ||
+        poster != null ||
+        background != null
+
+private fun String.isRawMetadataTitle(): Boolean {
+    val value = trim()
+    if (value.isEmpty()) return true
+    val lower = value.lowercase()
+    return Regex("^tt\\d{5,}$").matches(lower) ||
+        Regex("^(imdb|tmdb|trakt)[:_-]?\\d+$").matches(lower) ||
+        Regex("^\\d{6,}$").matches(lower)
+}
+
+private fun WatchProgressEntry.continueWatchingFallbackKeys(): List<String> =
+    buildList {
+        videoId.trim().takeIf(String::isNotBlank)?.let(::add)
+        parentMetaId.trim().takeIf(String::isNotBlank)?.let { contentId ->
+            add(contentId)
+            parentMetaType.trim().lowercase().takeIf(String::isNotBlank)?.let { type ->
+                add("$type:$contentId")
+            }
+            if (isEpisode || parentMetaType.isSeriesTypeForContinueWatching()) {
+                add("series:$contentId")
+            }
+        }
+    }.distinct()
+
+private fun ContinueWatchingItem.continueWatchingFallbackKeys(): List<String> =
+    buildList {
+        videoId.trim().takeIf(String::isNotBlank)?.let(::add)
+        parentMetaId.trim().takeIf(String::isNotBlank)?.let { contentId ->
+            add(contentId)
+            parentMetaType.trim().lowercase().takeIf(String::isNotBlank)?.let { type ->
+                add("$type:$contentId")
+            }
+            if (parentMetaType.isSeriesTypeForContinueWatching()) {
+                add("series:$contentId")
+            }
+        }
+    }.distinct()
+
+private fun MutableMap<String, ContinueWatchingItem>.putContinueWatchingFallbackAliases(
+    videoId: String,
+    contentId: String,
+    contentType: String,
+    item: ContinueWatchingItem,
+) {
+    buildList {
+        videoId.trim().takeIf(String::isNotBlank)?.let(::add)
+        contentId.trim().takeIf(String::isNotBlank)?.let { id ->
+            add(id)
+            contentType.trim().lowercase().takeIf(String::isNotBlank)?.let { type ->
+                add("$type:$id")
+            }
+            if (contentType.isSeriesTypeForContinueWatching()) {
+                add("series:$id")
+            }
+        }
+    }.distinct().forEach { key -> put(key, item) }
+}
+
+private fun Map<String, ContinueWatchingItem>.fallbackFor(entry: WatchProgressEntry): ContinueWatchingItem? =
+    entry.continueWatchingFallbackKeys().firstNotNullOfOrNull { key -> this[key] }
+
+private fun WatchProgressEntry.needsContinueWatchingMetadataResolution(): Boolean {
+    if (isCloudLibraryProgressEntry()) return false
+    if (parentMetaId.isBlank() || isMalformedNextUpSeedContentId(parentMetaId)) return false
+    val item = toContinueWatchingItem()
+    return item.hasPlaceholderProgressTitle() ||
+        item.imageUrl == null ||
+        item.logo == null && item.poster == null && item.background == null
+}
+
+private suspend fun resolveContinueWatchingEntryMetadata(entry: WatchProgressEntry): ContinueWatchingItem? {
+    if (!entry.needsContinueWatchingMetadataResolution()) return null
+    val meta = MetaDetailsRepository.fetch(type = entry.parentMetaType, id = entry.parentMetaId)
+        ?: return null
+    return entry.toContinueWatchingItem().withMetaDetailsMetadata(meta)
+}
+
+private fun WatchProgressEntry.peekResolvedContinueWatchingItem(): ContinueWatchingItem? =
+    MetaDetailsRepository.peek(type = parentMetaType, id = parentMetaId)
+        ?.let { meta -> toContinueWatchingItem().withMetaDetailsMetadata(meta) }
+
+private fun ContinueWatchingItem.withMetaDetailsMetadata(meta: MetaDetails): ContinueWatchingItem {
+    val matchingEpisode = meta.videos.firstOrNull { video ->
+        video.season == seasonNumber && video.episode == episodeNumber
+    }
+    val resolvedTitle = meta.name.takeIf { it.isNotBlank() } ?: title
+    val resolvedEpisodeTitle = episodeTitle ?: matchingEpisode?.title
+    val resolvedEpisodeThumbnail = episodeThumbnail ?: matchingEpisode?.thumbnail
+    val resolvedBackground = background ?: meta.background
+    val resolvedPoster = poster ?: meta.poster
+
+    return copy(
+        title = when {
+            hasPlaceholderProgressTitle() -> resolvedTitle
+            else -> title
+        },
+        subtitle = subtitle.ifBlank {
+            buildContinueWatchingEpisodeSubtitle(
+                seasonNumber = seasonNumber,
+                episodeNumber = episodeNumber,
+                episodeTitle = resolvedEpisodeTitle,
+            )
+        },
+        imageUrl = imageUrl ?: resolvedEpisodeThumbnail ?: resolvedBackground ?: resolvedPoster,
+        logo = logo ?: meta.logo,
+        poster = resolvedPoster,
+        background = resolvedBackground,
+        episodeTitle = resolvedEpisodeTitle,
+        episodeThumbnail = resolvedEpisodeThumbnail,
+        pauseDescription = pauseDescription ?: matchingEpisode?.overview ?: meta.description,
+        released = released ?: matchingEpisode?.released,
+    )
 }
 
 private fun ContinueWatchingItem.isCloudLibraryContinueWatchingItem(): Boolean =

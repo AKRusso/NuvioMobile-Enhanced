@@ -89,6 +89,10 @@ final class OrientationLockCoordinator {
     }
 
     private func requestOrientationUpdate(for mask: UIInterfaceOrientationMask, forceRotate: Bool) {
+        if !forceRotate {
+            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+        }
+
         if #available(iOS 16.0, *) {
             let preferences = UIWindowScene.GeometryPreferences.iOS(interfaceOrientations: mask)
             UIApplication.shared.connectedScenes
@@ -104,14 +108,32 @@ final class OrientationLockCoordinator {
                 .forEach { window in
                     window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
                 }
+            if !forceRotate {
+                refreshRootLayoutsAfterOrientationUnlock()
+            }
         } else {
             if forceRotate {
                 UIDevice.current.setValue(preferredLandscapeOrientation.rawValue, forKey: "orientation")
-            } else if UIDevice.current.orientation.isPortrait {
-                UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
             }
             UIViewController.attemptRotationToDeviceOrientation()
+            if !forceRotate {
+                refreshRootLayoutsAfterOrientationUnlock()
+            }
         }
+    }
+
+    private func refreshRootLayoutsAfterOrientationUnlock() {
+        let refresh: () -> Void = {
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap(\.windows)
+                .forEach { window in
+                    window.rootViewController?.view.setNeedsLayout()
+                    window.rootViewController?.view.layoutIfNeeded()
+                }
+        }
+        DispatchQueue.main.async(execute: refresh)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: refresh)
     }
 
     private var preferredLandscapeOrientation: UIInterfaceOrientation {

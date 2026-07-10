@@ -15,6 +15,21 @@ internal val PlayerScreenRuntime.activePlaybackIdentity: String
         ?.let { hash -> "torrent:$hash:${activeTorrentFileIdx ?: -1}" }
         ?: activeSourceUrl
 
+internal val PlayerScreenRuntime.currentPlaybackSurfaceSourceUrl: String?
+    get() {
+        if (activeTorrentInfoHash != null) {
+            return p2pResolvedSourceUrl
+        }
+        if (playerQualityState.sourceUrl == activeSourceUrl) {
+            return activePlaybackSourceUrl
+        }
+        return if (activeSourceAudioUrl == null && activeSourceUrl.contains(".m3u8", ignoreCase = true)) {
+            null
+        } else {
+            activeSourceUrl
+        }
+    }
+
 internal val PlayerScreenRuntime.playbackSession: WatchProgressPlaybackSession
     get() = WatchProgressPlaybackSession(
         profileId = profileId,

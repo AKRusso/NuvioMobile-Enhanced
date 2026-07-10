@@ -10,6 +10,8 @@ import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pStreamingEngine
+import com.nuvio.app.features.player.skip.NextEpisodeInfo
+import com.nuvio.app.features.player.skip.PlayerNextEpisodeRules
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
@@ -390,6 +392,37 @@ internal fun PlayerScreenRuntime.playNextEpisode() {
         onNextEpisodeCardVisibleChanged = { showNextEpisodeCard = it },
     )?.let { job ->
         nextEpisodeAutoPlayJob = job
+    }
+}
+
+internal fun PlayerScreenRuntime.playRandomEpisodeFromPlayer() {
+    scope.launch {
+        if (playerMetaVideos.isEmpty()) {
+            playerMetaVideos = MetaDetailsRepository.fetch(parentMetaType, parentMetaId)?.videos ?: emptyList()
+        }
+        val selected = PlayerNextEpisodeRules.resolveNextEpisode(
+            videos = playerMetaVideos,
+            currentSeason = activeSeasonNumber,
+            currentEpisode = activeEpisodeNumber,
+            randomMode = true,
+            randomHistoryKey = parentMetaId,
+        ) ?: return@launch
+        val season = selected.season ?: return@launch
+        val episode = selected.episode ?: return@launch
+        nextEpisodeInfo = NextEpisodeInfo(
+            videoId = selected.id,
+            season = season,
+            episode = episode,
+            title = selected.title,
+            thumbnail = selected.thumbnail,
+            overview = selected.overview,
+            released = selected.released,
+            hasAired = PlayerNextEpisodeRules.hasEpisodeAired(selected.released),
+            unairedMessage = null,
+        )
+        showNextEpisodeCard = false
+        controlsVisible = true
+        playNextEpisode()
     }
 }
 

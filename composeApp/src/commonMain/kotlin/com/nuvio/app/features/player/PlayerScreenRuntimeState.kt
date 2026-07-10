@@ -62,6 +62,10 @@ internal class PlayerScreenRuntime(
     val randomEpisodeMode: Boolean get() = args.randomEpisodeMode
     val isSeries: Boolean get() = parentMetaType == "series"
     val isLiveTv: Boolean get() = contentType == "live-tv"
+    private val shouldResolveInitialPlayerQuality: Boolean
+        get() = torrentInfoHash == null &&
+            sourceAudioUrl == null &&
+            sourceUrl.contains(".m3u8", ignoreCase = true)
 
     lateinit var scope: CoroutineScope
     lateinit var hapticFeedback: HapticFeedback
@@ -102,6 +106,16 @@ internal class PlayerScreenRuntime(
     var activeSourceAudioUrl by mutableStateOf(sourceAudioUrl)
     var activeSourceHeaders by mutableStateOf(sanitizePlaybackHeaders(sourceHeaders))
     var activeSourceResponseHeaders by mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
+    var selectedPlayerQualityId by mutableStateOf<String?>(null)
+    var activePlaybackSourceUrl by mutableStateOf<String?>(
+        if (shouldResolveInitialPlayerQuality) null else sourceUrl,
+    )
+    var playerQualityState by mutableStateOf(
+        PlayerQualitySelectionState(
+            isLoading = shouldResolveInitialPlayerQuality,
+            sourceUrl = sourceUrl,
+        ),
+    )
     var activeStreamType by mutableStateOf(streamType)
     var activeTorrentInfoHash by mutableStateOf(torrentInfoHash)
     var activeTorrentFileIdx by mutableStateOf(torrentFileIdx)
@@ -187,6 +201,7 @@ internal class PlayerScreenRuntime(
     var showAudioModal by mutableStateOf(false)
     var showSubtitleModal by mutableStateOf(false)
     var showVideoSettingsModal by mutableStateOf(false)
+    var showQualityPanel by mutableStateOf(false)
     var showLiveTvChannelsPanel by mutableStateOf(false)
     var audioTracks by mutableStateOf<List<AudioTrack>>(emptyList())
     var subtitleTracks by mutableStateOf<List<SubtitleTrack>>(emptyList())

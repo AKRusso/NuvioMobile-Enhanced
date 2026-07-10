@@ -1,5 +1,10 @@
 import Foundation
 import UIKit
+#if targetEnvironment(simulator)
+import GLKit
+import OpenGLES
+import Darwin
+#endif
 import AVFoundation
 import Libmpv
 import ComposeApp
@@ -103,6 +108,8 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
     }
     func setPlaybackSpeed(speed: Float) { playerVC?.setSpeed(speed) }
     func setMuted(muted: Bool) { playerVC?.setMuted(muted) }
+    func setVolumeBoost(multiplier: Float) { playerVC?.setVolumeBoost(multiplier) }
+    func setEmbeddedPreviewMode(enabled: Bool) { ensurePlayerViewController().setEmbeddedPreviewMode(enabled) }
     func setResizeMode(mode: Int32) { playerVC?.setResize(Int(mode)) }
     func syncVideoSurfaceLayout(width: Double, height: Double) {
         playerVC?.syncVideoSurfaceLayout(size: CGSize(width: width, height: height))
@@ -188,6 +195,8 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
     func getPositionMs() -> Int64 { return playerVC?.positionMs ?? 0 }
     func getBufferedMs() -> Int64 { return playerVC?.bufferedMs ?? 0 }
     func getPlaybackSpeed() -> Float { playerVC?.currentSpeed ?? 1.0 }
+    func getVideoWidth() -> Int32 { Int32(playerVC?.currentVideoWidth ?? 0) }
+    func getVideoHeight() -> Int32 { Int32(playerVC?.currentVideoHeight ?? 0) }
     func getErrorMessage() -> String { playerVC?.currentErrorMessage ?? "" }
 
     func destroy() {
@@ -241,11 +250,25 @@ private struct PendingLoadRequest {
     let queuedAtUptime: TimeInterval
 }
 
+#if targetEnvironment(simulator)
+private final class MpvGLView: GLKView {
+    weak var playerViewController: MPVPlayerViewController?
+
+    override func draw(_ rect: CGRect) {
+        playerViewController?.renderFrame()
+    }
+}
+#endif
+
 // MARK: - MPV Player View Controller
 
 final class MPVPlayerViewController: UIViewController {
 
     private static let defaultAudioOutput = "audiounit"
+#if targetEnvironment(simulator)
+    private static let mpvRenderUpdateFrameFlag: UInt64 = 1
+    private static let openGLESHandle = dlopen("/System/Library/Frameworks/OpenGLES.framework/OpenGLES", RTLD_LAZY)
+#endif
 
     private struct CachedNowPlayingMetadata {
         let title: String
@@ -254,8 +277,31 @@ final class MPVPlayerViewController: UIViewController {
     }
 
     private let errorStateLock = NSLock()
+#if targetEnvironment(simulator)
+    private let glContext: EAGLContext = EAGLContext(api: .openGLES3) ?? EAGLContext(api: .openGLES2)!
+    private lazy var glView: MpvGLView = {
+        let view = MpvGLView(frame: .zero, context: glContext)
+        view.playerViewController = self
+        view.drawableColorFormat = .RGBA8888
+        view.drawableDepthFormat = .format24
+        view.drawableStencilFormat = .format8
+        view.drawableMultisample = .multisampleNone
+        view.enableSetNeedsDisplay = false
+        view.isOpaque = true
+        view.backgroundColor = .black
+        return view
+    }()
+    private var mpvRenderContext: OpaquePointer?
+    private var renderPending = false
+    private var forceNextRender = false
+    private var displayLink: CADisplayLink?
+    private var renderAttemptCount = 0
+    private var successfulRenderCount = 0
+    private var hasLoggedDrawableSize = false
+#else
     private var metalLayer = MetalLayer()
     private var lastAppliedDrawableSize: CGSize = .zero
+#endif
     private var externallyManagedViewSize: CGSize?
     private var pendingSurfaceLayoutWorkItems: [DispatchWorkItem] = []
     private var pendingLoadRequest: PendingLoadRequest?
@@ -266,10 +312,12 @@ final class MPVPlayerViewController: UIViewController {
     private lazy var eventQueue = DispatchQueue(label: "mpv-events", qos: .userInitiated)
     private var recentPlaybackLogs: [String] = []
     private var activeRequestHeaders: [String: String] = [:]
+    private var hasLoadedCurrentFile: Bool = false
 
     // Cached track lists
     var audioTracks: [TrackInfo] = []
     var subtitleTracks: [TrackInfo] = []
+    private var embeddedPreviewMode: Bool = false
 
     // State (polled from Kotlin every 250ms)
     var isPlayerLoading: Bool = true
@@ -279,6 +327,14 @@ final class MPVPlayerViewController: UIViewController {
     var positionMs: Int64 = 0
     var bufferedMs: Int64 = 0
     var currentSpeed: Float = 1.0
+    var currentVideoWidth: Int {
+        let width = getInt("video-out-params/w")
+        return width > 0 ? width : getInt("video-params/w")
+    }
+    var currentVideoHeight: Int {
+        let height = getInt("video-out-params/h")
+        return height > 0 ? height : getInt("video-params/h")
+    }
     var currentErrorMessage: String {
         errorStateLock.lock()
         defer { errorStateLock.unlock() }
@@ -291,15 +347,15 @@ final class MPVPlayerViewController: UIViewController {
     }
 
     override var prefersHomeIndicatorAutoHidden: Bool {
-        true
+        !embeddedPreviewMode
     }
 
     override var preferredScreenEdgesDeferringSystemGestures: UIRectEdge {
-        [.bottom, .left, .right]
+        embeddedPreviewMode ? [] : [.bottom, .left, .right]
     }
 
     override var prefersStatusBarHidden: Bool {
-        true
+        !embeddedPreviewMode
     }
 
     override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation {
@@ -308,11 +364,23 @@ final class MPVPlayerViewController: UIViewController {
 
     // MARK: - Lifecycle
 
+    override func loadView() {
+#if targetEnvironment(simulator)
+        view = glView
+#else
+        super.loadView()
+#endif
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
         view.layer.masksToBounds = true
 
+#if targetEnvironment(simulator)
+        view.isOpaque = true
+        EAGLContext.setCurrent(glContext)
+#else
         metalLayer.contentsGravity = .resize
         metalLayer.contentsScale = view.window?.screen.nativeScale ?? UIScreen.main.nativeScale
         metalLayer.framebufferOnly = true
@@ -322,6 +390,7 @@ final class MPVPlayerViewController: UIViewController {
         metalLayer.position = .zero
         view.layer.addSublayer(metalLayer)
         layoutMetalLayer()
+#endif
 
         setupMpv()
         activateAudioSessionForPlayback()
@@ -431,6 +500,9 @@ final class MPVPlayerViewController: UIViewController {
     }
 
     private func layoutMetalLayer() {
+#if targetEnvironment(simulator)
+        scheduleRender(force: true)
+#else
         let bounds = CGRect(origin: .zero, size: externallyManagedViewSize ?? view.bounds.size)
         guard bounds.width > 1, bounds.height > 1 else { return }
 
@@ -451,6 +523,7 @@ final class MPVPlayerViewController: UIViewController {
             lastAppliedDrawableSize = drawableSize
         }
         CATransaction.commit()
+#endif
     }
 
     // MARK: - MPV Setup
@@ -464,29 +537,46 @@ final class MPVPlayerViewController: UIViewController {
 
         checkError(mpv_request_log_messages(mpv, "warn"))
 
+#if targetEnvironment(simulator)
+        checkError(mpv_set_option_string(mpv, "vo", "libmpv"))
+        checkError(mpv_set_option_string(mpv, "hwdec", "no"))
+#else
         var layerPointer = Int64(Int(bitPattern: Unmanaged.passUnretained(metalLayer).toOpaque()))
         checkError(mpv_set_option(mpv, "wid", MPV_FORMAT_INT64, &layerPointer))
         checkError(mpv_set_option_string(mpv, "vo", "gpu-next"))
         checkError(mpv_set_option_string(mpv, "gpu-api", "vulkan"))
         checkError(mpv_set_option_string(mpv, "gpu-context", "moltenvk"))
         checkError(mpv_set_option_string(mpv, "hwdec", "videotoolbox"))
+#endif
+        checkError(mpv_set_option_string(mpv, "vd-lavc-dr", "no"))
         checkError(mpv_set_option_string(mpv, "ao", Self.defaultAudioOutput))
         checkError(mpv_set_option_string(mpv, "audio-channels", "auto"))
         checkError(mpv_set_option_string(mpv, "audio-fallback-to-null", "yes"))
+#if !targetEnvironment(simulator)
         checkError(mpv_set_option_string(mpv, "vulkan-swap-mode", "fifo"))
         checkError(mpv_set_option_string(mpv, "vulkan-queue-count", "1"))
         checkError(mpv_set_option_string(mpv, "vulkan-async-compute", "no"))
         checkError(mpv_set_option_string(mpv, "vulkan-async-transfer", "no"))
         checkError(mpv_set_option_string(mpv, "vulkan-disable-interop", "yes"))
+#endif
         checkError(mpv_set_option_string(mpv, "video-rotate", "no"))
         checkError(mpv_set_option_string(mpv, "subs-match-os-language", "yes"))
         checkError(mpv_set_option_string(mpv, "subs-fallback", "yes"))
         checkError(mpv_set_option_string(mpv, "keep-open", "yes"))
+#if targetEnvironment(simulator)
+        checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "no"))
+        checkError(mpv_set_option_string(mpv, "tone-mapping", "auto"))
+        checkError(mpv_set_option_string(mpv, "hdr-compute-peak", "no"))
+#else
         checkError(mpv_set_option_string(mpv, "target-colorspace-hint", "yes"))
         checkError(mpv_set_option_string(mpv, "tone-mapping", "auto"))
         checkError(mpv_set_option_string(mpv, "hdr-compute-peak", "yes"))
+#endif
 
         checkError(mpv_initialize(mpv))
+#if targetEnvironment(simulator)
+        setupMpvRenderContext()
+#endif
 
         // Observe properties
         mpv_observe_property(mpv, 0, "pause", MPV_FORMAT_FLAG)
@@ -502,6 +592,185 @@ final class MPVPlayerViewController: UIViewController {
         }, UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()))
     }
 
+#if targetEnvironment(simulator)
+    private func setupMpvRenderContext() {
+        guard mpv != nil else { return }
+        EAGLContext.setCurrent(glContext)
+
+        let apiName = MPV_RENDER_API_TYPE_OPENGL as NSString
+        let api = UnsafeMutableRawPointer(mutating: apiName.utf8String)
+        var initParams = mpv_opengl_init_params(
+            get_proc_address: { _, name in
+                MPVPlayerViewController.getProcAddress(name)
+            },
+            get_proc_address_ctx: nil
+        )
+
+        withUnsafeMutablePointer(to: &initParams) { initParamsPointer in
+            var params = [
+                mpv_render_param(type: MPV_RENDER_PARAM_API_TYPE, data: api),
+                mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, data: initParamsPointer),
+                mpv_render_param()
+            ]
+            let status = mpv_render_context_create(&mpvRenderContext, mpv, &params)
+            checkError(status)
+            NSLog("[NuvioMPV] simulator render_context_create status=%d created=%@", status, self.mpvRenderContext == nil ? "false" : "true")
+        }
+
+        guard mpvRenderContext != nil else { return }
+        mpv_render_context_set_update_callback(
+            mpvRenderContext,
+            { ctx in
+                let vc = unsafeBitCast(ctx, to: MPVPlayerViewController.self)
+                vc.scheduleRender()
+            },
+            UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
+        )
+    }
+
+    private func startRenderPump() {
+        guard displayLink == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(displayLinkDidFire))
+        if #available(iOS 15.0, *) {
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
+        } else {
+            link.preferredFramesPerSecond = 30
+        }
+        link.add(to: .main, forMode: .common)
+        displayLink = link
+    }
+
+    private func stopRenderPump() {
+        displayLink?.invalidate()
+        displayLink = nil
+    }
+
+    @objc private func displayLinkDidFire() {
+        guard mpvRenderContext != nil else {
+            stopRenderPump()
+            return
+        }
+        if !isPlayerPlaying && !isPlayerLoading {
+            stopRenderPump()
+            return
+        }
+        scheduleRender()
+    }
+
+    private func scheduleRender(force: Bool = false) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.mpvRenderContext != nil else { return }
+            self.forceNextRender = self.forceNextRender || force
+            guard !self.renderPending else { return }
+            self.renderPending = true
+            self.glView.display()
+        }
+    }
+
+    fileprivate func renderFrame() {
+        renderPending = false
+        guard let renderContext = mpvRenderContext else { return }
+        let shouldForceRender = forceNextRender
+        forceNextRender = false
+        EAGLContext.setCurrent(glContext)
+        glView.bindDrawable()
+
+        let width = Int32(glView.drawableWidth)
+        let height = Int32(glView.drawableHeight)
+        guard width > 1, height > 1 else { return }
+        if !hasLoggedDrawableSize {
+            hasLoggedDrawableSize = true
+            NSLog("[NuvioMPV] simulator drawable size=%dx%d", width, height)
+        }
+
+        let updateFlags = mpv_render_context_update(renderContext)
+        let hasFrameUpdate = (updateFlags & Self.mpvRenderUpdateFrameFlag) != 0
+        let canRedrawLastFrame = shouldForceRender && successfulRenderCount > 0
+        guard hasFrameUpdate || canRedrawLastFrame else { return }
+
+        glViewport(0, 0, width, height)
+
+        var framebuffer: GLint = 0
+        glGetIntegerv(GLenum(GL_FRAMEBUFFER_BINDING), &framebuffer)
+        var fbo = mpv_opengl_fbo(
+            fbo: Int32(framebuffer),
+            w: width,
+            h: height,
+            internal_format: 0
+        )
+        var flipY: CInt = 1
+        var blockForTargetTime: CInt = 0
+        var renderStatus: CInt = 0
+
+        withUnsafeMutablePointer(to: &fbo) { fboPointer in
+            withUnsafeMutablePointer(to: &flipY) { flipPointer in
+                withUnsafeMutablePointer(to: &blockForTargetTime) { blockPointer in
+                    var params = [
+                        mpv_render_param(type: MPV_RENDER_PARAM_OPENGL_FBO, data: fboPointer),
+                        mpv_render_param(type: MPV_RENDER_PARAM_FLIP_Y, data: flipPointer),
+                        mpv_render_param(type: MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, data: blockPointer),
+                        mpv_render_param()
+                    ]
+                    let status = mpv_render_context_render(renderContext, &params)
+                    renderStatus = status
+                    renderAttemptCount += 1
+                    if status >= 0 {
+                        successfulRenderCount += 1
+                    }
+                    if renderAttemptCount <= 5 || status < 0 {
+                        NSLog(
+                            "[NuvioMPV] simulator render status=%d attempts=%d success=%d fbo=%d updateFlags=%llu forced=%@",
+                            status,
+                            renderAttemptCount,
+                            successfulRenderCount,
+                            framebuffer,
+                            updateFlags,
+                            shouldForceRender ? "true" : "false"
+                        )
+                    }
+                }
+            }
+        }
+
+        if renderStatus >= 0 {
+            glFlush()
+            mpv_render_context_report_swap(renderContext)
+        }
+    }
+
+    private static func getProcAddress(_ name: UnsafePointer<CChar>?) -> UnsafeMutableRawPointer? {
+        guard let name else { return nil }
+        let symbol = String(cString: name)
+        let cfSymbol = symbol as CFString
+        if let bundle = CFBundleGetBundleWithIdentifier("com.apple.opengles" as CFString),
+           let address = CFBundleGetFunctionPointerForName(bundle, cfSymbol) {
+            return address
+        }
+        if let address = dlsym(Self.openGLESHandle, symbol) {
+            return address
+        }
+        return dlsym(dlopen(nil, RTLD_LAZY), symbol)
+    }
+
+    private func destroyRenderContext() {
+        let cleanup = { [weak self] in
+            guard let self, let renderContext = self.mpvRenderContext else { return }
+            self.mpvRenderContext = nil
+            self.renderPending = false
+            EAGLContext.setCurrent(self.glContext)
+            mpv_render_context_set_update_callback(renderContext, nil, nil)
+            mpv_render_context_free(renderContext)
+            EAGLContext.setCurrent(nil)
+        }
+
+        if Thread.isMainThread {
+            cleanup()
+        } else {
+            DispatchQueue.main.sync(execute: cleanup)
+        }
+    }
+#endif
+
     private func setupNotifications() {
         NotificationCenter.default.addObserver(self, selector: #selector(enterBackground),
                                                name: UIApplication.didEnterBackgroundNotification, object: nil)
@@ -511,6 +780,9 @@ final class MPVPlayerViewController: UIViewController {
 
     @objc private func enterBackground() {
         guard mpv != nil else { return }
+#if targetEnvironment(simulator)
+        stopRenderPump()
+#endif
         pausePlayback()
         setStringProperty("vid", "no")
     }
@@ -518,6 +790,9 @@ final class MPVPlayerViewController: UIViewController {
     @objc private func enterForeground() {
         guard mpv != nil else { return }
         setStringProperty("vid", "auto")
+#if targetEnvironment(simulator)
+        startRenderPump()
+#endif
         playPlayback()
     }
 
@@ -563,13 +838,23 @@ final class MPVPlayerViewController: UIViewController {
 
     private func startLoad(_ request: PendingLoadRequest) {
         guard mpv != nil else { return }
+#if targetEnvironment(simulator)
+        startRenderPump()
+        scheduleRender(force: true)
+#else
         layoutMetalLayer()
+#endif
         clearPlaybackError()
         let sanitizedHeaders = sanitizeRequestHeaders(request.requestHeaders)
         activeRequestHeaders = sanitizedHeaders
         applyRequestHeaders(sanitizedHeaders)
+        hasLoadedCurrentFile = false
         isPlayerLoading = true
+        isPlayerPlaying = false
         isPlayerEnded = false
+        durationMs = 0
+        positionMs = 0
+        bufferedMs = 0
         command("loadfile", args: [request.urlString, "replace"])
         if let audioUrl = request.audioUrl, !audioUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
@@ -607,10 +892,16 @@ final class MPVPlayerViewController: UIViewController {
 
     func playPlayback() {
         guard mpv != nil else { return }
+#if targetEnvironment(simulator)
+        startRenderPump()
+#endif
         publishNowPlayingForPlaybackSession()
         setFlag("pause", false)
         isPlayerPlaying = true
         syncNowPlayingPlaybackState(isPlaying: true)
+#if targetEnvironment(simulator)
+        scheduleRender(force: true)
+#endif
     }
 
     func pausePlayback() {
@@ -618,6 +909,13 @@ final class MPVPlayerViewController: UIViewController {
         setFlag("pause", true)
         isPlayerPlaying = false
         syncNowPlayingPlaybackState(isPlaying: false)
+#if targetEnvironment(simulator)
+        scheduleRender(force: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self, self.mpv != nil, self.getFlag("pause") else { return }
+            self.stopRenderPump()
+        }
+#endif
     }
 
     func seekToMs(_ ms: Int64) {
@@ -661,10 +959,16 @@ final class MPVPlayerViewController: UIViewController {
         saturation: Int,
         gamma: Int
     ) {
+#if !targetEnvironment(simulator)
         metalLayer.wantsExtendedDynamicRangeContent = extendedDynamicRange
+#endif
         guard mpv != nil else { return }
 
+#if targetEnvironment(simulator)
+        setStringProperty("hwdec", "no")
+#else
         setStringProperty("hwdec", hardwareDecoder)
+#endif
         setStringProperty("target-colorspace-hint", targetColorspaceHint ? "yes" : "no")
         setStringProperty("tone-mapping", toneMapping)
         setStringProperty("hdr-compute-peak", hdrComputePeak ? "yes" : "no")
@@ -698,6 +1002,18 @@ final class MPVPlayerViewController: UIViewController {
     func setMuted(_ muted: Bool) {
         guard mpv != nil else { return }
         setFlag("mute", muted)
+    }
+
+    func setVolumeBoost(_ multiplier: Float) {
+        guard mpv != nil else { return }
+        var volume = Double(max(0, min(2, multiplier)) * 100)
+        mpv_set_property(mpv, "volume", MPV_FORMAT_DOUBLE, &volume)
+    }
+
+    func setEmbeddedPreviewMode(_ enabled: Bool) {
+        guard embeddedPreviewMode != enabled else { return }
+        embeddedPreviewMode = enabled
+        refreshImmersiveSystemUI()
     }
 
     func setResize(_ mode: Int) {
@@ -792,7 +1108,7 @@ final class MPVPlayerViewController: UIViewController {
 
     func setSubtitleDelayMs(_ delayMs: Int) {
         guard mpv != nil else { return }
-        var delaySeconds = Double(max(-60_000, min(60_000, delayMs))) / 1000.0
+        var delaySeconds = Double(max(-600_000, min(600_000, delayMs))) / 1000.0
         checkError(mpv_set_property(mpv, "sub-delay", MPV_FORMAT_DOUBLE, &delaySeconds))
     }
 
@@ -826,6 +1142,9 @@ final class MPVPlayerViewController: UIViewController {
 
     func destroyPlayer() {
         NotificationCenter.default.removeObserver(self)
+#if targetEnvironment(simulator)
+        stopRenderPump()
+#endif
         UIApplication.shared.endReceivingRemoteControlEvents()
         resignFirstResponder()
         pendingLoadRetryWorkItem?.cancel()
@@ -835,6 +1154,9 @@ final class MPVPlayerViewController: UIViewController {
         pendingLoadRequest = nil
         nowPlayingController.invalidate()
         clearPlaybackError()
+#if targetEnvironment(simulator)
+        destroyRenderContext()
+#endif
         deactivateAudioSession()
         guard let ctx = mpv else { return }
         mpv = nil  // nil first so event loop stops reading
@@ -871,12 +1193,23 @@ final class MPVPlayerViewController: UIViewController {
         let speed = getDouble("speed")
         let paused = getFlag("pause")
         let eofReached = getFlag("eof-reached")
-        let idle = getFlag("core-idle")
         let seeking = getFlag("seeking")
         let bufferingCache = getFlag("paused-for-cache")
+        let hasPlaybackError = !currentErrorMessage.isEmpty
+        let hasUsableMedia = hasLoadedCurrentFile ||
+            duration > 0 ||
+            position > 0 ||
+            currentVideoWidth > 0 ||
+            currentVideoHeight > 0
 
-        isPlayerLoading = (idle && !paused && !eofReached) || seeking || bufferingCache
-        isPlayerPlaying = !paused && !idle && !eofReached
+        if hasPlaybackError || eofReached {
+            isPlayerLoading = false
+        } else if seeking || bufferingCache {
+            isPlayerLoading = true
+        } else {
+            isPlayerLoading = !hasUsableMedia
+        }
+        isPlayerPlaying = !paused && hasUsableMedia && !eofReached
         isPlayerEnded = eofReached
         durationMs = Int64(duration * 1000)
         positionMs = Int64(max(position, 0) * 1000)
@@ -1128,8 +1461,15 @@ final class MPVPlayerViewController: UIViewController {
                 case MPV_EVENT_FILE_LOADED:
                     DispatchQueue.main.async {
                         self.clearPlaybackError()
+                        self.hasLoadedCurrentFile = true
                         self.isPlayerLoading = false
+#if targetEnvironment(simulator)
+                        self.startRenderPump()
+#endif
                         self.updateState()
+#if targetEnvironment(simulator)
+                        self.scheduleRender(force: true)
+#endif
                         self.publishNowPlayingForPlaybackSession()
                         self.logCurrentAudioOutput()
                     }
@@ -1147,6 +1487,15 @@ final class MPVPlayerViewController: UIViewController {
                             print("[MPV] End file error: \(errorText)")
                         }
                     }
+#if targetEnvironment(simulator)
+                    DispatchQueue.main.async {
+                        self.updateState()
+                        self.scheduleRender(force: true)
+                        if self.isPlayerEnded || !self.isPlayerPlaying {
+                            self.stopRenderPump()
+                        }
+                    }
+#endif
                 case MPV_EVENT_SHUTDOWN:
                     return
                 case MPV_EVENT_LOG_MESSAGE:

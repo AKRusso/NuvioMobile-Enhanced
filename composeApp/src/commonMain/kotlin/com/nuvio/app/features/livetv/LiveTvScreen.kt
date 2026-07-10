@@ -28,6 +28,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +57,7 @@ import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.live_tv_add_source
@@ -68,6 +70,7 @@ import nuvio.composeapp.generated.resources.live_tv_empty_title
 import nuvio.composeapp.generated.resources.live_tv_favorite
 import nuvio.composeapp.generated.resources.live_tv_favorites
 import nuvio.composeapp.generated.resources.live_tv_load
+import nuvio.composeapp.generated.resources.live_tv_load_file
 import nuvio.composeapp.generated.resources.live_tv_recent_channel_cta
 import nuvio.composeapp.generated.resources.live_tv_recent_channel_title
 import nuvio.composeapp.generated.resources.live_tv_refresh
@@ -107,6 +110,7 @@ fun LiveTvScreen(
     var stalkerMacAddress by rememberSaveable { mutableStateOf(uiState.stalkerSettings.macAddress) }
     var stalkerUsername by rememberSaveable { mutableStateOf(uiState.stalkerSettings.username) }
     var stalkerPassword by rememberSaveable { mutableStateOf(uiState.stalkerSettings.password) }
+    var fileImportError by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.sourceUrl) {
         if (sourceUrl.isBlank()) sourceUrl = uiState.sourceUrl
@@ -122,6 +126,8 @@ fun LiveTvScreen(
             when {
                 uiState.sourceType == LiveTvSourceType.Stalker && uiState.stalkerSettings.isConfigured ->
                     LiveTvRepository.loadStalker(uiState.stalkerSettings)
+                LiveTvStorage.loadLocalPlaylistData().orEmpty().isNotBlank() ->
+                    LiveTvRepository.loadStoredLocalPlaylist()
                 uiState.sourceUrl.isNotBlank() ->
                     LiveTvRepository.load(uiState.sourceUrl)
             }
@@ -160,11 +166,32 @@ fun LiveTvScreen(
     }
     val loadSource: () -> Unit = {
         scope.launch {
+            fileImportError = null
             if (LiveTvRepository.load(sourceUrl).isSuccess) {
                 editingSource = false
                 selectedGroup = ""
                 favoritesOnly = false
             }
+        }
+        Unit
+    }
+    val chooseLocalPlaylistFile: () -> Unit = {
+        fileImportError = null
+        NuvioEnhancedBackupFileBridge.importBackup { result ->
+            result
+                .onSuccess { payload ->
+                    scope.launch {
+                        if (LiveTvRepository.loadLocalPlaylist("Selected M3U file", payload).isSuccess) {
+                            editingSource = false
+                            sourceUrl = LiveTvRepository.uiState.value.sourceUrl
+                            selectedGroup = ""
+                            favoritesOnly = false
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    fileImportError = error.message ?: "M3U file could not be read."
+                }
         }
         Unit
     }
@@ -247,6 +274,8 @@ fun LiveTvScreen(
                                 scope.launch {
                                     if (uiState.sourceType == LiveTvSourceType.Stalker) {
                                         LiveTvRepository.loadStalker(uiState.stalkerSettings)
+                                    } else if (LiveTvStorage.loadLocalPlaylistData().orEmpty().isNotBlank()) {
+                                        LiveTvRepository.loadStoredLocalPlaylist()
                                     } else {
                                         LiveTvRepository.load(uiState.sourceUrl)
                                     }
@@ -269,11 +298,14 @@ fun LiveTvScreen(
                     sourceUrl = sourceUrl,
                     isLoading = uiState.isLoading,
                     errorMessage = uiState.errorMessage,
+                    fileImportError = fileImportError,
                     hasConnectedSource = uiState.channels.isNotEmpty(),
                     onSourceUrlChange = { sourceUrl = it },
                     onLoad = loadSource,
+                    onChooseFile = chooseLocalPlaylistFile,
                     onDisconnect = {
                         LiveTvRepository.disconnect()
+                        fileImportError = null
                         sourceUrl = ""
                         editingSource = true
                         favoritesOnly = false
@@ -507,9 +539,11 @@ private fun LiveTvSourceCard(
     sourceUrl: String,
     isLoading: Boolean,
     errorMessage: String?,
+    fileImportError: String?,
     hasConnectedSource: Boolean,
     onSourceUrlChange: (String) -> Unit,
     onLoad: () -> Unit,
+    onChooseFile: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
@@ -558,7 +592,7 @@ private fun LiveTvSourceCard(
                 onValueChange = onSourceUrlChange,
                 placeholder = stringResource(Res.string.live_tv_source_hint),
             )
-            errorMessage?.let {
+            (errorMessage ?: fileImportError)?.let {
                 Text(
                     text = it,
                     style = MaterialTheme.typography.bodySmall,
@@ -570,6 +604,13 @@ private fun LiveTvSourceCard(
                 enabled = sourceUrl.isNotBlank() && !isLoading,
                 onClick = onLoad,
             )
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading,
+                onClick = onChooseFile,
+            ) {
+                Text(text = stringResource(Res.string.live_tv_load_file))
+            }
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier

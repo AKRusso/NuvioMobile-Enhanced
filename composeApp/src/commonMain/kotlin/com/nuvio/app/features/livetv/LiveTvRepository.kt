@@ -65,6 +65,7 @@ object LiveTvRepository {
             val channels = playlist.channels
             require(channels.isNotEmpty()) { "Bu M3U listesinde oynatılabilir kanal bulunamadı." }
             LiveTvStorage.saveSourceUrl(normalizedUrl)
+            LiveTvStorage.saveLocalPlaylistData("")
             LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
             mutableUiState.value = LiveTvUiState(
                 sourceType = LiveTvSourceType.M3u,
@@ -85,6 +86,61 @@ object LiveTvRepository {
                 errorMessage = error.message ?: "M3U listesi yüklenemedi.",
             )
         }
+    }
+
+    suspend fun loadLocalPlaylist(fileName: String, playlistData: String): Result<List<LiveTvChannel>> {
+        val trimmedData = playlistData.trim()
+        val displayName = fileName.trim().ifBlank { "Local M3U playlist" }
+        if (trimmedData.isBlank()) {
+            val error = IllegalArgumentException("Seçilen M3U dosyası boş.")
+            mutableUiState.value = mutableUiState.value.copy(errorMessage = error.message)
+            return Result.failure(error)
+        }
+
+        mutableUiState.value = mutableUiState.value.copy(
+            sourceType = LiveTvSourceType.M3u,
+            sourceUrl = displayName,
+            isLoading = true,
+            errorMessage = null,
+        )
+
+        return runCatching {
+            val playlist = withContext(Dispatchers.Default) {
+                parseM3uPlaylistData(trimmedData)
+            }
+            val channels = playlist.channels
+            require(channels.isNotEmpty()) { "Bu M3U dosyasında oynatılabilir kanal bulunamadı." }
+            LiveTvStorage.saveSourceUrl(displayName)
+            LiveTvStorage.saveLocalPlaylistData(trimmedData)
+            LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
+            mutableUiState.value = LiveTvUiState(
+                sourceType = LiveTvSourceType.M3u,
+                sourceUrl = displayName,
+                stalkerSettings = mutableUiState.value.stalkerSettings,
+                channels = channels,
+                favoriteUrls = mutableUiState.value.favoriteUrls,
+                recentChannel = mutableUiState.value.recentChannel,
+                isLoaded = true,
+            )
+            channels
+        }.onFailure { error ->
+            mutableUiState.value = mutableUiState.value.copy(
+                isLoading = false,
+                isLoaded = mutableUiState.value.channels.isNotEmpty(),
+                errorMessage = error.message ?: "M3U dosyası yüklenemedi.",
+            )
+        }
+    }
+
+    suspend fun loadStoredLocalPlaylist(): Result<List<LiveTvChannel>> {
+        val playlistData = LiveTvStorage.loadLocalPlaylistData().orEmpty()
+        if (playlistData.isBlank()) {
+            return Result.failure(IllegalStateException("Kayıtlı M3U dosyası bulunamadı."))
+        }
+        return loadLocalPlaylist(
+            fileName = LiveTvStorage.loadSourceUrl().orEmpty().ifBlank { "Local M3U playlist" },
+            playlistData = playlistData,
+        )
     }
 
     suspend fun loadStalker(settings: LiveTvStalkerSettings): Result<List<LiveTvChannel>> {
@@ -113,6 +169,7 @@ object LiveTvRepository {
                 fetchStalkerChannels(normalizedSettings)
             }
             require(channels.isNotEmpty()) { "Bu Stalker Portal içinde oynatılabilir kanal bulunamadı." }
+            LiveTvStorage.saveLocalPlaylistData("")
             LiveTvStorage.saveSourceType(LiveTvSourceType.Stalker)
             LiveTvStorage.saveStalkerSettings(normalizedSettings)
             mutableUiState.value = LiveTvUiState(
@@ -143,6 +200,7 @@ object LiveTvRepository {
 
     fun disconnect() {
         LiveTvStorage.saveSourceUrl("")
+        LiveTvStorage.saveLocalPlaylistData("")
         LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
         LiveTvRepositoryStalker.clearSession()
         mutableUiState.value = LiveTvUiState(
@@ -199,6 +257,8 @@ internal expect object LiveTvStorage {
     fun saveSourceType(type: LiveTvSourceType)
     fun loadSourceUrl(): String?
     fun saveSourceUrl(url: String)
+    fun loadLocalPlaylistData(): String?
+    fun saveLocalPlaylistData(data: String)
     fun loadStalkerSettings(): LiveTvStalkerSettings
     fun saveStalkerSettings(settings: LiveTvStalkerSettings)
     fun loadFavoriteUrls(): Set<String>

@@ -775,7 +775,7 @@ private fun ProfileIdentityCard(
                             contentDescription = name,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
-                            animateIfPossible = false,
+                            animateIfPossible = true,
                         )
                     } else if (selectedAvatar != null) {
                         CollectionCardRemoteImage(
@@ -783,7 +783,7 @@ private fun ProfileIdentityCard(
                             contentDescription = selectedAvatar.displayName,
                             modifier = Modifier.size(88.dp).clip(CircleShape),
                             contentScale = ContentScale.Crop,
-                            animateIfPossible = false,
+                            animateIfPossible = true,
                         )
                     } else if (name.isNotBlank()) {
                         Text(
@@ -892,7 +892,7 @@ private fun AvatarChoiceItem(
             contentDescription = avatar.displayName,
             modifier = Modifier.fillMaxSize().clip(CircleShape),
             contentScale = ContentScale.Crop,
-            animateIfPossible = false,
+            animateIfPossible = true,
         )
 
         if (isSelected) {

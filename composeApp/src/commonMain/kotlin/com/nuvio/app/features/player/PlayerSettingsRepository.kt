@@ -37,6 +37,7 @@ data class PlayerSettingsUiState(
     val holdToSpeedEnabled: Boolean = true,
     val holdToSpeedValue: Float = 2f,
     val touchGesturesEnabled: Boolean = true,
+    val volumeBoostPercent: Int = 100,
     val externalPlayerEnabled: Boolean = false,
     val externalPlayerForwardSubtitles: Boolean = false,
     val externalPlayerSendSkipSegments: Boolean = false,
@@ -102,6 +103,7 @@ object PlayerSettingsRepository {
     private var holdToSpeedEnabled = true
     private var holdToSpeedValue = 2f
     private var touchGesturesEnabled = true
+    private var volumeBoostPercent = 100
     private var externalPlayerEnabled = false
     private var externalPlayerForwardSubtitles = false
     private var externalPlayerSendSkipSegments = false
@@ -172,6 +174,7 @@ object PlayerSettingsRepository {
         holdToSpeedEnabled = true
         holdToSpeedValue = 2f
         touchGesturesEnabled = true
+        volumeBoostPercent = 100
         externalPlayerEnabled = false
         externalPlayerForwardSubtitles = false
         externalPlayerSendSkipSegments = false
@@ -237,6 +240,7 @@ object PlayerSettingsRepository {
         holdToSpeedEnabled = PlayerSettingsStorage.loadHoldToSpeedEnabled() ?: true
         holdToSpeedValue = PlayerSettingsStorage.loadHoldToSpeedValue() ?: 2f
         touchGesturesEnabled = PlayerSettingsStorage.loadTouchGesturesEnabled() ?: true
+        volumeBoostPercent = PlayerSettingsStorage.loadVolumeBoostPercent()?.coerceIn(100, 200) ?: 100
         externalPlayerEnabled = PlayerSettingsStorage.loadExternalPlayerEnabled() ?: false
         externalPlayerForwardSubtitles = PlayerSettingsStorage.loadExternalPlayerForwardSubtitles() ?: false
         externalPlayerSendSkipSegments = PlayerSettingsStorage.loadExternalPlayerSendSkipSegments() ?: false
@@ -401,6 +405,15 @@ object PlayerSettingsRepository {
         touchGesturesEnabled = enabled
         publish()
         PlayerSettingsStorage.saveTouchGesturesEnabled(enabled)
+    }
+
+    fun setVolumeBoostPercent(percent: Int) {
+        ensureLoaded()
+        val normalized = percent.coerceIn(100, 200)
+        if (volumeBoostPercent == normalized) return
+        volumeBoostPercent = normalized
+        publish()
+        PlayerSettingsStorage.saveVolumeBoostPercent(normalized)
     }
 
     fun setExternalPlayerEnabled(enabled: Boolean) {
@@ -904,6 +917,7 @@ object PlayerSettingsRepository {
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             touchGesturesEnabled = touchGesturesEnabled,
+            volumeBoostPercent = volumeBoostPercent,
             externalPlayerEnabled = externalPlayerEnabled,
             externalPlayerForwardSubtitles = externalPlayerForwardSubtitles,
             externalPlayerSendSkipSegments = externalPlayerSendSkipSegments,

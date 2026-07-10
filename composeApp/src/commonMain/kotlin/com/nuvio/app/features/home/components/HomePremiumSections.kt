@@ -220,38 +220,12 @@ private fun HomeConciergeSectionContent(
 private fun HomeConciergeHeader(state: HomeConciergeUiState) {
     val tokens = MaterialTheme.nuvio
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(tokens.colors.accent.copy(alpha = 0.18f))
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center,
+        state.profileName?.let { profileName ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                        tint = tokens.colors.accent,
-                    )
-                    Text(
-                        text = stringResource(Res.string.home_concierge_label),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = tokens.colors.textPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            state.profileName?.let { profileName ->
                 Text(
                     text = stringResource(Res.string.home_concierge_profile_badge, profileName),
                     style = MaterialTheme.typography.labelSmall,
@@ -345,9 +319,11 @@ private fun HomeConciergePrimaryCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                HomeConciergeReasonPill(reason = card.reason)
-                card.smartSignal?.let { signal ->
+                if (card.smartSignal != null) {
+                    val signal = card.smartSignal
                     HomeConciergeSmartSignalPill(signal = signal)
+                } else {
+                    HomeConciergeReasonPill(reason = card.reason)
                 }
             }
             Text(

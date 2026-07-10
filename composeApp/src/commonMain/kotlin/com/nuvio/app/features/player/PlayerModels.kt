@@ -224,6 +224,8 @@ data class PlayerPlaybackSnapshot(
     val positionMs: Long = 0L,
     val bufferedPositionMs: Long = 0L,
     val playbackSpeed: Float = 1f,
+    val videoWidth: Int? = null,
+    val videoHeight: Int? = null,
 )
 
 data class PlayerNowPlayingInfo(

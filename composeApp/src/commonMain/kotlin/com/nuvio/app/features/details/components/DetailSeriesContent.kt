@@ -639,7 +639,7 @@ private fun EpisodeHorizontalRow(
                         metaType = metaType,
                         metaId = parentMetaId,
                         episode = episode,
-                    ),
+                ),
                 blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                 showEpisodeRatings = showEpisodeRatings,
                 metrics = rowMetrics,

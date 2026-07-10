@@ -131,6 +131,10 @@ actual fun PlatformPlayerSurface(
                 bridge.setMuted(muted)
             }
 
+            override fun setVolumeBoost(multiplier: Float) {
+                bridge.setVolumeBoost(multiplier.coerceIn(0f, 2f))
+            }
+
             override fun getAudioTracks(): List<AudioTrack> {
                 val count = bridge.getAudioTrackCount()
                 return (0 until count).map { i ->
@@ -323,6 +327,8 @@ actual fun PlatformPlayerSurface(
                 positionMs = bridge.getPositionMs(),
                 bufferedPositionMs = bridge.getBufferedMs(),
                 playbackSpeed = bridge.getPlaybackSpeed(),
+                videoWidth = bridge.getVideoWidth().takeIf { it > 0 },
+                videoHeight = bridge.getVideoHeight().takeIf { it > 0 },
             )
             latestOnSnapshot.value(snapshot)
             val errorMessage = bridge.getErrorMessage().ifBlank { null }

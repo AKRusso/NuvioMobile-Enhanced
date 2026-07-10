@@ -57,9 +57,13 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -73,7 +77,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
-import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -123,6 +126,7 @@ import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioBottomNavigationBarInsets
 import com.nuvio.app.features.auth.AuthScreen
+import com.nuvio.app.features.addons.AddAddonResult
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.catalog.CatalogRepository
 import com.nuvio.app.features.catalog.CatalogScreen
@@ -421,7 +425,7 @@ fun App() {
             .components {
                 add(SvgDecoder.Factory())
             }
-            .configurePlatformImageLoader()
+            .configurePlatformImageLoader(context)
             .build()
     }
     val selectedTheme by remember {
@@ -741,6 +745,9 @@ private fun MainAppContent(
         val liquidGlassNativeTabBarEnabled by remember {
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
         }.collectAsStateWithLifecycle()
+        val liquidGlassAutoHideOnScrollEnabled by remember {
+            ThemeSettingsRepository.liquidGlassAutoHideOnScrollEnabled
+        }.collectAsStateWithLifecycle()
         val nuvioEnhancedSettings by remember {
             NuvioEnhancedSettingsRepository.ensureLoaded()
             NuvioEnhancedSettingsRepository.uiState
@@ -835,6 +842,7 @@ private fun MainAppContent(
     val nativeTabProfileTitle = stringResource(Res.string.compose_nav_profile)
     val isTraktLibrarySource = libraryUiState.sourceMode == LibrarySourceMode.TRAKT
     var initialHomeReady by rememberSaveable { mutableStateOf(false) }
+    var nativeTabScrollVisible by rememberSaveable { mutableStateOf(true) }
     var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
@@ -919,8 +927,51 @@ private fun MainAppContent(
 
     LaunchedEffect(selectedTab) {
         NativeTabBridge.publishSelectedTab(selectedTab.toNativeNavigationTab())
+        nativeTabScrollVisible = true
         if (selectedTab != AppScreenTab.Search) {
             searchFocusRequestCount = 0
+        }
+    }
+
+    LaunchedEffect(liquidGlassAutoHideOnScrollEnabled, liquidGlassNativeTabBarEnabled) {
+        if (!liquidGlassAutoHideOnScrollEnabled || !liquidGlassNativeTabBarEnabled) {
+            nativeTabScrollVisible = true
+        }
+    }
+
+    fun setNativeTabScrollVisibilityFromGesture(visible: Boolean) {
+        if (nativeTabScrollVisible == visible) return
+        nativeTabScrollVisible = visible
+    }
+
+    val nativeTabAutoHideScrollConnection = remember(
+        liquidGlassNativeTabBarSupported,
+        liquidGlassNativeTabBarEnabled,
+        liquidGlassAutoHideOnScrollEnabled,
+        initialHomeReady,
+    ) {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (
+                    !liquidGlassNativeTabBarSupported ||
+                    !liquidGlassNativeTabBarEnabled ||
+                    !liquidGlassAutoHideOnScrollEnabled ||
+                    !initialHomeReady
+                ) {
+                    return Offset.Zero
+                }
+
+                val scrollDeltaY = consumed.y + available.y
+                when {
+                    scrollDeltaY < -12f -> setNativeTabScrollVisibilityFromGesture(false)
+                    scrollDeltaY > 12f -> setNativeTabScrollVisibilityFromGesture(true)
+                }
+                return Offset.Zero
+            }
         }
     }
 
@@ -933,30 +984,20 @@ private fun MainAppContent(
 
     var profileSwitchLoading by remember { mutableStateOf(false) }
 
-    DisposableEffect(
-        navController,
-        liquidGlassNativeTabBarSupported,
-        liquidGlassNativeTabBarEnabled,
-        initialHomeReady,
-        profileSwitchLoading,
-    ) {
-        fun publishNativeTabVisibilityForCurrentRoute() {
-            val visible = liquidGlassNativeTabBarSupported &&
-                liquidGlassNativeTabBarEnabled &&
-                initialHomeReady &&
-                !profileSwitchLoading &&
-                navController.currentDestination?.hasRoute<TabsRoute>() == true
-            NativeTabBridge.publishTabBarVisible(visible)
-        }
+    val nativeTabBarVisibleForCurrentRoute =
+        liquidGlassNativeTabBarSupported &&
+            liquidGlassNativeTabBarEnabled &&
+            initialHomeReady &&
+            (!liquidGlassAutoHideOnScrollEnabled || nativeTabScrollVisible) &&
+            !profileSwitchLoading &&
+            currentBackStackEntry?.destination?.hasRoute<TabsRoute>() == true
 
-        val destinationChangedListener = NavController.OnDestinationChangedListener { _, _, _ ->
-            publishNativeTabVisibilityForCurrentRoute()
-        }
+    LaunchedEffect(nativeTabBarVisibleForCurrentRoute) {
+        NativeTabBridge.publishTabBarVisible(nativeTabBarVisibleForCurrentRoute)
+    }
 
-        publishNativeTabVisibilityForCurrentRoute()
-        navController.addOnDestinationChangedListener(destinationChangedListener)
+    DisposableEffect(Unit) {
         onDispose {
-            navController.removeOnDestinationChangedListener(destinationChangedListener)
             NativeTabBridge.publishTabBarVisible(false)
         }
     }
@@ -964,8 +1005,10 @@ private fun MainAppContent(
     LaunchedEffect(Unit) {
         NetworkStatusRepository.ensureStarted()
         EpisodeReleaseNotificationsRepository.refreshAsync()
-        kotlinx.coroutines.delay(5_000)
-        initialHomeReady = true
+        kotlinx.coroutines.delay(1_500)
+        if (!initialHomeReady) {
+            initialHomeReady = true
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -1189,6 +1232,27 @@ private fun MainAppContent(
                         selectedTab = AppScreenTab.Home
                         navController.navigate(DetailRoute(type = deepLink.type, id = deepLink.id)) {
                             launchSingleTop = true
+                        }
+                        AppDeepLinkRepository.markConsumed(deepLink)
+                    }
+
+                    is AppDeepLink.AddonInstall -> {
+                        selectedTab = AppScreenTab.Settings
+                        navController.navigate(AddonsSettingsRoute) {
+                            launchSingleTop = true
+                        }
+                        NuvioToastController.show(getString(Res.string.addons_modal_checking_title))
+                        AddonRepository.initialize()
+                        when (val result = AddonRepository.addAddon(deepLink.manifestUrl)) {
+                            is AddAddonResult.Success -> {
+                                NuvioToastController.show(
+                                    getString(Res.string.addons_modal_success_message, result.manifest.name),
+                                )
+                            }
+
+                            is AddAddonResult.Error -> {
+                                NuvioToastController.show(result.message)
+                            }
                         }
                         AppDeepLinkRepository.markConsumed(deepLink)
                     }
@@ -1644,7 +1708,11 @@ private fun MainAppContent(
                         },
                     )
 
-                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                    BoxWithConstraints(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(nativeTabAutoHideScrollConnection),
+                    ) {
                         val isTabletLayout = maxWidth >= 768.dp
                         val useNativeBottomTabs =
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
@@ -2321,13 +2389,24 @@ private fun MainAppContent(
                         if (streamsUiState.requestToken != expectedStreamsRequestToken) return@LaunchedEffect
                         val selectedStream = streamsUiState.autoPlayStream ?: return@LaunchedEffect
                         val stream = if (DirectDebridPlaybackResolver.shouldResolveToPlayableStream(selectedStream)) {
-                            when (
-                                val resolved = DirectDebridPlaybackResolver.resolveToPlayableStream(
+                            val resolved = try {
+                                DirectDebridPlaybackResolver.resolveToPlayableStream(
                                     stream = selectedStream,
                                     season = launch.seasonNumber,
                                     episode = launch.episodeNumber,
                                 )
-                            ) {
+                            } catch (error: Throwable) {
+                                if (error is kotlinx.coroutines.CancellationException) throw error
+                                val hasNextCandidate = StreamsRepository.skipAutoPlayStream(selectedStream)
+                                if (!hasNextCandidate) {
+                                    StreamsRepository.cancelLoading()
+                                    error.message
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?.let { NuvioToastController.show(it) }
+                                }
+                                return@LaunchedEffect
+                            }
+                            when (resolved) {
                                 is DirectDebridPlayableResult.Success -> resolved.stream
                                 else -> {
                                     val hasNextCandidate = StreamsRepository.skipAutoPlayStream(selectedStream)
@@ -2455,12 +2534,21 @@ private fun MainAppContent(
                             if (resolvingDebridStream) return
                             streamRouteScope.launch {
                                 resolvingDebridStream = true
-                                val resolved = DirectDebridPlaybackResolver.resolveToPlayableStream(
-                                    stream = stream,
-                                    season = launch.seasonNumber,
-                                    episode = launch.episodeNumber,
-                                )
-                                resolvingDebridStream = false
+                                val resolved = try {
+                                    DirectDebridPlaybackResolver.resolveToPlayableStream(
+                                        stream = stream,
+                                        season = launch.seasonNumber,
+                                        episode = launch.episodeNumber,
+                                    )
+                                } catch (error: Throwable) {
+                                    if (error is kotlinx.coroutines.CancellationException) throw error
+                                    error.message
+                                        ?.takeIf { it.isNotBlank() }
+                                        ?.let { NuvioToastController.show(it) }
+                                    return@launch
+                                } finally {
+                                    resolvingDebridStream = false
+                                }
                                 when (resolved) {
                                     is DirectDebridPlayableResult.Success -> openSelectedStream(
                                         stream = resolved.stream,
@@ -3387,6 +3475,8 @@ private fun AppTabHost(
                         onLicensesAttributionsClick = onLicensesAttributionsSettingsClick,
                         onCheckForUpdatesClick = onCheckForUpdatesClick,
                         onCollectionsClick = onCollectionsSettingsClick,
+                        onPosterClick = onPosterClick,
+                        onContinueWatchingItemClick = onContinueWatchingClick,
                     )
                 }
             }

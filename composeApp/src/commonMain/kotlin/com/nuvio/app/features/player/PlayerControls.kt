@@ -2,6 +2,7 @@ package com.nuvio.app.features.player
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,11 +36,15 @@ import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Replay10
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.SignalCellularAlt
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.VideoLibrary
-import com.nuvio.app.core.ui.NuvioLoadingIndicator
+import androidx.compose.material.icons.rounded.Wifi
+import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -62,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.NuvioBackButton
+import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvioTypeScale
 import nuvio.composeapp.generated.resources.*
@@ -82,6 +90,7 @@ internal fun PlayerControlsShell(
     resizeMode: PlayerResizeMode,
     isLocked: Boolean,
     showPlaybackControls: Boolean = true,
+    showDeviceStatusOverlay: Boolean = false,
     onLockToggle: () -> Unit,
     onBack: () -> Unit,
     onTogglePlayback: () -> Unit,
@@ -90,11 +99,15 @@ internal fun PlayerControlsShell(
     onResizeModeClick: () -> Unit,
     onSpeedClick: () -> Unit,
     onSubtitleClick: (() -> Unit)?,
+    onSubtitleSyncClick: (() -> Unit)? = null,
     onAudioClick: (() -> Unit)?,
+    qualityLabel: String? = null,
+    onQualityClick: (() -> Unit)? = null,
     onChannelsClick: (() -> Unit)? = null,
     onVideoSettingsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onRandomEpisodeClick: (() -> Unit)? = null,
     onOpenInExternalPlayer: (() -> Unit)? = null,
     onSubmitIntroClick: (() -> Unit)? = null,
     parentalWarnings: List<ParentalWarning> = emptyList(),
@@ -105,70 +118,98 @@ internal fun PlayerControlsShell(
     horizontalSafePadding: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .align(Alignment.TopCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.7f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
+    val showQuietDeviceStatusOverlay = showDeviceStatusOverlay &&
+        !showPlaybackControls &&
+        !showParentalGuide &&
+        !isLocked
+    val deviceStatus = if (showDeviceStatusOverlay) {
+        rememberPlayerDeviceStatus()
+    } else {
+        null
+    }
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.7f),
+    Box(modifier = modifier.fillMaxSize()) {
+        if (showPlaybackControls || showParentalGuide) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp)
+                    .align(Alignment.TopCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.7f),
+                                Color.Transparent,
+                            ),
                         ),
                     ),
-                ),
-        )
+            )
+        }
+
+        if (showPlaybackControls) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f),
+                            ),
+                        ),
+                    ),
+            )
+        }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = horizontalSafePadding),
         ) {
-            PlayerHeader(
-                title = title,
-                streamTitle = streamTitle,
-                providerName = providerName,
-                seasonNumber = seasonNumber,
-                episodeNumber = episodeNumber,
-                episodeTitle = episodeTitle,
-                metrics = metrics,
-                isLocked = isLocked,
-                showActions = showPlaybackControls,
-                onSubmitIntroClick = onSubmitIntroClick,
-                parentalWarnings = parentalWarnings,
-                showParentalGuide = showParentalGuide,
-                onParentalGuideAnimationComplete = onParentalGuideAnimationComplete,
-                onLockToggle = onLockToggle,
-                onVideoSettingsClick = onVideoSettingsClick,
-                onOpenInExternalPlayer = onOpenInExternalPlayer,
-                onBack = onBack,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top))
-                    .padding(
-                        start = metrics.horizontalPadding,
-                        end = metrics.horizontalPadding,
-                        top = metrics.verticalPadding / 4,
-                    ),
-            )
+            if (showPlaybackControls || showParentalGuide) {
+                PlayerHeader(
+                    title = title,
+                    streamTitle = streamTitle,
+                    providerName = providerName,
+                    seasonNumber = seasonNumber,
+                    episodeNumber = episodeNumber,
+                    episodeTitle = episodeTitle,
+                    metrics = metrics,
+                    isLocked = isLocked,
+                    showActions = showPlaybackControls,
+                    onSubmitIntroClick = onSubmitIntroClick,
+                    parentalWarnings = parentalWarnings,
+                    showParentalGuide = showParentalGuide,
+                    onParentalGuideAnimationComplete = onParentalGuideAnimationComplete,
+                    onLockToggle = onLockToggle,
+                    onVideoSettingsClick = onVideoSettingsClick,
+                    onRandomEpisodeClick = onRandomEpisodeClick,
+                    onOpenInExternalPlayer = onOpenInExternalPlayer,
+                    onBack = onBack,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top))
+                        .padding(
+                            start = metrics.horizontalPadding,
+                            end = metrics.horizontalPadding,
+                            top = metrics.verticalPadding / 4,
+                        ),
+                )
+            }
+
+            if (showQuietDeviceStatusOverlay && deviceStatus != null) {
+                PlayerDeviceStatusOverlay(
+                    status = deviceStatus,
+                    metrics = metrics,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top))
+                        .padding(top = metrics.verticalPadding / 4),
+                )
+            }
 
             if (showPlaybackControls) {
                 CenterControls(
@@ -194,7 +235,10 @@ internal fun PlayerControlsShell(
                     onResizeModeClick = onResizeModeClick,
                     onSpeedClick = onSpeedClick,
                     onSubtitleClick = onSubtitleClick,
+                    onSubtitleSyncClick = onSubtitleSyncClick,
                     onAudioClick = onAudioClick,
+                    qualityLabel = qualityLabel,
+                    onQualityClick = onQualityClick,
                     onChannelsClick = onChannelsClick,
                     onSourcesClick = onSourcesClick,
                     onEpisodesClick = onEpisodesClick,
@@ -206,6 +250,172 @@ internal fun PlayerControlsShell(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerDeviceStatusOverlay(
+    status: PlayerDeviceStatus,
+    metrics: PlayerLayoutMetrics,
+    modifier: Modifier = Modifier,
+) {
+    val typeScale = MaterialTheme.nuvioTypeScale
+    Surface(
+        modifier = modifier.widthIn(min = 220.dp, max = 360.dp),
+        shape = RoundedCornerShape(999.dp),
+        color = Color.Black.copy(alpha = 0.34f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlayerDeviceStatusItem(
+                icon = when (status.networkType) {
+                    PlayerDeviceNetworkType.Wifi -> Icons.Rounded.Wifi
+                    PlayerDeviceNetworkType.Cellular -> Icons.Rounded.SignalCellularAlt
+                    PlayerDeviceNetworkType.Offline -> Icons.Rounded.WifiOff
+                    PlayerDeviceNetworkType.Unknown -> Icons.Rounded.Wifi
+                },
+                text = when (status.networkType) {
+                    PlayerDeviceNetworkType.Wifi -> "Wi-Fi"
+                    PlayerDeviceNetworkType.Cellular -> "LTE"
+                    PlayerDeviceNetworkType.Offline -> "Offline"
+                    PlayerDeviceNetworkType.Unknown -> "Net"
+                },
+                metrics = metrics,
+            )
+            Text(
+                text = status.timeLabel,
+                style = typeScale.labelSm.copy(
+                    fontSize = metrics.metadataSize,
+                    lineHeight = metrics.metadataSize * 1.2f,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = Color.White.copy(alpha = 0.92f),
+                maxLines = 1,
+            )
+            PlayerBatteryStatusItem(
+                percent = status.batteryPercent,
+                charging = status.batteryCharging,
+                metrics = metrics,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerDeviceStatusItem(
+    icon: ImageVector,
+    text: String,
+    metrics: PlayerLayoutMetrics,
+) {
+    val typeScale = MaterialTheme.nuvioTypeScale
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.88f),
+            modifier = Modifier.size(metrics.headerIconSize * 0.74f),
+        )
+        Text(
+            text = text,
+            style = typeScale.labelSm.copy(
+                fontSize = metrics.metadataSize,
+                lineHeight = metrics.metadataSize * 1.2f,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White.copy(alpha = 0.9f),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun PlayerBatteryStatusItem(
+    percent: Int?,
+    charging: Boolean,
+    metrics: PlayerLayoutMetrics,
+) {
+    val typeScale = MaterialTheme.nuvioTypeScale
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        PlayerBatteryGlyph(
+            percent = percent,
+            charging = charging,
+            metrics = metrics,
+        )
+        Text(
+            text = percent?.let { "$it%" } ?: "--",
+            style = typeScale.labelSm.copy(
+                fontSize = metrics.metadataSize,
+                lineHeight = metrics.metadataSize * 1.2f,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White.copy(alpha = 0.9f),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun PlayerBatteryGlyph(
+    percent: Int?,
+    charging: Boolean,
+    metrics: PlayerLayoutMetrics,
+) {
+    val level = percent?.coerceIn(0, 100)
+    val fillFraction = (level ?: 0) / 100f
+    val activeColor = if (charging) {
+        Color(0xFF8CFFB3)
+    } else {
+        Color.White.copy(alpha = 0.9f)
+    }
+    val outlineColor = Color.White.copy(alpha = 0.72f)
+    val bodyWidth = metrics.headerIconSize * 0.86f
+    val bodyHeight = metrics.headerIconSize * 0.46f
+    val capWidth = metrics.headerIconSize * 0.08f
+    val capHeight = metrics.headerIconSize * 0.24f
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = bodyWidth, height = bodyHeight)
+                .clip(RoundedCornerShape(3.dp))
+                .border(
+                    width = 1.2.dp,
+                    color = outlineColor,
+                    shape = RoundedCornerShape(3.dp),
+                )
+                .padding(2.dp),
+        ) {
+            if (level != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fillFraction)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(activeColor),
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .size(width = capWidth, height = capHeight)
+                .clip(RoundedCornerShape(topEnd = 1.5.dp, bottomEnd = 1.5.dp))
+                .background(outlineColor),
+        )
     }
 }
 
@@ -226,6 +436,7 @@ private fun PlayerHeader(
     onParentalGuideAnimationComplete: () -> Unit,
     onLockToggle: () -> Unit,
     onVideoSettingsClick: (() -> Unit)?,
+    onRandomEpisodeClick: (() -> Unit)?,
     onOpenInExternalPlayer: (() -> Unit)?,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
@@ -333,6 +544,15 @@ private fun PlayerHeader(
                             buttonSize = metrics.headerIconSize + 16.dp,
                             iconSize = metrics.headerIconSize,
                             onClick = onOpenInExternalPlayer,
+                        )
+                    }
+                    if (onRandomEpisodeClick != null) {
+                        PlayerHeaderIconButton(
+                            icon = Icons.Rounded.Shuffle,
+                            contentDescription = stringResource(Res.string.action_random_episode),
+                            buttonSize = metrics.headerIconSize + 16.dp,
+                            iconSize = metrics.headerIconSize,
+                            onClick = onRandomEpisodeClick,
                         )
                     }
                     PlayerHeaderIconButton(
@@ -501,7 +721,10 @@ private fun ProgressControls(
     onResizeModeClick: () -> Unit,
     onSpeedClick: () -> Unit,
     onSubtitleClick: (() -> Unit)?,
+    onSubtitleSyncClick: (() -> Unit)? = null,
     onAudioClick: (() -> Unit)?,
+    qualityLabel: String? = null,
+    onQualityClick: (() -> Unit)? = null,
     onChannelsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
@@ -581,11 +804,24 @@ private fun ProgressControls(
                             onClick = onSubtitleClick,
                         )
                     }
+                    if (onSubtitleSyncClick != null) {
+                        PlayerActionPillButton(
+                            label = stringResource(Res.string.compose_player_sync_short),
+                            icon = Icons.Rounded.Tune,
+                            onClick = onSubtitleSyncClick,
+                        )
+                    }
                     if (onAudioClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_audio),
                             painter = audioPainter,
                             onClick = onAudioClick,
+                        )
+                    }
+                    if (onQualityClick != null) {
+                        PlayerActionPillButton(
+                            label = qualityLabel?.takeIf { it.isNotBlank() } ?: "Quality",
+                            onClick = onQualityClick,
                         )
                     }
                     if (onChannelsClick != null) {

@@ -39,8 +39,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Icon
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,7 +74,6 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.features.details.components.DetailActionButtons
-import com.nuvio.app.features.details.components.AiAssistantSheet
 import com.nuvio.app.features.details.components.DetailSecondaryAction
 import com.nuvio.app.features.details.components.CommentDetailSheet
 import com.nuvio.app.features.details.components.DetailAdditionalInfoSection
@@ -93,11 +90,9 @@ import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.SeasonWatchedActionSheet
 import com.nuvio.app.features.details.components.TrailerPlayerPopup
 import com.nuvio.app.features.home.MetaPreview
-import com.nuvio.app.features.ai.AiAssistantSettingsRepository
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.player.PlayerSettingsRepository
-import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbService
@@ -129,6 +124,8 @@ import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
+private const val RANDOM_EPISODE_HISTORY_LIMIT = 8
+
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
 fun MetaDetailsScreen(
@@ -153,10 +150,6 @@ fun MetaDetailsScreen(
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
-    val nuvioEnhancedSettings by remember {
-        NuvioEnhancedSettingsRepository.ensureLoaded()
-        NuvioEnhancedSettingsRepository.uiState
-    }.collectAsStateWithLifecycle()
     val traktAuthUiState by remember {
         TraktAuthRepository.ensureLoaded()
         TraktAuthRepository.uiState
@@ -168,10 +161,6 @@ fun MetaDetailsScreen(
     val tmdbSettingsUiState by remember {
         TmdbSettingsRepository.ensureLoaded()
         TmdbSettingsRepository.uiState
-    }.collectAsStateWithLifecycle()
-    val aiAssistantSettings by remember {
-        AiAssistantSettingsRepository.ensureLoaded()
-        AiAssistantSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val libraryUiState by remember {
         LibraryRepository.ensureLoaded()
@@ -214,7 +203,6 @@ fun MetaDetailsScreen(
     var pickerError by remember(type, id) { mutableStateOf<String?>(null) }
     var episodeImdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
-    var showAiAssistant by remember(type, id) { mutableStateOf(false) }
 
     val shouldShowComments = commentsEnabled &&
         traktAuthUiState.mode == TraktConnectionMode.CONNECTED &&
@@ -484,13 +472,13 @@ fun MetaDetailsScreen(
                 val showRandomEpisodeButton = metaScreenSettingsUiState.randomEpisodeButton &&
                     meta.isSeriesLikeForEpisodeRatings()
                 val randomEpisodeLabel = stringResource(Res.string.action_random_episode)
-                var lastRandomEpisodePlaybackId by remember(
+                var randomEpisodeHistory by remember(
                     meta.id,
                     seriesActionVideo?.season,
                     seriesActionVideo?.episode,
                     todayIsoDate,
                 ) {
-                    mutableStateOf<String?>(null)
+                    mutableStateOf<List<String>>(emptyList())
                 }
 
                 fun MetaVideo.randomEpisodePlaybackId(): String =
@@ -504,56 +492,37 @@ fun MetaDetailsScreen(
                 fun pickRandomEpisode(): MetaVideo? {
                     if (!showRandomEpisodeButton) return null
                     val releasedEpisodes = meta.releasedPlayableEpisodes(todayIsoDate)
+                        .filter { video -> normalizeSeasonNumber(video.season) > 0 }
                     if (releasedEpisodes.isEmpty()) return null
 
                     val currentPlaybackId = seriesActionVideo?.randomEpisodePlaybackId()
-                    val previousPlaybackId = lastRandomEpisodePlaybackId
 
                     val basePool = releasedEpisodes.filterNot { episode ->
                         currentPlaybackId != null && episode.randomEpisodePlaybackId() == currentPlaybackId
                     }
-                    val nonRepeatingPool = basePool
-                        .filterNot { episode ->
-                            previousPlaybackId != null &&
-                                basePool.size > 1 &&
-                                episode.randomEpisodePlaybackId() == previousPlaybackId
-                        }
+                    val nonRepeatingPool = basePool.filterNot { episode ->
+                        basePool.size > 1 &&
+                            episode.randomEpisodePlaybackId() in randomEpisodeHistory
+                    }
 
                     val candidates = when {
                         nonRepeatingPool.isNotEmpty() -> nonRepeatingPool
                         basePool.isNotEmpty() -> basePool
-                        previousPlaybackId != null -> releasedEpisodes.filterNot { episode ->
-                            episode.randomEpisodePlaybackId() == previousPlaybackId
-                        }.ifEmpty { releasedEpisodes }
                         else -> releasedEpisodes
                     }
 
                     val selected = candidates.random()
-                    lastRandomEpisodePlaybackId = selected.randomEpisodePlaybackId()
+                    randomEpisodeHistory = (randomEpisodeHistory + selected.randomEpisodePlaybackId())
+                        .takeLast(RANDOM_EPISODE_HISTORY_LIMIT)
                     return selected
                 }
 
-                val randomEpisodeAction = remember(
-                    showRandomEpisodeButton,
-                    meta.id,
-                    meta.type,
-                    meta.name,
-                    meta.logo,
-                    meta.poster,
-                    meta.background,
-                    onRandomPlay,
-                    onRandomPlayManually,
-                    randomEpisodeLabel,
-                    todayIsoDate,
-                    seriesActionVideo?.season,
-                    seriesActionVideo?.episode,
+                val randomEpisodeAction = if (
+                    showRandomEpisodeButton &&
+                    (onRandomPlay != null || onRandomPlayManually != null || onPlay != null || onPlayManually != null)
                 ) {
-                    if (!showRandomEpisodeButton) return@remember null
-                    val playHandler = onRandomPlay
-                    val manualHandler = onRandomPlayManually
-                    if (playHandler == null && manualHandler == null) return@remember null
-                    val clickHandler = playHandler ?: manualHandler ?: return@remember null
-                    val longClickHandler = manualHandler ?: playHandler
+                    val clickHandler = onRandomPlay ?: onPlay ?: onRandomPlayManually ?: onPlayManually
+                    val longClickHandler = onRandomPlayManually ?: onPlayManually ?: onRandomPlay ?: onPlay
                     DetailSecondaryAction(
                         label = randomEpisodeLabel,
                         icon = Icons.Default.Shuffle,
@@ -563,7 +532,9 @@ fun MetaDetailsScreen(
                                 val episode = video.episode
                                 val playbackVideoId = video.randomEpisodePlaybackId()
                                 val streamVideoId = video.id.takeIf { it.isNotBlank() } ?: playbackVideoId
-                                clickHandler(
+                                val savedProgress = watchProgressUiState.byVideoId[streamVideoId]
+                                    ?.takeUnless { it.isCompleted }
+                                clickHandler?.invoke(
                                     meta.type,
                                     streamVideoId,
                                     meta.id,
@@ -577,7 +548,7 @@ fun MetaDetailsScreen(
                                     video.title,
                                     video.thumbnail,
                                     video.overview,
-                                    null,
+                                    savedProgress?.lastPositionMs,
                                 )
                             }
                         },
@@ -588,6 +559,8 @@ fun MetaDetailsScreen(
                                     val episode = video.episode
                                     val playbackVideoId = video.randomEpisodePlaybackId()
                                     val streamVideoId = video.id.takeIf { it.isNotBlank() } ?: playbackVideoId
+                                    val savedProgress = watchProgressUiState.byVideoId[streamVideoId]
+                                        ?.takeUnless { it.isCompleted }
                                     handler(
                                         meta.type,
                                         streamVideoId,
@@ -602,12 +575,14 @@ fun MetaDetailsScreen(
                                         video.title,
                                         video.thumbnail,
                                         video.overview,
-                                        null,
+                                        savedProgress?.lastPositionMs,
                                     )
                                 }
                             }
                         },
                     )
+                } else {
+                    null
                 }
                 val hasEpisodes = meta.videos.any { it.season != null || it.episode != null }
                 val hasProductionSection = remember(meta) {
@@ -1001,27 +976,13 @@ fun MetaDetailsScreen(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .graphicsLayer {
-                                            alpha = 0.34f
-                                            scaleX = 1.16f
-                                            scaleY = 1.16f
-                                        }
-                                        .blur(18.dp),
+                                        .blur(30.dp),
                                     contentScale = ContentScale.Crop,
                                 )
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colorStops = arrayOf(
-                                                    0.00f to MaterialTheme.colorScheme.background.copy(alpha = 0.42f),
-                                                    0.22f to MaterialTheme.colorScheme.background.copy(alpha = 0.68f),
-                                                    0.58f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
-                                                    1.00f to MaterialTheme.colorScheme.background.copy(alpha = 0.94f),
-                                                ),
-                                            ),
-                                        ),
+                                        .background(colorScheme.background.copy(alpha = 0.92f)),
                                 )
                             }
                             MetaScreenBackgroundMode.DominantColor -> if (deferredMetaWorkAllowed) {
@@ -1145,9 +1106,6 @@ fun MetaDetailsScreen(
                                 watchedKeys = watchedUiState.watchedKeys,
                                 blurUnwatchedEpisodes = metaScreenSettingsUiState.blurUnwatchedEpisodes,
                                 showEpisodeRatings = metaScreenSettingsUiState.showEpisodeRatings,
-                                showNuvioReading = nuvioEnhancedSettings.nuvioReadingEnabled,
-                                showNuvioSpotlight = nuvioEnhancedSettings.enhancedHomeFeaturesEnabled &&
-                                    nuvioEnhancedSettings.nuvioSpotlightEnabled,
                                 onEpisodeClick = onEpisodePlayClick,
                                 onEpisodeLongPress = { video -> selectedEpisodeForActions = video },
                                 onSeasonLongPress = { season -> selectedSeasonForActions = season },
@@ -1212,38 +1170,6 @@ fun MetaDetailsScreen(
                             onToggleSaved = toggleSaved,
                             modifier = Modifier.zIndex(2f),
                         )
-
-                        if (
-                            aiAssistantSettings.enabled &&
-                            meta.type.lowercase() in setOf("movie", "film", "series", "show", "tv", "tvshow")
-                        ) {
-                            SmallFloatingActionButton(
-                                onClick = { showAiAssistant = true },
-                                modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(
-                                        end = 18.dp,
-                                        bottom = nuvioSafeBottomPadding(18.dp),
-                                    )
-                                    .zIndex(3f),
-                                shape = androidx.compose.foundation.shape.CircleShape,
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = stringResource(Res.string.ai_chat_title),
-                                )
-                            }
-                        }
-
-                        if (showAiAssistant) {
-                            AiAssistantSheet(
-                                meta = meta,
-                                settings = aiAssistantSettings,
-                                onDismiss = { showAiAssistant = false },
-                            )
-                        }
 
                         selectedEpisodeForActions?.let { selectedEpisode ->
                             val isSelectedEpisodeWatched = remember(meta, selectedEpisode, watchedUiState.watchedKeys, progressByVideoId) {
@@ -1611,8 +1537,6 @@ private fun LazyListScope.configuredMetaSectionItems(
     watchedKeys: Set<String>,
     blurUnwatchedEpisodes: Boolean,
     showEpisodeRatings: Boolean,
-    showNuvioReading: Boolean,
-    showNuvioSpotlight: Boolean,
     onEpisodeClick: (MetaVideo) -> Unit,
     onEpisodeLongPress: (MetaVideo) -> Unit,
     onSeasonLongPress: (Int) -> Unit,
@@ -1698,8 +1622,6 @@ private fun LazyListScope.configuredMetaSectionItems(
                     watchedKeys = watchedKeys,
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     showEpisodeRatings = showEpisodeRatings,
-                    showNuvioReading = showNuvioReading,
-                    showNuvioSpotlight = showNuvioSpotlight,
                     onEpisodeClick = onEpisodeClick,
                     onEpisodeLongPress = onEpisodeLongPress,
                     onSeasonLongPress = onSeasonLongPress,
@@ -1850,8 +1772,6 @@ private fun ConfiguredMetaSections(
     watchedKeys: Set<String>,
     blurUnwatchedEpisodes: Boolean,
     showEpisodeRatings: Boolean,
-    showNuvioReading: Boolean,
-    showNuvioSpotlight: Boolean,
     onEpisodeClick: (MetaVideo) -> Unit,
     onEpisodeLongPress: (MetaVideo) -> Unit,
     onSeasonLongPress: (Int) -> Unit,
@@ -1923,11 +1843,7 @@ private fun ConfiguredMetaSections(
                 )
             }
             MetaScreenSectionKey.OVERVIEW -> {
-                DetailMetaInfo(
-                    meta = meta,
-                    showNuvioReading = showNuvioReading,
-                    showNuvioSpotlight = showNuvioSpotlight,
-                )
+                DetailMetaInfo(meta = meta)
             }
             MetaScreenSectionKey.PRODUCTION -> {
                 if (hasProductionSection) {
@@ -1975,7 +1891,7 @@ private fun ConfiguredMetaSections(
                         watchedKeys = watchedKeys,
                         episodeRatings = episodeImdbRatings,
                         blurUnwatchedEpisodes = blurUnwatchedEpisodes,
-                        showEpisodeRatings = settings.showEpisodeRatings,
+                        showEpisodeRatings = showEpisodeRatings,
                         onEpisodeClick = onEpisodeClick,
                         onEpisodeLongPress = onEpisodeLongPress,
                         onSeasonLongPress = onSeasonLongPress,

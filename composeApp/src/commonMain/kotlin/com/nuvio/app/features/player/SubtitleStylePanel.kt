@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,11 +42,32 @@ import kotlin.math.roundToInt
 @Composable
 fun SubtitleStylePanel(
     style: SubtitleStyleState,
+    isCompact: Boolean,
+    onStyleChanged: (SubtitleStyleState) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val sectionPadding = if (isCompact) 12.dp else 16.dp
+    val gap = if (isCompact) 12.dp else 16.dp
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(gap),
+    ) {
+        StyleControlsCard(
+            style = style,
+            isCompact = isCompact,
+            sectionPadding = sectionPadding,
+            colorScheme = colorScheme,
+            onStyleChanged = onStyleChanged,
+        )
+    }
+}
+
+@Composable
+fun SubtitleSyncPanel(
     subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     subtitleAutoSyncState: SubtitleAutoSyncUiState,
     isCompact: Boolean,
-    onStyleChanged: (SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,
@@ -55,15 +81,13 @@ fun SubtitleStylePanel(
     Column(
         verticalArrangement = Arrangement.spacedBy(gap),
     ) {
-        StyleControlsCard(
-            style = style,
+        SyncControlsCard(
             subtitleDelayMs = subtitleDelayMs,
             selectedAddonSubtitle = selectedAddonSubtitle,
             subtitleAutoSyncState = subtitleAutoSyncState,
             isCompact = isCompact,
             sectionPadding = sectionPadding,
             colorScheme = colorScheme,
-            onStyleChanged = onStyleChanged,
             onSubtitleDelayChanged = onSubtitleDelayChanged,
             onSubtitleDelayReset = onSubtitleDelayReset,
             onAutoSyncCapture = onAutoSyncCapture,
@@ -74,15 +98,13 @@ fun SubtitleStylePanel(
 }
 
 @Composable
-private fun StyleControlsCard(
-    style: SubtitleStyleState,
+private fun SyncControlsCard(
     subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     subtitleAutoSyncState: SubtitleAutoSyncUiState,
     isCompact: Boolean,
     sectionPadding: androidx.compose.ui.unit.Dp,
     colorScheme: androidx.compose.material3.ColorScheme,
-    onStyleChanged: (SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,
@@ -102,7 +124,7 @@ private fun StyleControlsCard(
     ) {
         SectionHeader(
             icon = Icons.Rounded.Tune,
-            label = stringResource(Res.string.compose_player_style),
+            label = stringResource(Res.string.compose_player_sync_short),
         )
 
         Row(
@@ -147,6 +169,32 @@ private fun StyleControlsCard(
             onCapture = onAutoSyncCapture,
             onCueSelected = onAutoSyncCueSelected,
             onReload = onAutoSyncReload,
+        )
+    }
+}
+
+@Composable
+private fun StyleControlsCard(
+    style: SubtitleStyleState,
+    isCompact: Boolean,
+    sectionPadding: androidx.compose.ui.unit.Dp,
+    colorScheme: androidx.compose.material3.ColorScheme,
+    onStyleChanged: (SubtitleStyleState) -> Unit,
+) {
+    val btnSize = if (isCompact) 28.dp else 32.dp
+    val btnRadius = if (isCompact) 14.dp else 16.dp
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(colorScheme.surfaceVariant.copy(alpha = 0.45f))
+            .padding(sectionPadding),
+        verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 16.dp),
+    ) {
+        SectionHeader(
+            icon = Icons.Rounded.Tune,
+            label = stringResource(Res.string.compose_player_style),
         )
 
         Row(
@@ -313,10 +361,15 @@ private fun AutoSyncControls(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val capturedPositionMs = state.capturedPositionMs
-    val nearestCues = if (capturedPositionMs == null) {
-        emptyList()
-    } else {
-        state.cues.sortedBy { abs(it.startTimeMs - capturedPositionMs) }.take(5)
+    val cueListState = rememberLazyListState()
+    val highlightedCueIndex = capturedPositionMs?.let { captured ->
+        state.cues.indices.minByOrNull { index -> abs(state.cues[index].startTimeMs - captured) }
+    } ?: -1
+
+    LaunchedEffect(highlightedCueIndex, state.cues.size) {
+        if (highlightedCueIndex >= 0) {
+            cueListState.animateScrollToItem((highlightedCueIndex - 2).coerceAtLeast(0))
+        }
     }
 
     Column(
@@ -378,30 +431,48 @@ private fun AutoSyncControls(
             )
         }
 
-        if (capturedPositionMs != null && nearestCues.isNotEmpty()) {
-            nearestCues.forEach { cue ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(colorScheme.surfaceVariant.copy(alpha = 0.52f))
-                        .clickable { onCueSelected(cue) }
-                        .padding(horizontal = 8.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = formatCueTimestamp(cue.startTimeMs),
-                        color = colorScheme.primary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = cue.text,
-                        color = colorScheme.onSurface,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                    )
+        if (state.cues.isNotEmpty()) {
+            LazyColumn(
+                state = cueListState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = if (isCompact) 170.dp else 240.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                itemsIndexed(state.cues) { index, cue ->
+                    val isHighlighted = index == highlightedCueIndex
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                if (isHighlighted) colorScheme.primary.copy(alpha = 0.24f)
+                                else colorScheme.surfaceVariant.copy(alpha = 0.52f),
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isHighlighted) colorScheme.primary.copy(alpha = 0.72f)
+                                else colorScheme.outlineVariant.copy(alpha = 0.18f),
+                                shape = RoundedCornerShape(8.dp),
+                            )
+                            .clickable { onCueSelected(cue) }
+                            .padding(horizontal = 8.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = formatCueTimestamp(cue.startTimeMs),
+                            color = if (isHighlighted) colorScheme.primary else colorScheme.onSurfaceVariant,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = cue.text,
+                            color = colorScheme.onSurface,
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                        )
+                    }
                 }
             }
         }

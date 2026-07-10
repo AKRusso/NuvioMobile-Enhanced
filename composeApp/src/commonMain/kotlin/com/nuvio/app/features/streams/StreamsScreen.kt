@@ -190,6 +190,19 @@ fun StreamsScreen(
             manualSelection = manualSelection,
         )
     }
+    val expectedRequestToken = remember(type, videoId, seasonNumber, episodeNumber, manualSelection) {
+        StreamsRepository.requestToken(
+            type = type,
+            videoId = videoId,
+            season = seasonNumber,
+            episode = episodeNumber,
+            manualSelection = manualSelection,
+        )
+    }
+    val showDirectAutoPlayOverlay =
+        !manualSelection &&
+            uiState.requestToken == expectedRequestToken &&
+            uiState.showDirectAutoPlayOverlay
 
     LaunchedEffect(uiState.groups, storedProgress?.providerAddonId, preferredFilterApplied) {
         if (preferredFilterApplied) return@LaunchedEffect
@@ -301,7 +314,7 @@ fun StreamsScreen(
         }
 
         AnimatedVisibility(
-            visible = uiState.showDirectAutoPlayOverlay,
+            visible = showDirectAutoPlayOverlay,
             enter = fadeIn(animationSpec = tween(250)),
             exit = fadeOut(animationSpec = tween(200)),
             modifier = Modifier.fillMaxSize(),

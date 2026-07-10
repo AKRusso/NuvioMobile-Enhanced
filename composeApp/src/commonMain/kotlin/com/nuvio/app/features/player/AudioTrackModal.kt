@@ -24,8 +24,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -104,16 +104,16 @@ fun AudioTrackModal(
                             )
                         }
 
-                        if (audioTracks.isEmpty()) {
-                            AudioEmptyState()
-                        } else {
-                            Column(
-                                modifier = Modifier
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(horizontal = 20.dp)
-                                    .padding(bottom = 20.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
+                        Column(
+                            modifier = Modifier
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp)
+                            .padding(bottom = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (audioTracks.isEmpty()) {
+                                AudioEmptyState()
+                            } else {
                                 audioTracks.forEachIndexed { idx, track ->
                                     AudioTrackRow(
                                         track = track,

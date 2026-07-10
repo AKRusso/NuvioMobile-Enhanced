@@ -1,0 +1,4 @@
+language = C
+headers = iospowersource_shim.h
+package = com.nuvio.app.features.player.iospower
+linkerOpts = -framework IOKit

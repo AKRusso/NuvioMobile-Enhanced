@@ -1,9 +1,11 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,10 +37,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -51,7 +60,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioPrimaryButton
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.buildHomeConciergeState
 import com.nuvio.app.features.home.buildHomeReleaseRadarItems
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
@@ -68,12 +79,17 @@ import com.nuvio.app.features.profiles.parseHexColor
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
 import com.nuvio.app.features.profiles.profileBackgroundImageUrl
 import com.nuvio.app.features.watched.WatchedClock
+import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watched.WatchedUiState
+import com.nuvio.app.features.watched.watchedItemKey
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
+import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.WatchProgressUiState
+import com.nuvio.app.features.watchprogress.isLiveTvProgressEntry
+import com.nuvio.app.features.watchprogress.profileContinueWatchingEntries
 import com.nuvio.app.features.watchprogress.toContinueWatchingItem
 import kotlin.math.roundToInt
 import nuvio.composeapp.generated.resources.Res
@@ -113,12 +129,16 @@ internal fun LazyListScope.profileInsightsContent(
     isTablet: Boolean,
     onSwitchProfile: (() -> Unit)?,
     onEditProfile: (() -> Unit)?,
+    onPosterClick: ((MetaPreview) -> Unit)? = null,
+    onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
     item {
         ProfileInsightsBody(
             isTablet = isTablet,
             onSwitchProfile = onSwitchProfile,
             onEditProfile = onEditProfile,
+            onPosterClick = onPosterClick,
+            onContinueWatchingClick = onContinueWatchingClick,
         )
     }
 }
@@ -128,6 +148,8 @@ private fun ProfileInsightsBody(
     isTablet: Boolean,
     onSwitchProfile: (() -> Unit)?,
     onEditProfile: (() -> Unit)?,
+    onPosterClick: ((MetaPreview) -> Unit)?,
+    onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)?,
 ) {
     val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
     val avatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
@@ -139,6 +161,7 @@ private fun ProfileInsightsBody(
         WatchedRepository.ensureLoaded()
         WatchedRepository.uiState
     }.collectAsStateWithLifecycle()
+    val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val libraryState by remember {
         LibraryRepository.ensureLoaded()
         LibraryRepository.uiState
@@ -165,23 +188,48 @@ private fun ProfileInsightsBody(
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: profileNameFallback
-    val stats = remember(watchProgressState, watchedState, libraryState, todayIsoDate) {
+    val stats = remember(watchProgressState, watchedState, fullyWatchedSeriesKeys, libraryState, todayIsoDate) {
         buildProfileInsightsStats(
             watchProgressState = watchProgressState,
             watchedState = watchedState,
+            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
             libraryState = libraryState,
             todayIsoDate = todayIsoDate,
         )
     }
     val continueWatchingItems = remember(watchProgressState.entries) {
         watchProgressState.entries
-            .asSequence()
-            .filter { entry -> entry.isResumable && entry.progressFraction >= 0.02f }
-            .sortedByDescending { entry -> entry.lastUpdatedEpochMs }
-            .take(ProfileConciergeContinueWatchingLimit)
+            .profileContinueWatchingEntries(limit = ProfileConciergeContinueWatchingLimit)
             .map(WatchProgressEntry::toContinueWatchingItem)
-            .toList()
     }
+    val continueTitle = stringResource(Res.string.profile_insights_stat_continue)
+    val completedTitle = stringResource(Res.string.profile_insights_stat_completed)
+    val libraryTitle = stringResource(Res.string.profile_insights_stat_library)
+    val upcomingTitle = stringResource(Res.string.profile_insights_stat_upcoming)
+    val insightCollections = remember(
+        watchProgressState,
+        watchedState,
+        fullyWatchedSeriesKeys,
+        libraryState,
+        todayIsoDate,
+        continueTitle,
+        completedTitle,
+        libraryTitle,
+        upcomingTitle,
+    ) {
+        buildProfileInsightCollections(
+            watchProgressState = watchProgressState,
+            watchedState = watchedState,
+            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+            libraryState = libraryState,
+            todayIsoDate = todayIsoDate,
+            continueTitle = continueTitle,
+            completedTitle = completedTitle,
+            libraryTitle = libraryTitle,
+            upcomingTitle = upcomingTitle,
+        )
+    }
+    var selectedInsightCollection by remember { mutableStateOf<ProfileInsightCollection?>(null) }
     val profileRadarItems = remember(
         todayIsoDate,
         continueWatchingItems,
@@ -248,6 +296,13 @@ private fun ProfileInsightsBody(
             ProfileInsightsStatsGrid(
                 stats = stats,
                 isTablet = isTablet,
+                isCollectionAvailable = { kind ->
+                    insightCollections[kind]?.items?.isNotEmpty() == true
+                },
+                onCollectionClick = { kind ->
+                    selectedInsightCollection = insightCollections[kind]
+                        ?.takeIf { collection -> collection.items.isNotEmpty() }
+                },
             )
         }
         SettingsSection(
@@ -264,9 +319,19 @@ private fun ProfileInsightsBody(
                 HomeConciergeSection(
                     state = conciergeState,
                     sectionPadding = 0.dp,
+                    onPosterClick = onPosterClick,
+                    onContinueWatchingClick = onContinueWatchingClick,
                 )
             }
         }
+    }
+
+    selectedInsightCollection?.let { collection ->
+        ProfileInsightCollectionSheet(
+            collection = collection,
+            isTablet = isTablet,
+            onDismiss = { selectedInsightCollection = null },
+        )
     }
 }
 
@@ -485,7 +550,7 @@ private fun ProfileHeroAvatar(
                     .fillMaxSize()
                     .clip(CircleShape),
                 contentScale = ContentScale.Crop,
-                animateIfPossible = false,
+                animateIfPossible = true,
             )
         } else {
             Text(
@@ -562,6 +627,8 @@ private fun ProfileHeroMetric(
 private fun ProfileInsightsStatsGrid(
     stats: ProfileInsightsStats,
     isTablet: Boolean,
+    isCollectionAvailable: (ProfileInsightCollectionKind) -> Boolean,
+    onCollectionClick: (ProfileInsightCollectionKind) -> Unit,
 ) {
     val tiles = listOf(
         ProfileInsightTile(
@@ -569,18 +636,21 @@ private fun ProfileInsightsStatsGrid(
             value = stats.continueCount.toString(),
             label = stringResource(Res.string.profile_insights_stat_continue),
             caption = stringResource(Res.string.profile_insights_stat_continue_caption),
+            collectionKind = ProfileInsightCollectionKind.Continue,
         ),
         ProfileInsightTile(
             icon = Icons.Rounded.Favorite,
             value = stats.completedCount.toString(),
             label = stringResource(Res.string.profile_insights_stat_completed),
             caption = stringResource(Res.string.profile_insights_stat_completed_caption),
+            collectionKind = ProfileInsightCollectionKind.Completed,
         ),
         ProfileInsightTile(
             icon = Icons.Rounded.CollectionsBookmark,
             value = stats.libraryCount.toString(),
             label = stringResource(Res.string.profile_insights_stat_library),
             caption = stringResource(Res.string.profile_insights_stat_library_caption),
+            collectionKind = ProfileInsightCollectionKind.Library,
         ),
         ProfileInsightTile(
             icon = Icons.Rounded.AutoAwesome,
@@ -599,6 +669,7 @@ private fun ProfileInsightsStatsGrid(
             value = stats.upcomingCount.toString(),
             label = stringResource(Res.string.profile_insights_stat_upcoming),
             caption = stringResource(Res.string.profile_insights_stat_upcoming_caption),
+            collectionKind = ProfileInsightCollectionKind.Upcoming,
         ),
     )
     val columns = if (isTablet) 3 else 2
@@ -612,6 +683,9 @@ private fun ProfileInsightsStatsGrid(
                 rowTiles.forEach { tile ->
                     ProfileInsightStatCard(
                         tile = tile,
+                        onClick = tile.collectionKind
+                            ?.takeIf(isCollectionAvailable)
+                            ?.let { kind -> { onCollectionClick(kind) } },
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -626,11 +700,20 @@ private fun ProfileInsightsStatsGrid(
 @Composable
 private fun ProfileInsightStatCard(
     tile: ProfileInsightTile,
+    onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
     Surface(
-        modifier = modifier.heightIn(min = 116.dp),
+        modifier = modifier
+            .heightIn(min = 116.dp)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            ),
         color = tokens.colors.surface,
         shape = RoundedCornerShape(22.dp),
         border = BorderStroke(1.dp, tokens.colors.borderSubtle),
@@ -679,6 +762,117 @@ private fun ProfileInsightStatCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = tokens.colors.textMuted,
                 maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileInsightCollectionSheet(
+    collection: ProfileInsightCollection,
+    isTablet: Boolean,
+    onDismiss: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    NuvioModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTablet) 24.dp else 18.dp)
+                .padding(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = collection.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = tokens.colors.textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = stringResource(Res.string.profile_insights_collection_count, collection.items.size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = tokens.colors.textMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(if (isTablet) 132.dp else 104.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = if (isTablet) 640.dp else 520.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                items(
+                    items = collection.items,
+                    key = { item -> item.id },
+                ) { item ->
+                    ProfileInsightPosterTile(item = item)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileInsightPosterTile(
+    item: ProfileInsightPosterItem,
+) {
+    val tokens = MaterialTheme.nuvio
+    Column(
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(15.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            val imageUrl = item.imageUrl?.trim()?.takeIf { it.isNotBlank() }
+            if (imageUrl != null) {
+                CollectionCardRemoteImage(
+                    imageUrl = imageUrl,
+                    contentDescription = item.title,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    animateIfPossible = true,
+                )
+            } else {
+                Text(
+                    text = item.title.take(1).uppercase(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = tokens.colors.textMuted,
+                    fontWeight = FontWeight.Black,
+                )
+            }
+        }
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.labelLarge,
+            color = tokens.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        item.subtitle?.let { subtitle ->
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = tokens.colors.textMuted,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -958,17 +1152,30 @@ private fun ProfileTasteBalanceBar(stats: ProfileInsightsStats) {
                 .clip(RoundedCornerShape(999.dp))
                 .background(tokens.colors.borderSubtle),
         ) {
+            val movieLeaning = stats.movieShare >= 0.5f
             Box(
                 modifier = Modifier
                     .weight(stats.movieShare.coerceIn(0.05f, 0.95f))
                     .fillMaxSize()
-                    .background(tokens.colors.accent),
+                    .background(
+                        if (movieLeaning) {
+                            tokens.colors.accent
+                        } else {
+                            tokens.colors.textMuted.copy(alpha = 0.42f)
+                        },
+                    ),
             )
             Box(
                 modifier = Modifier
                     .weight((1f - stats.movieShare).coerceIn(0.05f, 0.95f))
                     .fillMaxSize()
-                    .background(tokens.colors.textMuted.copy(alpha = 0.42f)),
+                    .background(
+                        if (movieLeaning) {
+                            tokens.colors.textMuted.copy(alpha = 0.42f)
+                        } else {
+                            tokens.colors.accent
+                        },
+                    ),
             )
         }
         Row(
@@ -1034,14 +1241,21 @@ private fun profileInsightDurationLabel(durationMs: Long): String {
 private fun buildProfileInsightsStats(
     watchProgressState: WatchProgressUiState,
     watchedState: WatchedUiState,
+    fullyWatchedSeriesKeys: Set<String>,
     libraryState: LibraryUiState,
     todayIsoDate: String,
 ): ProfileInsightsStats {
     val now = WatchedClock.nowEpochMs()
     val recentCutoff = now - ProfileInsightsRecentWindowMs
-    val progressEntries = watchProgressState.entries
-    val libraryItems = libraryState.items
-    val watchedItems = watchedState.items
+    val progressEntries = watchProgressState.entries.filterNot(WatchProgressEntry::isLiveTvProgressEntry)
+    val continueEntries = progressEntries.profileContinueWatchingEntries()
+    val libraryItems = libraryState.items.filter(LibraryItem::isProfileInsightContent)
+    val watchedItems = watchedState.items.filter(WatchedItem::isProfileInsightContent)
+    val completedContentItems = buildProfileCompletedContentItems(
+        watchedItems = watchedItems,
+        fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+        libraryItems = libraryItems,
+    )
     val normalizedTypes = libraryItems.map { item -> item.type } +
         progressEntries.map { entry -> entry.parentMetaType } +
         watchedItems.map { item -> item.type }
@@ -1059,10 +1273,8 @@ private fun buildProfileInsightsStats(
     }
 
     return ProfileInsightsStats(
-        continueCount = progressEntries.count { entry ->
-            entry.isResumable && entry.progressFraction >= 0.02f
-        },
-        completedCount = watchedItems.size,
+        continueCount = continueEntries.size,
+        completedCount = completedContentItems.size,
         libraryCount = libraryItems.size,
         trackedDurationMs = progressEntries.sumOf(WatchProgressEntry::profileTrackedDurationMs),
         recentActivityCount = watchedItems.count { it.markedAtEpochMs >= recentCutoff } +
@@ -1070,7 +1282,7 @@ private fun buildProfileInsightsStats(
         upcomingCount = libraryItems.count { item ->
             item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true
         },
-        smartResume = progressEntries
+        smartResume = continueEntries
             .asSequence()
             .filter { entry -> entry.isResumable && entry.progressFraction in 0.05f..0.92f }
             .sortedByDescending { entry -> entry.lastUpdatedEpochMs }
@@ -1090,8 +1302,8 @@ private fun buildProfileInsightsStats(
         },
         dnaChips = buildProfileTasteDnaChips(
             libraryCount = libraryItems.size,
-            continueCount = progressEntries.count { entry -> entry.isResumable && entry.progressFraction >= 0.02f },
-            completedCount = watchedItems.size,
+            continueCount = continueEntries.size,
+            completedCount = completedContentItems.size,
             recentActivityCount = watchedItems.count { it.markedAtEpochMs >= recentCutoff } +
                 progressEntries.count { it.lastUpdatedEpochMs >= recentCutoff },
             upcomingCount = libraryItems.count { item ->
@@ -1101,6 +1313,174 @@ private fun buildProfileInsightsStats(
             movieSeriesTotal = movieSeriesTotal,
         ),
     )
+}
+
+private fun buildProfileInsightCollections(
+    watchProgressState: WatchProgressUiState,
+    watchedState: WatchedUiState,
+    fullyWatchedSeriesKeys: Set<String>,
+    libraryState: LibraryUiState,
+    todayIsoDate: String,
+    continueTitle: String,
+    completedTitle: String,
+    libraryTitle: String,
+    upcomingTitle: String,
+): Map<ProfileInsightCollectionKind, ProfileInsightCollection> {
+    val continueItems = watchProgressState.entries
+        .profileContinueWatchingEntries()
+        .asSequence()
+        .map { entry ->
+            ProfileInsightPosterItem(
+                id = "continue:${entry.parentMetaId}:${entry.videoId}",
+                title = entry.title.trim().takeIf { it.isNotBlank() } ?: entry.parentMetaId,
+                subtitle = entry.profileEpisodeLine(),
+                imageUrl = entry.poster ?: entry.episodeThumbnail ?: entry.background,
+            )
+        }
+        .toList()
+
+    val completedItems = buildProfileCompletedContentItems(
+        watchedItems = watchedState.items,
+        fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+        libraryItems = libraryState.items,
+    )
+        .asSequence()
+        .sortedByDescending { item -> item.markedAtEpochMs }
+        .map { item ->
+            ProfileInsightPosterItem(
+                id = "completed:${item.kind}:${item.id}",
+                title = item.title,
+                subtitle = item.subtitle,
+                imageUrl = item.imageUrl,
+            )
+        }
+        .toList()
+
+    val libraryItems = libraryState.items
+        .asSequence()
+        .filter(LibraryItem::isProfileInsightContent)
+        .sortedByDescending { item -> item.savedAtEpochMs }
+        .map { item ->
+            ProfileInsightPosterItem(
+                id = "library:${item.id}:${item.type}",
+                title = item.name.trim().takeIf { it.isNotBlank() } ?: item.id,
+                subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
+                imageUrl = item.poster ?: item.banner,
+            )
+        }
+        .toList()
+
+    val upcomingItems = libraryState.items
+        .asSequence()
+        .filter(LibraryItem::isProfileInsightContent)
+        .filter { item -> item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true }
+        .sortedBy { item -> item.profileReleaseIsoDate().orEmpty() }
+        .map { item ->
+            ProfileInsightPosterItem(
+                id = "upcoming:${item.id}:${item.type}",
+                title = item.name.trim().takeIf { it.isNotBlank() } ?: item.id,
+                subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
+                imageUrl = item.poster ?: item.banner,
+            )
+        }
+        .toList()
+
+    return mapOf(
+        ProfileInsightCollectionKind.Continue to ProfileInsightCollection(
+            title = continueTitle,
+            subtitle = "",
+            items = continueItems,
+        ),
+        ProfileInsightCollectionKind.Completed to ProfileInsightCollection(
+            title = completedTitle,
+            subtitle = "",
+            items = completedItems,
+        ),
+        ProfileInsightCollectionKind.Library to ProfileInsightCollection(
+            title = libraryTitle,
+            subtitle = "",
+            items = libraryItems,
+        ),
+        ProfileInsightCollectionKind.Upcoming to ProfileInsightCollection(
+            title = upcomingTitle,
+            subtitle = "",
+            items = upcomingItems,
+        ),
+    )
+}
+
+private fun buildProfileCompletedContentItems(
+    watchedItems: List<WatchedItem>,
+    fullyWatchedSeriesKeys: Set<String>,
+    libraryItems: List<LibraryItem>,
+): List<ProfileCompletedContentItem> {
+    val libraryByContentKey = libraryItems
+        .mapNotNull { item ->
+            val kind = item.type.profileCompletedContentKind() ?: return@mapNotNull null
+            if (!item.isProfileInsightContent()) return@mapNotNull null
+            "${kind}:${item.id}" to item
+        }
+        .toMap()
+
+    val eligibleItems = watchedItems
+        .asSequence()
+        .filter(WatchedItem::isProfileInsightContent)
+        .toList()
+
+    val movieItems = eligibleItems
+        .asSequence()
+        .filter { item -> item.type.profileCompletedContentKind() == "movie" }
+        .filterNot { item -> item.season != null || item.episode != null }
+        .groupBy { item -> "movie:${item.id}" }
+        .mapNotNull { (key, group) ->
+            val item = group.maxByOrNull(WatchedItem::markedAtEpochMs) ?: return@mapNotNull null
+            val libraryItem = libraryByContentKey[key]
+            ProfileCompletedContentItem(
+                id = item.id,
+                kind = "movie",
+                title = item.name.trim().takeIf { it.isNotBlank() }
+                    ?: libraryItem?.name?.trim()?.takeIf { it.isNotBlank() }
+                    ?: item.id,
+                subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
+                    ?: libraryItem?.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
+                imageUrl = item.poster ?: libraryItem?.poster ?: libraryItem?.banner,
+                markedAtEpochMs = item.markedAtEpochMs,
+            )
+        }
+
+    val seriesItems = eligibleItems
+        .asSequence()
+        .filter { item -> item.type.profileCompletedContentKind() == "series" }
+        .groupBy { item -> "series:${item.id}" }
+        .mapNotNull { (key, group) ->
+            val topLevelMarker = group
+                .filterNot { item -> item.season != null || item.episode != null }
+                .maxByOrNull(WatchedItem::markedAtEpochMs)
+            val hasTopLevelSeriesMarker = topLevelMarker != null &&
+                !topLevelMarker.type.equals("tv", ignoreCase = true)
+            val hasFullyWatchedMarker = hasTopLevelSeriesMarker ||
+                group.any { item -> watchedItemKey(item.type, item.id) in fullyWatchedSeriesKeys }
+            if (!hasFullyWatchedMarker) return@mapNotNull null
+
+            val representative = topLevelMarker ?: group.maxByOrNull(WatchedItem::markedAtEpochMs)
+                ?: return@mapNotNull null
+            val libraryItem = libraryByContentKey[key]
+            ProfileCompletedContentItem(
+                id = representative.id,
+                kind = "series",
+                title = topLevelMarker?.name?.trim()?.takeIf { it.isNotBlank() }
+                    ?: libraryItem?.name?.trim()?.takeIf { it.isNotBlank() }
+                    ?: representative.name.trim().takeIf { it.isNotBlank() }
+                    ?: representative.id,
+                subtitle = topLevelMarker?.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
+                    ?: libraryItem?.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
+                    ?: representative.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
+                imageUrl = topLevelMarker?.poster ?: libraryItem?.poster ?: libraryItem?.banner ?: representative.poster,
+                markedAtEpochMs = group.maxOf { item -> item.markedAtEpochMs },
+            )
+        }
+
+    return (movieItems + seriesItems).sortedByDescending(ProfileCompletedContentItem::markedAtEpochMs)
 }
 
 private fun WatchProgressEntry.toSmartResumeSignal(): SmartResumeSignal =
@@ -1216,6 +1596,34 @@ private fun String.profileNormalizedType(): String? =
         else -> trim().lowercase()
     }
 
+private fun String.profileCompletedContentKind(): String? =
+    when (trim().lowercase()) {
+        "live-tv", "livetv", "live_tv", "channel", "tv-channel", "tv_channel", "iptv", "m3u", "stalker" -> null
+        "movie", "film" -> "movie"
+        "series", "show", "tv", "tvshow" -> "series"
+        else -> null
+    }
+
+private fun LibraryItem.isProfileInsightContent(): Boolean =
+    type.profileCompletedContentKind() != null &&
+        !id.isLikelyProfileLiveTvValue() &&
+        !name.isLikelyProfileLiveTvValue()
+
+private fun WatchedItem.isProfileInsightContent(): Boolean =
+    type.profileCompletedContentKind() != null &&
+        !id.isLikelyProfileLiveTvValue() &&
+        !name.isLikelyProfileLiveTvValue()
+
+private fun String.isLikelyProfileLiveTvValue(): Boolean {
+    val value = trim().lowercase()
+    return value.startsWith("http://") ||
+        value.startsWith("https://") ||
+        value.startsWith("rtmp://") ||
+        value.startsWith("rtsp://") ||
+        value.endsWith(".m3u") ||
+        value.endsWith(".m3u8")
+}
+
 private fun List<String>.profileMostCommonValue(): String? =
     filter { value -> value.isNotBlank() }
         .groupingBy { value -> value }
@@ -1259,6 +1667,36 @@ private data class ProfileInsightTile(
     val value: String,
     val label: String,
     val caption: String,
+    val collectionKind: ProfileInsightCollectionKind? = null,
+)
+
+private enum class ProfileInsightCollectionKind {
+    Continue,
+    Completed,
+    Library,
+    Upcoming,
+}
+
+private data class ProfileInsightCollection(
+    val title: String,
+    val subtitle: String,
+    val items: List<ProfileInsightPosterItem>,
+)
+
+private data class ProfileInsightPosterItem(
+    val id: String,
+    val title: String,
+    val subtitle: String?,
+    val imageUrl: String?,
+)
+
+private data class ProfileCompletedContentItem(
+    val id: String,
+    val kind: String,
+    val title: String,
+    val subtitle: String?,
+    val imageUrl: String?,
+    val markedAtEpochMs: Long,
 )
 
 private data class ProfileTasteSegment(

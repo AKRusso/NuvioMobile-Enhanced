@@ -398,6 +398,15 @@ internal fun settingsSearchEntries(
             section = stringResource(Res.string.settings_appearance_section_display),
             icon = Icons.Rounded.Palette,
         )
+        addRow(
+            page = SettingsPage.Appearance,
+            key = "liquid-glass-auto-hide",
+            title = stringResource(Res.string.settings_appearance_liquid_glass_auto_hide),
+            description = stringResource(Res.string.settings_appearance_liquid_glass_auto_hide_description),
+            pageLabel = layoutPage,
+            section = stringResource(Res.string.settings_appearance_section_display),
+            icon = Icons.Rounded.Palette,
+        )
     }
     addRow(
         page = SettingsPage.Appearance,
@@ -461,6 +470,36 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.NuvioEnhanced,
+        key = "streaming-showcase-hero",
+        title = stringResource(Res.string.nuvio_enhanced_showcase_hero_title),
+        description = stringResource(Res.string.nuvio_enhanced_showcase_hero_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "streaming-showcase-video-preview",
+        title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_title),
+        description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "streaming-showcase-video-preview-sound",
+        title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_title),
+        description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
         key = "network-dns-over-https",
         title = stringResource(Res.string.settings_advanced_section_network),
         description = stringResource(Res.string.settings_advanced_doh_description),
@@ -488,6 +527,16 @@ internal fun settingsSearchEntries(
         section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
         category = enhancedCategory,
         icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "enhanced-ready-badge",
+        title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
+        description = stringResource(Res.string.settings_continue_watching_ready_badge_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_app_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
     )
     addPage(
         page = SettingsPage.ContinueWatching,

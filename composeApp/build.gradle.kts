@@ -44,10 +44,13 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val realtimeSyncEnabled: Property<Boolean>
 
     @get:Input
-    abstract val tenorApiKey: Property<String>
+    abstract val gifSearchProvider: Property<String>
 
     @get:Input
-    abstract val tenorSearchEndpoint: Property<String>
+    abstract val gifSearchApiKey: Property<String>
+
+    @get:Input
+    abstract val gifSearchEndpoint: Property<String>
 
     @TaskAction
     fun generate() {
@@ -161,8 +164,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.profiles
                 |
                 |object GifSearchConfig {
-                |    const val TENOR_API_KEY = "${tenorApiKey.get()}"
-                |    const val TENOR_SEARCH_ENDPOINT = "${tenorSearchEndpoint.get()}"
+                |    const val PROVIDER = "${gifSearchProvider.get()}"
+                |    const val API_KEY = "${gifSearchApiKey.get()}"
+                |    const val SEARCH_ENDPOINT = "${gifSearchEndpoint.get()}"
                 |}
                 """.trimMargin()
             )
@@ -327,14 +331,26 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
         }
     )
     realtimeSyncEnabled.set(runtimeConfigBoolean("NUVIO_REALTIME_SYNC_ENABLED", true))
-    tenorApiKey.set(runtimeConfigValue("NUVIO_TENOR_API_KEY", "TENOR_API_KEY", fallback = "LIVDSRZULELA"))
-    tenorSearchEndpoint.set(
-        runtimeConfigValue(
-            "NUVIO_TENOR_SEARCH_ENDPOINT",
-            "TENOR_SEARCH_ENDPOINT",
-            fallback = "https://g.tenor.com/v1/search",
-        )
+    val configuredGifSearchEndpoint = runtimeConfigValue("NUVIO_GIF_SEARCH_ENDPOINT", "GIF_SEARCH_ENDPOINT")
+    val configuredGifSearchApiKey = runtimeConfigValue(
+        "NUVIO_GIF_SEARCH_API_KEY",
+        "GIF_SEARCH_API_KEY",
+        "NUVIO_GIPHY_API_KEY",
+        "GIPHY_API_KEY",
+        "NUVIO_TENOR_API_KEY",
+        "TENOR_API_KEY",
     )
+    gifSearchProvider.set(
+        runtimeConfigValue("NUVIO_GIF_SEARCH_PROVIDER", "GIF_SEARCH_PROVIDER").ifBlank {
+            when {
+                configuredGifSearchEndpoint.isNotBlank() -> "proxy"
+                configuredGifSearchApiKey.isNotBlank() -> "giphy"
+                else -> "duckduckgo"
+            }
+        }
+    )
+    gifSearchApiKey.set(configuredGifSearchApiKey)
+    gifSearchEndpoint.set(configuredGifSearchEndpoint)
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {
@@ -367,6 +383,10 @@ kotlin {
             cinterops {
                 create("commoncrypto") {
                     defFile(project.file("src/nativeInterop/cinterop/commoncrypto.def"))
+                    compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
+                }
+                create("iospowersource") {
+                    defFile(project.file("src/nativeInterop/cinterop/iospowersource.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
                 }
             }

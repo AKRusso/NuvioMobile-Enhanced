@@ -35,7 +35,7 @@ internal object MetaDetailsParser {
             poster = meta.string("poster"),
             background = meta.string("background"),
             logo = meta.string("logo"),
-            description = meta.string("description"),
+            description = meta.string("description") ?: meta.string("overview"),
             releaseInfo = meta.string("releaseInfo"),
             lastAirDate = meta.string("lastAirDate"),
             status = meta.string("status"),

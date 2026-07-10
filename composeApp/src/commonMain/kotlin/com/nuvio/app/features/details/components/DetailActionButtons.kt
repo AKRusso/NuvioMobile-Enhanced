@@ -76,7 +76,6 @@ fun DetailActionButtons(
         animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
         label = "detail_action_menu_progress",
     )
-    val hasFeaturedAction = featuredAction != null
     val hasSecondaryActions = secondaryActions.isNotEmpty()
 
     Box(
@@ -133,9 +132,8 @@ fun DetailActionButtons(
                 }
             }
 
-            if (hasFeaturedAction) {
+            featuredAction?.let { action ->
                 Spacer(modifier = Modifier.width(12.dp))
-                val action = featuredAction!!
                 DetailCompactAction(
                     label = action.label,
                     icon = action.icon,

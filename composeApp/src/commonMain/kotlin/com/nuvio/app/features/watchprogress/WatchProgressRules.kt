@@ -154,8 +154,33 @@ internal fun String?.isSeriesTypeForContinueWatching(): Boolean =
     equals("series", ignoreCase = true) || equals("tv", ignoreCase = true)
 
 internal fun WatchProgressEntry.isLiveTvProgressEntry(): Boolean =
-    contentType.equals("live-tv", ignoreCase = true) ||
-        parentMetaType.equals("live-tv", ignoreCase = true)
+    contentType.isLikelyLiveTvProgressValue() ||
+        parentMetaType.isLikelyLiveTvProgressValue() ||
+        parentMetaId.isLikelyLiveTvProgressUrl() ||
+        videoId.isLikelyLiveTvProgressUrl()
+
+private fun String.isLikelyLiveTvProgressValue(): Boolean =
+    trim().lowercase() in setOf(
+        "live-tv",
+        "livetv",
+        "live_tv",
+        "channel",
+        "tv-channel",
+        "tv_channel",
+        "iptv",
+        "m3u",
+        "stalker",
+    )
+
+private fun String.isLikelyLiveTvProgressUrl(): Boolean {
+    val value = trim().lowercase()
+    return value.startsWith("http://") ||
+        value.startsWith("https://") ||
+        value.startsWith("rtmp://") ||
+        value.startsWith("rtsp://") ||
+        value.endsWith(".m3u") ||
+        value.endsWith(".m3u8")
+}
 
 internal fun isMalformedNextUpSeedContentId(contentId: String?): Boolean {
     val trimmed = contentId?.trim().orEmpty()

@@ -109,12 +109,14 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 showHorizontalSeekPreviewState = gestureCallbacks.showHorizontalSeekPreview,
                 showBrightnessFeedbackState = gestureCallbacks.showBrightnessFeedback,
                 showVolumeFeedbackState = gestureCallbacks.showVolumeFeedback,
+                currentVolumeBoostPercentState = gestureCallbacks.currentVolumeBoostPercent,
+                applyVolumeBoostPercentState = gestureCallbacks.applyVolumeBoostPercent,
                 clearLiveGestureFeedbackState = gestureCallbacks.clearLiveGestureFeedback,
                 revealLockedOverlayState = gestureCallbacks.revealLockedOverlay,
                 commitHorizontalSeekState = gestureCallbacks.commitHorizontalSeek,
             ),
     ) {
-        val playerSurfaceSourceUrl = if (isP2pPlaybackActive) p2pResolvedSourceUrl else activeSourceUrl
+        val playerSurfaceSourceUrl = currentPlaybackSurfaceSourceUrl
         if (playerSurfaceSourceUrl != null) {
             PlatformPlayerSurface(
                 sourceUrl = playerSurfaceSourceUrl,
@@ -128,7 +130,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 resizeMode = resizeMode,
                 onControllerReady = { controller ->
                     playerController = controller
-                    playerControllerSourceUrl = activeSourceUrl
+                    playerControllerSourceUrl = playerSurfaceSourceUrl
                 },
                 onSnapshot = { snapshot ->
                     playbackSnapshot = snapshot
@@ -188,8 +190,14 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
 
 @Composable
 private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, isEpisode: Boolean) {
+    val showQuietDeviceStatusOverlay = nuvioEnhancedSettingsUiState.playerStatusOverlayEnabled &&
+        !controlsVisible &&
+        !showParentalGuide &&
+        !playerControlsLocked &&
+        !pausedOverlayVisible
     AnimatedVisibility(
-        visible = (controlsVisible || showParentalGuide) && !playerControlsLocked,
+        visible = ((controlsVisible || showParentalGuide) && !playerControlsLocked) ||
+            showQuietDeviceStatusOverlay,
         enter = fadeIn(),
         exit = fadeOut(),
     ) {
@@ -206,6 +214,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             resizeMode = resizeMode,
             isLocked = playerControlsLocked,
             showPlaybackControls = controlsVisible,
+            showDeviceStatusOverlay = showQuietDeviceStatusOverlay,
             onLockToggle = {
                 if (playerControlsLocked) unlockPlayerControls() else lockPlayerControls()
             },
@@ -224,11 +233,16 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
                     showSubtitleModal = true
                 }
             },
-            onAudioClick = if (isLiveTv) null else {
-                {
-                    refreshTracks()
-                    showAudioModal = true
-                }
+            onSubtitleSyncClick = null,
+            onAudioClick = {
+                refreshTracks()
+                showAudioModal = true
+            },
+            qualityLabel = playerQualityControlLabel(),
+            onQualityClick = if (!isLiveTv && activeTorrentInfoHash == null) {
+                { openQualityPanel() }
+            } else {
+                null
             },
             onChannelsClick = if (isLiveTv) {
                 { showLiveTvChannelsPanel = true }
@@ -245,6 +259,15 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             },
             onSourcesClick = if (activeVideoId != null) { { openSourcesPanel() } } else null,
             onEpisodesClick = if (isSeries) { { openEpisodesPanel() } } else null,
+            onRandomEpisodeClick = if (
+                metaScreenSettingsUiState.randomEpisodeButton &&
+                isSeries &&
+                playerMetaVideos.any { (it.season ?: 0) > 0 && it.episode != null }
+            ) {
+                { playRandomEpisodeFromPlayer() }
+            } else {
+                null
+            },
             onOpenInExternalPlayer = args.onOpenInExternalPlayer?.let { openExternal ->
                 {
                     val loadedSubtitles = addonSubtitles
@@ -261,7 +284,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
                         }
                     openExternal(
                         ExternalPlayerPlaybackRequest(
-                            sourceUrl = activeSourceUrl,
+                            sourceUrl = externalPlayerSourceUrl(),
                             title = title,
                             streamTitle = activeStreamTitle,
                             sourceHeaders = activeSourceHeaders,
@@ -376,6 +399,75 @@ private fun BoxScope.RenderPlaybackOverlays(
     }
 }
 
+private fun PlayerScreenRuntime.openQualityPanel() {
+    showQualityPanel = true
+    showSourcesPanel = false
+    showEpisodesPanel = false
+    showAudioModal = false
+    showSubtitleModal = false
+    showVideoSettingsModal = false
+    showLiveTvChannelsPanel = false
+    controlsVisible = false
+}
+
+private fun PlayerScreenRuntime.playerQualityControlLabel(): String {
+    if (playerQualityState.isLoading) return playbackResolutionLabel(forButton = true) ?: "Quality"
+    val label = playerQualityState.labelFor(selectedPlayerQualityId, forButton = true)
+    if (!label.isNullOrBlank()) {
+        return if (selectedPlayerQualityId == null && playerQualityState.hasSelectableQualities) {
+            "Auto $label"
+        } else {
+            label
+        }
+    }
+    return playbackResolutionLabel(forButton = true) ?: "Quality"
+}
+
+private fun PlayerScreenRuntime.currentQualityPanelResolutionLabel(): String? {
+    playbackResolutionLabel(forButton = false)?.let { return it }
+    return playerQualityState.labelFor(selectedPlayerQualityId, forButton = false)
+}
+
+private fun PlayerScreenRuntime.externalPlayerSourceUrl(): String {
+    if (activeTorrentInfoHash != null) {
+        return p2pResolvedSourceUrl ?: activeSourceUrl
+    }
+    val selectedVariantUrl = selectedPlayerQualityId
+        ?.let { selectedId -> playerQualityState.variants.firstOrNull { it.id == selectedId } }
+        ?.absoluteUri
+    return selectedVariantUrl ?: activeSourceUrl
+}
+
+private fun PlayerScreenRuntime.playbackResolutionLabel(forButton: Boolean): String? =
+    playerQualityNameForResolution(
+        width = playbackSnapshot.videoWidth,
+        height = playbackSnapshot.videoHeight,
+        forButton = forButton,
+    )
+
+private fun PlayerScreenRuntime.selectPlayerQuality(qualityId: String?) {
+    val playbackUrl = playerQualityState.playbackUrlFor(qualityId) ?: return
+    if (activePlaybackSourceUrl == playbackUrl && selectedPlayerQualityId == qualityId) {
+        showQualityPanel = false
+        controlsVisible = true
+        return
+    }
+
+    val resumePositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    selectedPlayerQualityId = qualityId
+    activePlaybackSourceUrl = playbackUrl
+    activeInitialPositionMs = resumePositionMs
+    activeInitialProgressFraction = null
+    initialSeekApplied = resumePositionMs <= 0L
+    shouldPlay = true
+    playerController = null
+    playerControllerSourceUrl = null
+    playbackSnapshot = PlayerPlaybackSnapshot()
+    initialLoadCompleted = false
+    showQualityPanel = false
+    controlsVisible = true
+}
+
 @Composable
 private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
     PlayerScreenModalHosts(
@@ -412,7 +504,12 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
         subtitleDelayMs = subtitleDelayMs,
         selectedAddonSubtitle = selectedAddonSubtitle,
         subtitleAutoSyncState = subtitleAutoSyncState,
-        onSubtitleTabSelected = { activeSubtitleTab = it },
+        onSubtitleTabSelected = { tab ->
+            activeSubtitleTab = tab
+            if (tab == SubtitleTab.Sync) {
+                loadSubtitleAutoSyncCues()
+            }
+        },
         onBuiltInSubtitleTrackSelected = { index ->
             val wasCustom = useCustomSubtitles
             selectedSubtitleIndex = index
@@ -446,6 +543,15 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             playerController?.configureIosVideoOutput(PlayerSettingsRepository.uiState.value)
         },
         onVideoSettingsModalDismissed = { showVideoSettingsModal = false },
+        showQualityPanel = showQualityPanel,
+        playerQualityState = playerQualityState,
+        selectedPlayerQualityId = selectedPlayerQualityId,
+        currentQualityLabel = currentQualityPanelResolutionLabel(),
+        onPlayerQualitySelected = { qualityId -> selectPlayerQuality(qualityId) },
+        onQualityPanelDismissed = {
+            showQualityPanel = false
+            controlsVisible = true
+        },
         showSourcesPanel = showSourcesPanel,
         sourceStreamsState = sourceStreamsState,
         activeSourceUrl = activeSourceUrl,

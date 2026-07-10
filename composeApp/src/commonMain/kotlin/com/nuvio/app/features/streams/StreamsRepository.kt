@@ -111,20 +111,15 @@ object StreamsRepository {
             !(autoPlayMode == StreamAutoPlayMode.REGEX_MATCH &&
                 !StreamAutoPlayPolicy.isRegexSelectionConfigured(playerSettings.streamAutoPlayRegex))
 
-        // Look up persisted binge group when both settings are enabled
+        // Persisted binge groups should only rank streams once auto-play is already active.
+        // Manual mode must keep the picker visible and never enter the direct overlay flow.
         val persistedBingeGroup = if (
             playerSettings.streamAutoPlayPreferBingeGroup &&
             playerSettings.streamAutoPlayReuseBingeGroup
         ) {
             parentMetaId?.let { BingeGroupCacheRepository.get(it) }
         } else null
-
-        // Enable direct auto-play flow if normal auto-play is enabled,
-        // OR if we have a persisted binge group in MANUAL mode
-        val bingeGroupDirectFlow = !manualSelection &&
-            persistedBingeGroup != null &&
-            autoPlayMode == StreamAutoPlayMode.MANUAL
-        val isDirectAutoPlayFlow = isAutoPlayEnabled || bingeGroupDirectFlow
+        val isDirectAutoPlayFlow = isAutoPlayEnabled
 
         if (isDirectAutoPlayFlow) {
             _uiState.value = StreamsUiState(
@@ -746,6 +741,7 @@ object StreamsRepository {
                 autoPlayCandidates = emptyList(),
                 isDirectAutoPlayFlow = false,
                 showDirectAutoPlayOverlay = false,
+                overlayMessage = null,
             )
         }
     }
@@ -765,6 +761,7 @@ object StreamsRepository {
                 autoPlayCandidates = remaining,
                 isDirectAutoPlayFlow = remaining.isNotEmpty(),
                 showDirectAutoPlayOverlay = remaining.isNotEmpty(),
+                overlayMessage = if (remaining.isNotEmpty()) current.overlayMessage else null,
             )
         }
         return hasNext
@@ -774,8 +771,15 @@ object StreamsRepository {
         activeJob?.cancel()
         activeJob = null
         _uiState.update { current ->
+            fun StreamsUiState.withStoppedOverlay() = copy(
+                autoPlayStream = null,
+                autoPlayCandidates = emptyList(),
+                isDirectAutoPlayFlow = false,
+                showDirectAutoPlayOverlay = false,
+                overlayMessage = null,
+            )
             if (!current.isAnyLoading && current.groups.none { it.isLoading }) {
-                current
+                current.withStoppedOverlay()
             } else {
                 val updatedGroups = current.groups.map { group ->
                     if (group.isLoading) group.copy(isLoading = false) else group
@@ -788,7 +792,7 @@ object StreamsRepository {
                     } else {
                         updatedGroups.toEmptyStateReason(anyLoading = false)
                     },
-                )
+                ).withStoppedOverlay()
             }
         }
     }
@@ -801,6 +805,12 @@ object StreamsRepository {
     }
 
     fun setOverlayVisible(visible: Boolean, message: String? = null) {
-        _uiState.update { it.copy(showDirectAutoPlayOverlay = visible, overlayMessage = message) }
+        _uiState.update {
+            if (visible) {
+                it.copy(showDirectAutoPlayOverlay = true, overlayMessage = message)
+            } else {
+                it.copy(showDirectAutoPlayOverlay = false, overlayMessage = null)
+            }
+        }
     }
 }

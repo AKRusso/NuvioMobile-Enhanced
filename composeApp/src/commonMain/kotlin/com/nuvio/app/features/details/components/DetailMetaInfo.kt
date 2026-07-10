@@ -8,13 +8,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +46,7 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
 import com.nuvio.app.features.details.formatRuntimeForDisplay
 import com.nuvio.app.features.details.formatMetaReleaseLineForDetails
+import com.nuvio.app.features.details.mainSeriesStats
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_AUDIENCE
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_IMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_LETTERBOXD
@@ -70,11 +71,10 @@ import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun DetailMetaInfo(
     meta: MetaDetails,
     modifier: Modifier = Modifier,
-    showNuvioReading: Boolean = true,
-    showNuvioSpotlight: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -84,72 +84,90 @@ fun DetailMetaInfo(
     ) {
         val releaseLine = formatMetaReleaseLineForDetails(meta)
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
+        val mainSeasonStats = remember(meta.videos) {
+            meta.mainSeriesStats()
+        }
+        val seriesCountText = mainSeasonStats?.let { stats ->
+            if (stats.seasonCount == 1) {
+                stringResource(Res.string.details_series_counts_one_season, stats.episodeCount)
+            } else {
+                stringResource(Res.string.details_series_counts, stats.seasonCount, stats.episodeCount)
+            }
+        }
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
-        val seasonCountLabel = remember(meta.type, meta.videos) {
-            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
-            if (!isSeriesLike) {
-                null
-            } else {
-                meta.videos
-                    .mapNotNull { video -> video.season?.takeIf { it > 0 } }
-                    .distinct()
-                    .size
-                    .takeIf { it > 0 }
-                    ?.let { count -> runBlocking { getString(Res.string.details_total_seasons, count) } }
-            }
-        }
-        val totalEpisodesLabel = remember(meta.type, meta.videos) {
-            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
-            if (!isSeriesLike) {
-                null
-            } else {
-                meta.videos
-                    .map { video ->
-                        when {
-                            video.season != null || video.episode != null -> "${video.season ?: -1}:${video.episode ?: -1}"
-                            video.id.isNotBlank() -> video.id
-                            else -> video.title
-                        }
-                    }
-                    .distinct()
-                    .size
-                    .takeIf { it > 0 }
-                    ?.let { count -> runBlocking { getString(Res.string.details_total_episodes, count) } }
-            }
-        }
         val hasMdbImdbRating = meta.externalRatings.any { it.source == PROVIDER_IMDB }
         val validImdbRating = meta.imdbRating
             ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
         val hasMetaRow = releaseLine != null ||
-            seasonCountLabel != null ||
-            totalEpisodesLabel != null ||
             runtimeText != null ||
+            seriesCountText != null ||
             ageBadge != null ||
             (validImdbRating != null && !hasMdbImdbRating)
-        val imdbSourceLabel = stringResource(Res.string.source_imdb)
-        val overviewPills = buildList {
-            releaseLine?.let(::add)
-            seasonCountLabel?.let(::add)
-            totalEpisodesLabel?.let(::add)
-            runtimeText?.let(::add)
-            ageBadge?.let(::add)
-            if (validImdbRating != null && !hasMdbImdbRating) {
-                add("$imdbSourceLabel $validImdbRating")
+        if (hasMetaRow) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                releaseLine?.let { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                runtimeText?.let { rt ->
+                    Text(
+                        text = rt,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+                seriesCountText?.let { counts ->
+                    Text(
+                        text = counts,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                ageBadge?.let { badge ->
+                    DetailHeroMetaBadge(text = badge)
+                }
+                if (validImdbRating != null && !hasMdbImdbRating) {
+                    val imdbTextStyle = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.sp,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ImdbRatingSourceLabel(
+                            storeTextStyle = imdbTextStyle,
+                            storeTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = validImdbRating,
+                            style = imdbTextStyle,
+                            color = ImdbYellow,
+                        )
+                    }
+                }
             }
         }
-        val hasPremiumOverview = hasMetaRow ||
-            meta.externalRatings.isNotEmpty() ||
-            !meta.description.isNullOrBlank()
-        if (showNuvioReading && hasPremiumOverview) {
-            DetailPremiumOverviewCard(
-                pills = overviewPills,
-                ratings = meta.externalRatings,
-                description = meta.description,
-            )
-        }
 
-        if (showNuvioSpotlight) {
-            DetailNuvioSpotlightCard(meta = meta)
+        AnimatedVisibility(
+            visible = meta.externalRatings.isNotEmpty(),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) {
+            DetailRatingsRow(
+                ratings = meta.externalRatings,
+            )
         }
 
         if (meta.director.isNotEmpty()) {
@@ -166,281 +184,38 @@ fun DetailMetaInfo(
             )
         }
 
-    }
-}
-
-@Composable
-private fun DetailNuvioSpotlightCard(
-    meta: MetaDetails,
-) {
-    val isSeriesLike = meta.type.equals("series", ignoreCase = true) ||
-        meta.videos.any { video -> video.season != null || video.episode != null }
-    val rating = meta.imdbRating
-        ?.trim()
-        ?.replace(',', '.')
-        ?.substringBefore('/')
-        ?.toDoubleOrNull()
-    val topGenre = meta.genres.firstOrNull { genre -> genre.isNotBlank() }?.trim()
-    val spotlightTitle = when {
-        rating != null && rating >= 8.0 -> "High-confidence watch"
-        isSeriesLike && meta.videos.isNotEmpty() -> "Series momentum"
-        topGenre != null -> "$topGenre signal"
-        else -> "Nuvio Spotlight"
-    }
-    val spotlightBody = when {
-        rating != null && rating >= 8.0 ->
-            "Strong audience signal, clear metadata and premium artwork make this one of the safer picks on the page."
-        isSeriesLike && meta.videos.isNotEmpty() ->
-            "Episode structure is ready, so this title works well for follow-up sessions and longer watch plans."
-        !meta.description.isNullOrBlank() ->
-            "The story summary has enough context to make this a good detail-page decision without extra searching."
-        else ->
-            "This card highlights the strongest available signal once richer metadata is available."
-    }
-    val chips = buildList {
-        topGenre?.let(::add)
-        rating?.takeIf { it > 0.0 }?.let { add("IMDb ${formatSpotlightRating(it)}") }
-        if (isSeriesLike) {
-            val seasons = meta.videos.mapNotNull { video -> video.season?.takeIf { it > 0 } }.distinct().size
-            if (seasons > 0) add("$seasons seasons")
-        } else {
-            formatRuntimeForDisplay(meta.runtime)?.let(::add)
-        }
-    }.filter(String::isNotBlank).take(3)
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)),
-    ) {
-        Column(
-            modifier = Modifier
-                .background(
-                    Brush.linearGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                            Color.Transparent,
-                        ),
-                    ),
-                )
-                .padding(15.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+        if (!meta.description.isNullOrBlank()) {
+            var expanded by remember { mutableStateOf(false) }
+            var canExpand by remember(meta.description) { mutableStateOf(false) }
+            Column(
+                modifier = Modifier.animateContentSize(),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 4.dp, height = 48.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Text(
-                        text = "NUVIO SPOTLIGHT",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = spotlightTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            Text(
-                text = spotlightBody,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.86f),
-                lineHeight = 22.sp,
-            )
-            if (chips.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    chips.forEach { chip ->
-                        DetailPremiumOverviewPill(text = chip)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailPremiumOverviewCard(
-    pills: List<String>,
-    ratings: List<MetaExternalRating>,
-    description: String?,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
-    ) {
-        Column(
-            modifier = Modifier
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.055f),
-                            Color.Transparent,
-                        ),
-                    ),
-                )
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 4.dp, height = 42.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
-                )
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Text(
-                        text = stringResource(Res.string.details_premium_overview_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = stringResource(Res.string.details_premium_overview_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 18.sp,
-                    )
-                }
-            }
-
-            if (pills.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    pills.forEach { pill ->
-                        DetailPremiumOverviewPill(text = pill)
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = ratings.isNotEmpty(),
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
-            ) {
-                DetailRatingsRow(ratings = ratings)
-            }
-
-            description?.trim()?.takeIf { it.isNotBlank() }?.let { cleanDescription ->
-                DetailPremiumStoryBlock(description = cleanDescription)
-            }
-        }
-    }
-}
-
-private fun formatSpotlightRating(value: Double): String {
-    val rounded = (value * 10).roundToInt()
-    val whole = rounded / 10
-    val decimal = (rounded % 10).absoluteValue
-    return "$whole.$decimal"
-}
-
-@Composable
-private fun DetailPremiumOverviewPill(
-    text: String,
-) {
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun DetailPremiumStoryBlock(
-    description: String,
-) {
-    var expanded by remember(description) { mutableStateOf(false) }
-    var canExpand by remember(description) { mutableStateOf(false) }
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.055f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.details_premium_story_label),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-            )
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
-                overflow = TextOverflow.Ellipsis,
-                lineHeight = 23.sp,
-                onTextLayout = { result ->
-                    if (!expanded) {
-                        canExpand = result.hasVisualOverflow
-                    }
-                },
-            )
-            if (canExpand) {
                 Text(
-                    text = if (expanded) {
-                        stringResource(Res.string.details_show_less)
-                    } else {
-                        stringResource(Res.string.details_show_more)
+                    text = meta.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 22.sp,
+                    onTextLayout = { result ->
+                        if (!expanded) {
+                            canExpand = result.hasVisualOverflow
+                        }
                     },
-                    modifier = Modifier
-                        .clickable { expanded = !expanded }
-                        .padding(vertical = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
                 )
+                if (canExpand) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (expanded) {
+                            stringResource(Res.string.details_show_less)
+                        } else {
+                            stringResource(Res.string.details_show_more)
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.clickable { expanded = !expanded },
+                    )
+                }
             }
         }
     }

@@ -50,6 +50,12 @@ internal fun PlayerScreenModalHosts(
     playerSettings: PlayerSettingsUiState,
     onVideoSettingsChanged: () -> Unit,
     onVideoSettingsModalDismissed: () -> Unit,
+    showQualityPanel: Boolean,
+    playerQualityState: PlayerQualitySelectionState,
+    selectedPlayerQualityId: String?,
+    currentQualityLabel: String?,
+    onPlayerQualitySelected: (String?) -> Unit,
+    onQualityPanelDismissed: () -> Unit,
     showSourcesPanel: Boolean,
     sourceStreamsState: StreamsUiState,
     activeSourceUrl: String,
@@ -152,6 +158,15 @@ internal fun PlayerScreenModalHosts(
         settings = playerSettings,
         onSettingsChanged = onVideoSettingsChanged,
         onDismiss = onVideoSettingsModalDismissed,
+    )
+
+    PlayerQualityPanel(
+        visible = showQualityPanel,
+        state = playerQualityState,
+        selectedQualityId = selectedPlayerQualityId,
+        currentResolutionLabel = currentQualityLabel,
+        onQualitySelected = onPlayerQualitySelected,
+        onDismiss = onQualityPanelDismissed,
     )
 
     PlayerSourcesPanel(

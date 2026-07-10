@@ -31,6 +31,10 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         }
     }
 
+    LaunchedEffect(playerController, playerSettingsUiState.volumeBoostPercent) {
+        playerController?.setVolumeBoost(playerSettingsUiState.volumeBoostPercent / 100f)
+    }
+
     LaunchedEffect(parentMetaType, parentMetaId) {
         playerMetaVideos = MetaDetailsRepository.peek(parentMetaType, parentMetaId)?.videos ?: emptyList()
         if (playerMetaVideos.isEmpty()) {
@@ -81,11 +85,57 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         preferredSubtitleSelectionApplied = false
         showSourcesPanel = false
         showEpisodesPanel = false
+        showQualityPanel = false
         showLiveTvChannelsPanel = false
         episodeStreamsPanelState = EpisodeStreamsPanelState()
         PlayerStreamsRepository.clearEpisodeStreams()
         SubtitleRepository.clear()
         WatchProgressRepository.ensureLoaded()
+    }
+
+    LaunchedEffect(activeSourceUrl, activeSourceAudioUrl, activeSourceHeaders, activeTorrentInfoHash) {
+        val resolvingSourceUrl = activeSourceUrl
+        val resolvingAudioUrl = activeSourceAudioUrl
+        val resolvingHeaders = activeSourceHeaders
+        val resolvingTorrentInfoHash = activeTorrentInfoHash
+        val shouldInspectHls = resolvingTorrentInfoHash == null &&
+            resolvingAudioUrl == null &&
+            resolvingSourceUrl.contains(".m3u8", ignoreCase = true)
+
+        selectedPlayerQualityId = null
+        showQualityPanel = false
+        activePlaybackSourceUrl = if (shouldInspectHls) null else resolvingSourceUrl
+        playerQualityState = PlayerQualitySelectionState(
+            isLoading = shouldInspectHls,
+            sourceUrl = resolvingSourceUrl,
+        )
+
+        if (!shouldInspectHls) {
+            return@LaunchedEffect
+        }
+
+        val resolved = runCatching {
+            PlayerQualityResolver.resolve(
+                sourceUrl = resolvingSourceUrl,
+                requestHeaders = resolvingHeaders,
+            )
+        }.getOrElse { error ->
+            PlayerQualitySelectionState(
+                sourceUrl = resolvingSourceUrl,
+                errorMessage = error.message ?: "Unable to inspect HLS quality variants.",
+            )
+        }
+
+        if (
+            activeSourceUrl != resolvingSourceUrl ||
+            activeSourceAudioUrl != resolvingAudioUrl ||
+            activeTorrentInfoHash != resolvingTorrentInfoHash
+        ) {
+            return@LaunchedEffect
+        }
+
+        playerQualityState = resolved
+        activePlaybackSourceUrl = resolved.playbackUrlFor(null) ?: resolvingSourceUrl
     }
 
     LaunchedEffect(
@@ -171,6 +221,8 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         playerController,
         playerControllerSourceUrl,
         activeSourceUrl,
+        activePlaybackSourceUrl,
+        p2pResolvedSourceUrl,
         title,
         activeStreamTitle,
         activeSeasonNumber,
@@ -180,7 +232,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         background,
     ) {
         val controller = playerController ?: return@LaunchedEffect
-        if (playerControllerSourceUrl != activeSourceUrl) return@LaunchedEffect
+        if (playerControllerSourceUrl != currentPlaybackSurfaceSourceUrl) return@LaunchedEffect
         controller.updateNowPlayingMetadata(buildNowPlayingInfo())
     }
 
@@ -225,6 +277,8 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
     LaunchedEffect(
         playerController,
         playerControllerSourceUrl,
+        activePlaybackSourceUrl,
+        p2pResolvedSourceUrl,
         playbackSnapshot.isLoading,
         playbackSnapshot.durationMs,
         activeInitialPositionMs,
@@ -232,7 +286,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         initialSeekApplied,
     ) {
         val controller = playerController ?: return@LaunchedEffect
-        if (playerControllerSourceUrl != activeSourceUrl) return@LaunchedEffect
+        if (playerControllerSourceUrl != currentPlaybackSurfaceSourceUrl) return@LaunchedEffect
         if (initialSeekApplied || playbackSnapshot.isLoading) return@LaunchedEffect
 
         val progressFraction = activeInitialProgressFraction
@@ -433,6 +487,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             currentSeason = curSeason,
             currentEpisode = curEpisode,
             randomMode = randomEpisodeMode,
+            randomHistoryKey = parentMetaId,
         )
         val nextSeason = nextVideo?.season
         val nextEpisode = nextVideo?.episode

@@ -59,6 +59,8 @@ import nuvio.composeapp.generated.resources.settings_appearance_amoled_black
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_description
 import nuvio.composeapp.generated.resources.settings_appearance_continue_watching_description
 import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass
+import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass_auto_hide
+import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass_auto_hide_description
 import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass_description
 import nuvio.composeapp.generated.resources.settings_appearance_poster_customization_description
 import nuvio.composeapp.generated.resources.settings_appearance_section_display
@@ -82,6 +84,8 @@ internal fun LazyListScope.appearanceSettingsContent(
     liquidGlassNativeTabBarSupported: Boolean,
     liquidGlassNativeTabBarEnabled: Boolean,
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
+    liquidGlassAutoHideOnScrollEnabled: Boolean,
+    onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     onHomescreenClick: () -> Unit,
@@ -164,6 +168,15 @@ internal fun LazyListScope.appearanceSettingsContent(
                         checked = liquidGlassNativeTabBarEnabled,
                         isTablet = isTablet,
                         onCheckedChange = onLiquidGlassNativeTabBarToggle,
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_appearance_liquid_glass_auto_hide),
+                        description = stringResource(Res.string.settings_appearance_liquid_glass_auto_hide_description),
+                        checked = liquidGlassAutoHideOnScrollEnabled,
+                        enabled = liquidGlassNativeTabBarEnabled,
+                        isTablet = isTablet,
+                        onCheckedChange = onLiquidGlassAutoHideOnScrollToggle,
                     )
                 }
                 SettingsGroupDivider(isTablet = isTablet)

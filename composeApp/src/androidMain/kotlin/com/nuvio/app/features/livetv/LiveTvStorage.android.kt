@@ -7,6 +7,7 @@ actual object LiveTvStorage {
     private const val preferencesName = "nuvio_live_tv"
     private const val sourceTypeKey = "source_type"
     private const val sourceUrlKey = "m3u_source_url"
+    private const val localPlaylistDataKey = "m3u_local_playlist_data"
     private const val stalkerPortalUrlKey = "stalker_portal_url"
     private const val stalkerMacAddressKey = "stalker_mac_address"
     private const val stalkerUsernameKey = "stalker_username"
@@ -64,6 +65,15 @@ actual object LiveTvStorage {
     actual fun saveSourceUrl(url: String) {
         preferences?.edit()?.apply {
             putScopedString(sourceUrlKey, url)
+        }?.apply()
+    }
+
+    actual fun loadLocalPlaylistData(): String? =
+        preferences?.getScopedString(localPlaylistDataKey)
+
+    actual fun saveLocalPlaylistData(data: String) {
+        preferences?.edit()?.apply {
+            putScopedString(localPlaylistDataKey, data)
         }?.apply()
     }
 

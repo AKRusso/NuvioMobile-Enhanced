@@ -226,10 +226,14 @@ object HomeRepository {
             emptyList()
         }
         lastPublishedCatalogHeroEmpty = snapshot.heroEnabled && catalogHeroItems.isEmpty()
-        val heroItems = if (snapshot.heroEnabled) {
+        val resolvedHeroItems = if (snapshot.heroEnabled) {
             catalogHeroItems.ifEmpty { cachedCollectionHeroItems }
         } else {
             emptyList()
+        }
+        val heroItems = when {
+            !snapshot.heroEnabled -> emptyList()
+            else -> resolvedHeroItems
         }
 
         _uiState.value = HomeUiState(

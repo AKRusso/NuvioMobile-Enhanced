@@ -1395,10 +1395,9 @@ private fun LibraryCalendarLoadingState() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        CircularProgressIndicator(
+        NuvioLoadingIndicator(
             modifier = Modifier.size(28.dp),
             color = MaterialTheme.colorScheme.primary,
-            strokeWidth = 2.dp,
         )
         Text(
             text = stringResource(Res.string.library_calendar_loading),
@@ -1417,10 +1416,9 @@ private fun LibraryCalendarInlineLoading() {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CircularProgressIndicator(
+        NuvioLoadingIndicator(
             modifier = Modifier.size(18.dp),
             color = MaterialTheme.colorScheme.primary,
-            strokeWidth = 2.dp,
         )
     }
 }

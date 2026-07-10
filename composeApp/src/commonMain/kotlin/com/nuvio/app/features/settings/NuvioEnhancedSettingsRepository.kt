@@ -19,15 +19,20 @@ internal data class NuvioEnhancedSettingsUiState(
     val liveTvEnabled: Boolean = true,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
+    val posterArtHeroEnabled: Boolean = false,
+    val streamingShowcaseHeroEnabled: Boolean = false,
+    val streamingShowcaseVideoPreviewEnabled: Boolean = true,
+    val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
+    val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
-    val nuvioSpotlightEnabled: Boolean = false,
-    val nuvioReadingEnabled: Boolean = true,
     val contentWarningsEnabled: Boolean = true,
+    val playerStatusOverlayEnabled: Boolean = false,
+    val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -71,6 +76,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
     ContentWarnings("content_warnings"),
+    PlayerStatusOverlay("player_status_overlay"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
     PremiumLabs("premium_labs"),
@@ -78,8 +84,6 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ReleaseRadarDigest("release_radar_digest"),
     QuietHomeMode("quiet_home_mode"),
     LibraryHealth("library_health"),
-    NuvioSpotlight("nuvio_spotlight"),
-    NuvioReading("nuvio_reading"),
 }
 
 @Serializable
@@ -92,15 +96,20 @@ private data class StoredNuvioEnhancedSettings(
     val liveTvEnabled: Boolean = true,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
+    val posterArtHeroEnabled: Boolean = false,
+    val streamingShowcaseHeroEnabled: Boolean = false,
+    val streamingShowcaseVideoPreviewEnabled: Boolean = true,
+    val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroOverview: Boolean = true,
+    val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
-    val nuvioSpotlightEnabled: Boolean = false,
-    val nuvioReadingEnabled: Boolean = true,
     val contentWarningsEnabled: Boolean = true,
+    val playerStatusOverlayEnabled: Boolean = false,
+    val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -185,12 +194,38 @@ internal object NuvioEnhancedSettingsRepository {
         copy(heroArtworkSource = source)
     }
 
+    fun setPosterArtHeroEnabled(enabled: Boolean) = update {
+        copy(
+            posterArtHeroEnabled = enabled,
+            streamingShowcaseHeroEnabled = if (enabled) false else streamingShowcaseHeroEnabled,
+        )
+    }
+
+    fun setStreamingShowcaseHeroEnabled(enabled: Boolean) = update {
+        copy(
+            streamingShowcaseHeroEnabled = enabled,
+            posterArtHeroEnabled = if (enabled) false else posterArtHeroEnabled,
+        )
+    }
+
+    fun setStreamingShowcaseVideoPreviewEnabled(enabled: Boolean) = update {
+        copy(streamingShowcaseVideoPreviewEnabled = enabled)
+    }
+
+    fun setStreamingShowcaseVideoPreviewSoundEnabled(enabled: Boolean) = update {
+        copy(streamingShowcaseVideoPreviewSoundEnabled = enabled)
+    }
+
     fun setCompactHeroMetadata(enabled: Boolean) = update {
         copy(compactHeroMetadata = enabled)
     }
 
     fun setShowHeroOverview(enabled: Boolean) = update {
         copy(showHeroOverview = enabled)
+    }
+
+    fun setHeroRefreshHapticsEnabled(enabled: Boolean) = update {
+        copy(heroRefreshHapticsEnabled = enabled)
     }
 
     fun setSmartShelvesEnabled(enabled: Boolean) = update {
@@ -209,16 +244,16 @@ internal object NuvioEnhancedSettingsRepository {
         copy(libraryHealthEnabled = enabled)
     }
 
-    fun setNuvioSpotlightEnabled(enabled: Boolean) = update {
-        copy(nuvioSpotlightEnabled = enabled)
-    }
-
-    fun setNuvioReadingEnabled(enabled: Boolean) = update {
-        copy(nuvioReadingEnabled = enabled)
-    }
-
     fun setContentWarningsEnabled(enabled: Boolean) = update {
         copy(contentWarningsEnabled = enabled)
+    }
+
+    fun setPlayerStatusOverlayEnabled(enabled: Boolean) = update {
+        copy(playerStatusOverlayEnabled = enabled)
+    }
+
+    fun setShowContinueWatchingReadyBadge(enabled: Boolean) = update {
+        copy(showContinueWatchingReadyBadge = enabled)
     }
 
     fun setReleaseRadarLibraryOnly(enabled: Boolean) = update {
@@ -275,15 +310,20 @@ internal object NuvioEnhancedSettingsRepository {
             liveTvEnabled = stored.liveTvEnabled,
             heroDisplayMode = stored.heroDisplayMode,
             heroArtworkSource = stored.heroArtworkSource,
+            posterArtHeroEnabled = stored.posterArtHeroEnabled,
+            streamingShowcaseHeroEnabled = stored.streamingShowcaseHeroEnabled,
+            streamingShowcaseVideoPreviewEnabled = stored.streamingShowcaseVideoPreviewEnabled,
+            streamingShowcaseVideoPreviewSoundEnabled = stored.streamingShowcaseVideoPreviewSoundEnabled,
             compactHeroMetadata = stored.compactHeroMetadata,
             showHeroOverview = stored.showHeroOverview,
+            heroRefreshHapticsEnabled = stored.heroRefreshHapticsEnabled,
             smartShelvesEnabled = stored.smartShelvesEnabled,
             releaseRadarDigestEnabled = stored.releaseRadarDigestEnabled,
             quietHomeModeEnabled = stored.quietHomeModeEnabled,
             libraryHealthEnabled = stored.libraryHealthEnabled,
-            nuvioSpotlightEnabled = stored.nuvioSpotlightEnabled,
-            nuvioReadingEnabled = stored.nuvioReadingEnabled,
             contentWarningsEnabled = stored.contentWarningsEnabled,
+            playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
+            showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,
             releaseRadarWindowDays = stored.releaseRadarWindowDays.coerceIn(7, 45),
             releaseRadarContentFilter = stored.releaseRadarContentFilter,

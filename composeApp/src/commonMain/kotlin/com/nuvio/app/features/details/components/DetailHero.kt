@@ -195,7 +195,7 @@ fun DetailHero(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(if (isTablet) 420.dp else 320.dp)
+                        .height(if (isTablet) 360.dp else 320.dp)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
@@ -259,5 +259,5 @@ private fun detailHeroHeight(maxWidth: Dp, isTablet: Boolean): Dp =
     if (!isTablet) {
         (maxWidth * 1.33f).coerceIn(420.dp, 760.dp)
     } else {
-        (maxWidth * 0.54f).coerceIn(380.dp, 560.dp)
+        (maxWidth * 0.42f).coerceIn(300.dp, 420.dp)
     }

@@ -5,6 +5,7 @@ import platform.Foundation.NSUserDefaults
 actual object LiveTvStorage {
     private const val sourceTypeKey = "live_tv_source_type"
     private const val sourceUrlKey = "live_tv_m3u_source_url"
+    private const val localPlaylistDataKey = "live_tv_m3u_local_playlist_data"
     private const val stalkerPortalUrlKey = "live_tv_stalker_portal_url"
     private const val stalkerMacAddressKey = "live_tv_stalker_mac_address"
     private const val stalkerUsernameKey = "live_tv_stalker_username"
@@ -55,6 +56,13 @@ actual object LiveTvStorage {
 
     actual fun saveSourceUrl(url: String) {
         saveScopedString(sourceUrlKey, url)
+    }
+
+    actual fun loadLocalPlaylistData(): String? =
+        loadScopedString(localPlaylistDataKey)
+
+    actual fun saveLocalPlaylistData(data: String) {
+        saveScopedString(localPlaylistDataKey, data)
     }
 
     actual fun loadStalkerSettings(): LiveTvStalkerSettings {

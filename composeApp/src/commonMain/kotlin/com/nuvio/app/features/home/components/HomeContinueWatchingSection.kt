@@ -233,6 +233,7 @@ internal fun HomeContinueWatchingSection(
     style: ContinueWatchingSectionStyle,
     useEpisodeThumbnails: Boolean = true,
     blurNextUp: Boolean = false,
+    showReadyBadge: Boolean = true,
     modifier: Modifier = Modifier,
     sectionPadding: Dp? = null,
     layout: ContinueWatchingLayout? = null,
@@ -247,6 +248,7 @@ internal fun HomeContinueWatchingSection(
             style = style,
             useEpisodeThumbnails = useEpisodeThumbnails,
             blurNextUp = blurNextUp,
+            showReadyBadge = showReadyBadge,
             modifier = modifier.fillMaxWidth(),
             sectionPadding = sectionPadding,
             layout = layout,
@@ -260,6 +262,7 @@ internal fun HomeContinueWatchingSection(
                 style = style,
                 useEpisodeThumbnails = useEpisodeThumbnails,
                 blurNextUp = blurNextUp,
+                showReadyBadge = showReadyBadge,
                 modifier = Modifier.fillMaxWidth(),
                 sectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value),
                 layout = rememberContinueWatchingLayout(maxWidth.value),
@@ -276,6 +279,7 @@ private fun HomeContinueWatchingSectionContent(
     style: ContinueWatchingSectionStyle,
     useEpisodeThumbnails: Boolean,
     blurNextUp: Boolean,
+    showReadyBadge: Boolean,
     modifier: Modifier,
     sectionPadding: Dp,
     layout: ContinueWatchingLayout,
@@ -313,6 +317,7 @@ private fun HomeContinueWatchingSectionContent(
                     item = item,
                     useEpisodeThumbnails = useEpisodeThumbnails,
                     blurNextUp = blurNextUp,
+                    showReadyBadge = showReadyBadge,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )
@@ -321,6 +326,7 @@ private fun HomeContinueWatchingSectionContent(
                     layout = layout,
                     useEpisodeThumbnails = useEpisodeThumbnails,
                     blurNextUp = blurNextUp,
+                    showReadyBadge = showReadyBadge,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )
@@ -329,6 +335,7 @@ private fun HomeContinueWatchingSectionContent(
                     layout = layout,
                     useEpisodeThumbnails = useEpisodeThumbnails,
                     blurNextUp = blurNextUp,
+                    showReadyBadge = showReadyBadge,
                     onClick = onClick,
                     onLongClick = onLongClick,
                 )
@@ -664,6 +671,7 @@ private fun ContinueWatchingCard(
     item: ContinueWatchingItem,
     useEpisodeThumbnails: Boolean,
     blurNextUp: Boolean,
+    showReadyBadge: Boolean,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
 ) {
@@ -739,12 +747,14 @@ private fun ContinueWatchingCard(
                 contentScale = ContentScale.Crop,
             )
         }
-        ContinueWatchingSmartSignalPill(
-            text = smartSignalText,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(cardMetrics.badgeInset),
-        )
+        if (showReadyBadge) {
+            ContinueWatchingSmartSignalPill(
+                text = smartSignalText,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(cardMetrics.badgeInset),
+            )
+        }
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
@@ -874,6 +884,7 @@ private fun ContinueWatchingWideCard(
     layout: ContinueWatchingLayout,
     useEpisodeThumbnails: Boolean,
     blurNextUp: Boolean,
+    showReadyBadge: Boolean,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
 ) {
@@ -914,10 +925,12 @@ private fun ContinueWatchingWideCard(
             val wideMetaLine = localizedContinueWatchingMetaLine(item)
             val episodeTitle = item.episodeTitle?.trim()?.takeIf { it.isNotBlank() }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                ContinueWatchingSmartSignalPill(
-                    text = item.localizedSmartSignal(),
-                    compact = isCompact,
-                )
+                if (showReadyBadge) {
+                    ContinueWatchingSmartSignalPill(
+                        text = item.localizedSmartSignal(),
+                        compact = isCompact,
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1005,6 +1018,7 @@ private fun ContinueWatchingPosterCard(
     layout: ContinueWatchingLayout,
     useEpisodeThumbnails: Boolean,
     blurNextUp: Boolean,
+    showReadyBadge: Boolean,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?,
 ) {
@@ -1055,13 +1069,15 @@ private fun ContinueWatchingPosterCard(
                     UpNextBadge(text = badgeText, compact = true, textSize = layout.posterBadgeTextSize)
                 }
             }
-            ContinueWatchingSmartSignalPill(
-                text = item.localizedSmartSignal(),
-                compact = true,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(8.dp),
-            )
+            if (showReadyBadge) {
+                ContinueWatchingSmartSignalPill(
+                    text = item.localizedSmartSignal(),
+                    compact = true,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp),
+                )
+            }
             if (item.progressFraction > 0f) {
                 Box(
                     modifier = Modifier

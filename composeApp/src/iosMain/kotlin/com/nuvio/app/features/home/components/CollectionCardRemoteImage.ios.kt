@@ -45,7 +45,7 @@ private val animatedGifHttpClient = HttpClient(Darwin) {
 private val animatedGifDecodeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 private const val MaxCachedAnimatedGifs = 10
 private const val MaxAnimatedGifBytes = 20 * 1024 * 1024
-private const val DefaultGifFrameDelaySeconds = 0.1
+private const val DefaultGifFrameDelayCentiseconds = 10
 private val animatedGifCache = mutableMapOf<String, AnimatedGif>()
 private val animatedGifCacheOrder = mutableListOf<String>()
 private val animatedGifInFlight = mutableMapOf<String, Deferred<AnimatedGif?>>()
@@ -53,6 +53,16 @@ private val animatedGifInFlight = mutableMapOf<String, Deferred<AnimatedGif?>>()
 private data class AnimatedGif(
     val images: List<UIImage>,
     val durationSeconds: Double,
+)
+
+private data class GifFrame(
+    val image: UIImage,
+    val delayCentiseconds: Int,
+)
+
+private data class ExpandedGifFrames(
+    val images: List<UIImage>,
+    val tickCentiseconds: Int,
 )
 
 private class AnimatedGifImageViewHolder {
@@ -77,11 +87,7 @@ internal actual fun CollectionCardRemoteImage(
     contentScale: ContentScale,
     animateIfPossible: Boolean,
 ) {
-    val shouldLoadAnimatedGif = remember(imageUrl, animateIfPossible) {
-        animateIfPossible || imageUrl.looksLikeGifUrl()
-    }
-
-    if (!shouldLoadAnimatedGif) {
+    if (!animateIfPossible) {
         AsyncImage(
             model = imageUrl,
             contentDescription = contentDescription,
@@ -155,19 +161,13 @@ private fun UIImageView.updateAnimatedGif(gif: AnimatedGif, holder: AnimatedGifI
     if (holder.currentGif !== gif) {
         stopAnimating()
         animationImages = gif.images
-        animationDuration = gif.durationSeconds.coerceAtLeast(DefaultGifFrameDelaySeconds)
+        animationDuration = gif.durationSeconds.coerceAtLeast(0.02)
         animationRepeatCount = 0
         image = gif.images.firstOrNull()
         holder.currentGif = gif
     }
     startAnimating()
 }
-
-private fun String.looksLikeGifUrl(): Boolean =
-    substringBefore('?')
-        .substringBefore('#')
-        .trim()
-        .endsWith(".gif", ignoreCase = true)
 
 private fun cachedAnimatedGif(imageUrl: String): AnimatedGif? {
     val gif = animatedGifCache[imageUrl] ?: return null
@@ -223,21 +223,121 @@ private fun decodeAnimatedGif(bytes: ByteArray): AnimatedGif? {
     val frameCount = CGImageSourceGetCount(source).toInt()
     if (frameCount <= 1) return null
 
-    val images = mutableListOf<UIImage>()
+    val frameDurations = parseGifFrameDurations(bytes)
+    val frames = mutableListOf<GifFrame>()
+
     for (index in 0 until frameCount) {
         val imageRef: CGImageRef = CGImageSourceCreateImageAtIndex(source, index.toULong(), null) ?: continue
         try {
-            images += UIImage.imageWithCGImage(imageRef)
+            frames += GifFrame(
+                image = UIImage.imageWithCGImage(imageRef),
+                delayCentiseconds = frameDurations.getOrNull(index)
+                    ?.coerceAtLeast(2)
+                    ?: DefaultGifFrameDelayCentiseconds,
+            )
         } finally {
             CGImageRelease(imageRef)
         }
     }
-    if (images.size <= 1) return null
+    if (frames.size <= 1) return null
 
+    val expanded = expandedGifFrames(frames)
     return AnimatedGif(
-        images = images,
-        durationSeconds = images.size * DefaultGifFrameDelaySeconds,
+        images = expanded.images,
+        durationSeconds = (expanded.images.size * expanded.tickCentiseconds) / 100.0,
     )
+}
+
+private fun expandedGifFrames(frames: List<GifFrame>): ExpandedGifFrames {
+    val normalizedDelays = frames.map { it.delayCentiseconds.coerceAtLeast(2) }
+    val tickCentiseconds = normalizedDelays.reduce(::greatestCommonDivisor)
+    val expandedFrames = ArrayList<UIImage>(normalizedDelays.sumOf { it / tickCentiseconds })
+
+    frames.forEach { frame ->
+        val repeatCount = (frame.delayCentiseconds.coerceAtLeast(2) / tickCentiseconds).coerceAtLeast(1)
+        repeat(repeatCount) {
+            expandedFrames.add(frame.image)
+        }
+    }
+
+    return ExpandedGifFrames(
+        images = expandedFrames,
+        tickCentiseconds = tickCentiseconds,
+    )
+}
+
+private fun parseGifFrameDurations(bytes: ByteArray): List<Int> {
+    if (bytes.size < 13 || !bytes.hasGifHeader()) return emptyList()
+
+    var index = 6
+    if (index + 7 > bytes.size) return emptyList()
+
+    val logicalScreenPacked = bytes[index + 4].unsignedInt()
+    index += 7
+
+    if (logicalScreenPacked and 0x80 != 0) {
+        val globalColorTableSize = 3 * (1 shl ((logicalScreenPacked and 0x07) + 1))
+        index += globalColorTableSize
+    }
+
+    val frameDurations = mutableListOf<Int>()
+    var pendingDelayCentiseconds: Int? = null
+
+    while (index < bytes.size) {
+        when (bytes[index].unsignedInt()) {
+            0x21 -> {
+                if (index + 1 >= bytes.size) break
+                val extensionLabel = bytes[index + 1].unsignedInt()
+                if (extensionLabel == 0xF9) {
+                    if (index + 7 >= bytes.size) break
+                    val delayCentiseconds = bytes.readUnsignedShort(index + 4)
+                    pendingDelayCentiseconds = if (delayCentiseconds <= 1) {
+                        DefaultGifFrameDelayCentiseconds
+                    } else {
+                        delayCentiseconds
+                    }
+                    index += 8
+                } else {
+                    index += 2
+                    index = bytes.skipGifSubBlocks(index)
+                }
+            }
+
+            0x2C -> {
+                if (index + 9 >= bytes.size) break
+                val imageDescriptorPacked = bytes[index + 9].unsignedInt()
+                index += 10
+
+                if (imageDescriptorPacked and 0x80 != 0) {
+                    val localColorTableSize = 3 * (1 shl ((imageDescriptorPacked and 0x07) + 1))
+                    index += localColorTableSize
+                }
+
+                if (index >= bytes.size) break
+                index += 1
+                index = bytes.skipGifSubBlocks(index)
+
+                frameDurations += pendingDelayCentiseconds ?: DefaultGifFrameDelayCentiseconds
+                pendingDelayCentiseconds = null
+            }
+
+            0x3B -> break
+            else -> break
+        }
+    }
+
+    return frameDurations
+}
+
+private fun greatestCommonDivisor(a: Int, b: Int): Int {
+    var x = a
+    var y = b
+    while (y != 0) {
+        val temp = x % y
+        x = y
+        y = temp
+    }
+    return x.coerceAtLeast(1)
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -258,3 +358,23 @@ private fun ByteArray.hasGifHeader(): Boolean =
         this[3] == '8'.code.toByte() &&
         (this[4] == '7'.code.toByte() || this[4] == '9'.code.toByte()) &&
         this[5] == 'a'.code.toByte()
+
+private fun ByteArray.skipGifSubBlocks(startIndex: Int): Int {
+    var index = startIndex
+    while (index < size) {
+        val blockSize = this[index].unsignedInt()
+        index += 1
+        if (blockSize == 0) {
+            return index
+        }
+        index += blockSize
+    }
+    return index
+}
+
+private fun ByteArray.readUnsignedShort(startIndex: Int): Int {
+    if (startIndex + 1 >= size) return 0
+    return this[startIndex].unsignedInt() or (this[startIndex + 1].unsignedInt() shl 8)
+}
+
+private fun Byte.unsignedInt(): Int = toInt() and 0xFF

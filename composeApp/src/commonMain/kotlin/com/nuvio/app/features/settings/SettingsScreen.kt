@@ -69,6 +69,7 @@ import com.nuvio.app.features.mdblist.MdbListSettings
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsUiState
+import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.AndroidLibmpvVideoOutput
 import com.nuvio.app.features.player.AndroidPlaybackEngine
@@ -82,6 +83,7 @@ import com.nuvio.app.features.tmdb.TmdbSettings
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesUiState
+import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_settings_page_root
 import kotlinx.coroutines.delay
@@ -121,6 +123,8 @@ fun SettingsScreen(
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
     onEditProfile: (() -> Unit)? = null,
+    onPosterClick: ((MetaPreview) -> Unit)? = null,
+    onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
@@ -137,6 +141,9 @@ fun SettingsScreen(
         val amoledEnabled by remember { ThemeSettingsRepository.amoledEnabled }.collectAsStateWithLifecycle()
         val liquidGlassNativeTabBarEnabled by remember {
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled
+        }.collectAsStateWithLifecycle()
+        val liquidGlassAutoHideOnScrollEnabled by remember {
+            ThemeSettingsRepository.liquidGlassAutoHideOnScrollEnabled
         }.collectAsStateWithLifecycle()
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         val selectedAppLanguage by remember { ThemeSettingsRepository.selectedAppLanguage }.collectAsStateWithLifecycle()
@@ -303,6 +310,8 @@ fun SettingsScreen(
                 liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                 liquidGlassNativeTabBarEnabled = liquidGlassNativeTabBarEnabled,
                 onLiquidGlassNativeTabBarToggle = ThemeSettingsRepository::setLiquidGlassNativeTabBar,
+                liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
+                onLiquidGlassAutoHideOnScrollToggle = ThemeSettingsRepository::setLiquidGlassAutoHideOnScroll,
                 selectedAppLanguage = selectedAppLanguage,
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
@@ -327,6 +336,8 @@ fun SettingsScreen(
                 onLicensesAttributionsClick = onLicensesAttributionsClick,
                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                 onCollectionsClick = onCollectionsClick,
+                onPosterClick = onPosterClick,
+                onContinueWatchingItemClick = onContinueWatchingItemClick,
             )
         } else {
             MobileSettingsScreen(
@@ -360,6 +371,8 @@ fun SettingsScreen(
                 liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                 liquidGlassNativeTabBarEnabled = liquidGlassNativeTabBarEnabled,
                 onLiquidGlassNativeTabBarToggle = ThemeSettingsRepository::setLiquidGlassNativeTabBar,
+                liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
+                onLiquidGlassAutoHideOnScrollToggle = ThemeSettingsRepository::setLiquidGlassAutoHideOnScroll,
                 selectedAppLanguage = selectedAppLanguage,
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 episodeReleaseNotificationsUiState = episodeReleaseNotificationsUiState,
@@ -390,6 +403,8 @@ fun SettingsScreen(
                 onLicensesAttributionsClick = onLicensesAttributionsClick,
                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                 onCollectionsClick = onCollectionsClick,
+                onPosterClick = onPosterClick,
+                onContinueWatchingItemClick = onContinueWatchingItemClick,
             )
         }
     }
@@ -427,6 +442,8 @@ private fun MobileSettingsScreen(
     liquidGlassNativeTabBarSupported: Boolean,
     liquidGlassNativeTabBarEnabled: Boolean,
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
+    liquidGlassAutoHideOnScrollEnabled: Boolean,
+    onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
@@ -457,6 +474,8 @@ private fun MobileSettingsScreen(
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
+    onPosterClick: ((MetaPreview) -> Unit)? = null,
+    onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
     val saveableStateHolder = rememberSaveableStateHolder()
     saveableStateHolder.SaveableStateProvider(page.name) {
@@ -584,6 +603,8 @@ private fun MobileSettingsScreen(
                     isTablet = false,
                     onSwitchProfile = onSwitchProfile,
                     onEditProfile = onEditProfile,
+                    onPosterClick = onPosterClick,
+                    onContinueWatchingClick = onContinueWatchingItemClick,
                 )
                 SettingsPage.SupportersContributors -> {
                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -627,6 +648,8 @@ private fun MobileSettingsScreen(
                     liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                     liquidGlassNativeTabBarEnabled = liquidGlassNativeTabBarEnabled,
                     onLiquidGlassNativeTabBarToggle = onLiquidGlassNativeTabBarToggle,
+                    liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
+                    onLiquidGlassAutoHideOnScrollToggle = onLiquidGlassAutoHideOnScrollToggle,
                     selectedAppLanguage = selectedAppLanguage,
                     onAppLanguageSelected = onAppLanguageSelected,
                     onHomescreenClick = onHomescreenClick,
@@ -791,6 +814,8 @@ private fun TabletSettingsScreen(
     liquidGlassNativeTabBarSupported: Boolean,
     liquidGlassNativeTabBarEnabled: Boolean,
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
+    liquidGlassAutoHideOnScrollEnabled: Boolean,
+    onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     episodeReleaseNotificationsUiState: EpisodeReleaseNotificationsUiState,
@@ -815,6 +840,8 @@ private fun TabletSettingsScreen(
     onLicensesAttributionsClick: () -> Unit = {},
     onCheckForUpdatesClick: (() -> Unit)? = null,
     onCollectionsClick: () -> Unit = {},
+    onPosterClick: ((MetaPreview) -> Unit)? = null,
+    onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
     val activeCategory = SettingsCategory.valueOf(selectedCategory)
@@ -1007,6 +1034,8 @@ private fun TabletSettingsScreen(
                         isTablet = true,
                         onSwitchProfile = onSwitchProfile,
                         onEditProfile = onEditProfile,
+                        onPosterClick = onPosterClick,
+                        onContinueWatchingClick = onContinueWatchingItemClick,
                     )
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -1050,6 +1079,8 @@ private fun TabletSettingsScreen(
                         liquidGlassNativeTabBarSupported = liquidGlassNativeTabBarSupported,
                         liquidGlassNativeTabBarEnabled = liquidGlassNativeTabBarEnabled,
                         onLiquidGlassNativeTabBarToggle = onLiquidGlassNativeTabBarToggle,
+                        liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
+                        onLiquidGlassAutoHideOnScrollToggle = onLiquidGlassAutoHideOnScrollToggle,
                         selectedAppLanguage = selectedAppLanguage,
                         onAppLanguageSelected = onAppLanguageSelected,
                         onHomescreenClick = { openInlinePage(SettingsPage.Homescreen) },

@@ -4,15 +4,18 @@ import com.nuvio.app.features.details.MetaVideo
 import kotlin.random.Random
 
 object PlayerNextEpisodeRules {
+    private const val RANDOM_HISTORY_LIMIT = 8
+    private val randomEpisodeHistory = mutableMapOf<String, ArrayDeque<String>>()
 
     fun resolveNextEpisode(
         videos: List<MetaVideo>,
         currentSeason: Int?,
         currentEpisode: Int?,
         randomMode: Boolean = false,
+        randomHistoryKey: String? = null,
     ): MetaVideo? {
         val sortedEpisodes = videos
-            .filter { it.season != null && it.episode != null }
+            .filter { (it.season ?: 0) > 0 && it.episode != null }
             .sortedWith(
                 compareBy<MetaVideo> { it.season ?: Int.MAX_VALUE }
                     .thenBy { it.episode ?: Int.MAX_VALUE }
@@ -37,18 +40,26 @@ object PlayerNextEpisodeRules {
                 .ifEmpty { airedCandidates.ifEmpty { sortedEpisodes } }
 
             if (candidates.size == 1) return candidates.first()
+            val historyKey = randomHistoryKey?.takeIf { it.isNotBlank() } ?: "global"
+            val recent = randomEpisodeHistory.getOrPut(historyKey) { ArrayDeque() }
+            val freshCandidates = candidates
+                .filterNot { episode -> episode.randomEpisodeKey() in recent }
+                .ifEmpty {
+                    if (candidates.size > 2 && recent.isNotEmpty()) {
+                        recent.removeFirst()
+                        candidates.filterNot { episode -> episode.randomEpisodeKey() in recent }
+                    } else {
+                        candidates
+                    }
+                }
+                .ifEmpty { candidates }
 
-            val seed = buildString {
-                append(currentSeason ?: -1)
-                append(':')
-                append(currentEpisode ?: -1)
-                append(':')
-                append(candidates.joinToString("|") { episode ->
-                    "${episode.season ?: -1}x${episode.episode ?: -1}:${episode.id}"
-                })
-            }.hashCode()
-
-            return candidates[Random(seed).nextInt(candidates.size)]
+            val selected = freshCandidates[Random.nextInt(freshCandidates.size)]
+            recent.addLast(selected.randomEpisodeKey())
+            while (recent.size > RANDOM_HISTORY_LIMIT) {
+                recent.removeFirst()
+            }
+            return selected
         }
 
         if (currentSeason == null || currentEpisode == null) return null
@@ -146,6 +157,9 @@ object PlayerNextEpisodeRules {
     }
 
     val OUTRO_SEGMENT_TYPES = setOf("outro", "ed", "mixed-ed")
+
+    private fun MetaVideo.randomEpisodeKey(): String =
+        "${season ?: -1}x${episode ?: -1}:${id}"
 }
 
 internal expect fun currentDateComponents(): DateComponents

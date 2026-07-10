@@ -20,6 +20,8 @@ internal data class PlayerSurfaceGestureCallbacks(
     val showHorizontalSeekPreview: State<(Long, Long) -> Unit>,
     val showBrightnessFeedback: State<(Float) -> Unit>,
     val showVolumeFeedback: State<(PlayerAudioLevel) -> Unit>,
+    val currentVolumeBoostPercent: State<Int>,
+    val applyVolumeBoostPercent: State<(Int) -> Unit>,
     val clearLiveGestureFeedback: State<() -> Unit>,
     val revealLockedOverlay: State<() -> Unit>,
     val isHoldToSpeedGestureActive: State<Boolean>,
@@ -134,7 +136,8 @@ internal fun PlayerScreenRuntime.showBrightnessFeedback(level: Float) {
 }
 
 internal fun PlayerScreenRuntime.showVolumeFeedback(level: PlayerAudioLevel) {
-    val percentage = (level.fraction.coerceIn(0f, 1f) * 100f).roundToInt()
+    val percentage = (level.fraction.coerceIn(0f, PlayerMaximumVolumeGestureFraction) * 100f).roundToInt()
+    val boostRatio = ((percentage - 100f) / 100f).coerceIn(0f, 1f)
     showGestureFeedback(
         GestureFeedbackState(
             messageRes = if (level.isMuted) {
@@ -145,8 +148,19 @@ internal fun PlayerScreenRuntime.showVolumeFeedback(level: PlayerAudioLevel) {
             messageArgs = if (level.isMuted) emptyList() else listOf("$percentage%"),
             icon = if (level.isMuted) GestureFeedbackIcon.VolumeMuted else GestureFeedbackIcon.Volume,
             isDanger = level.isMuted,
+            accentColor = if (!level.isMuted && boostRatio > 0f) {
+                boostedVolumeAccent(boostRatio)
+            } else {
+                null
+            },
         ),
     )
+}
+
+internal fun PlayerScreenRuntime.applyVolumeBoostPercent(percent: Int) {
+    val normalized = percent.coerceIn(100, 200)
+    PlayerSettingsRepository.setVolumeBoostPercent(normalized)
+    playerController?.setVolumeBoost(normalized / 100f)
 }
 
 internal fun PlayerScreenRuntime.togglePlayback() {
@@ -317,6 +331,10 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
         showHorizontalSeekPreview = rememberUpdatedState(::showHorizontalSeekPreview),
         showBrightnessFeedback = rememberUpdatedState(::showBrightnessFeedback),
         showVolumeFeedback = rememberUpdatedState(::showVolumeFeedback),
+        currentVolumeBoostPercent = rememberUpdatedState(playerSettingsUiState.volumeBoostPercent),
+        applyVolumeBoostPercent = rememberUpdatedState { percent: Int ->
+            applyVolumeBoostPercent(percent)
+        },
         clearLiveGestureFeedback = rememberUpdatedState(::clearLiveGestureFeedback),
         revealLockedOverlay = rememberUpdatedState(::revealLockedOverlay),
         isHoldToSpeedGestureActive = rememberUpdatedState(isHoldToSpeedGestureActive),
@@ -328,5 +346,19 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
             playerController?.seekTo(targetPositionMs)
             scheduleProgressSyncAfterSeek()
         },
+    )
+}
+
+private const val PlayerMaximumVolumeGestureFraction = 2f
+
+private fun boostedVolumeAccent(boostRatio: Float): Color {
+    val amount = boostRatio.coerceIn(0f, 1f)
+    val warning = Color(0xFFFFD166)
+    val danger = Color(0xFFFF3B30)
+    return Color(
+        red = warning.red + (danger.red - warning.red) * amount,
+        green = warning.green + (danger.green - warning.green) * amount,
+        blue = warning.blue + (danger.blue - warning.blue) * amount,
+        alpha = 1f,
     )
 }

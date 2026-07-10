@@ -97,6 +97,7 @@ internal data class GestureFeedbackState(
     val secondaryMessageRes: StringResource? = null,
     val secondaryMessageArgs: List<Any> = emptyList(),
     val secondaryMessageColor: Color? = null,
+    val accentColor: Color? = null,
 )
 
 @Composable
@@ -310,10 +311,10 @@ internal fun GestureFeedbackPill(
     } else {
         Color.Black.copy(alpha = 0.75f)
     }
-    val iconBackgroundColor = if (feedback.isDanger) {
-        Color(0xFFFF8A80).copy(alpha = 0.22f)
-    } else {
-        Color.White.copy(alpha = 0.15f)
+    val iconBackgroundColor = when {
+        feedback.isDanger -> Color(0xFFFF8A80).copy(alpha = 0.22f)
+        feedback.accentColor != null -> feedback.accentColor.copy(alpha = 0.24f)
+        else -> Color.White.copy(alpha = 0.15f)
     }
     val icon = when (feedback.icon) {
         GestureFeedbackIcon.Speed -> Icons.Rounded.Speed
@@ -323,7 +324,11 @@ internal fun GestureFeedbackPill(
         GestureFeedbackIcon.SeekForward -> Icons.Rounded.FastForward
         GestureFeedbackIcon.SeekBackward -> Icons.Rounded.FastRewind
     }
-    val iconTint = if (feedback.isDanger) Color(0xFFFFC1C1) else Color.White
+    val iconTint = when {
+        feedback.isDanger -> Color(0xFFFFC1C1)
+        feedback.accentColor != null -> feedback.accentColor
+        else -> Color.White
+    }
     val messageText = feedback.messageRes?.let { resource ->
         stringResource(resource, *feedback.messageArgs.toTypedArray())
     } ?: feedback.message.orEmpty()

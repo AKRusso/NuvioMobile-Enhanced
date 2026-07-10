@@ -24,6 +24,7 @@ actual object PlayerSettingsStorage {
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
+    private const val volumeBoostPercentKey = "volume_boost_percent"
     private const val externalPlayerEnabledKey = "external_player_enabled"
     private const val externalPlayerForwardSubtitlesKey = "external_player_forward_subtitles"
     private const val externalPlayerSendSkipSegmentsKey = "external_player_send_skip_segments"
@@ -235,6 +236,23 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putBoolean(ProfileScopedKey.of(touchGesturesEnabledKey), enabled)
+            ?.apply()
+    }
+
+    actual fun loadVolumeBoostPercent(): Int? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(volumeBoostPercentKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getInt(key, 100)
+            } else {
+                null
+            }
+        }
+
+    actual fun saveVolumeBoostPercent(percent: Int) {
+        preferences
+            ?.edit()
+            ?.putInt(ProfileScopedKey.of(volumeBoostPercentKey), percent.coerceIn(100, 200))
             ?.apply()
     }
 

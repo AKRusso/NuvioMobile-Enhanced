@@ -572,6 +572,10 @@ private fun ExoPlayerSurface(
                     exoPlayer.setPlaybackSpeed(speed)
                 }
 
+                override fun setVolumeBoost(multiplier: Float) {
+                    exoPlayer.volume = multiplier.coerceIn(0f, 2f)
+                }
+
                 override fun getAudioTracks(): List<AudioTrack> =
                     exoPlayer.extractAudioTracks(context)
 
@@ -803,8 +807,14 @@ private fun LibmpvPlayerSurface(
         val observer = object : MPV.EventObserver {
             override fun eventProperty(property: String) = Unit
             override fun eventProperty(property: String, value: Long) {
-                if (property == "cache-buffering-state") {
-                    dispatchSnapshot(updateKeepScreenOn = true)
+                if (
+                    property == "cache-buffering-state" ||
+                    property == "video-params/w" ||
+                    property == "video-params/h" ||
+                    property == "video-out-params/w" ||
+                    property == "video-out-params/h"
+                ) {
+                    dispatchSnapshot(updateKeepScreenOn = property == "cache-buffering-state")
                 }
             }
             override fun eventProperty(property: String, value: Boolean) {
@@ -977,6 +987,10 @@ private class NuvioLibmpvView(
             "time-pos" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "demuxer-cache-time" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "speed" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
+            "video-params/w" to MPV.mpvFormat.MPV_FORMAT_INT64,
+            "video-params/h" to MPV.mpvFormat.MPV_FORMAT_INT64,
+            "video-out-params/w" to MPV.mpvFormat.MPV_FORMAT_INT64,
+            "video-out-params/h" to MPV.mpvFormat.MPV_FORMAT_INT64,
             "track-list" to MPV.mpvFormat.MPV_FORMAT_NODE,
         )
         props.forEach { (name, format) -> mpv.observeProperty(name, format) }
@@ -1046,8 +1060,14 @@ private class NuvioLibmpvView(
             positionMs = positionMs,
             bufferedPositionMs = maxOf(positionMs, cachePositionMs),
             playbackSpeed = (mpv.getPropertyDouble("speed") ?: 1.0).toFloat(),
+            videoWidth = mpvVideoDimension("w"),
+            videoHeight = mpvVideoDimension("h"),
         )
     }
+
+    private fun mpvVideoDimension(axis: String): Int? =
+        (mpv.getPropertyInt("video-out-params/$axis") ?: mpv.getPropertyInt("video-params/$axis"))
+            ?.takeIf { it > 0 }
 
     fun shouldKeepScreenOn(): Boolean {
         val snapshot = snapshot()
@@ -1095,6 +1115,10 @@ private class NuvioLibmpvView(
 
             override fun setMuted(muted: Boolean) {
                 mpv.setPropertyBoolean("mute", muted)
+            }
+
+            override fun setVolumeBoost(multiplier: Float) {
+                mpv.setPropertyDouble("volume", (multiplier.coerceIn(0f, 2f) * 100f).toDouble())
             }
 
             override fun getAudioTracks(): List<AudioTrack> =
@@ -1285,6 +1309,8 @@ private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
         positionMs = currentPosition.coerceAtLeast(0L),
         bufferedPositionMs = bufferedPosition.coerceAtLeast(0L),
         playbackSpeed = playbackParameters.speed,
+        videoWidth = videoSize.width.takeIf { it > 0 },
+        videoHeight = videoSize.height.takeIf { it > 0 },
     )
 
 private fun ExoPlayer.shouldKeepPlayerScreenOn(): Boolean =

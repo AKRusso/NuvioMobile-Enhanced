@@ -191,6 +191,24 @@ data class ContinueWatchingPreferencesUiState(
     val sortMode: ContinueWatchingSortMode = ContinueWatchingSortMode.DEFAULT,
 )
 
+fun List<WatchProgressEntry>.profileContinueWatchingEntries(limit: Int = Int.MAX_VALUE): List<WatchProgressEntry> =
+    asSequence()
+        .filter { entry -> !entry.isLiveTvProgressEntry() }
+        .filter { entry -> entry.isResumable && entry.progressFraction >= 0.02f }
+        .sortedByDescending { entry -> entry.lastUpdatedEpochMs }
+        .distinctBy { entry -> entry.profileContinueWatchingGroupKey() }
+        .take(limit)
+        .toList()
+
+private fun WatchProgressEntry.profileContinueWatchingGroupKey(): String {
+    val normalizedType = parentMetaType.trim().lowercase()
+    return if (isEpisode || normalizedType in setOf("series", "show", "tv", "tvshow")) {
+        "series:${parentMetaId.trim()}"
+    } else {
+        "item:${parentMetaType.trim().lowercase()}:${videoId.trim().ifBlank { parentMetaId.trim() }}"
+    }
+}
+
 internal fun nextUpDismissKey(
     contentId: String,
     seasonNumber: Int?,

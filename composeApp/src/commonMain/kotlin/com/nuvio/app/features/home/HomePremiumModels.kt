@@ -108,9 +108,15 @@ internal fun buildHomeConciergeState(
     releaseRadarEnabled: Boolean = true,
     profileStatsEnabled: Boolean = true,
 ): HomeConciergeUiState? {
+    val contentContinueWatchingItems = continueWatchingItems.filterNot(ContinueWatchingItem::isLiveTvConciergeItem)
+    val contentReleaseRadarItems = releaseRadarItems.filterNot { item ->
+        item.continueWatchingItem?.isLiveTvConciergeItem() == true || item.preview.isLiveTvConciergeItem()
+    }
+    val contentLibraryItems = libraryItems.filterNot(LibraryItem::isLiveTvConciergeItem)
+
     val cards = buildList {
         if (smartResumeEnabled) {
-            continueWatchingItems
+            contentContinueWatchingItems
                 .smartResumeCandidates()
                 .take(HomeSmartResumeCandidateLimit)
                 .forEach { item ->
@@ -125,7 +131,7 @@ internal fun buildHomeConciergeState(
         }
 
         if (releaseRadarEnabled) {
-            releaseRadarItems
+            contentReleaseRadarItems
                 .firstOrNull { item -> item.daysFromToday != null && item.daysFromToday in 0..7 }
                 ?.let { item ->
                     add(
@@ -143,7 +149,7 @@ internal fun buildHomeConciergeState(
                 }
         }
 
-        libraryItems
+        contentLibraryItems
             .asSequence()
             .sortedWith(
                 compareByDescending<LibraryItem> { item -> item.imdbRating.ratingScoreOrNull() ?: -1.0 }
@@ -199,13 +205,13 @@ internal fun buildHomeConciergeState(
 
     val stats = if (profileStatsEnabled) {
         listOfNotNull(
-            continueWatchingItems.size.takeIf { it > 0 }?.let {
+            contentContinueWatchingItems.size.takeIf { it > 0 }?.let {
                 HomeConciergeStat(HomeConciergeStatType.ContinueWatching, it)
             },
-            releaseRadarItems.size.takeIf { releaseRadarEnabled && it > 0 }?.let {
+            contentReleaseRadarItems.size.takeIf { releaseRadarEnabled && it > 0 }?.let {
                 HomeConciergeStat(HomeConciergeStatType.ReleaseRadar, it)
             },
-            libraryItems.size.takeIf { it > 0 }?.let {
+            contentLibraryItems.size.takeIf { it > 0 }?.let {
                 HomeConciergeStat(HomeConciergeStatType.Library, it)
             },
             highSignalCount.takeIf { it > 0 }?.let {
@@ -230,9 +236,9 @@ internal fun buildHomeConciergeState(
 
     val chips = buildList {
         if (!profileName.isNullOrBlank()) add(HomeConciergeChip(HomeConciergeChipType.ProfileAware))
-        if (smartResumeEnabled && continueWatchingItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.WatchProgress))
-        if (libraryItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.LibraryAware))
-        if (releaseRadarEnabled && releaseRadarItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.ReleaseAware))
+        if (smartResumeEnabled && contentContinueWatchingItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.WatchProgress))
+        if (contentLibraryItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.LibraryAware))
+        if (releaseRadarEnabled && contentReleaseRadarItems.isNotEmpty()) add(HomeConciergeChip(HomeConciergeChipType.ReleaseAware))
     }.take(HomeConciergeChipLimit)
 
     return HomeConciergeUiState(
@@ -242,6 +248,43 @@ internal fun buildHomeConciergeState(
         stats = stats,
         chips = chips,
     )
+}
+
+private fun ContinueWatchingItem.isLiveTvConciergeItem(): Boolean =
+    parentMetaType.isLiveTvConciergeValue() ||
+        parentMetaId.isLiveTvConciergeValue() ||
+        videoId.isLiveTvConciergeValue() ||
+        title.isLiveTvConciergeValue()
+
+private fun LibraryItem.isLiveTvConciergeItem(): Boolean =
+    type.isLiveTvConciergeValue() ||
+        id.isLiveTvConciergeValue() ||
+        name.isLiveTvConciergeValue()
+
+private fun MetaPreview.isLiveTvConciergeItem(): Boolean =
+    type.isLiveTvConciergeValue() ||
+        id.isLiveTvConciergeValue() ||
+        name.isLiveTvConciergeValue()
+
+private fun String.isLiveTvConciergeValue(): Boolean {
+    val value = trim().lowercase()
+    return value in setOf(
+        "live-tv",
+        "livetv",
+        "live_tv",
+        "channel",
+        "tv-channel",
+        "tv_channel",
+        "iptv",
+        "m3u",
+        "stalker",
+    ) ||
+        value.startsWith("http://") ||
+        value.startsWith("https://") ||
+        value.startsWith("rtmp://") ||
+        value.startsWith("rtsp://") ||
+        value.endsWith(".m3u") ||
+        value.endsWith(".m3u8")
 }
 
 internal fun buildHomeReleaseRadarItems(
