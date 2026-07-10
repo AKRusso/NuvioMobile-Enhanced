@@ -331,9 +331,11 @@ actual object CloudStreamRepository {
             .onFailure { log.w(it) { "Could not restore CloudStream state" } }
             .getOrNull() ?: return CloudStreamUiState()
         val repositories = stored.repositories.map { repository ->
+            val manifestUrl = runCatching { normalizeCloudStreamRepositoryUrl(repository.manifestUrl) }
+                .getOrDefault(repository.manifestUrl)
             CloudStreamRepositoryItem(
                 CloudStreamRepositoryManifest(
-                    sourceUrl = repository.manifestUrl,
+                    sourceUrl = manifestUrl,
                     name = repository.name,
                     description = repository.description,
                     iconUrl = repository.iconUrl,
@@ -344,8 +346,13 @@ actual object CloudStreamRepository {
         }
         val plugins = stored.plugins.map { plugin ->
             val metadata = plugin.toMetadata()
-            val packageExists = plugin.installedVersion != null &&
-                CloudStreamPlatformStorage.packageExists(metadata.id.storageKey)
+            val legacyStorageKey = CloudStreamPluginId(plugin.repositoryManifestUrl, plugin.internalName).storageKey
+            val storageKey = metadata.id.storageKey
+            val packageExists = plugin.installedVersion != null && (
+                CloudStreamPlatformStorage.packageExists(storageKey) ||
+                    (legacyStorageKey != storageKey &&
+                        CloudStreamPlatformStorage.migratePackage(legacyStorageKey, storageKey))
+                )
             val compatibility = CloudStreamCompatibilityResolver.resolve(metadata)
             CloudStreamPluginItem(
                 metadata = metadata,
@@ -405,25 +412,30 @@ actual object CloudStreamRepository {
         installedAtEpochMs = installedAtEpochMs.takeIf { installedVersion != null } ?: 0L,
     )
 
-    private fun StoredCloudStreamPlugin.toMetadata(): CloudStreamPluginMetadata = CloudStreamPluginMetadata(
-        id = CloudStreamPluginId(repositoryManifestUrl, internalName),
-        repositoryManifestUrl = repositoryManifestUrl,
-        packageUrl = packageUrl,
-        status = runCatching { CloudStreamPluginStatus.valueOf(status) }.getOrDefault(CloudStreamPluginStatus.Unknown),
-        version = availableVersion,
-        name = name,
-        internalName = internalName,
-        authors = authors,
-        description = description,
-        fileSize = fileSize,
-        projectUrl = projectUrl,
-        language = language,
-        tvTypes = rawTvTypes.map(CloudStreamTvType::fromWireValue).distinct(),
-        rawTvTypes = rawTvTypes,
-        iconUrl = iconUrl,
-        apiVersion = apiVersion,
-        fileHash = CloudStreamFileHash.parse(fileHash),
-    )
+    private fun StoredCloudStreamPlugin.toMetadata(): CloudStreamPluginMetadata {
+        val normalizedRepositoryUrl = runCatching { normalizeCloudStreamRepositoryUrl(repositoryManifestUrl) }
+            .getOrDefault(repositoryManifestUrl)
+        return CloudStreamPluginMetadata(
+            id = CloudStreamPluginId(normalizedRepositoryUrl, internalName),
+            repositoryManifestUrl = normalizedRepositoryUrl,
+            packageUrl = packageUrl,
+            status = runCatching { CloudStreamPluginStatus.valueOf(status) }
+                .getOrDefault(CloudStreamPluginStatus.Unknown),
+            version = availableVersion,
+            name = name,
+            internalName = internalName,
+            authors = authors,
+            description = description,
+            fileSize = fileSize,
+            projectUrl = projectUrl,
+            language = language,
+            tvTypes = rawTvTypes.map(CloudStreamTvType::fromWireValue).distinct(),
+            rawTvTypes = rawTvTypes,
+            iconUrl = iconUrl,
+            apiVersion = apiVersion,
+            fileHash = CloudStreamFileHash.parse(fileHash),
+        )
+    }
 
     private fun runnableProviderIds(): List<String> =
         _uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable).map { it.metadata.id.value }

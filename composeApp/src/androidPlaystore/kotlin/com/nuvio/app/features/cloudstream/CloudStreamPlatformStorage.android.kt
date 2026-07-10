@@ -6,6 +6,7 @@ internal actual object CloudStreamPlatformStorage {
     actual fun saveState(profileId: Int, payload: String) = Unit
     actual fun savePackageAtomically(storageKey: String, bytes: ByteArray) = Unit
     actual fun packageExists(storageKey: String): Boolean = false
+    actual fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean = false
     actual fun deletePackage(storageKey: String) = Unit
     actual fun clearPackages() = Unit
     actual fun clearAllState() = Unit

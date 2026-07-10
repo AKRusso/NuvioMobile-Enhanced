@@ -37,6 +37,12 @@ class CloudStreamRepositoryParserTest {
         val expected = "https://raw.githubusercontent.com/Kraptor123/cs-kraptor/master/repo.json"
         assertEquals(expected, normalizeCloudStreamRepositoryUrl("https://github.com/Kraptor123/cs-kraptor"))
         assertEquals(expected, normalizeCloudStreamRepositoryUrl("cloudstreamrepo://github.com/Kraptor123/cs-kraptor"))
+        assertEquals(
+            expected,
+            normalizeCloudStreamRepositoryUrl(
+                "https://raw.githubusercontent.com/Kraptor123/cs-kraptor/refs/heads/master/repo.json",
+            ),
+        )
     }
 
     @Test

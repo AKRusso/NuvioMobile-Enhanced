@@ -53,6 +53,14 @@ internal actual object CloudStreamPlatformStorage {
     actual fun packageExists(storageKey: String): Boolean =
         File(packagesDirectory(), "$storageKey.cs3").isFile
 
+    actual fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean {
+        val directory = packagesDirectory()
+        val source = File(directory, "$oldStorageKey.cs3")
+        val destination = File(directory, "$newStorageKey.cs3")
+        if (destination.isFile) return true
+        return source.isFile && source.renameTo(destination)
+    }
+
     actual fun deletePackage(storageKey: String) {
         File(packagesDirectory(), "$storageKey.cs3").delete()
         File(packagesDirectory(), "$storageKey.backup").delete()

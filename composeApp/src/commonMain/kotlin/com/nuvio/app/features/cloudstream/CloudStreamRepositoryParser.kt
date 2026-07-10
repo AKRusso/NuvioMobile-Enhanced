@@ -125,6 +125,24 @@ fun normalizeCloudStreamRepositoryUrl(rawUrl: String): String {
         }
     }
 
+    val rawGithubPrefix = "https://raw.githubusercontent.com/"
+    if (value.startsWith(rawGithubPrefix, ignoreCase = true)) {
+        val rest = value.substring(rawGithubPrefix.length).trim('/')
+        val parts = rest.split('/').filter(String::isNotBlank)
+        if (parts.size >= 6 && parts[2] == "refs" && parts[3] == "heads") {
+            value = buildString {
+                append(rawGithubPrefix)
+                append(parts[0])
+                append('/')
+                append(parts[1])
+                append('/')
+                append(parts[4])
+                append('/')
+                append(parts.drop(5).joinToString("/"))
+            }
+        }
+    }
+
     val withoutQuery = value.substringBefore('?')
     val lastSegment = withoutQuery.substringAfterLast('/')
     if (!lastSegment.contains('.')) {
@@ -174,4 +192,3 @@ private fun normalizeHttpUrlPath(url: String): String {
     }
     return "$origin/${normalizedSegments.joinToString("/")}" + query?.let { "?$it" }.orEmpty()
 }
-

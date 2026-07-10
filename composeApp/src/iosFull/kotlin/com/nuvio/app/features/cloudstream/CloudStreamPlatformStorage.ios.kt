@@ -54,6 +54,15 @@ internal actual object CloudStreamPlatformStorage {
     actual fun packageExists(storageKey: String): Boolean =
         NSFileManager.defaultManager.fileExistsAtPath("${packagesDirectory()}/$storageKey.cs3")
 
+    actual fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean {
+        val directory = packagesDirectory()
+        val source = "$directory/$oldStorageKey.cs3"
+        val destination = "$directory/$newStorageKey.cs3"
+        val manager = NSFileManager.defaultManager
+        if (manager.fileExistsAtPath(destination)) return true
+        return manager.fileExistsAtPath(source) && manager.moveItemAtPath(source, destination, error = null)
+    }
+
     actual fun deletePackage(storageKey: String) {
         val directory = packagesDirectory()
         NSFileManager.defaultManager.removeItemAtPath("$directory/$storageKey.cs3", error = null)

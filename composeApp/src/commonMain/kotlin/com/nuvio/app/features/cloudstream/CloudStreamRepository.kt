@@ -75,6 +75,7 @@ internal expect object CloudStreamPlatformStorage {
     fun saveState(profileId: Int, payload: String)
     fun savePackageAtomically(storageKey: String, bytes: ByteArray)
     fun packageExists(storageKey: String): Boolean
+    fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean
     fun deletePackage(storageKey: String)
     fun clearPackages()
     fun clearAllState()
