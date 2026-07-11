@@ -87,7 +87,6 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.extractReleaseYearForDisplay
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
-import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import com.nuvio.app.core.ui.rememberAnimatedLineBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.features.details.MetaDetails
@@ -1554,7 +1553,6 @@ private fun StreamingShowcaseNetflixButton(
     val iconSize = if (compact) 19.dp else 22.dp
     val textStyle = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
     val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
-    val chipBrush = rememberAnimatedChipBrush().takeIf { !primary && enabled }
     val foregroundColor = if (accentBrush != null) {
         MaterialTheme.colorScheme.onPrimary
     } else if (primary) {
@@ -1569,7 +1567,6 @@ private fun StreamingShowcaseNetflixButton(
             .then(
                 when {
                     accentBrush != null -> Modifier.background(accentBrush, shape)
-                    chipBrush != null -> Modifier.background(chipBrush, shape)
                     else -> Modifier.background(
                         if (primary) {
                             Color.White.copy(alpha = if (enabled) 0.96f else 0.54f)
@@ -1582,7 +1579,7 @@ private fun StreamingShowcaseNetflixButton(
             )
             .border(
                 width = 1.dp,
-                color = if (accentBrush != null || chipBrush != null) {
+                color = if (accentBrush != null) {
                     MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.34f else 0.16f)
                 } else if (primary) {
                     Color.White.copy(alpha = 0.36f)
@@ -1629,7 +1626,6 @@ private fun StreamingShowcaseButton(
     val iconSize = if (compact) 18.dp else 21.dp
     val itemSpacing = if (compact) 7.dp else 10.dp
     val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
-    val chipBrush = rememberAnimatedChipBrush().takeIf { !primary && enabled }
     val contentColor = if (accentBrush != null) {
         MaterialTheme.colorScheme.onPrimary
     } else if (primary) {
@@ -1643,7 +1639,6 @@ private fun StreamingShowcaseButton(
             .then(
                 when {
                     accentBrush != null -> Modifier.background(accentBrush, shape)
-                    chipBrush != null -> Modifier.background(chipBrush, shape)
                     else -> Modifier.background(
                         if (primary) {
                             Color.White.copy(alpha = if (enabled) 0.96f else 0.56f)
@@ -1656,7 +1651,7 @@ private fun StreamingShowcaseButton(
             )
             .border(
                 width = 1.dp,
-                color = if (accentBrush != null || chipBrush != null) {
+                color = if (accentBrush != null) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
                 } else if (primary) {
                     Color.Black.copy(alpha = 0.14f)
@@ -2534,17 +2529,10 @@ private fun HeroMetaLabel(
     item: HeroMetaItem,
     compact: Boolean,
 ) {
-    val chipBrush = rememberAnimatedChipBrush()
     val modifier = if (item.emphasized) {
         Modifier
             .clip(RoundedCornerShape(999.dp))
-            .then(
-                if (chipBrush != null) {
-                    Modifier.background(chipBrush, RoundedCornerShape(999.dp))
-                } else {
-                    Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f), RoundedCornerShape(999.dp))
-                },
-            )
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f), RoundedCornerShape(999.dp))
             .padding(horizontal = if (compact) 9.dp else 10.dp, vertical = if (compact) 3.dp else 4.dp)
     } else {
         Modifier
@@ -2647,7 +2635,7 @@ private fun HeroPageIndicator(
                         if (lineBrush != null) {
                             Modifier.background(lineBrush)
                         } else {
-                            Modifier.background(MaterialTheme.colorScheme.primary)
+                            Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.86f))
                         },
                     ),
             )

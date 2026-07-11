@@ -1878,6 +1878,12 @@
     <string name="settings_appearance_theme_enhanced">Motywy rozszerzone</string>
     <string name="settings_appearance_theme_custom_first">Pierwszy kolor</string>
     <string name="settings_appearance_theme_custom_second">Drugi kolor</string>
+    <string name="settings_appearance_theme_animation_style">Styl animacji</string>
+    <string name="theme_animation_flow">Przepływ</string>
+    <string name="theme_animation_shimmer">Połysk</string>
+    <string name="theme_animation_wave">Fala</string>
+    <string name="theme_animation_vivid_wave">Żywa fala</string>
+    <string name="theme_animation_still">Statyczny</string>
     <string name="theme_color_pink">Różowy</string>
     <string name="theme_color_purple">Fioletowy</string>
     <string name="theme_color_blue">Niebieski</string>

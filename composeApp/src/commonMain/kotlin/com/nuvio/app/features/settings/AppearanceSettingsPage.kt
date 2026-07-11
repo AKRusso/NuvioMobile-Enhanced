@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +53,7 @@ import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.labelRes
 import com.nuvio.app.core.ui.ThemeColors
 import com.nuvio.app.core.ui.ThemeAccentColor
+import com.nuvio.app.core.ui.ThemeAnimationStyle
 import com.nuvio.app.core.ui.isEnhanced
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import kotlinx.coroutines.launch
@@ -77,6 +79,7 @@ import nuvio.composeapp.generated.resources.settings_appearance_section_display
 import nuvio.composeapp.generated.resources.settings_appearance_section_home
 import nuvio.composeapp.generated.resources.settings_appearance_section_theme
 import nuvio.composeapp.generated.resources.settings_appearance_theme_classic
+import nuvio.composeapp.generated.resources.settings_appearance_theme_animation_style
 import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_first
 import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_second
 import nuvio.composeapp.generated.resources.settings_appearance_theme_enhanced
@@ -112,6 +115,7 @@ internal fun LazyListScope.appearanceSettingsContent(
     item {
         val customFirst by remember { ThemeSettingsRepository.customThemeFirstColor }.collectAsState()
         val customSecond by remember { ThemeSettingsRepository.customThemeSecondColor }.collectAsState()
+        val animationStyle by remember { ThemeSettingsRepository.themeAnimationStyle }.collectAsState()
         SettingsSection(
             title = stringResource(Res.string.settings_appearance_section_theme),
             isTablet = isTablet,
@@ -165,6 +169,11 @@ internal fun LazyListScope.appearanceSettingsContent(
                         isTablet = isTablet,
                         spacing = themeSpacing,
                         onThemeSelected = onThemeSelected,
+                    )
+
+                    ThemeAnimationStyleSelector(
+                        selectedStyle = animationStyle,
+                        onStyleSelected = ThemeSettingsRepository::setThemeAnimationStyle,
                     )
 
                     if (selectedTheme == AppTheme.CUSTOM) {
@@ -390,15 +399,8 @@ private fun ThemeChip(
     customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
 ) {
     val palette = ThemeColors.getColorPalette(theme, customFirst, customSecond)
-    val animatedBrush = if (theme.isEnhanced) {
-        rememberAnimatedAccentBrush(
-            previewTheme = theme,
-            customFirst = customFirst,
-            customSecond = customSecond,
-        )
-    } else {
-        null
-    }
+    val previewBrush = theme.previewBrush(palette, customFirst, customSecond)
+    val checkColor = if (theme.isEnhanced) Color.White else palette.onSecondary
 
     Column(
         modifier = modifier
@@ -423,26 +425,42 @@ private fun ThemeChip(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (animatedBrush != null) {
-                            Modifier.background(animatedBrush)
-                        } else {
-                            Modifier.background(palette.secondary)
-                        },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = stringResource(Res.string.cd_selected),
-                        tint = palette.onSecondary,
-                        modifier = Modifier.size(22.dp),
-                    )
+            if (theme == AppTheme.CUSTOM) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(customThemeRingBrush())
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = stringResource(Res.string.cd_selected),
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(previewBrush),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = stringResource(Res.string.cd_selected),
+                            tint = checkColor,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }
@@ -470,16 +488,113 @@ private fun ThemeChip(
             modifier = Modifier
                 .size(width = 36.dp, height = 3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .then(
-                    if (animatedBrush != null) {
-                        Modifier.background(animatedBrush)
+                .background(
+                    if (theme.isEnhanced) {
+                        previewBrush
                     } else {
-                        Modifier.background(palette.focusRing)
+                        Brush.linearGradient(listOf(palette.focusRing, palette.secondary))
                     },
                 ),
         )
     }
 }
+
+@Composable
+private fun ThemeAnimationStyleSelector(
+    selectedStyle: ThemeAnimationStyle,
+    onStyleSelected: (ThemeAnimationStyle) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_animation_style))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ThemeAnimationStyle.entries.forEach { style ->
+                ThemeAnimationStyleChip(
+                    style = style,
+                    selected = style == selectedStyle,
+                    onClick = { onStyleSelected(style) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeAnimationStyleChip(
+    style: ThemeAnimationStyle,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(999.dp)
+    val selectedBrush = rememberAnimatedAccentBrush().takeIf { selected && style != ThemeAnimationStyle.STILL }
+    val backgroundColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    }
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .then(
+                if (selectedBrush != null) {
+                    Modifier.background(selectedBrush, shape)
+                } else {
+                    Modifier.background(backgroundColor, shape)
+                },
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.50f)
+                },
+                shape = shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = stringResource(style.labelRes),
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun AppTheme.previewBrush(
+    palette: com.nuvio.app.core.ui.ThemeColorPalette,
+    customFirst: ThemeAccentColor,
+    customSecond: ThemeAccentColor,
+): Brush {
+    if (!isEnhanced) {
+        return Brush.linearGradient(listOf(palette.secondary, palette.focusRing))
+    }
+
+    val colors = ThemeColors.animatedColors(this, customFirst, customSecond)
+        .takeIf { it.isNotEmpty() }
+        ?: listOf(palette.secondary, palette.secondaryVariant, palette.focusRing)
+    return Brush.sweepGradient(colors + colors.first())
+}
+
+private fun customThemeRingBrush(): Brush =
+    Brush.sweepGradient(
+        listOf(
+            Color(0xFFFF004D),
+            Color(0xFFFFD23F),
+            Color(0xFF00E676),
+            Color(0xFF00D9FF),
+            Color(0xFF3D5AFE),
+            Color(0xFFFF4FD8),
+            Color(0xFFFF004D),
+        ),
+    )
 
 @Composable
 private fun ThemeSectionLabel(text: String) {

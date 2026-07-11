@@ -1932,6 +1932,12 @@
     <string name="settings_appearance_theme_enhanced">Temas mejorados</string>
     <string name="settings_appearance_theme_custom_first">Primer color</string>
     <string name="settings_appearance_theme_custom_second">Segundo color</string>
+    <string name="settings_appearance_theme_animation_style">Estilo de animación</string>
+    <string name="theme_animation_flow">Flujo</string>
+    <string name="theme_animation_shimmer">Brillo</string>
+    <string name="theme_animation_wave">Onda</string>
+    <string name="theme_animation_vivid_wave">Onda viva</string>
+    <string name="theme_animation_still">Estático</string>
     <string name="theme_color_pink">Rosa</string>
     <string name="theme_color_purple">Morado</string>
     <string name="theme_color_blue">Azul</string>

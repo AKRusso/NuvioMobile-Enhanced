@@ -1528,6 +1528,12 @@
     <string name="settings_appearance_theme_enhanced">Temi avanzati</string>
     <string name="settings_appearance_theme_custom_first">Primo colore</string>
     <string name="settings_appearance_theme_custom_second">Secondo colore</string>
+    <string name="settings_appearance_theme_animation_style">Stile animazione</string>
+    <string name="theme_animation_flow">Flusso</string>
+    <string name="theme_animation_shimmer">Bagliore</string>
+    <string name="theme_animation_wave">Onda</string>
+    <string name="theme_animation_vivid_wave">Onda vivida</string>
+    <string name="theme_animation_still">Fermo</string>
     <string name="theme_color_pink">Rosa</string>
     <string name="theme_color_purple">Viola</string>
     <string name="theme_color_blue">Blu</string>

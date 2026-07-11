@@ -2,6 +2,11 @@ package com.nuvio.app.core.ui
 
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.theme_amber
+import nuvio.composeapp.generated.resources.theme_animation_flow
+import nuvio.composeapp.generated.resources.theme_animation_shimmer
+import nuvio.composeapp.generated.resources.theme_animation_still
+import nuvio.composeapp.generated.resources.theme_animation_vivid_wave
+import nuvio.composeapp.generated.resources.theme_animation_wave
 import nuvio.composeapp.generated.resources.theme_aurora
 import nuvio.composeapp.generated.resources.theme_custom
 import nuvio.composeapp.generated.resources.theme_crimson
@@ -51,4 +56,21 @@ val AppTheme.labelRes: StringResource
         AppTheme.OPAL -> Res.string.theme_opal
         AppTheme.CUSTOM -> Res.string.theme_custom
         AppTheme.WHITE -> Res.string.theme_white
+    }
+
+enum class ThemeAnimationStyle {
+    FLOW,
+    SHIMMER,
+    WAVE,
+    VIVID_WAVE,
+    STILL,
+}
+
+val ThemeAnimationStyle.labelRes: StringResource
+    get() = when (this) {
+        ThemeAnimationStyle.FLOW -> Res.string.theme_animation_flow
+        ThemeAnimationStyle.SHIMMER -> Res.string.theme_animation_shimmer
+        ThemeAnimationStyle.WAVE -> Res.string.theme_animation_wave
+        ThemeAnimationStyle.VIVID_WAVE -> Res.string.theme_animation_vivid_wave
+        ThemeAnimationStyle.STILL -> Res.string.theme_animation_still
     }

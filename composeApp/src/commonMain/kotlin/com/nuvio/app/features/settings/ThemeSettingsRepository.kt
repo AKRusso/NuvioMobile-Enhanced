@@ -4,6 +4,7 @@ import com.nuvio.app.core.ui.AppTheme
 import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.ThemeColors
 import com.nuvio.app.core.ui.ThemeAccentColor
+import com.nuvio.app.core.ui.ThemeAnimationStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +18,9 @@ object ThemeSettingsRepository {
 
     private val _customThemeSecondColor = MutableStateFlow(ThemeAccentColor.CYAN)
     val customThemeSecondColor: StateFlow<ThemeAccentColor> = _customThemeSecondColor.asStateFlow()
+
+    private val _themeAnimationStyle = MutableStateFlow(ThemeAnimationStyle.FLOW)
+    val themeAnimationStyle: StateFlow<ThemeAnimationStyle> = _themeAnimationStyle.asStateFlow()
 
     private val _amoledEnabled = MutableStateFlow(false)
     val amoledEnabled: StateFlow<Boolean> = _amoledEnabled.asStateFlow()
@@ -46,6 +50,7 @@ object ThemeSettingsRepository {
         _selectedTheme.value = AppTheme.WHITE
         _customThemeFirstColor.value = ThemeAccentColor.PINK
         _customThemeSecondColor.value = ThemeAccentColor.CYAN
+        _themeAnimationStyle.value = ThemeAnimationStyle.FLOW
         _amoledEnabled.value = false
         _liquidGlassNativeTabBarEnabled.value = false
         _liquidGlassAutoHideOnScrollEnabled.value = false
@@ -71,6 +76,8 @@ object ThemeSettingsRepository {
             .toThemeAccentColor(ThemeAccentColor.PINK)
         _customThemeSecondColor.value = ThemeSettingsStorage.loadCustomThemeSecondColor()
             .toThemeAccentColor(ThemeAccentColor.CYAN)
+        _themeAnimationStyle.value = ThemeSettingsStorage.loadThemeAnimationStyle()
+            .toThemeAnimationStyle(ThemeAnimationStyle.FLOW)
         NativeTabBridge.publishAccentColor(theme.nativeTabAccentHex(_customThemeFirstColor.value))
         _amoledEnabled.value = ThemeSettingsStorage.loadAmoledEnabled() ?: false
         val liquidGlassEnabled = ThemeSettingsStorage.loadLiquidGlassNativeTabBarEnabled() ?: false
@@ -106,6 +113,13 @@ object ThemeSettingsRepository {
         if (_customThemeSecondColor.value == color) return
         _customThemeSecondColor.value = color
         ThemeSettingsStorage.saveCustomThemeSecondColor(color.name)
+    }
+
+    fun setThemeAnimationStyle(style: ThemeAnimationStyle) {
+        ensureLoaded()
+        if (_themeAnimationStyle.value == style) return
+        _themeAnimationStyle.value = style
+        ThemeSettingsStorage.saveThemeAnimationStyle(style.name)
     }
 
     fun setAmoled(enabled: Boolean) {
@@ -144,3 +158,6 @@ private fun AppTheme.nativeTabAccentHex(customFirst: ThemeAccentColor = ThemeAcc
 
 private fun String?.toThemeAccentColor(fallback: ThemeAccentColor): ThemeAccentColor =
     this?.let { stored -> ThemeAccentColor.entries.firstOrNull { it.name == stored } } ?: fallback
+
+private fun String?.toThemeAnimationStyle(fallback: ThemeAnimationStyle): ThemeAnimationStyle =
+    this?.let { stored -> ThemeAnimationStyle.entries.firstOrNull { it.name == stored } } ?: fallback

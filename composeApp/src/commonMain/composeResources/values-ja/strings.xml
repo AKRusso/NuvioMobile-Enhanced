@@ -1927,6 +1927,12 @@
     <string name="settings_appearance_theme_enhanced">拡張テーマ</string>
     <string name="settings_appearance_theme_custom_first">1色目</string>
     <string name="settings_appearance_theme_custom_second">2色目</string>
+    <string name="settings_appearance_theme_animation_style">アニメーションスタイル</string>
+    <string name="theme_animation_flow">フロー</string>
+    <string name="theme_animation_shimmer">シマー</string>
+    <string name="theme_animation_wave">ウェーブ</string>
+    <string name="theme_animation_vivid_wave">ビビッドウェーブ</string>
+    <string name="theme_animation_still">静止</string>
     <string name="theme_color_pink">ピンク</string>
     <string name="theme_color_purple">紫</string>
     <string name="theme_color_blue">青</string>

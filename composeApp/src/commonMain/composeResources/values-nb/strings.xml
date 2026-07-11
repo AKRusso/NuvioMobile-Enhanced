@@ -1377,6 +1377,12 @@
     <string name="settings_appearance_theme_enhanced">Forbedrede temaer</string>
     <string name="settings_appearance_theme_custom_first">Første farge</string>
     <string name="settings_appearance_theme_custom_second">Andre farge</string>
+    <string name="settings_appearance_theme_animation_style">Animasjonsstil</string>
+    <string name="theme_animation_flow">Flyt</string>
+    <string name="theme_animation_shimmer">Skimmer</string>
+    <string name="theme_animation_wave">Bølge</string>
+    <string name="theme_animation_vivid_wave">Livlig bølge</string>
+    <string name="theme_animation_still">Still</string>
     <string name="theme_color_pink">Rosa</string>
     <string name="theme_color_purple">Lilla</string>
     <string name="theme_color_blue">Blå</string>

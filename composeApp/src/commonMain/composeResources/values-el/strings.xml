@@ -1920,6 +1920,12 @@
     <string name="settings_appearance_theme_enhanced">Βελτιωμένα θέματα</string>
     <string name="settings_appearance_theme_custom_first">Πρώτο χρώμα</string>
     <string name="settings_appearance_theme_custom_second">Δεύτερο χρώμα</string>
+    <string name="settings_appearance_theme_animation_style">Στυλ κίνησης</string>
+    <string name="theme_animation_flow">Ροή</string>
+    <string name="theme_animation_shimmer">Λάμψη</string>
+    <string name="theme_animation_wave">Κύμα</string>
+    <string name="theme_animation_vivid_wave">Ζωντανό κύμα</string>
+    <string name="theme_animation_still">Στατικό</string>
     <string name="theme_color_pink">Ροζ</string>
     <string name="theme_color_purple">Μωβ</string>
     <string name="theme_color_blue">Μπλε</string>

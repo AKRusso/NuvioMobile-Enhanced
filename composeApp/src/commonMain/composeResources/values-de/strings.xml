@@ -1221,6 +1221,12 @@
     <string name="settings_appearance_theme_enhanced">Erweiterte Designs</string>
     <string name="settings_appearance_theme_custom_first">Erste Farbe</string>
     <string name="settings_appearance_theme_custom_second">Zweite Farbe</string>
+    <string name="settings_appearance_theme_animation_style">Animationsstil</string>
+    <string name="theme_animation_flow">Fluss</string>
+    <string name="theme_animation_shimmer">Schimmer</string>
+    <string name="theme_animation_wave">Welle</string>
+    <string name="theme_animation_vivid_wave">Lebendige Welle</string>
+    <string name="theme_animation_still">Statisch</string>
     <string name="theme_color_pink">Rosa</string>
     <string name="theme_color_purple">Violett</string>
     <string name="theme_color_blue">Blau</string>

@@ -1926,6 +1926,12 @@
     <string name="settings_appearance_theme_enhanced">Továbbfejlesztett témák</string>
     <string name="settings_appearance_theme_custom_first">Első szín</string>
     <string name="settings_appearance_theme_custom_second">Második szín</string>
+    <string name="settings_appearance_theme_animation_style">Animáció stílusa</string>
+    <string name="theme_animation_flow">Áramlás</string>
+    <string name="theme_animation_shimmer">Csillogás</string>
+    <string name="theme_animation_wave">Hullám</string>
+    <string name="theme_animation_vivid_wave">Élénk hullám</string>
+    <string name="theme_animation_still">Álló</string>
     <string name="theme_color_pink">Rózsaszín</string>
     <string name="theme_color_purple">Lila</string>
     <string name="theme_color_blue">Kék</string>

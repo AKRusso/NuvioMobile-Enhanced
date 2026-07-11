@@ -1976,6 +1976,12 @@
     <string name="settings_appearance_theme_enhanced">Thèmes améliorés</string>
     <string name="settings_appearance_theme_custom_first">Première couleur</string>
     <string name="settings_appearance_theme_custom_second">Deuxième couleur</string>
+    <string name="settings_appearance_theme_animation_style">Style d'animation</string>
+    <string name="theme_animation_flow">Flux</string>
+    <string name="theme_animation_shimmer">Reflet</string>
+    <string name="theme_animation_wave">Vague</string>
+    <string name="theme_animation_vivid_wave">Vague vive</string>
+    <string name="theme_animation_still">Fixe</string>
     <string name="theme_color_pink">Rose</string>
     <string name="theme_color_purple">Violet</string>
     <string name="theme_color_blue">Bleu</string>

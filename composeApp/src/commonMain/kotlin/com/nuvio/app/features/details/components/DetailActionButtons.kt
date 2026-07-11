@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
-import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.details_actions_menu_label
@@ -83,7 +82,6 @@ fun DetailActionButtons(
     )
     val hasSecondaryActions = secondaryActions.isNotEmpty()
     val playBrush = rememberAnimatedAccentBrush()
-    val menuBrush = rememberAnimatedChipBrush().takeIf { actionsExpanded }
 
     Box(
         modifier = modifier
@@ -210,18 +208,9 @@ fun DetailActionButtons(
                 Surface(
                     modifier = Modifier
                         .size(iconButtonSize)
-                        .clip(CircleShape)
-                        .then(
-                            if (menuBrush != null) {
-                                Modifier.background(menuBrush, CircleShape)
-                            } else {
-                                Modifier
-                            },
-                        ),
+                        .clip(CircleShape),
                     shape = CircleShape,
-                    color = if (menuBrush != null) {
-                        Color.Transparent
-                    } else if (actionsExpanded) {
+                    color = if (actionsExpanded) {
                         MaterialTheme.colorScheme.onBackground
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
@@ -267,21 +256,13 @@ private fun DetailCompactAction(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val chipBrush = rememberAnimatedChipBrush()
     Surface(
         modifier = modifier
             .size(size)
-            .clip(CircleShape)
-            .then(
-                if (chipBrush != null) {
-                    Modifier.background(chipBrush, CircleShape)
-                } else {
-                    Modifier
-                },
-            ),
+            .clip(CircleShape),
         shape = CircleShape,
-        color = if (chipBrush != null) Color.Transparent else MaterialTheme.colorScheme.onBackground,
-        contentColor = if (chipBrush != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.onBackground,
+        contentColor = MaterialTheme.colorScheme.background,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
     ) {
@@ -316,8 +297,6 @@ private fun DetailIconAction(
     size: Dp,
     onLongClick: (() -> Unit)? = null,
 ) {
-    val activeBrush = rememberAnimatedAccentBrush().takeIf { active }
-    val chipBrush = rememberAnimatedChipBrush().takeIf { !active }
     Surface(
         modifier = modifier
             .graphicsLayer {
@@ -325,25 +304,14 @@ private fun DetailIconAction(
                 scaleX = 0.86f + (0.14f * progress)
                 scaleY = 0.86f + (0.14f * progress)
             }
-            .clip(CircleShape)
-            .then(
-                when {
-                    activeBrush != null -> Modifier.background(activeBrush, CircleShape)
-                    chipBrush != null -> Modifier.background(chipBrush, CircleShape)
-                    else -> Modifier
-                },
-            ),
+            .clip(CircleShape),
         shape = CircleShape,
-        color = if (activeBrush != null || chipBrush != null) {
-            Color.Transparent
-        } else if (active) {
+        color = if (active) {
             MaterialTheme.colorScheme.onBackground
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
-        contentColor = if (activeBrush != null) {
-            MaterialTheme.colorScheme.onPrimary
-        } else if (active) {
+        contentColor = if (active) {
             MaterialTheme.colorScheme.background
         } else {
             MaterialTheme.colorScheme.onSurface

@@ -193,11 +193,12 @@ fun NuvioTheme(
     appTheme: AppTheme = AppTheme.WHITE,
     customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
     customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
     amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val basePalette = ThemeColors.getColorPalette(appTheme, customFirst, customSecond)
-    val animatedVisuals = rememberAnimatedThemeVisuals(appTheme, customFirst, customSecond)
+    val animatedVisuals = rememberAnimatedThemeVisuals(appTheme, customFirst, customSecond, animationStyle)
     val palette = if (animatedVisuals != null) {
         basePalette.copy(
             secondary = animatedVisuals.accent,

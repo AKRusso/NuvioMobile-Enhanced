@@ -1451,6 +1451,12 @@
     <string name="settings_appearance_theme_enhanced">Tema yang disempurnakan</string>
     <string name="settings_appearance_theme_custom_first">Warna pertama</string>
     <string name="settings_appearance_theme_custom_second">Warna kedua</string>
+    <string name="settings_appearance_theme_animation_style">Gaya animasi</string>
+    <string name="theme_animation_flow">Alur</string>
+    <string name="theme_animation_shimmer">Kilau</string>
+    <string name="theme_animation_wave">Gelombang</string>
+    <string name="theme_animation_vivid_wave">Gelombang hidup</string>
+    <string name="theme_animation_still">Diam</string>
     <string name="theme_color_pink">Merah muda</string>
     <string name="theme_color_purple">Ungu</string>
     <string name="theme_color_blue">Biru</string>

@@ -2360,6 +2360,12 @@
     <string name="settings_appearance_theme_enhanced">Enhanced themes</string>
     <string name="settings_appearance_theme_custom_first">First color</string>
     <string name="settings_appearance_theme_custom_second">Second color</string>
+    <string name="settings_appearance_theme_animation_style">Animation style</string>
+    <string name="theme_animation_flow">Flow</string>
+    <string name="theme_animation_shimmer">Shimmer</string>
+    <string name="theme_animation_wave">Wave</string>
+    <string name="theme_animation_vivid_wave">Vivid wave</string>
+    <string name="theme_animation_still">Still</string>
     <string name="theme_color_pink">Pink</string>
     <string name="theme_color_purple">Purple</string>
     <string name="theme_color_blue">Blue</string>

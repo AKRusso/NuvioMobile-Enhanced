@@ -86,7 +86,6 @@ import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioViewAllPillSize
 import com.nuvio.app.core.ui.NuvioShelfSection
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
-import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import com.nuvio.app.features.cloud.CloudLibraryFile
 import com.nuvio.app.features.cloud.CloudLibraryItem
 import com.nuvio.app.features.cloud.CloudLibraryItemType
@@ -739,20 +738,12 @@ private fun LibraryChip(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(18.dp)
-    val chipBrush = rememberAnimatedChipBrush().takeIf { selected }
     Surface(
         modifier = Modifier
             .clip(shape)
-            .then(
-                if (chipBrush != null) {
-                    Modifier.background(chipBrush, shape)
-                } else {
-                    Modifier
-                },
-            )
             .clickable(onClick = onClick),
         shape = shape,
-        color = if (chipBrush != null) Color.Transparent else if (selected) colorScheme.primaryContainer else colorScheme.surfaceContainerLow,
+        color = if (selected) colorScheme.primaryContainer else colorScheme.surfaceContainerLow,
         border = if (selected) BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.45f)) else null,
     ) {
         Row(

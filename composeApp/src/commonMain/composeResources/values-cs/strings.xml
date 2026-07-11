@@ -1932,6 +1932,12 @@
     <string name="settings_appearance_theme_enhanced">Vylepšená témata</string>
     <string name="settings_appearance_theme_custom_first">První barva</string>
     <string name="settings_appearance_theme_custom_second">Druhá barva</string>
+    <string name="settings_appearance_theme_animation_style">Styl animace</string>
+    <string name="theme_animation_flow">Plynutí</string>
+    <string name="theme_animation_shimmer">Lesk</string>
+    <string name="theme_animation_wave">Vlna</string>
+    <string name="theme_animation_vivid_wave">Živá vlna</string>
+    <string name="theme_animation_still">Statické</string>
     <string name="theme_color_pink">Růžová</string>
     <string name="theme_color_purple">Fialová</string>
     <string name="theme_color_blue">Modrá</string>

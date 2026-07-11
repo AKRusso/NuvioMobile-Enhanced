@@ -1,19 +1,24 @@
 package com.nuvio.app.core.ui
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.launch
-import kotlin.random.Random
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.sin
 
 internal data class AnimatedThemeVisuals(
     val accent: Color,
@@ -36,67 +41,42 @@ internal fun rememberAnimatedThemeVisuals(
     theme: AppTheme,
     customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
     customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
 ): AnimatedThemeVisuals? {
-    if (!theme.isEnhanced) return null
+    if (!theme.isEnhanced || animationStyle == ThemeAnimationStyle.STILL) return null
 
-    val colors = ThemeColors.animatedColors(theme, customFirst, customSecond)
-        .map { it.copy(alpha = 1f) }
+    val colors = remember(theme, customFirst, customSecond, animationStyle) {
+        stylePalette(
+            ThemeColors.animatedColors(theme, customFirst, customSecond)
+                .map { it.copy(alpha = 1f) },
+            animationStyle,
+        )
+    }
     if (colors.isEmpty()) return null
 
-    val first = colors.first()
-    val red = androidx.compose.runtime.remember(colors) { Animatable(first.red) }
-    val green = androidx.compose.runtime.remember(colors) { Animatable(first.green) }
-    val blue = androidx.compose.runtime.remember(colors) { Animatable(first.blue) }
-    val startX = androidx.compose.runtime.remember(colors) { Animatable(-420f) }
-    val startY = androidx.compose.runtime.remember(colors) { Animatable(-180f) }
-    val endX = androidx.compose.runtime.remember(colors) { Animatable(980f) }
-    val endY = androidx.compose.runtime.remember(colors) { Animatable(360f) }
-
-    LaunchedEffect(colors) {
-        while (true) {
-            val target = colors.random()
-            val colorDuration = Random.nextInt(11_000, 19_001)
-            val motionDuration = Random.nextInt(13_000, 22_001)
-            coroutineScope {
-                launch { red.animateTo(target.red, tween(colorDuration, easing = FastOutSlowInEasing)) }
-                launch { green.animateTo(target.green, tween(colorDuration, easing = FastOutSlowInEasing)) }
-                launch { blue.animateTo(target.blue, tween(colorDuration, easing = FastOutSlowInEasing)) }
-                launch {
-                    startX.animateTo(Random.nextFloat() * 1_800f - 900f, tween(motionDuration, easing = FastOutSlowInEasing))
-                }
-                launch {
-                    startY.animateTo(Random.nextFloat() * 1_800f - 900f, tween(motionDuration, easing = FastOutSlowInEasing))
-                }
-                launch {
-                    endX.animateTo(Random.nextFloat() * 1_600f - 200f, tween(motionDuration, easing = FastOutSlowInEasing))
-                }
-                launch {
-                    endY.animateTo(Random.nextFloat() * 1_600f - 200f, tween(motionDuration, easing = FastOutSlowInEasing))
-                }
-            }
-        }
-    }
-
-    val accent = Color(red.value, green.value, blue.value)
-    val anchors = highContrastAnchors(accent, colors)
-    val accentStrong = lerp(accent, anchors[1], 0.72f)
-    val start = Offset(startX.value - 540f, startY.value - 420f)
-    val end = Offset(endX.value + 540f, endY.value + 420f)
-    val actionColors = smoothGradientColors(anchors, stepsPerSegment = 8)
-    val chipColors = smoothGradientColors(anchors, stepsPerSegment = 6)
-        .mapIndexed { index, color ->
-            val alpha = when (index % 3) {
-                0 -> 0.24f
-                1 -> 0.18f
-                else -> 0.14f
-            }
-            color.copy(alpha = alpha)
-        }
-    val lineColors = smoothGradientColors(
-        listOf(accent, anchors[2], anchors[1], accent),
-        stepsPerSegment = 7,
+    val transition = rememberInfiniteTransition(label = "theme_animation")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = animationStyle.durationMillis,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "theme_animation_phase",
     )
-        .map { it.copy(alpha = 0.94f) }
+
+    val actionColors = when (animationStyle) {
+        ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 14, alpha = 1f)
+        else -> phasedColors(colors, phase, samples = 14, alpha = 1f)
+    }
+    val chipColors = phasedColors(colors, phase + 0.12f, samples = 10, alpha = animationStyle.chipAlpha)
+    val lineColors = phasedColors(colors, phase + 0.26f, samples = 10, alpha = animationStyle.lineAlpha)
+    val (start, end) = gradientOffsets(animationStyle, phase)
+    val accent = sampleLoop(colors, phase)
+    val accentStrong = lerp(accent, sampleLoop(colors, phase + 0.34f), 0.62f)
 
     return AnimatedThemeVisuals(
         accent = accent,
@@ -117,49 +97,152 @@ internal fun rememberAnimatedThemeVisuals(
             end = end,
         ),
         softBrush = Brush.linearGradient(
-            colors = actionColors.map { it.copy(alpha = 0.12f) },
+            colors = actionColors.map { it.copy(alpha = animationStyle.softAlpha) },
             start = start,
             end = end,
         ),
     )
 }
 
-private fun highContrastAnchors(accent: Color, colors: List<Color>): List<Color> {
-    val first = colors.maxByOrNull { colorDistance(it, accent) } ?: colors.first()
-    val second = colors
-        .filterNot { it == first }
-        .maxByOrNull { colorDistance(it, first) + colorDistance(it, accent) * 0.6f }
-        ?: colors.last()
-    val third = colors
-        .filterNot { it == first || it == second }
-        .maxByOrNull { colorDistance(it, first) + colorDistance(it, second) }
-        ?: colors.first()
+private val ThemeAnimationStyle.durationMillis: Int
+    get() = when (this) {
+        ThemeAnimationStyle.FLOW -> 6_400
+        ThemeAnimationStyle.SHIMMER -> 3_600
+        ThemeAnimationStyle.WAVE -> 5_200
+        ThemeAnimationStyle.VIVID_WAVE -> 4_200
+        ThemeAnimationStyle.STILL -> 1_000
+    }
 
-    return listOf(
-        first,
-        accent,
-        second,
-        third,
-        first,
-    )
+private val ThemeAnimationStyle.chipAlpha: Float
+    get() = when (this) {
+        ThemeAnimationStyle.VIVID_WAVE -> 0.30f
+        ThemeAnimationStyle.SHIMMER -> 0.20f
+        else -> 0.24f
+    }
+
+private val ThemeAnimationStyle.lineAlpha: Float
+    get() = when (this) {
+        ThemeAnimationStyle.VIVID_WAVE -> 0.84f
+        ThemeAnimationStyle.SHIMMER -> 0.76f
+        else -> 0.78f
+    }
+
+private val ThemeAnimationStyle.softAlpha: Float
+    get() = when (this) {
+        ThemeAnimationStyle.VIVID_WAVE -> 0.13f
+        ThemeAnimationStyle.WAVE -> 0.12f
+        else -> 0.10f
+    }
+
+private fun stylePalette(
+    colors: List<Color>,
+    style: ThemeAnimationStyle,
+): List<Color> {
+    if (colors.isEmpty()) return colors
+    return when (style) {
+        ThemeAnimationStyle.VIVID_WAVE -> colors.map { boostContrast(it, 1.36f) }
+        ThemeAnimationStyle.WAVE -> colors.flatMap { color ->
+            listOf(
+                boostContrast(color, 1.16f),
+                lerp(color, Color(0xFF00D9FF), 0.18f),
+            )
+        }
+        ThemeAnimationStyle.SHIMMER -> colors.map { boostContrast(it, 1.12f) }
+        ThemeAnimationStyle.FLOW,
+        ThemeAnimationStyle.STILL,
+        -> colors.map { boostContrast(it, 1.08f) }
+    }
 }
 
-private fun smoothGradientColors(
-    anchors: List<Color>,
-    stepsPerSegment: Int,
-): List<Color> {
-    if (anchors.size < 2) return anchors
-
-    val steps = stepsPerSegment.coerceAtLeast(2)
-    val result = mutableListOf<Color>()
-    anchors.zipWithNext().forEach { (from, to) ->
-        repeat(steps) { index ->
-            val fraction = smoothStep(index.toFloat() / steps.toFloat())
-            result += lerp(from, to, fraction)
+private fun gradientOffsets(
+    style: ThemeAnimationStyle,
+    phase: Float,
+): Pair<Offset, Offset> {
+    val wave = normalizedPhase(phase) * TwoPi
+    return when (style) {
+        ThemeAnimationStyle.SHIMMER -> {
+            val drift = sin(wave) * 160f
+            Offset(-760f + drift, -280f) to Offset(920f + drift, 520f)
+        }
+        ThemeAnimationStyle.WAVE -> {
+            Offset(
+                x = -640f + sin(wave) * 520f,
+                y = -460f + cos(wave * 2f) * 190f,
+            ) to Offset(
+                x = 980f + cos(wave) * 460f,
+                y = 620f + sin(wave * 2f) * 240f,
+            )
+        }
+        ThemeAnimationStyle.VIVID_WAVE -> {
+            Offset(
+                x = -820f + sin(wave * 2f) * 620f,
+                y = -540f + cos(wave) * 340f,
+            ) to Offset(
+                x = 1_080f + cos(wave * 2f) * 560f,
+                y = 720f + sin(wave) * 360f,
+            )
+        }
+        ThemeAnimationStyle.FLOW,
+        ThemeAnimationStyle.STILL,
+        -> {
+            Offset(
+                x = -620f + cos(wave) * 260f,
+                y = -360f + sin(wave) * 220f,
+            ) to Offset(
+                x = 940f - cos(wave) * 260f,
+                y = 520f - sin(wave) * 220f,
+            )
         }
     }
-    result += anchors.last()
-    return result
+}
+
+private fun phasedColors(
+    colors: List<Color>,
+    phase: Float,
+    samples: Int,
+    alpha: Float,
+): List<Color> =
+    List(samples.coerceAtLeast(4)) { index ->
+        val position = normalizedPhase(phase + index.toFloat() / samples.toFloat())
+        sampleLoop(colors, position).copy(alpha = alpha)
+    }
+
+private fun shimmerColors(
+    colors: List<Color>,
+    phase: Float,
+    samples: Int,
+    alpha: Float,
+): List<Color> =
+    List(samples.coerceAtLeast(6)) { index ->
+        val track = index.toFloat() / (samples - 1).coerceAtLeast(1).toFloat()
+        val base = sampleLoop(colors, normalizedPhase(track + phase))
+        val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.18f)
+            .coerceIn(0f, 1f)
+        lerp(base, Color.White, highlight * 0.24f).copy(alpha = alpha)
+    }
+
+private fun sampleLoop(colors: List<Color>, phase: Float): Color {
+    if (colors.isEmpty()) return Color.Transparent
+    if (colors.size == 1) return colors.first()
+
+    val position = normalizedPhase(phase) * colors.size
+    val index = floor(position).toInt().coerceIn(0, colors.lastIndex)
+    val nextIndex = (index + 1) % colors.size
+    val fraction = smoothStep(position - index)
+    return lerp(colors[index], colors[nextIndex], fraction)
+}
+
+private fun boostContrast(color: Color, amount: Float): Color =
+    Color(
+        red = ((color.red - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
+        green = ((color.green - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
+        blue = ((color.blue - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
+        alpha = color.alpha,
+    )
+
+private fun normalizedPhase(value: Float): Float {
+    val wrapped = value - floor(value)
+    return if (wrapped < 0f) wrapped + 1f else wrapped
 }
 
 private fun smoothStep(value: Float): Float {
@@ -167,11 +250,9 @@ private fun smoothStep(value: Float): Float {
     return t * t * (3f - 2f * t)
 }
 
-private fun colorDistance(first: Color, second: Color): Float {
-    val red = first.red - second.red
-    val green = first.green - second.green
-    val blue = first.blue - second.blue
-    return red * red + green * green + blue * blue
+private fun circularDistance(first: Float, second: Float): Float {
+    val distance = abs(normalizedPhase(first) - normalizedPhase(second))
+    return kotlin.math.min(distance, 1f - distance)
 }
 
 @Composable
@@ -179,8 +260,9 @@ internal fun rememberAnimatedAccentBrush(
     previewTheme: AppTheme? = null,
     customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
     customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
 ): Brush? = if (previewTheme != null) {
-    rememberAnimatedThemeVisuals(previewTheme, customFirst, customSecond)?.brush
+    rememberAnimatedThemeVisuals(previewTheme, customFirst, customSecond, animationStyle)?.brush
 } else {
     currentAnimatedThemeVisuals?.brush
 }
@@ -193,3 +275,5 @@ internal fun rememberAnimatedLineBrush(): Brush? = currentAnimatedThemeVisuals?.
 
 @Composable
 internal fun rememberAnimatedSoftBrush(): Brush? = currentAnimatedThemeVisuals?.softBrush
+
+private const val TwoPi = 6.2831855f

@@ -439,10 +439,14 @@ fun App() {
     val customThemeSecondColor by remember {
         ThemeSettingsRepository.customThemeSecondColor
     }.collectAsStateWithLifecycle()
+    val themeAnimationStyle by remember {
+        ThemeSettingsRepository.themeAnimationStyle
+    }.collectAsStateWithLifecycle()
     NuvioTheme(
         appTheme = selectedTheme,
         customFirst = customThemeFirstColor,
         customSecond = customThemeSecondColor,
+        animationStyle = themeAnimationStyle,
         amoled = amoledEnabled,
     ) {
         LaunchedEffect(Unit) {
