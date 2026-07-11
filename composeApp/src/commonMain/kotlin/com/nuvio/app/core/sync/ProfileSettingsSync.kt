@@ -187,6 +187,8 @@ object ProfileSettingsSync {
     private fun observeLocalChangesAndPush() {
         val signatureFlows = listOf(
             ThemeSettingsRepository.selectedTheme.map { "theme" },
+            ThemeSettingsRepository.customThemeFirstColor.map { "theme_custom_first" },
+            ThemeSettingsRepository.customThemeSecondColor.map { "theme_custom_second" },
             ThemeSettingsRepository.amoledEnabled.map { "amoled" },
             ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.map { "liquid_glass_tab_bar" },
             ThemeSettingsRepository.liquidGlassAutoHideOnScrollEnabled.map { "liquid_glass_auto_hide" },
@@ -326,6 +328,8 @@ object ProfileSettingsSync {
 
     private fun currentObservedStateSignature(): String = listOf(
         "theme=${ThemeSettingsRepository.selectedTheme.value.name}",
+        "theme_custom_first=${ThemeSettingsRepository.customThemeFirstColor.value.name}",
+        "theme_custom_second=${ThemeSettingsRepository.customThemeSecondColor.value.name}",
         "amoled=${ThemeSettingsRepository.amoledEnabled.value}",
         "liquid_glass_tab_bar=${ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.value}",
         "liquid_glass_auto_hide=${ThemeSettingsRepository.liquidGlassAutoHideOnScrollEnabled.value}",

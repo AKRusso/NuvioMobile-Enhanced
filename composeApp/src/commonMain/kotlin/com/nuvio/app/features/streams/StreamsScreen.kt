@@ -84,6 +84,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
@@ -798,6 +799,7 @@ private fun FilterChip(
     isSelected: Boolean,
     onClick: () -> Unit,
 ) {
+    val animatedBrush = rememberAnimatedChipBrush().takeIf { isSelected }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -816,7 +818,7 @@ private fun FilterChip(
     )
     val contentColor by animateColorAsState(
         targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onPrimary
+            if (animatedBrush != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onPrimary
         } else {
             MaterialTheme.colorScheme.onSurface
         },
@@ -830,7 +832,13 @@ private fun FilterChip(
                 scaleY = scale
             }
             .clip(RoundedCornerShape(16.dp))
-            .background(containerColor)
+            .then(
+                if (animatedBrush != null) {
+                    Modifier.background(animatedBrush)
+                } else {
+                    Modifier.background(containerColor)
+                },
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

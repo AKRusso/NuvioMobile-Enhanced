@@ -2351,4 +2351,21 @@
     <string name="nuvio_enhanced_toast_backup_import_failed">Backup import failed</string>
     <string name="nuvio_enhanced_toast_backup_copied">Backup copied to clipboard</string>
     <string name="nuvio_enhanced_toast_no_email_app">No email app available</string>
+    <string name="theme_aurora">Aurora</string>
+    <string name="theme_prism">Prism</string>
+    <string name="theme_nebula">Nebula</string>
+    <string name="theme_opal">Opal</string>
+    <string name="theme_custom">Custom</string>
+    <string name="settings_appearance_theme_classic">Classic themes</string>
+    <string name="settings_appearance_theme_enhanced">Enhanced themes</string>
+    <string name="settings_appearance_theme_custom_first">First color</string>
+    <string name="settings_appearance_theme_custom_second">Second color</string>
+    <string name="theme_color_pink">Pink</string>
+    <string name="theme_color_purple">Purple</string>
+    <string name="theme_color_blue">Blue</string>
+    <string name="theme_color_cyan">Cyan</string>
+    <string name="theme_color_green">Green</string>
+    <string name="theme_color_yellow">Yellow</string>
+    <string name="theme_color_red">Red</string>
+    <string name="theme_color_white">White</string>
 </resources>

@@ -1212,4 +1212,21 @@
     </plurals>
     <string name="cw_new_episode">Neue Folge</string>
     <string name="cw_new_season">Neue Staffel</string>
+    <string name="theme_aurora">Aurora</string>
+    <string name="theme_prism">Prisma</string>
+    <string name="theme_nebula">Nebel</string>
+    <string name="theme_opal">Opal</string>
+    <string name="theme_custom">Benutzerdefiniert</string>
+    <string name="settings_appearance_theme_classic">Klassische Designs</string>
+    <string name="settings_appearance_theme_enhanced">Erweiterte Designs</string>
+    <string name="settings_appearance_theme_custom_first">Erste Farbe</string>
+    <string name="settings_appearance_theme_custom_second">Zweite Farbe</string>
+    <string name="theme_color_pink">Rosa</string>
+    <string name="theme_color_purple">Violett</string>
+    <string name="theme_color_blue">Blau</string>
+    <string name="theme_color_cyan">Cyan</string>
+    <string name="theme_color_green">Grün</string>
+    <string name="theme_color_yellow">Gelb</string>
+    <string name="theme_color_red">Rot</string>
+    <string name="theme_color_white">Weiß</string>
 </resources>

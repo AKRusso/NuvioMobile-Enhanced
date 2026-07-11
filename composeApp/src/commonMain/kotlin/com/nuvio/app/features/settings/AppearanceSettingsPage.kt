@@ -3,6 +3,7 @@ package com.nuvio.app.features.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListScope
@@ -21,9 +23,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +37,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,6 +51,9 @@ import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.labelRes
 import com.nuvio.app.core.ui.ThemeColors
+import com.nuvio.app.core.ui.ThemeAccentColor
+import com.nuvio.app.core.ui.isEnhanced
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.cd_selected
@@ -66,6 +76,10 @@ import nuvio.composeapp.generated.resources.settings_appearance_poster_customiza
 import nuvio.composeapp.generated.resources.settings_appearance_section_display
 import nuvio.composeapp.generated.resources.settings_appearance_section_home
 import nuvio.composeapp.generated.resources.settings_appearance_section_theme
+import nuvio.composeapp.generated.resources.settings_appearance_theme_classic
+import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_first
+import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_second
+import nuvio.composeapp.generated.resources.settings_appearance_theme_enhanced
 import nuvio.composeapp.generated.resources.settings_content_discovery_collections_description
 import nuvio.composeapp.generated.resources.settings_content_discovery_homescreen_description
 import nuvio.composeapp.generated.resources.settings_content_discovery_meta_screen_description
@@ -96,51 +110,75 @@ internal fun LazyListScope.appearanceSettingsContent(
     onPosterCustomizationClick: () -> Unit,
 ) {
     item {
+        val customFirst by remember { ThemeSettingsRepository.customThemeFirstColor }.collectAsState()
+        val customSecond by remember { ThemeSettingsRepository.customThemeSecondColor }.collectAsState()
         SettingsSection(
             title = stringResource(Res.string.settings_appearance_section_theme),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                val themes = listOf(AppTheme.WHITE) + AppTheme.entries.filterNot { it == AppTheme.WHITE }
                 val horizontalPadding = if (isTablet) 20.dp else 16.dp
                 val verticalPadding = if (isTablet) 18.dp else 14.dp
                 val themeSpacing = if (isTablet) 16.dp else 12.dp
-                BoxWithConstraints(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
                             horizontal = horizontalPadding,
                             vertical = verticalPadding,
                         ),
+                    verticalArrangement = Arrangement.spacedBy(themeSpacing),
                 ) {
-                    val preferredColumns = if (isTablet) 4 else 3
-                    val minThemeCellWidth = if (isTablet) 92.dp else 78.dp
-                    val themeColumns = ((maxWidth + themeSpacing) / (minThemeCellWidth + themeSpacing))
-                        .toInt()
-                        .coerceAtLeast(1)
-                        .coerceAtMost(preferredColumns)
+                    ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_classic))
+                    ThemeGrid(
+                        themes = listOf(
+                            AppTheme.WHITE,
+                            AppTheme.CRIMSON,
+                            AppTheme.OCEAN,
+                            AppTheme.VIOLET,
+                            AppTheme.EMERALD,
+                            AppTheme.AMBER,
+                            AppTheme.ROSE,
+                        ),
+                        selectedTheme = selectedTheme,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        isTablet = isTablet,
+                        spacing = themeSpacing,
+                        onThemeSelected = onThemeSelected,
+                    )
 
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(themeSpacing),
-                    ) {
-                        themes.chunked(themeColumns).forEach { rowThemes ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(themeSpacing),
-                            ) {
-                                rowThemes.forEach { theme ->
-                                    ThemeChip(
-                                        theme = theme,
-                                        isSelected = theme == selectedTheme,
-                                        onClick = { onThemeSelected(theme) },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                repeat(themeColumns - rowThemes.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f))
+
+                    ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_enhanced))
+                    ThemeGrid(
+                        themes = listOf(
+                            AppTheme.AURORA,
+                            AppTheme.PRISM,
+                            AppTheme.NEBULA,
+                            AppTheme.OPAL,
+                            AppTheme.CUSTOM,
+                        ),
+                        selectedTheme = selectedTheme,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        isTablet = isTablet,
+                        spacing = themeSpacing,
+                        onThemeSelected = onThemeSelected,
+                    )
+
+                    if (selectedTheme == AppTheme.CUSTOM) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f))
+                        CustomThemeColorPicker(
+                            label = stringResource(Res.string.settings_appearance_theme_custom_first),
+                            selectedColor = customFirst,
+                            onColorSelected = ThemeSettingsRepository::setCustomThemeFirstColor,
+                        )
+                        CustomThemeColorPicker(
+                            label = stringResource(Res.string.settings_appearance_theme_custom_second),
+                            selectedColor = customSecond,
+                            onColorSelected = ThemeSettingsRepository::setCustomThemeSecondColor,
+                        )
                     }
                 }
             }
@@ -348,8 +386,19 @@ private fun ThemeChip(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
+    customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
 ) {
-    val palette = ThemeColors.getColorPalette(theme)
+    val palette = ThemeColors.getColorPalette(theme, customFirst, customSecond)
+    val animatedBrush = if (theme.isEnhanced) {
+        rememberAnimatedAccentBrush(
+            previewTheme = theme,
+            customFirst = customFirst,
+            customSecond = customSecond,
+        )
+    } else {
+        null
+    }
 
     Column(
         modifier = modifier
@@ -378,7 +427,13 @@ private fun ThemeChip(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(palette.secondary),
+                    .then(
+                        if (animatedBrush != null) {
+                            Modifier.background(animatedBrush)
+                        } else {
+                            Modifier.background(palette.secondary)
+                        },
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (isSelected) {
@@ -415,7 +470,118 @@ private fun ThemeChip(
             modifier = Modifier
                 .size(width = 36.dp, height = 3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(palette.focusRing),
+                .then(
+                    if (animatedBrush != null) {
+                        Modifier.background(animatedBrush)
+                    } else {
+                        Modifier.background(palette.focusRing)
+                    },
+                ),
         )
+    }
+}
+
+@Composable
+private fun ThemeSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@Composable
+private fun ThemeGrid(
+    themes: List<AppTheme>,
+    selectedTheme: AppTheme,
+    customFirst: ThemeAccentColor,
+    customSecond: ThemeAccentColor,
+    isTablet: Boolean,
+    spacing: androidx.compose.ui.unit.Dp,
+    onThemeSelected: (AppTheme) -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val preferredColumns = if (isTablet) 4 else 3
+        val minThemeCellWidth = if (isTablet) 92.dp else 78.dp
+        val columns = ((maxWidth + spacing) / (minThemeCellWidth + spacing))
+            .toInt()
+            .coerceAtLeast(1)
+            .coerceAtMost(preferredColumns)
+
+        Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+            themes.chunked(columns).forEach { rowThemes ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                ) {
+                    rowThemes.forEach { theme ->
+                        ThemeChip(
+                            theme = theme,
+                            isSelected = theme == selectedTheme,
+                            customFirst = customFirst,
+                            customSecond = customSecond,
+                            onClick = { onThemeSelected(theme) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    repeat(columns - rowThemes.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomThemeColorPicker(
+    label: String,
+    selectedColor: ThemeAccentColor,
+    onColorSelected: (ThemeAccentColor) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ThemeAccentColor.entries.forEach { option ->
+                val colorName = stringResource(option.labelRes)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .semantics { contentDescription = colorName }
+                        .then(
+                            if (option == selectedColor) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            } else {
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                            },
+                        )
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(option.color)
+                        .clickable { onColorSelected(option) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (option == selectedColor) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = if (option.color.luminance() > 0.55f) Color.Black else Color.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
     }
 }

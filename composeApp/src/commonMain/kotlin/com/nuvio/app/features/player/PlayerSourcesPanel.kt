@@ -39,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
@@ -246,14 +247,22 @@ internal fun AddonFilterChip(
     onClick: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
+    val selectedBrush = rememberAnimatedChipBrush().takeIf { isSelected }
 
     Box(
         modifier = Modifier
             .clip(tokens.shapes.chip)
-            .background(
-                when {
-                    isSelected -> tokens.colors.overlaySelected
-                    else -> tokens.colors.surfacePopover
+            .then(
+                if (selectedBrush != null) {
+                    Modifier.background(selectedBrush, tokens.shapes.chip)
+                } else {
+                    Modifier.background(
+                        when {
+                            isSelected -> tokens.colors.overlaySelected
+                            else -> tokens.colors.surfacePopover
+                        },
+                        tokens.shapes.chip,
+                    )
                 },
             )
             .then(
@@ -297,11 +306,18 @@ internal fun PanelChipButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     val tokens = MaterialTheme.nuvio
+    val chipBrush = rememberAnimatedChipBrush()
 
     Box(
         modifier = Modifier
             .clip(tokens.shapes.compactCard)
-            .background(tokens.colors.surfacePopover)
+            .then(
+                if (chipBrush != null) {
+                    Modifier.background(chipBrush, tokens.shapes.compactCard)
+                } else {
+                    Modifier.background(tokens.colors.surfacePopover, tokens.shapes.compactCard)
+                },
+            )
             .border(tokens.borders.thin, tokens.colors.borderSubtle, tokens.shapes.compactCard)
             .clickable(onClick = onClick)
             .padding(horizontal = NuvioTokens.Space.s12, vertical = NuvioTokens.Space.s6),

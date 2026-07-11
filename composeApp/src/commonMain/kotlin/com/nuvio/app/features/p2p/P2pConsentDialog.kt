@@ -1,5 +1,6 @@
 package com.nuvio.app.features.p2p
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,8 +22,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.p2p_consent_body
 import nuvio.composeapp.generated.resources.p2p_consent_cancel
@@ -36,11 +41,22 @@ fun P2pConsentDialog(
     onEnableP2p: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val accentBrush = rememberAnimatedAccentBrush()
+    val softBrush = rememberAnimatedSoftBrush()
+    val dialogShape = RoundedCornerShape(24.dp)
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surface,
-            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (softBrush != null) Modifier.background(softBrush, dialogShape) else Modifier
+                ),
+            color = if (softBrush != null) {
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            shape = dialogShape,
             tonalElevation = 6.dp,
             shadowElevation = 12.dp,
         ) {
@@ -80,7 +96,15 @@ fun P2pConsentDialog(
                     Spacer(modifier = Modifier.width(10.dp))
                     Button(
                         onClick = onEnableP2p,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .then(
+                                if (accentBrush != null) Modifier.background(accentBrush) else Modifier
+                            ),
                         shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (accentBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
+                        ),
                     ) {
                         Text(stringResource(Res.string.p2p_consent_enable))
                     }

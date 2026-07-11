@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -40,6 +43,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.appIconPainter
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.rememberAnimatedChipBrush
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.details_actions_menu_label
@@ -77,6 +82,8 @@ fun DetailActionButtons(
         label = "detail_action_menu_progress",
     )
     val hasSecondaryActions = secondaryActions.isNotEmpty()
+    val playBrush = rememberAnimatedAccentBrush()
+    val menuBrush = rememberAnimatedChipBrush().takeIf { actionsExpanded }
 
     Box(
         modifier = modifier
@@ -94,10 +101,18 @@ fun DetailActionButtons(
             Surface(
                 modifier = Modifier
                     .weight(1f)
-                    .height(buttonHeight),
+                    .height(buttonHeight)
+                    .clip(playShape)
+                    .then(
+                        if (playBrush != null) {
+                            Modifier.background(playBrush, playShape)
+                        } else {
+                            Modifier
+                        },
+                    ),
                 shape = playShape,
-                color = MaterialTheme.colorScheme.onBackground,
-                contentColor = MaterialTheme.colorScheme.background,
+                color = if (playBrush != null) Color.Transparent else MaterialTheme.colorScheme.onBackground,
+                contentColor = if (playBrush != null) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.background,
             ) {
                 Row(
                     modifier = Modifier
@@ -193,9 +208,20 @@ fun DetailActionButtons(
 
             if (hasSecondaryActions) {
                 Surface(
-                    modifier = Modifier.size(iconButtonSize),
+                    modifier = Modifier
+                        .size(iconButtonSize)
+                        .clip(CircleShape)
+                        .then(
+                            if (menuBrush != null) {
+                                Modifier.background(menuBrush, CircleShape)
+                            } else {
+                                Modifier
+                            },
+                        ),
                     shape = CircleShape,
-                    color = if (actionsExpanded) {
+                    color = if (menuBrush != null) {
+                        Color.Transparent
+                    } else if (actionsExpanded) {
                         MaterialTheme.colorScheme.onBackground
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
@@ -241,11 +267,21 @@ private fun DetailCompactAction(
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
 ) {
+    val chipBrush = rememberAnimatedChipBrush()
     Surface(
-        modifier = modifier.size(size),
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .then(
+                if (chipBrush != null) {
+                    Modifier.background(chipBrush, CircleShape)
+                } else {
+                    Modifier
+                },
+            ),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.onBackground,
-        contentColor = MaterialTheme.colorScheme.background,
+        color = if (chipBrush != null) Color.Transparent else MaterialTheme.colorScheme.onBackground,
+        contentColor = if (chipBrush != null) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.background,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
     ) {
@@ -280,19 +316,34 @@ private fun DetailIconAction(
     size: Dp,
     onLongClick: (() -> Unit)? = null,
 ) {
+    val activeBrush = rememberAnimatedAccentBrush().takeIf { active }
+    val chipBrush = rememberAnimatedChipBrush().takeIf { !active }
     Surface(
-        modifier = modifier.graphicsLayer {
-            alpha = progress
-            scaleX = 0.86f + (0.14f * progress)
-            scaleY = 0.86f + (0.14f * progress)
-        },
+        modifier = modifier
+            .graphicsLayer {
+                alpha = progress
+                scaleX = 0.86f + (0.14f * progress)
+                scaleY = 0.86f + (0.14f * progress)
+            }
+            .clip(CircleShape)
+            .then(
+                when {
+                    activeBrush != null -> Modifier.background(activeBrush, CircleShape)
+                    chipBrush != null -> Modifier.background(chipBrush, CircleShape)
+                    else -> Modifier
+                },
+            ),
         shape = CircleShape,
-        color = if (active) {
+        color = if (activeBrush != null || chipBrush != null) {
+            Color.Transparent
+        } else if (active) {
             MaterialTheme.colorScheme.onBackground
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
-        contentColor = if (active) {
+        contentColor = if (activeBrush != null) {
+            MaterialTheme.colorScheme.onPrimary
+        } else if (active) {
             MaterialTheme.colorScheme.background
         } else {
             MaterialTheme.colorScheme.onSurface
