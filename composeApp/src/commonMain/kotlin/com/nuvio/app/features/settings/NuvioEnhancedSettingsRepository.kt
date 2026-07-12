@@ -70,7 +70,6 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     SmartResume2("smart_resume_2"),
     BackupImport("backup_import"),
     FeatureHighlights("feature_highlights"),
-    LatestChangelog("latest_changelog"),
     LiveTvControls("live_tv_controls"),
     ContactSupport("contact_support"),
     HeroExperienceControls("hero_experience_controls"),

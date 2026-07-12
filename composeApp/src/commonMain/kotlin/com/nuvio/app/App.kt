@@ -846,6 +846,7 @@ private fun MainAppContent(
     var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
     var networkToastBaselineReady by rememberSaveable { mutableStateOf(false) }
     var lastNetworkToastCondition by rememberSaveable { mutableStateOf(NetworkCondition.Unknown.name) }
+    var discordWelcomeDismissedThisSession by rememberSaveable { mutableStateOf(false) }
 
     fun handleRootTabClick(tab: AppScreenTab) {
         if (tab == AppScreenTab.LiveTv && !liveTvEnabled) {
@@ -881,12 +882,17 @@ private fun MainAppContent(
         }
     }
 
-    fun dismissDiscordWelcome() {
+    fun dismissDiscordWelcomeForNow() {
+        discordWelcomeDismissedThisSession = true
+    }
+
+    fun hideDiscordWelcomePermanently() {
+        discordWelcomeDismissedThisSession = true
         NuvioEnhancedSettingsRepository.markDiscordWelcomeSeen()
     }
 
     fun openDiscordWelcome() {
-        dismissDiscordWelcome()
+        hideDiscordWelcomePermanently()
         uriHandler.openUri(NuvioDiscordInviteUrl)
     }
 
@@ -3282,9 +3288,10 @@ private fun MainAppContent(
             )
 
             NuvioDiscordWelcomeDialog(
-                visible = !nuvioEnhancedSettings.discordWelcomeSeen,
+                visible = !nuvioEnhancedSettings.discordWelcomeSeen && !discordWelcomeDismissedThisSession,
                 onJoinDiscord = ::openDiscordWelcome,
-                onDismiss = ::dismissDiscordWelcome,
+                onDismiss = ::dismissDiscordWelcomeForNow,
+                onDontShowAgain = ::hideDiscordWelcomePermanently,
             )
 
             NuvioToastHost(
@@ -3307,6 +3314,7 @@ private fun NuvioDiscordWelcomeDialog(
     visible: Boolean,
     onJoinDiscord: () -> Unit,
     onDismiss: () -> Unit,
+    onDontShowAgain: () -> Unit,
 ) {
     if (!visible) return
 
@@ -3329,23 +3337,28 @@ private fun NuvioDiscordWelcomeDialog(
             }
         },
         title = {
-            Text("Join the Nuvio Discord")
+            Text(stringResource(Res.string.nuvio_discord_welcome_title))
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "Updates, polls, feature requests and community feedback now live in the Nuvio Discord.",
+                    text = stringResource(Res.string.nuvio_discord_welcome_description),
                 )
             }
         },
         confirmButton = {
             Button(onClick = onJoinDiscord) {
-                Text("Join Discord")
+                Text(stringResource(Res.string.nuvio_discord_welcome_join))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Not now")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onDontShowAgain) {
+                    Text(stringResource(Res.string.nuvio_discord_welcome_dont_show_again))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(Res.string.nuvio_discord_welcome_not_now))
+                }
             }
         },
     )

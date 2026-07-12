@@ -27,7 +27,6 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Email
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Restore
@@ -58,7 +57,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
-import com.nuvio.app.core.build.AppVersionConfig
 import com.nuvio.app.core.network.DnsOverHttpsProvider
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.sync.ProfileSettingsSync
@@ -731,17 +729,6 @@ private fun NuvioEnhancedSettingsPageContent(
         }
 
         SettingsSection(
-            title = stringResource(Res.string.nuvio_enhanced_section_whats_new),
-            isTablet = isTablet,
-        ) {
-            LatestChangesCard(
-                isTablet = isTablet,
-                highlighted = isNew(NuvioEnhancedFeature.LatestChangelog),
-                onMarkSeen = { markSeen(NuvioEnhancedFeature.LatestChangelog) },
-            )
-        }
-
-        SettingsSection(
             title = stringResource(Res.string.nuvio_enhanced_section_feedback),
             isTablet = isTablet,
         ) {
@@ -1204,81 +1191,6 @@ private fun EnhancedIntroCard(
                     )
                     Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(Res.string.nuvio_enhanced_mark_all_seen))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LatestChangesCard(
-    isTablet: Boolean,
-    highlighted: Boolean,
-    onMarkSeen: () -> Unit,
-) {
-    val tokens = MaterialTheme.nuvio
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = tokens.colors.surface,
-        shape = if (isTablet) RoundedCornerShape(NuvioTokens.Radius.xl) else tokens.shapes.compactCard,
-        border = BorderStroke(
-            width = if (highlighted) 1.5.dp else tokens.borders.hairline,
-            color = if (highlighted) tokens.colors.accent else tokens.colors.borderSubtle,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(if (isTablet) 20.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Info,
-                    contentDescription = null,
-                    tint = tokens.colors.accent,
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.nuvio_enhanced_latest_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = tokens.colors.textPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = stringResource(
-                            Res.string.nuvio_enhanced_latest_version,
-                            AppVersionConfig.VERSION_NAME,
-                            AppVersionConfig.VERSION_CODE,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tokens.colors.textMuted,
-                    )
-                }
-            }
-            listOf(
-                stringResource(Res.string.nuvio_enhanced_latest_change_upstream_021),
-                stringResource(Res.string.nuvio_enhanced_latest_change_streaming_showcase),
-                stringResource(Res.string.nuvio_enhanced_latest_change_scroll_polish),
-                stringResource(Res.string.nuvio_enhanced_latest_change_gif_avatar_support),
-                stringResource(Res.string.nuvio_enhanced_latest_change_continue_watching),
-                stringResource(Res.string.nuvio_enhanced_latest_change_ios_player),
-                stringResource(Res.string.nuvio_enhanced_latest_change_deeplinks),
-                stringResource(Res.string.nuvio_enhanced_latest_change_performance),
-                stringResource(Res.string.nuvio_enhanced_latest_change_loading),
-                stringResource(Res.string.nuvio_enhanced_latest_change_languages),
-                stringResource(Res.string.nuvio_enhanced_latest_change_player_status),
-            ).forEach { change ->
-                Text(
-                    text = "• $change",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = tokens.colors.textPrimary,
-                )
-            }
-            if (highlighted) {
-                OutlinedButton(onClick = onMarkSeen) {
-                    Text(stringResource(Res.string.nuvio_enhanced_mark_changelog_read))
                 }
             }
         }
