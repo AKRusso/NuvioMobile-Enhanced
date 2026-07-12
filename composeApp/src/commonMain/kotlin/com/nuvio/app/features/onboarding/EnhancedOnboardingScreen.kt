@@ -82,7 +82,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -112,7 +111,6 @@ import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_members_la
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_online_label
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_start
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_body
-import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_note
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_welcome_body
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_welcome_title
@@ -131,7 +129,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
-private const val OnboardingPageCount = 4
+private const val OnboardingPageCount = 3
 
 private val BackgroundTop = Color(0xFF0B1220)
 private val BackgroundBottom = Color(0xFF07090D)
@@ -234,7 +232,6 @@ internal fun EnhancedOnboardingScreen(
                         contentVisible = introContentVisible,
                     )
                     1 -> FeaturesPage(accentPhase)
-                    2 -> TeamPage()
                     else -> CommunityPage(community, accentPhase, onJoinDiscord)
                 }
             }
@@ -372,9 +369,97 @@ private fun WelcomePage(
                         style = MaterialTheme.typography.bodyLarge,
                         color = TextSecondary,
                     )
+                    Spacer(Modifier.height(10.dp))
+                    WelcomePreviewDeck()
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WelcomePreviewDeck() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = SurfaceDark.copy(alpha = 0.88f),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, BorderSoft),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                WelcomePreviewItem(
+                    icon = Icons.Rounded.Home,
+                    title = stringResource(Res.string.nuvio_enhanced_smart_resume_title),
+                    tone = AccentBlue,
+                    modifier = Modifier.weight(1f),
+                )
+                WelcomePreviewItem(
+                    icon = Icons.Rounded.Star,
+                    title = stringResource(Res.string.nuvio_enhanced_concierge_title),
+                    tone = AccentAmber,
+                    modifier = Modifier.weight(1f),
+                )
+                WelcomePreviewItem(
+                    icon = Icons.Rounded.LiveTv,
+                    title = stringResource(Res.string.nuvio_enhanced_live_tv_title),
+                    tone = AccentGreen,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(BorderSoft, CircleShape),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.68f)
+                        .height(4.dp)
+                        .background(
+                            Brush.horizontalGradient(listOf(AccentBlue, AccentViolet, AccentPink)),
+                            CircleShape,
+                        ),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WelcomePreviewItem(
+    icon: ImageVector,
+    title: String,
+    tone: Color,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(tone.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = tone, modifier = Modifier.size(18.dp))
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -519,7 +604,9 @@ private fun FeaturePreviewPanel(feature: FeaturePreview, index: Int) {
 @Composable
 private fun FeatureVisual(index: Int, tone: Color) {
     Surface(
-        modifier = Modifier.fillMaxWidth().height(154.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(210.dp),
         color = BackgroundBottom.copy(alpha = 0.86f),
         shape = RoundedCornerShape(8.dp),
     ) {
@@ -534,46 +621,143 @@ private fun FeatureVisual(index: Int, tone: Color) {
 
 @Composable
 private fun ResumeVisual(tone: Color) {
-    Row(
-        modifier = Modifier.padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    listOf(tone.copy(alpha = 0.22f), BackgroundBottom, AccentViolet.copy(alpha = 0.10f)),
+                ),
+            )
+            .padding(14.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .width(84.dp)
-                .height(122.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Brush.verticalGradient(listOf(tone.copy(alpha = 0.72f), Color(0xFF152033)))),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(25.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-            PreviewLine(0.86f, 12.dp)
-            PreviewLine(0.62f, 8.dp)
-            Spacer(Modifier.height(11.dp))
-            Box(Modifier.fillMaxWidth().height(5.dp).background(BorderSoft, CircleShape)) {
-                Box(Modifier.fillMaxWidth(0.72f).height(5.dp).background(tone, CircleShape))
+            repeat(3) { index ->
+                Box(
+                    modifier = Modifier
+                        .width(if (index == 0) 28.dp else 7.dp)
+                        .height(4.dp)
+                        .background(if (index == 0) tone else TextSecondary.copy(alpha = 0.24f), CircleShape),
+                )
             }
-            Text("72%", style = MaterialTheme.typography.labelMedium, color = tone, fontWeight = FontWeight.Bold)
+        }
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter),
+            color = SurfaceDark.copy(alpha = 0.94f),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, BorderSoft),
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(58.dp)
+                        .height(82.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(AccentViolet.copy(alpha = 0.9f), tone.copy(alpha = 0.45f), Color(0xFF101522)),
+                            ),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "S1  •  E4",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(BorderSoft, CircleShape)) {
+                        Box(Modifier.fillMaxWidth(0.72f).height(5.dp).background(tone, CircleShape))
+                    }
+                    Text("72%", style = MaterialTheme.typography.labelSmall, color = tone, fontWeight = FontWeight.Bold)
+                }
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(tone),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = BackgroundBottom, modifier = Modifier.size(18.dp))
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun ConciergeVisual(tone: Color) {
-    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        repeat(3) { index ->
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(8.dp)).background(SurfaceRaised.copy(alpha = 0.72f)).padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(tone.copy(alpha = 0.12f), Color.Transparent)))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(tone.copy(alpha = 0.18f))
+                    .border(1.dp, tone.copy(alpha = 0.64f), CircleShape),
+                contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Rounded.Star, contentDescription = null, tint = tone.copy(alpha = 1f - index * 0.16f), modifier = Modifier.size(17.dp))
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    PreviewLine(0.72f - index * 0.08f, 8.dp)
-                    PreviewLine(0.48f + index * 0.07f, 5.dp)
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = tone, modifier = Modifier.size(23.dp))
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PreviewLine(0.62f, 9.dp)
+                PreviewLine(0.86f, 5.dp)
+            }
+            Text(
+                text = "92%",
+                style = MaterialTheme.typography.titleLarge,
+                color = tone,
+                fontWeight = FontWeight.Black,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(Icons.Rounded.Home, Icons.Rounded.Notifications, Icons.Rounded.LiveTv).forEachIndexed { index, icon ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(105.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceRaised.copy(alpha = 0.78f))
+                        .border(1.dp, if (index == 0) tone.copy(alpha = 0.55f) else BorderSoft, RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Icon(icon, contentDescription = null, tint = if (index == 0) tone else TextSecondary, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = listOf("8", "3", "12")[index],
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    PreviewLine(0.72f, 4.dp)
                 }
             }
         }
@@ -582,26 +766,57 @@ private fun ConciergeVisual(tone: Color) {
 
 @Composable
 private fun RadarVisual(tone: Color) {
-    Row(
-        modifier = Modifier.padding(14.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        listOf("12", "18", "24").forEachIndexed { index, day ->
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(108.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (index == 1) tone.copy(alpha = 0.16f) else SurfaceRaised)
-                    .border(1.dp, if (index == 1) tone.copy(alpha = 0.7f) else BorderSoft, RoundedCornerShape(8.dp))
-                    .padding(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(day, style = MaterialTheme.typography.titleMedium, color = if (index == 1) tone else TextPrimary, fontWeight = FontWeight.Bold)
-                Icon(Icons.Rounded.Notifications, contentDescription = null, tint = if (index == 1) tone else TextSecondary, modifier = Modifier.size(20.dp))
-                PreviewLine(0.75f, 5.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Rounded.Notifications, contentDescription = null, tint = tone, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            PreviewLine(0.38f, 9.dp)
+            Spacer(Modifier.weight(1f))
+            Text("03", style = MaterialTheme.typography.labelLarge, color = tone, fontWeight = FontWeight.Bold)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            listOf("12", "18", "24").forEachIndexed { index, day ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(136.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    if (index == 1) tone.copy(alpha = 0.48f) else SurfaceRaised,
+                                    SurfaceDark,
+                                ),
+                            ),
+                        )
+                        .border(1.dp, if (index == 1) tone.copy(alpha = 0.72f) else BorderSoft, RoundedCornerShape(8.dp))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(day, style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Black)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (index == 1) tone.copy(alpha = 0.26f) else BorderSoft.copy(alpha = 0.6f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Rounded.Star, contentDescription = null, tint = if (index == 1) tone else TextSecondary, modifier = Modifier.size(19.dp))
+                    }
+                    PreviewLine(0.74f, 4.dp)
+                }
             }
         }
     }
@@ -609,23 +824,42 @@ private fun RadarVisual(tone: Color) {
 
 @Composable
 private fun LiveTvVisual(tone: Color) {
-    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         repeat(3) { index ->
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (index == 0) tone.copy(alpha = 0.12f) else SurfaceRaised.copy(alpha = 0.68f))
+                    .border(1.dp, if (index == 0) tone.copy(alpha = 0.5f) else Color.Transparent, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Box(
-                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(tone.copy(alpha = 0.12f)),
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(if (index == 0) tone.copy(alpha = 0.2f) else BorderSoft.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Rounded.LiveTv, contentDescription = null, tint = tone, modifier = Modifier.size(17.dp))
+                    Icon(Icons.Rounded.LiveTv, contentDescription = null, tint = if (index == 0) tone else TextSecondary, modifier = Modifier.size(17.dp))
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    PreviewLine(0.70f - index * 0.07f, 8.dp)
+                    PreviewLine(0.68f - index * 0.07f, 8.dp)
                     Box(Modifier.fillMaxWidth().height(4.dp).background(BorderSoft, CircleShape)) {
-                        Box(Modifier.fillMaxWidth(0.30f + index * 0.20f).height(4.dp).background(tone.copy(alpha = 0.82f), CircleShape))
+                        Box(
+                            Modifier
+                                .fillMaxWidth(0.35f + index * 0.18f)
+                                .height(4.dp)
+                                .background(if (index == 0) tone else TextSecondary.copy(alpha = 0.45f), CircleShape),
+                        )
                     }
                 }
                 Text("${20 + index}:00", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -645,60 +879,7 @@ private fun PreviewLine(widthFraction: Float, height: androidx.compose.ui.unit.D
 }
 
 @Composable
-private fun TeamPage() {
-    PageColumn(centered = false) {
-        Text(
-            text = stringResource(Res.string.nuvio_enhanced_onboarding_team_title),
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextPrimary,
-            fontWeight = FontWeight.Black,
-        )
-        Text(
-            text = stringResource(Res.string.nuvio_enhanced_onboarding_team_body),
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary,
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            DeveloperTile(
-                avatar = Res.drawable.onboarding_developer_yesnt,
-                displayName = "yesn't",
-                handle = "@yesnt10",
-                isAdmin = false,
-                modifier = Modifier.weight(1f),
-            )
-            DeveloperTile(
-                avatar = Res.drawable.onboarding_developer_russo,
-                displayName = "Russo",
-                handle = "@AKRusso",
-                isAdmin = true,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 5.dp)
-                    .width(3.dp)
-                    .height(42.dp)
-                    .background(AccentBlue, CircleShape),
-            )
-            Text(
-                text = stringResource(Res.string.nuvio_enhanced_onboarding_team_note),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DeveloperTile(
+private fun ProjectLeaderRow(
     avatar: DrawableResource,
     displayName: String,
     handle: String,
@@ -706,51 +887,52 @@ private fun DeveloperTile(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
-        color = SurfaceDark.copy(alpha = 0.88f),
+        modifier = modifier.fillMaxWidth(),
+        color = SurfaceRaised.copy(alpha = 0.72f),
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, BorderSoft),
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Image(
                 painter = painterResource(avatar),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(108.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .border(1.dp, BorderSoft, RoundedCornerShape(8.dp)),
-            )
-            Text(
-                text = displayName,
-                style = MaterialTheme.typography.titleMedium,
-                color = TextPrimary,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = handle,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, BorderSoft, CircleShape),
             )
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                if (isAdmin) {
+                Text(
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = handle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    if (isAdmin) {
+                        RoleBadge(
+                            text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
+                            color = AccentPink,
+                        )
+                    }
                     RoleBadge(
-                        text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
-                        color = AccentPink,
+                        text = stringResource(Res.string.nuvio_enhanced_onboarding_developer_role),
+                        color = AccentBlue,
                     )
                 }
-                RoleBadge(
-                    text = stringResource(Res.string.nuvio_enhanced_onboarding_developer_role),
-                    color = AccentBlue,
-                )
             }
         }
     }
@@ -779,6 +961,11 @@ private fun CommunityPage(
     phase: State<Float>,
     onJoinDiscord: () -> Unit,
 ) {
+    val visibleMembers = remember(snapshot.members) {
+        snapshot.members
+            .sortedWith(compareBy<EnhancedCommunityMember>({ statusPriority(it.status) }, { it.username.lowercase() }))
+            .take(5)
+    }
     PageColumn(centered = false) {
         Text(
             text = stringResource(Res.string.nuvio_enhanced_onboarding_community_title),
@@ -791,75 +978,142 @@ private fun CommunityPage(
             style = MaterialTheme.typography.bodyLarge,
             color = TextSecondary,
         )
+
+        CommunityHero(snapshot)
+
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = SurfaceDark,
+            color = SurfaceDark.copy(alpha = 0.88f),
             shape = RoundedCornerShape(8.dp),
             border = BorderStroke(1.dp, BorderSoft),
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 14.dp),
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(9.dp),
-                ) {
-                    ServerIcon(snapshot.iconUrl)
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = snapshot.serverName,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = snapshot.serverTag,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextSecondary,
-                        )
-                    }
-                }
-
-                HorizontalDivider(color = BorderSoft)
-
-                Row(modifier = Modifier.fillMaxWidth()) {
+                CommunityStat(
+                    value = snapshot.memberCount.toString(),
+                    label = stringResource(Res.string.nuvio_enhanced_onboarding_members_label),
+                    modifier = Modifier.weight(1f),
+                )
+                CommunityStat(
+                    value = snapshot.onlineCount?.toString() ?: "--",
+                    label = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
+                    modifier = Modifier.weight(1f),
+                )
+                if (snapshot.boostCount != null) {
                     CommunityStat(
-                        value = snapshot.memberCount.toString(),
-                        label = stringResource(Res.string.nuvio_enhanced_onboarding_members_label),
+                        value = snapshot.boostCount.toString(),
+                        label = stringResource(Res.string.nuvio_enhanced_onboarding_boosts_label),
                         modifier = Modifier.weight(1f),
                     )
-                    CommunityStat(
-                        value = snapshot.onlineCount?.toString() ?: "--",
-                        label = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (snapshot.boostCount != null) {
-                        CommunityStat(
-                            value = snapshot.boostCount.toString(),
-                            label = stringResource(Res.string.nuvio_enhanced_onboarding_boosts_label),
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
                 }
+            }
+        }
 
-                if (snapshot.members.isNotEmpty()) {
-                    HorizontalDivider(color = BorderSoft)
-                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                        Text(
-                            text = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        snapshot.members.take(4).forEach { member ->
-                            CommunityMemberRow(member)
+        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_team_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_team_body),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+            )
+        }
+
+        ProjectLeaderRow(
+            avatar = Res.drawable.onboarding_developer_yesnt,
+            displayName = "yesn't",
+            handle = "@yesnt10",
+            isAdmin = false,
+        )
+        ProjectLeaderRow(
+            avatar = Res.drawable.onboarding_developer_russo,
+            displayName = "Russo",
+            handle = "@AKRusso",
+            isAdmin = true,
+        )
+
+        if (visibleMembers.isNotEmpty()) {
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SurfaceDark.copy(alpha = 0.72f),
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.dp, BorderSoft),
+            ) {
+                Column {
+                    visibleMembers.forEachIndexed { index, member ->
+                        CommunityMemberRow(member)
+                        if (index < visibleMembers.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 54.dp),
+                                color = BorderSoft.copy(alpha = 0.72f),
+                            )
                         }
                     }
                 }
+            }
+        }
 
-                DiscordButton(phase = phase, onClick = onJoinDiscord)
+        DiscordButton(phase = phase, onClick = onJoinDiscord)
+    }
+}
+
+@Composable
+private fun CommunityHero(snapshot: EnhancedCommunitySnapshot) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = DiscordBlue.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, DiscordBlue.copy(alpha = 0.36f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        listOf(DiscordBlue.copy(alpha = 0.18f), Color.Transparent, AccentViolet.copy(alpha = 0.10f)),
+                    ),
+                )
+                .padding(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(13.dp),
+            ) {
+                ServerIcon(snapshot.iconUrl)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = snapshot.serverName,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        text = snapshot.serverTag,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary,
+                    )
+                }
+                Icon(
+                    painter = appIconPainter(AppIconResource.DiscordMark),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp),
+                )
             }
         }
     }
@@ -898,7 +1152,10 @@ private fun CommunityStat(
     label: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = value,
             style = MaterialTheme.typography.titleMedium,
@@ -916,6 +1173,9 @@ private fun CommunityStat(
 @Composable
 private fun CommunityMemberRow(member: EnhancedCommunityMember) {
     Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -944,6 +1204,7 @@ private fun CommunityMemberRow(member: EnhancedCommunityMember) {
         }
         Text(
             text = member.username,
+            modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             color = TextPrimary,
             maxLines = 1,
@@ -953,9 +1214,23 @@ private fun CommunityMemberRow(member: EnhancedCommunityMember) {
             modifier = Modifier
                 .size(7.dp)
                 .clip(CircleShape)
-                .background(AccentGreen),
+                .background(statusColor(member.status)),
         )
     }
+}
+
+private fun statusPriority(status: String): Int = when (status.lowercase()) {
+    "online" -> 0
+    "idle" -> 1
+    "dnd" -> 2
+    else -> 3
+}
+
+private fun statusColor(status: String): Color = when (status.lowercase()) {
+    "online" -> AccentGreen
+    "idle" -> AccentAmber
+    "dnd" -> AccentPink
+    else -> TextSecondary
 }
 
 @Composable
