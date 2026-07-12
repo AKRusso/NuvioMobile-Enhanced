@@ -5,21 +5,34 @@ object CloudStreamCompatibilityResolver {
         "https://raw.githubusercontent.com/Kraptor123/cs-kraptor/master/repo.json#KickTR" to "kick-tr-v1",
     )
 
-    fun resolve(metadata: CloudStreamPluginMetadata): CloudStreamCompatibility {
+    fun resolve(
+        metadata: CloudStreamPluginMetadata,
+        supportsAndroidDex: Boolean = false,
+    ): CloudStreamCompatibility {
         val adapterId = crossPlatformAdapters[metadata.id.value]
-        return if (adapterId != null) {
+        return when {
+            adapterId != null -> {
             CloudStreamCompatibility(
                 runtimeKind = CloudStreamRuntimeKind.PrecompiledCrossPlatformAdapter,
                 platformSupport = CloudStreamPlatformSupport.AndroidAndIos,
                 adapterId = adapterId,
                 reason = "This provider has a reviewed cross-platform adapter compiled into Nuvio Enhanced.",
             )
-        } else {
+            }
+            supportsAndroidDex -> {
+                CloudStreamCompatibility(
+                    runtimeKind = CloudStreamRuntimeKind.AndroidDex,
+                    platformSupport = CloudStreamPlatformSupport.AndroidOnly,
+                    reason = "Android full builds execute this standard CloudStream .cs3 package with the embedded CloudStream runtime.",
+                )
+            }
+            else -> {
             CloudStreamCompatibility(
                 runtimeKind = CloudStreamRuntimeKind.UnsupportedAndroidDex,
                 platformSupport = CloudStreamPlatformSupport.Unsupported,
-                reason = "Standard .cs3 packages contain Android DEX code. Nuvio does not execute downloaded DEX on Android and iOS cannot execute it; a reviewed cross-platform adapter is required.",
+                reason = "This standard .cs3 package contains Android DEX code, which cannot run on iOS.",
             )
+            }
         }
     }
 }
@@ -32,4 +45,3 @@ fun sortCloudStreamEpisodes(episodes: List<CloudStreamEpisode>): List<CloudStrea
             { it.name.lowercase() },
         ),
     )
-

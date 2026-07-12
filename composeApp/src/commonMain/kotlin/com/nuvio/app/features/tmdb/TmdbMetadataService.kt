@@ -600,6 +600,7 @@ object TmdbMetadataService {
             id = id,
             type = type,
             name = enrichment.localizedTitle ?: "TMDB $tmdbId",
+            aliases = enrichment.titleAliases,
             poster = enrichment.poster,
             background = enrichment.backdrop,
             logo = enrichment.logo,
@@ -646,6 +647,8 @@ object TmdbMetadataService {
         if (enrichment != null && settings.useBasicInfo) {
             updated = updated.copy(
                 name = enrichment.localizedTitle ?: updated.name,
+                aliases = (updated.aliases + updated.name + enrichment.titleAliases)
+                    .cleanTmdbTitleAliases(enrichment.localizedTitle ?: updated.name),
                 description = enrichment.description ?: updated.description,
                 imdbRating = updated.imdbRating?.takeIf { it.isNotBlank() }
                     ?: enrichment.rating?.formatRating(),
@@ -838,6 +841,8 @@ object TmdbMetadataService {
         val description = details.overview?.trim()?.takeIf(String::isNotBlank)
         val releaseInfo = details.releaseDate ?: details.firstAirDate
         val localizedTitle = listOf(details.title, details.name).firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }
+        val originalTitle = listOf(details.originalTitle, details.originalName)
+            .firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) }
         val people = buildPeople(details = details, credits = credits, mediaType = mediaType)
         val directors = buildDirectors(details = details, credits = credits, mediaType = mediaType)
         val writers = buildWriters(credits = credits, mediaType = mediaType, hasDirectors = directors.isNotEmpty())
@@ -845,6 +850,7 @@ object TmdbMetadataService {
             ?.takeIf { mediaType == "tv" }
         val enrichment = TmdbEnrichment(
             localizedTitle = localizedTitle,
+            titleAliases = listOfNotNull(localizedTitle, originalTitle).cleanTmdbTitleAliases(localizedTitle),
             description = description,
             genres = genres,
             backdrop = buildImageUrl(
@@ -1147,6 +1153,7 @@ object TmdbMetadataService {
 
 internal data class TmdbEnrichment(
     val localizedTitle: String?,
+    val titleAliases: List<String> = emptyList(),
     val description: String?,
     val genres: List<String>,
     val backdrop: String?,
@@ -1172,6 +1179,7 @@ internal data class TmdbEnrichment(
 ) {
     fun hasContent(): Boolean =
         localizedTitle != null ||
+            titleAliases.isNotEmpty() ||
             description != null ||
             genres.isNotEmpty() ||
             backdrop != null ||
@@ -1193,6 +1201,15 @@ internal data class TmdbEnrichment(
             collectionItems.isNotEmpty() ||
             moreLikeThis.isNotEmpty() ||
             trailers.isNotEmpty()
+}
+
+private fun List<String>.cleanTmdbTitleAliases(primaryTitle: String?): List<String> {
+    val primary = primaryTitle?.trim().orEmpty()
+    return mapNotNull { title ->
+        title.trim().takeIf(String::isNotBlank)
+    }
+        .filterNot { title -> primary.isNotBlank() && title.equals(primary, ignoreCase = true) }
+        .distinctBy { title -> title.lowercase() }
 }
 
 private data class EnrichmentPayload(
@@ -1456,6 +1473,8 @@ private data class Quadruple<A, B, C, D>(
 private data class TmdbDetailsResponse(
     val title: String? = null,
     val name: String? = null,
+    @SerialName("original_title") val originalTitle: String? = null,
+    @SerialName("original_name") val originalName: String? = null,
     val overview: String? = null,
     @SerialName("release_date") val releaseDate: String? = null,
     @SerialName("first_air_date") val firstAirDate: String? = null,

@@ -954,6 +954,7 @@ fun HomeScreen(
                                 streamingShowcaseVideoPreviewSoundEnabled =
                                     nuvioEnhancedSettings.streamingShowcaseVideoPreviewSoundEnabled,
                                 compactMetadata = nuvioEnhancedSettings.compactHeroMetadata,
+                                showRatings = nuvioEnhancedSettings.showHeroRatings,
                                 showOverview = nuvioEnhancedSettings.streamingShowcaseHeroEnabled ||
                                     (
                                         nuvioEnhancedSettings.showHeroOverview &&

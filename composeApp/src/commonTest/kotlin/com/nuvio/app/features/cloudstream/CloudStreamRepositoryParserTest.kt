@@ -101,6 +101,35 @@ class CloudStreamRepositoryParserTest {
     }
 
     @Test
+    fun acceptsNullableCloudStreamListFields() {
+        val plugins = CloudStreamRepositoryParser.parsePluginList(
+            repositoryManifestUrl = "https://example.com/repo.json",
+            pluginListUrl = "https://example.com/plugins.json",
+            payload = """[{"url":"Good.cs3","internalName":"Good","authors":null,"tvTypes":null}]""",
+        )
+
+        assertEquals(1, plugins.size)
+        assertTrue(plugins.single().authors.isEmpty())
+        assertTrue(plugins.single().tvTypes.isEmpty())
+    }
+
+    @Test
+    fun skipsEntryWithInvalidFieldTypeWithoutDroppingWholeList() {
+        val plugins = CloudStreamRepositoryParser.parsePluginList(
+            repositoryManifestUrl = "https://example.com/repo.json",
+            pluginListUrl = "https://example.com/plugins.json",
+            payload = """
+                [
+                  {"url":"Broken.cs3","internalName":"Broken","version":"not-a-number"},
+                  {"url":"Good.cs3","internalName":"Good","version":2}
+                ]
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("Good"), plugins.map { it.internalName })
+    }
+
+    @Test
     fun mergesDuplicatePluginsUsingHighestVersion() {
         fun plugin(version: Int) = CloudStreamRepositoryParser.parsePluginList(
             repositoryManifestUrl = "https://example.com/repo.json",

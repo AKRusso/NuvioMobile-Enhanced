@@ -36,16 +36,14 @@ object AiAssistantService {
             null
         }
         val providers = buildList {
-            add(settings.provider)
-            when (settings.provider) {
-                AiProvider.CEREBRAS -> if (settings.groqApiKey.isNotBlank()) add(AiProvider.GROQ)
-                AiProvider.GROQ -> if (settings.cerebrasApiKey.isNotBlank()) add(AiProvider.CEREBRAS)
-                AiProvider.GEMINI, AiProvider.OPENROUTER -> {
-                    if (settings.cerebrasApiKey.isNotBlank()) add(AiProvider.CEREBRAS)
-                    if (settings.groqApiKey.isNotBlank()) add(AiProvider.GROQ)
-                }
+            if (settings.provider.isConfigured(settings)) {
+                add(settings.provider)
             }
+            AiProvider.entries
+                .filter { it != settings.provider && it.isConfigured(settings) }
+                .forEach(::add)
         }.distinct()
+        require(providers.isNotEmpty()) { "AI assistant has no configured provider." }
 
         var lastError: Throwable? = null
         providers.forEachIndexed { index, provider ->
@@ -279,6 +277,14 @@ object AiAssistantService {
         }
     }
 }
+
+private fun AiProvider.isConfigured(settings: AiAssistantSettings): Boolean =
+    when (this) {
+        AiProvider.CEREBRAS -> settings.cerebrasApiKey.isNotBlank() && settings.cerebrasModel.isNotBlank()
+        AiProvider.GROQ -> settings.groqApiKey.isNotBlank() && settings.groqModel.isNotBlank()
+        AiProvider.GEMINI -> settings.geminiApiKey.isNotBlank() && settings.geminiModel.isNotBlank()
+        AiProvider.OPENROUTER -> settings.openRouterApiKey.isNotBlank() && settings.openRouterModel.isNotBlank()
+    }
 
 private class AiServiceException(
     message: String,

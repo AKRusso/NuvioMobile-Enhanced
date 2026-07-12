@@ -71,6 +71,7 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
+            proguardFiles("../composeApp/proguard-cloudstream-full.pro")
         }
         create("playstore") {
             dimension = "distribution"
@@ -122,7 +123,9 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
-        variant.applicationId.set("com.nuviodebug.com")
+        val debugApplicationId = providers.gradleProperty("nuvioDebugApplicationId")
+            .orElse("com.nuvio.enhanced")
+        variant.applicationId.set(debugApplicationId)
     }
 }
 

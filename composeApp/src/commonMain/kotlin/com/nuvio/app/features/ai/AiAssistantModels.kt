@@ -12,7 +12,7 @@ val AiProvider.displayName: String
         AiProvider.CEREBRAS -> "Cerebras"
         AiProvider.GROQ -> "Groq"
         AiProvider.GEMINI -> "Gemini"
-        AiProvider.OPENROUTER -> "OpenRouter Free"
+        AiProvider.OPENROUTER -> "OpenRouter"
     }
 
 data class AiAssistantSettings(
@@ -46,7 +46,12 @@ data class AiAssistantSettings(
         }
 
     val isReady: Boolean
-        get() = enabled && activeApiKey.isNotBlank() && activeModel.isNotBlank()
+        get() = enabled && listOf(
+            cerebrasApiKey to cerebrasModel,
+            groqApiKey to groqModel,
+            geminiApiKey to geminiModel,
+            openRouterApiKey to openRouterModel,
+        ).any { (apiKey, model) -> apiKey.isNotBlank() && model.isNotBlank() }
 }
 
 data class AiChatMessage(
@@ -73,4 +78,4 @@ enum class AiChatRole {
 internal const val DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
 internal const val DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
 internal const val DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
-internal const val DEFAULT_OPENROUTER_MODEL = "openrouter/free"
+internal const val DEFAULT_OPENROUTER_MODEL = "openrouter/auto"

@@ -39,6 +39,29 @@
 -keep class com.dokar.quickjs.** { *; }
 -keep class com.nuvio.app.features.plugins.** { *; }
 
+# Standard CloudStream .cs3 packages link against these names at runtime.
+# They must remain binary-stable and unobfuscated in Android full release builds.
+-keep class com.lagradost.cloudstream3.** { *; }
+-keep interface com.lagradost.cloudstream3.** { *; }
+-keep class com.lagradost.api.** { *; }
+-keep class com.lagradost.nicehttp.** { *; }
+-keep class com.nuvio.app.features.cloudstream.CloudStreamPlatformRuntime* { *; }
+-keep,allowoptimization class com.fasterxml.jackson.** { public protected *; }
+-keep,allowoptimization class kotlin.** { public protected *; }
+-keep,allowoptimization class kotlinx.coroutines.** { public protected *; }
+-keep,allowoptimization class okhttp3.** { public protected *; }
+-keep,allowoptimization class okio.** { public protected *; }
+-keep,allowoptimization class org.jsoup.** { public protected *; }
+-keep,allowoptimization class org.mozilla.javascript.** { public protected *; }
+-keep,allowoptimization class com.uwetrottmann.tmdb2.** { public protected *; }
+-dontwarn com.lagradost.cloudstream3.**
+-dontwarn com.lagradost.nicehttp.**
+# Rhino ships optional JVM integrations that are not present on Android.
+# CloudStream providers use Rhino core APIs; these desktop/JDK integrations are not required there.
+-dontwarn java.beans.**
+-dontwarn javax.script.**
+-dontwarn jdk.dynalink.**
+
 # TorrServer based P2P streaming.
 -keep class com.nuvio.app.features.p2p.** { *; }
 

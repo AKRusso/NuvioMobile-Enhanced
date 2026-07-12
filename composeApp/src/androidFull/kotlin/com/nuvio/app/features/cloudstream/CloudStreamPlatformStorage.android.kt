@@ -12,11 +12,17 @@ internal actual object CloudStreamPlatformStorage {
 
     private var appContext: Context? = null
     private var preferences: SharedPreferences? = null
+    private var activeProfileId: Int = 1
 
     actual fun initialize(context: Any?) {
         val androidContext = context as? Context ?: return
         appContext = androidContext.applicationContext
         preferences = androidContext.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        CloudStreamPlatformRuntime.initialize(androidContext)
+    }
+
+    actual fun setActiveProfile(profileId: Int) {
+        activeProfileId = profileId.coerceAtLeast(1)
     }
 
     actual fun loadState(profileId: Int): String? =
@@ -50,15 +56,26 @@ internal actual object CloudStreamPlatformStorage {
         }
     }
 
-    actual fun packageExists(storageKey: String): Boolean =
-        File(packagesDirectory(), "$storageKey.cs3").isFile
+    actual fun packageExists(storageKey: String): Boolean {
+        val scoped = File(packagesDirectory(), "$storageKey.cs3")
+        if (scoped.isFile) return true
+        val legacy = legacyPackage(storageKey)
+        return legacy.isFile && legacy.copyTo(scoped, overwrite = false).isFile
+    }
 
     actual fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean {
         val directory = packagesDirectory()
         val source = File(directory, "$oldStorageKey.cs3")
         val destination = File(directory, "$newStorageKey.cs3")
         if (destination.isFile) return true
-        return source.isFile && source.renameTo(destination)
+        if (source.isFile && source.renameTo(destination)) return true
+        val legacy = legacyPackage(oldStorageKey)
+        return legacy.isFile && legacy.copyTo(destination, overwrite = false).isFile
+    }
+
+    actual fun packagePath(storageKey: String): String? {
+        if (!packageExists(storageKey)) return null
+        return File(packagesDirectory(), "$storageKey.cs3").absolutePath
     }
 
     actual fun deletePackage(storageKey: String) {
@@ -67,7 +84,7 @@ internal actual object CloudStreamPlatformStorage {
     }
 
     actual fun clearPackages() {
-        packagesDirectory().deleteRecursively()
+        packagesRootDirectory().deleteRecursively()
     }
 
     actual fun clearAllState() {
@@ -75,6 +92,14 @@ internal actual object CloudStreamPlatformStorage {
     }
 
     private fun packagesDirectory(): File {
+        return File(packagesRootDirectory(), "profile-$activeProfileId").apply { mkdirs() }
+    }
+
+    private fun legacyPackage(storageKey: String): File {
+        return File(packagesRootDirectory(), "$storageKey.cs3")
+    }
+
+    private fun packagesRootDirectory(): File {
         val context = requireNotNull(appContext) { "CloudStream storage is not initialized" }
         return File(context.filesDir, packagesDirectoryName).apply { mkdirs() }
     }

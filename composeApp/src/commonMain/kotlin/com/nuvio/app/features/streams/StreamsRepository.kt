@@ -8,7 +8,6 @@ import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.addons.httpGetText
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.parseCloudStreamRouteId
-import com.nuvio.app.features.cloudstream.sha256Hex
 import com.nuvio.app.features.cloudstream.toStreamItem
 import com.nuvio.app.features.debrid.DirectDebridStreamPreparer
 import com.nuvio.app.features.debrid.DebridSettingsRepository
@@ -33,6 +32,9 @@ import kotlinx.coroutines.flow.update
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 
 object StreamsRepository {
     private val log = Logger.withTag("StreamsRepo")
@@ -52,36 +54,87 @@ object StreamsRepository {
     ): String =
         "$type::$videoId::$season::$episode::$manualSelection"
 
-    fun load(type: String, videoId: String, parentMetaId: String? = null, season: Int? = null, episode: Int? = null, manualSelection: Boolean = false) {
+    fun load(
+        type: String,
+        videoId: String,
+        parentMetaId: String? = null,
+        parentMetaType: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        manualSelection: Boolean = false,
+        searchTitle: String? = null,
+    ) {
         load(
             type = type,
             videoId = videoId,
             parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
             season = season,
             episode = episode,
             manualSelection = manualSelection,
+            searchTitle = searchTitle,
             forceRefresh = false,
         )
     }
 
-    fun reload(type: String, videoId: String, parentMetaId: String? = null, season: Int? = null, episode: Int? = null, manualSelection: Boolean = false) {
+    fun reload(
+        type: String,
+        videoId: String,
+        parentMetaId: String? = null,
+        parentMetaType: String? = null,
+        season: Int? = null,
+        episode: Int? = null,
+        manualSelection: Boolean = false,
+        searchTitle: String? = null,
+    ) {
         load(
             type = type,
             videoId = videoId,
             parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
             season = season,
             episode = episode,
             manualSelection = manualSelection,
+            searchTitle = searchTitle,
             forceRefresh = true,
         )
     }
 
-    private fun load(type: String, videoId: String, parentMetaId: String?, season: Int?, episode: Int?, manualSelection: Boolean, forceRefresh: Boolean) {
+    private fun load(
+        type: String,
+        videoId: String,
+        parentMetaId: String?,
+        parentMetaType: String?,
+        season: Int?,
+        episode: Int?,
+        manualSelection: Boolean,
+        searchTitle: String?,
+        forceRefresh: Boolean,
+    ) {
         val pluginUiState = if (AppFeaturePolicy.pluginsEnabled) {
             PluginRepository.initialize()
             PluginRepository.uiState.value
         } else {
             PluginsUiState(pluginsEnabled = false)
+        }
+        val cloudStreamSearchRequest = buildCloudStreamSearchRequest(
+            type = type,
+            videoId = videoId,
+            parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
+            season = season,
+            episode = episode,
+            searchTitle = searchTitle,
+        )
+        val cloudStreamProviderGroups = if (AppFeaturePolicy.pluginsEnabled) {
+            cloudStreamProviderGroupsForRequest(type, cloudStreamSearchRequest)
+        } else {
+            emptyList()
+        }
+        val cloudStreamRegistryRevision = if (AppFeaturePolicy.pluginsEnabled) {
+            CloudStreamRepository.uiState.value.registryRevision
+        } else {
+            0L
         }
         val requestToken = requestToken(
             type = type,
@@ -91,7 +144,9 @@ object StreamsRepository {
             manualSelection = manualSelection,
         )
         val pluginQualityKey = pluginUiState.excludedQualities.sorted().joinToString(",")
-        val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}::pluginQuality=$pluginQualityKey"
+        val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
+            "::pluginQuality=$pluginQualityKey::cloudstream=$cloudStreamRegistryRevision" +
+            "::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}"
         val currentState = _uiState.value
         if (
             !forceRefresh &&
@@ -161,7 +216,7 @@ object StreamsRepository {
             val providerItem = CloudStreamRepository.uiState.value.plugins
                 .firstOrNull { it.metadata.id.value == cloudStreamRoute.providerId }
             val providerName = providerItem?.metadata?.name ?: "CloudStream"
-            val providerAddonId = "cloudstream:${sha256Hex(cloudStreamRoute.providerId.encodeToByteArray()).take(16)}"
+            val providerAddonId = cloudStreamAddonId(cloudStreamRoute.providerId)
             _uiState.value = StreamsUiState(
                 requestToken = requestToken,
                 groups = listOf(
@@ -179,12 +234,11 @@ object StreamsRepository {
                 CloudStreamRepository.loadLinks(cloudStreamRoute.providerId, cloudStreamRoute.data)
                     .fold(
                         onSuccess = { sources ->
-                            val streams = sources.map { source ->
-                                source.toStreamItem(
-                                    providerId = cloudStreamRoute.providerId,
-                                    providerName = providerName,
-                                )
-                            }
+                            val streams = cloudStreamSourcesToStreamItems(
+                                providerId = cloudStreamRoute.providerId,
+                                providerName = providerName,
+                                sources = sources,
+                            )
                             _uiState.value = StreamsUiState(
                                 requestToken = requestToken,
                                 groups = listOf(
@@ -235,7 +289,7 @@ object StreamsRepository {
             groupByRepository = pluginUiState.groupStreamsByRepository,
         )
 
-        if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty()) {
+        if (installedAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty()) {
             _uiState.value = StreamsUiState(
                 requestToken = requestToken,
                 isAnyLoading = false,
@@ -262,9 +316,12 @@ object StreamsRepository {
                 )
             }
 
-        log.d { "Found ${streamAddons.size} addons for stream type=$type id=$videoId" }
+        log.d {
+            "Found ${streamAddons.size} addons and ${cloudStreamProviderGroups.size} compatible CloudStream providers " +
+                "for stream type=$type id=$videoId"
+        }
 
-        if (streamAddons.isEmpty() && pluginProviderGroups.isEmpty()) {
+        if (streamAddons.isEmpty() && pluginProviderGroups.isEmpty() && cloudStreamProviderGroups.isEmpty()) {
             _uiState.value = StreamsUiState(
                 requestToken = requestToken,
                 isAnyLoading = false,
@@ -283,6 +340,13 @@ object StreamsRepository {
                 isLoading = true,
             )
         } + pluginProviderGroups.map { providerGroup ->
+            AddonStreamGroup(
+                addonName = providerGroup.addonName,
+                addonId = providerGroup.addonId,
+                streams = emptyList(),
+                isLoading = true,
+            )
+        } + cloudStreamProviderGroups.map { providerGroup ->
             AddonStreamGroup(
                 addonName = providerGroup.addonName,
                 addonId = providerGroup.addonId,
@@ -308,7 +372,9 @@ object StreamsRepository {
                 .toMutableMap()
             val pluginFirstErrorByAddonId = mutableMapOf<String, String>()
             val totalTasks = streamAddons.size +
-                pluginProviderGroups.sumOf { it.scrapers.size }
+                pluginProviderGroups.sumOf { it.scrapers.size } +
+                cloudStreamProviderGroups.size
+            val cloudStreamSemaphore = Semaphore(CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY)
 
             val installedAddonNames = installedAddonOrder.toSet()
             val installedAddonIds = streamAddons.map { it.addonId }.toSet()
@@ -402,6 +468,26 @@ object StreamsRepository {
                     }
                 }
                 debridAvailabilityJobs += availabilityJob
+            }
+
+            fun stopPendingGroups(errorMessage: String? = null) {
+                _uiState.update { current ->
+                    val updatedGroups = current.groups.map { group ->
+                        if (group.isLoading) {
+                            group.copy(
+                                isLoading = false,
+                                error = group.error ?: errorMessage,
+                            )
+                        } else {
+                            group
+                        }
+                    }
+                    current.copy(
+                        groups = updatedGroups,
+                        isAnyLoading = false,
+                        emptyStateReason = updatedGroups.toEmptyStateReason(anyLoading = false),
+                    )
+                }
             }
 
             val timeoutJob = if (isDirectAutoPlayFlow) {
@@ -510,7 +596,9 @@ object StreamsRepository {
 
                     val displayName = addon.addonName
                     val group = runCatchingUnlessCancelled {
-                        val payload = httpGetText(url)
+                        val payload = withTimeoutOrNull(STREAM_PROVIDER_TIMEOUT_MS) {
+                            httpGetText(url)
+                        } ?: error("$displayName timed out")
                         StreamParser.parse(
                             payload = payload,
                             addonName = displayName,
@@ -546,17 +634,20 @@ object StreamsRepository {
                 val includeScraperNameInSubtitle = false
                 providerGroup.scrapers.forEach { scraper ->
                     launch {
-                        val completion = PluginRepository.executeScraper(
-                            scraper = scraper,
-                            tmdbId = pluginContentId(
-                                videoId = videoId,
+                        val scraperResult = withTimeoutOrNull(STREAM_PROVIDER_TIMEOUT_MS) {
+                            PluginRepository.executeScraper(
+                                scraper = scraper,
+                                tmdbId = pluginContentId(
+                                    videoId = videoId,
+                                    season = season,
+                                    episode = episode,
+                                ),
+                                mediaType = type,
                                 season = season,
                                 episode = episode,
-                            ),
-                            mediaType = type,
-                            season = season,
-                            episode = episode,
-                        ).fold(
+                            )
+                        }
+                        val completion = (scraperResult ?: Result.failure(Throwable("${scraper.name} timed out"))).fold(
                             onSuccess = { results ->
                                 val filteredResults = results.filterNot { result ->
                                     result.isExcludedByPluginQualityFilter(pluginUiState.excludedQualities)
@@ -587,8 +678,33 @@ object StreamsRepository {
                 }
             }
 
-            repeat(totalTasks) {
-                when (val completion = completions.receive()) {
+            cloudStreamProviderGroups.forEach { providerGroup ->
+                launch {
+                    val group = withTimeoutOrNull(STREAM_PROVIDER_TIMEOUT_MS) {
+                        cloudStreamSemaphore.withPermit {
+                            resolveCloudStreamProviderStreams(
+                                providerGroup = providerGroup,
+                                request = cloudStreamSearchRequest,
+                            )
+                        }
+                    } ?: AddonStreamGroup(
+                        addonName = providerGroup.addonName,
+                        addonId = providerGroup.addonId,
+                        streams = emptyList(),
+                        isLoading = false,
+                        error = "${providerGroup.addonName} timed out",
+                    )
+                    publishCompletion(StreamLoadCompletion.Addon(group))
+                }
+            }
+
+            var receivedTasks = 0
+            while (receivedTasks < totalTasks) {
+                val completion = withTimeoutOrNull(STREAM_TOTAL_TIMEOUT_MS) {
+                    completions.receive()
+                } ?: break
+                receivedTasks++
+                when (completion) {
                     is StreamLoadCompletion.Addon -> {
                         val result = completion.group
                         publishAddonGroupAfterCacheCheck(result)
@@ -618,11 +734,11 @@ object StreamsRepository {
                                         } else {
                                             null
                                         }
-                                        group.copy(
+                                        presentStreamGroup(group.copy(
                                             streams = mergedStreams,
                                             isLoading = stillLoading,
                                             error = finalError,
-                                        )
+                                        ))
                                     }
                                 },
                                 installedOrder = installedAddonOrder,
@@ -637,6 +753,11 @@ object StreamsRepository {
                     }
 
                 }
+            }
+
+            if (receivedTasks < totalTasks) {
+                log.w { "Stream loading timed out after $receivedTasks / $totalTasks provider tasks" }
+                stopPendingGroups(errorMessage = "Timed out")
             }
 
             for (availabilityJob in debridAvailabilityJobs) {
@@ -886,4 +1007,66 @@ object StreamsRepository {
             }
         }
     }
+}
+
+// Provider count must not be capped: a repository can contain many narrowly scoped
+// providers, and an alphabetical cap silently skipped otherwise valid sources.
+// Keep network and DEX work bounded with a semaphore instead.
+private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 12
+private const val STREAM_PROVIDER_TIMEOUT_MS = 25_000L
+private const val STREAM_TOTAL_TIMEOUT_MS = 35_000L
+
+private fun buildCloudStreamSearchRequest(
+    type: String,
+    videoId: String,
+    parentMetaId: String?,
+    parentMetaType: String?,
+    season: Int?,
+    episode: Int?,
+    searchTitle: String?,
+): CloudStreamSearchRequest? {
+    val metaLookupType = parentMetaType?.takeIf { it.isNotBlank() } ?: type
+    val metaLookupId = parentMetaId?.takeIf { it.isNotBlank() } ?: videoId
+    val meta = MetaDetailsRepository.peek(metaLookupType, metaLookupId)
+    val title = searchTitle?.trim()?.takeIf { it.isNotBlank() }
+        ?: meta?.name?.trim()?.takeIf { it.isNotBlank() }
+        ?: return null
+    val aliases = (listOfNotNull(meta?.name, searchTitle) + meta?.aliases.orEmpty())
+        .cleanCloudStreamRequestAliases(primaryTitle = title)
+    val year = meta?.releaseInfo.cloudStreamReleaseYear()
+        ?: title.cloudStreamReleaseYear()
+    val episodeTitle = meta
+        ?.videos
+        ?.firstOrNull { video ->
+            (season == null || video.season == season) &&
+                (episode == null || video.episode == episode)
+        }
+        ?.title
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+    val externalId = sequenceOf(videoId, parentMetaId, metaLookupId)
+        .filterNotNull()
+        .map(String::trim)
+        .firstOrNull { id -> id.matches(Regex("^tt\\d{5,12}$", RegexOption.IGNORE_CASE)) }
+
+    return CloudStreamSearchRequest(
+        title = title,
+        aliases = aliases,
+        type = type,
+        year = year,
+        season = season,
+        episode = episode,
+        episodeTitle = episodeTitle,
+        externalId = externalId,
+        genres = meta?.genres.orEmpty(),
+    )
+}
+
+private fun List<String>.cleanCloudStreamRequestAliases(primaryTitle: String): List<String> {
+    val primary = primaryTitle.trim()
+    return mapNotNull { title ->
+        title.trim().takeIf(String::isNotBlank)
+    }
+        .filterNot { title -> primary.isNotBlank() && title.equals(primary, ignoreCase = true) }
+        .distinctBy { title -> title.lowercase() }
 }

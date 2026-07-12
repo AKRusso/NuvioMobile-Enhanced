@@ -130,6 +130,8 @@ private fun NuvioEnhancedSettingsPageContent(
     val noEmailAppMessage = stringResource(Res.string.nuvio_enhanced_toast_no_email_app)
     val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
+    val detailHeroTrailerPlaybackSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
+        AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
 
     fun isNew(feature: NuvioEnhancedFeature): Boolean = settings.isNew(feature)
     fun markSeen(feature: NuvioEnhancedFeature) {
@@ -466,6 +468,18 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_hero_ratings_title),
+                    description = stringResource(Res.string.nuvio_enhanced_hero_ratings_desc),
+                    checked = settings.showHeroRatings,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        NuvioEnhancedSettingsRepository.setShowHeroRatings(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_hero_overview_title),
                     description = stringResource(Res.string.nuvio_enhanced_hero_overview_desc),
                     checked = settings.showHeroOverview,
@@ -581,6 +595,20 @@ private fun NuvioEnhancedSettingsPageContent(
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
+                if (detailHeroTrailerPlaybackSupported) {
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_meta_hero_trailer_playback),
+                        description = stringResource(Res.string.settings_meta_hero_trailer_playback_description),
+                        checked = detailSettings.heroTrailerPlayback,
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.DetailExperienceControls),
+                        onCheckedChange = {
+                            markSeen(NuvioEnhancedFeature.DetailExperienceControls)
+                            MetaScreenSettingsRepository.setHeroTrailerPlayback(it)
+                        },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                }
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_meta_random_episode_button),
                     description = stringResource(Res.string.settings_meta_random_episode_button_description),
@@ -968,7 +996,7 @@ private fun <T> EnhancedChoiceRow(
                         tokens.colors.surfaceCard.copy(alpha = 0.72f)
                     },
                     contentColor = if (isSelected) {
-                        Color.White
+                        tokens.colors.onAccent
                     } else {
                         tokens.colors.textPrimary
                     },
@@ -987,6 +1015,7 @@ private fun <T> EnhancedChoiceRow(
                         modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
+                        color = if (isSelected) tokens.colors.onAccent else tokens.colors.textPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

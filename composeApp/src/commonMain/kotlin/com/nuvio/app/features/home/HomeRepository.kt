@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
@@ -136,7 +137,13 @@ object HomeRepository {
             pendingRequests.chunked(HOME_CATALOG_FETCH_BATCH_SIZE).forEach { batch ->
                 if (activeRequestKey != requestKey) return@launch
                 val results = batch.map { request ->
-                    async { request to runCatching { request.toSection() } }
+                    async {
+                        request to runCatching {
+                            withTimeoutOrNull(HOME_CATALOG_REQUEST_TIMEOUT_MS) {
+                                request.toSection()
+                            } ?: error("${request.defaultTitle} timed out")
+                        }
+                    }
                 }.awaitAll()
 
                 if (activeRequestKey != requestKey) return@launch
@@ -244,7 +251,7 @@ object HomeRepository {
                 .filter { definition -> preferences[definition.key]?.heroSourceEnabled != false }
                 .mapNotNull { definition -> cachedSections[definition.cacheKey] }
                 .map { section -> section.withReleaseFilter() }
-                .flatMap { section -> section.items } + cachedCloudSections.flatMap { it.items })
+                .flatMap { section -> section.items })
                 .distinctBy { item -> "${item.type}:${item.id}" }
                 .shuffled(heroRandom)
                 .take(HOME_HERO_ITEM_LIMIT)
@@ -318,11 +325,20 @@ object HomeRepository {
     ): CloudHomeSectionsResult {
         val sections = mutableListOf<HomeCatalogSection>()
         var firstError: String? = null
-        for (plugin in plugins) {
-            CloudStreamRepository.getMainPage(plugin.metadata.id.value, page = 1)
-                .fold(
+        withTimeoutOrNull(HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS) {
+            for (plugin in plugins.take(HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT)) {
+                if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) break
+                val result = withTimeoutOrNull(HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS) {
+                    CloudStreamRepository.getMainPage(plugin.metadata.id.value, page = 1)
+                }
+                if (result == null) {
+                    if (firstError == null) firstError = "${plugin.metadata.name} zaman aşımına uğradı"
+                    continue
+                }
+                result.fold(
                     onSuccess = { categories ->
                         categories.forEach { (categoryName, items) ->
+                            if (sections.size >= HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT) return@forEach
                             if (items.isEmpty()) return@forEach
                             val previews = items.take(HOME_CATALOG_PREVIEW_FETCH_LIMIT).map { it.toMetaPreview() }
                             sections += HomeCatalogSection(
@@ -346,6 +362,7 @@ object HomeRepository {
                         if (firstError == null) firstError = error.message
                     },
                 )
+            }
         }
         return CloudHomeSectionsResult(sections = sections, errorMessage = firstError)
     }
@@ -385,9 +402,9 @@ object HomeRepository {
             val sources = collectionHeroSources(collections)
             val sourceResults = sources.map { source ->
                 async {
-                    runCatching {
+                    withTimeoutOrNull(HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS) {
                         source.resolveCollectionHeroItems(addons)
-                    }.getOrDefault(emptyList())
+                    }.orEmpty()
                 }
             }.awaitAll()
             val random = Random((nextRequestKey.hashCode()).absoluteValue + 7)
@@ -509,6 +526,12 @@ private const val HOME_COLLECTION_HERO_SOURCE_ITEM_LIMIT = 8
 private const val HOME_CATALOG_FETCH_BATCH_SIZE = 4
 private const val HOME_CATALOG_PREVIEW_FETCH_LIMIT = 18
 private const val HOME_CATALOG_PUBLISH_INTERVAL = 2
+private const val HOME_CLOUDSTREAM_PROVIDER_SCAN_LIMIT = 18
+private const val HOME_CLOUDSTREAM_SECTION_PREVIEW_LIMIT = 8
+private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 5_000L
+private const val HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS = 15_000L
+private const val HOME_CATALOG_REQUEST_TIMEOUT_MS = 12_000L
+private const val HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS = 10_000L
 
 private fun prioritizeDefinitions(
     definitions: List<HomeCatalogDefinition>,

@@ -45,6 +45,19 @@ sealed interface CloudStreamInstallResult {
     data class Error(val message: String) : CloudStreamInstallResult
 }
 
+data class CloudStreamBulkInstallFailure(
+    val pluginName: String,
+    val message: String,
+)
+
+data class CloudStreamBulkInstallResult(
+    val requestedCount: Int,
+    val installedCount: Int,
+    val enabledCount: Int,
+    val skippedCount: Int,
+    val failures: List<CloudStreamBulkInstallFailure> = emptyList(),
+)
+
 expect object CloudStreamRepository {
     val uiState: StateFlow<CloudStreamUiState>
 
@@ -60,22 +73,26 @@ expect object CloudStreamRepository {
 
     suspend fun installPlugin(pluginId: String): CloudStreamInstallResult
     suspend fun updatePlugin(pluginId: String): CloudStreamInstallResult
+    suspend fun installAndEnablePlugins(pluginIds: List<String>): CloudStreamBulkInstallResult
     fun setPluginEnabled(pluginId: String, enabled: Boolean)
     fun removePlugin(pluginId: String)
 
     suspend fun getMainPage(providerId: String, page: Int = 1): Result<List<Pair<String, List<CloudStreamSearchItem>>>>
     suspend fun search(query: String, providerId: String? = null): List<Result<List<CloudStreamSearchItem>>>
+    suspend fun loadByExternalId(providerId: String, externalId: String): Result<CloudStreamLoadItem?>
     suspend fun load(providerId: String, data: String): Result<CloudStreamLoadItem>
     suspend fun loadLinks(providerId: String, data: String): Result<List<CloudStreamPlaybackSource>>
 }
 
 internal expect object CloudStreamPlatformStorage {
     fun initialize(context: Any?)
+    fun setActiveProfile(profileId: Int)
     fun loadState(profileId: Int): String?
     fun saveState(profileId: Int, payload: String)
     fun savePackageAtomically(storageKey: String, bytes: ByteArray)
     fun packageExists(storageKey: String): Boolean
     fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean
+    fun packagePath(storageKey: String): String?
     fun deletePackage(storageKey: String)
     fun clearPackages()
     fun clearAllState()

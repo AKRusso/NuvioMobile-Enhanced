@@ -13,6 +13,7 @@
 			<string>com.nuvio.app.auth</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>nuvioenhanced</string>
 				<string>nuvio</string>
 				<string>stremio</string>
 			</array>

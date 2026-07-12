@@ -90,21 +90,25 @@ fun CloudStreamPlaybackSource.toStreamItem(
     providerId: String,
     providerName: String,
 ): StreamItem {
+    val parsedUrl = parseCloudStreamPlaybackUrl(url)
     val requestHeaders = buildMap {
+        putAll(parsedUrl.headers)
         putAll(headers)
         referer?.takeIf { it.isNotBlank() }?.let { put("Referer", it) }
     }
-    val qualityLabel = quality?.takeIf { it > 0 }?.let { "${it}p" }
+    val qualityLabel = quality?.cloudStreamQualityLabel()
+    val inferredStreamType = inferCloudStreamType(parsedUrl.url)
     return StreamItem(
         name = listOfNotNull(name.takeIf { it.isNotBlank() }, qualityLabel).joinToString(" · "),
         title = name,
-        url = url,
+        url = parsedUrl.url,
         sourceName = name,
         addonName = providerName,
         addonId = "cloudstream:${sha256Hex(providerId.encodeToByteArray()).take(16)}",
         streamType = when {
             isHls -> "hls"
             isDash -> "dash"
+            inferredStreamType != null -> inferredStreamType
             else -> "direct"
         },
         behaviorHints = StreamBehaviorHints(
@@ -122,3 +126,48 @@ fun CloudStreamPlaybackSource.toStreamItem(
     )
 }
 
+private fun Int.cloudStreamQualityLabel(): String? =
+    takeIf { it in knownCloudStreamQualities }?.let { "${it}p" }
+
+private val knownCloudStreamQualities = setOf(144, 240, 360, 480, 720, 1080, 1440, 2160)
+
+private data class ParsedCloudStreamPlaybackUrl(
+    val url: String,
+    val headers: Map<String, String>,
+)
+
+private fun parseCloudStreamPlaybackUrl(rawUrl: String): ParsedCloudStreamPlaybackUrl {
+    val trimmed = rawUrl.trim()
+    val url = trimmed.substringBefore('|').trim()
+    val headerPayload = trimmed.substringAfter('|', missingDelimiterValue = "")
+    if (headerPayload.isBlank()) return ParsedCloudStreamPlaybackUrl(url = url, headers = emptyMap())
+
+    val headers = headerPayload
+        .split('&')
+        .mapNotNull { entry ->
+            val key = entry.substringBefore('=', missingDelimiterValue = "").trim()
+            val value = entry.substringAfter('=', missingDelimiterValue = "").trim()
+            if (key.isBlank() || value.isBlank()) null else key to value
+        }
+        .toMap()
+    return ParsedCloudStreamPlaybackUrl(url = url, headers = headers)
+}
+
+private fun inferCloudStreamType(url: String): String? {
+    val normalized = url.trim().lowercase()
+    if (normalized.isBlank()) return null
+    val path = normalized.substringBefore('#').substringBefore('?')
+    val query = normalized.substringAfter('?', missingDelimiterValue = "")
+    return when {
+        path.endsWith(".m3u8") ||
+            ".m3u8/" in path ||
+            "m3u8" in query ||
+            "/hls/" in path ||
+            "hls" in query -> "hls"
+        path.endsWith(".mpd") ||
+            ".mpd/" in path ||
+            "mpd" in query ||
+            "dash" in query -> "dash"
+        else -> null
+    }
+}

@@ -17,7 +17,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 
-PACKAGE="${NUVIO_LOG_PACKAGE:-com.nuviodebug.com}"
+PACKAGE="${NUVIO_LOG_PACKAGE:-com.nuvio.enhanced}"
 SERIAL=""
 CLEAR_BUFFER=false
 TAG_FILTER=""
@@ -60,7 +60,7 @@ Stream live colour-coded ADB logs for Nuvio debug builds.
 
 Options:
   -s, --serial <id>     ADB device serial (optional)
-  -p, --package <name>  Android package/applicationId (default: com.nuviodebug.com)
+  -p, --package <name>  Android package/applicationId (default: com.nuvio.enhanced)
   -t, --tag <regex>     Additional grep regex to filter log tags
   -c, --clear           Clear logcat buffer before streaming
   -h, --help            Show this help

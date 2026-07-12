@@ -46,7 +46,7 @@ class CloudStreamNuvioAdapterTest {
     fun convertsExtractorLinkHeadersAndSubtitlesForPlayer() {
         val stream = CloudStreamPlaybackSource(
             name = "Provider CDN",
-            url = "https://video.example/master.m3u8",
+            url = "https://video.example/master.m3u8|Origin=https://provider.example",
             quality = 1080,
             referer = "https://provider.example/watch/42",
             headers = mapOf(
@@ -68,12 +68,43 @@ class CloudStreamNuvioAdapterTest {
         )
 
         assertEquals("hls", stream.streamType)
+        assertEquals("https://video.example/master.m3u8", stream.url)
         assertEquals("Provider CDN · 1080p", stream.name)
+        assertEquals("https://provider.example", stream.behaviorHints.proxyHeaders?.request?.get("Origin"))
         assertEquals("https://provider.example/watch/42", stream.behaviorHints.proxyHeaders?.request?.get("Referer"))
         assertEquals("session=opaque", stream.behaviorHints.proxyHeaders?.request?.get("Cookie"))
         assertTrue(stream.behaviorHints.notWebReady)
         assertEquals("tr", stream.externalSubtitles.single().language)
         assertEquals("opaque", stream.externalSubtitles.single().headers?.get("Authorization"))
+    }
+
+    @Test
+    fun infersCloudStreamTypeFromUrlWhenProviderDoesNotFlagIt() {
+        val stream = CloudStreamPlaybackSource(
+            name = "Provider HLS",
+            url = "https://video.example/play?format=m3u8&token=opaque",
+            isHls = false,
+        ).toStreamItem(
+            providerId = "https://example.com/repo.json#Provider",
+            providerName = "Provider",
+        )
+
+        assertEquals("hls", stream.streamType)
+    }
+
+    @Test
+    fun doesNotDisplayCloudStreamUnknownQualityAs400p() {
+        val stream = CloudStreamPlaybackSource(
+            name = "Provider HLS",
+            url = "https://video.example/master.m3u8",
+            quality = 400,
+            isHls = true,
+        ).toStreamItem(
+            providerId = "https://example.com/repo.json#Provider",
+            providerName = "Provider",
+        )
+
+        assertEquals("Provider HLS", stream.name)
     }
 
     @Test

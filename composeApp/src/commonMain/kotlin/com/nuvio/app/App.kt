@@ -2418,9 +2418,11 @@ private fun MainAppContent(
                                             type = launch.type,
                                             videoId = effectiveVideoId,
                                             parentMetaId = launch.parentMetaId,
+                                            parentMetaType = launch.parentMetaType,
                                             season = launch.seasonNumber,
                                             episode = launch.episodeNumber,
                                             manualSelection = launch.manualSelection,
+                                            searchTitle = launch.title,
                                         )
                                     }
                                     return@LaunchedEffect
@@ -2564,9 +2566,11 @@ private fun MainAppContent(
                                                 type = launch.type,
                                                 videoId = effectiveVideoId,
                                                 parentMetaId = launch.parentMetaId,
+                                                parentMetaType = launch.parentMetaType,
                                                 season = launch.seasonNumber,
                                                 episode = launch.episodeNumber,
                                                 manualSelection = launch.manualSelection,
+                                                searchTitle = launch.title,
                                             )
                                         }
                                     }
@@ -2674,6 +2678,7 @@ private fun MainAppContent(
                             episodeNumber = launch.episodeNumber,
                             episodeTitle = launch.episodeTitle,
                             episodeThumbnail = launch.episodeThumbnail,
+                            episodeOverview = launch.pauseDescription,
                             resumePositionMs = launch.resumePositionMs,
                             resumeProgressFraction = launch.resumeProgressFraction,
                             manualSelection = launch.manualSelection,

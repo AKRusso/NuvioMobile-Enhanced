@@ -182,6 +182,7 @@ internal fun HomeHeroSection(
     streamingShowcaseVideoPreviewEnabled: Boolean = true,
     streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     compactMetadata: Boolean = true,
+    showRatings: Boolean = true,
     showOverview: Boolean = true,
     metadataRefreshKey: String? = null,
     refreshPullProgress: Float = 0f,
@@ -397,6 +398,7 @@ internal fun HomeHeroSection(
                             heroHeightPx = heroHeightPx,
                             refreshProgress = heroRefreshProgress,
                             showOverviewCue = showOverview,
+                            showRatings = showRatings,
                             onItemClick = onItemClick,
                             onPlayClick = onPlayClick,
                             onSaveClick = onSaveClick,
@@ -417,6 +419,7 @@ internal fun HomeHeroSection(
                             videoPreviewSoundEnabled = streamingShowcaseVideoPreviewSoundEnabled,
                             videoPreviewActive = scrollOffsetPx < heroHeightPx * 0.74f,
                             showOverview = showOverview,
+                            showRatings = showRatings,
                             pagerState = pagerState,
                             itemCount = items.size,
                             currentPage = displayPage,
@@ -506,6 +509,7 @@ internal fun HomeHeroSection(
                                     detailMeta = detailMetas[currentItem.stableKey()],
                                     heroDisplayMode = heroDisplayMode,
                                     compactMetadata = compactMetadata,
+                                    showRatings = showRatings,
                                     showOverview = showOverview,
                                     onItemClick = onItemClick,
                                 )
@@ -655,6 +659,7 @@ private fun StreamingShowcaseHeroPage(
     videoPreviewSoundEnabled: Boolean,
     videoPreviewActive: Boolean,
     showOverview: Boolean,
+    showRatings: Boolean,
     pagerState: PagerState,
     itemCount: Int,
     currentPage: Int,
@@ -696,12 +701,16 @@ private fun StreamingShowcaseHeroPage(
     val metadataItems = buildList {
         typeLabel.takeIf { it.isNotBlank() }?.let { add(HeroMetaItem(text = it, emphasized = true)) }
     }.distinctBy { it.text }
-    val showcaseRatings = remember(detailMeta?.externalRatings, fallbackImdbRating, layout.isTablet) {
-        buildStreamingShowcaseRatings(
-            externalRatings = detailMeta?.externalRatings.orEmpty(),
-            fallbackImdbRating = fallbackImdbRating,
-            maxItems = 6,
-        )
+    val showcaseRatings = remember(showRatings, detailMeta?.externalRatings, fallbackImdbRating, layout.isTablet) {
+        if (showRatings) {
+            buildStreamingShowcaseRatings(
+                externalRatings = detailMeta?.externalRatings.orEmpty(),
+                fallbackImdbRating = fallbackImdbRating,
+                maxItems = 6,
+            )
+        } else {
+            emptyList()
+        }
     }
     val awardLabel = detailMeta?.awards?.trim()?.takeIf { it.isNotBlank() }
     val runtimeLabel = formatRuntimeForDisplay(detailMeta?.runtime)
@@ -1720,6 +1729,7 @@ private fun PosterArtHeroPage(
     heroHeightPx: Float,
     refreshProgress: Float,
     showOverviewCue: Boolean,
+    showRatings: Boolean,
     onItemClick: ((MetaPreview) -> Unit)?,
     onPlayClick: ((MetaPreview) -> Unit)?,
     onSaveClick: ((MetaPreview) -> Unit)?,
@@ -1758,11 +1768,15 @@ private fun PosterArtHeroPage(
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: item.description?.trim()?.takeIf { it.isNotBlank() }
-    val ratingItems = posterHeroRatings(
-        item = item,
-        detailMeta = detailMeta,
-        maxItems = if (layout.isTablet) 5 else 4,
-    )
+    val ratingItems = if (showRatings) {
+        posterHeroRatings(
+            item = item,
+            detailMeta = detailMeta,
+            maxItems = if (layout.isTablet) 5 else 4,
+        )
+    } else {
+        emptyList()
+    }
     val trailerPreviewImageUrl = posterHeroTrailerPreviewImageUrl(detailMeta)
     val motionPreviewAvailable = motionPreviewEnabled && trailerPreviewImageUrl != null
     var motionPreviewStarted by remember(item.stableKey(), trailerPreviewImageUrl, motionPreviewEnabled) {
@@ -2124,6 +2138,7 @@ private fun HeroContentBlock(
     detailMeta: MetaDetails?,
     heroDisplayMode: NuvioHeroDisplayMode,
     compactMetadata: Boolean,
+    showRatings: Boolean,
     showOverview: Boolean,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
@@ -2147,8 +2162,12 @@ private fun HeroContentBlock(
     val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(maxGenres)
     val displayRelease = detailMeta?.releaseInfo?.takeIf { it.isNotBlank() } ?: item.releaseInfo
     val seasonCountLabel = heroSeasonCountLabel(detailMeta)
-    val displayImdb = (detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating)
-        ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
+    val displayImdb = if (showRatings) {
+        (detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating)
+            ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
+    } else {
+        null
+    }
     val displaySummary = detailMeta?.description
         ?.trim()
         ?.takeIf { it.isNotBlank() }
@@ -2453,22 +2472,29 @@ private suspend fun fetchHeroDetailMeta(
             type = item.type,
             id = item.id,
         ) ?: return@runCatching null
-        val metaWithOverview = meta.withHeroOverviewFallback(item)
-        onBaseMeta(metaWithOverview)
+        val metaWithFallbacks = meta.withHeroMetadataFallback(item)
+        onBaseMeta(metaWithFallbacks)
         MdbListSettingsRepository.ensureLoaded()
         val settings = MdbListSettingsRepository.snapshot()
         withTimeoutOrNull(HERO_MDBLIST_ENRICH_TIMEOUT_MS) {
             MdbListMetadataService.enrichMeta(
-                meta = metaWithOverview,
+                meta = metaWithFallbacks,
                 fallbackItemId = item.id,
                 settings = settings,
             )
-        } ?: metaWithOverview
+        } ?: metaWithFallbacks
     }.getOrNull()
 
-private suspend fun MetaDetails.withHeroOverviewFallback(item: MetaPreview): MetaDetails {
-    if (!description.isNullOrBlank()) return this
+private suspend fun MetaDetails.withHeroMetadataFallback(item: MetaPreview): MetaDetails {
+    val needsOverview = description.isNullOrBlank()
+    val needsRating = imdbRating
+        ?.takeIf { it.isNotBlank() }
+        ?.toDoubleOrNull()
+        ?.let { it > 0.0 } != true &&
+        externalRatings.none { rating -> rating.source.equals(PROVIDER_IMDB, ignoreCase = true) && rating.value > 0.0 }
+    if (!needsOverview && !needsRating) return this
 
+    TmdbSettingsRepository.ensureLoaded()
     val tmdbSettings = TmdbSettingsRepository.snapshot()
     if (!tmdbSettings.hasApiKey) return this
 
@@ -2479,11 +2505,14 @@ private suspend fun MetaDetails.withHeroOverviewFallback(item: MetaPreview): Met
 
     return withTimeoutOrNull(HERO_TMDB_OVERVIEW_TIMEOUT_MS) {
         TmdbMetadataService.enrichMeta(
-            meta = this@withHeroOverviewFallback,
+            meta = this@withHeroMetadataFallback,
             fallbackItemId = item.id,
             settings = heroSettings,
         )
-    }?.takeIf { !it.description.isNullOrBlank() } ?: this
+    }?.takeIf { enriched ->
+        (needsOverview && !enriched.description.isNullOrBlank()) ||
+            (needsRating && enriched.imdbRating?.toDoubleOrNull()?.let { it > 0.0 } == true)
+    } ?: this
 }
 
 @Composable

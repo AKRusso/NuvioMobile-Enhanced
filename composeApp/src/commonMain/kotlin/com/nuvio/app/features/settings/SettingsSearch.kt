@@ -510,6 +510,16 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.NuvioEnhanced,
+        key = "hero-trailer-playback",
+        title = stringResource(Res.string.settings_meta_hero_trailer_playback),
+        description = stringResource(Res.string.settings_meta_hero_trailer_playback_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
         key = "random-episode-button",
         title = stringResource(Res.string.settings_meta_random_episode_button),
         description = stringResource(Res.string.settings_meta_random_episode_button_description),

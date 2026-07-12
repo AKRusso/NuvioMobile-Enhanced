@@ -80,7 +80,7 @@ class MainActivity : AppCompatActivity() {
         window.setBackgroundDrawableResource(R.color.nuvio_background)
         SyncClientIdentityStorage.initialize(applicationContext)
         AddonStorage.initialize(applicationContext)
-        CloudStreamPlatformStorage.initialize(applicationContext)
+        CloudStreamPlatformStorage.initialize(this)
         AiAssistantSettingsStorage.initialize(applicationContext)
         AuthStorage.initialize(applicationContext)
         DnsOverHttpsSettingsStorage.initialize(applicationContext)

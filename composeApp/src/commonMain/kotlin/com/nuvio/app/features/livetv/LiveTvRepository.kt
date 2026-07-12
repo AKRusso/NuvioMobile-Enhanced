@@ -60,7 +60,12 @@ object LiveTvRepository {
 
         return runCatching {
             val playlist = withContext(Dispatchers.Default) {
-                parseM3uPlaylistData(httpGetText(normalizedUrl))
+                parseM3uPlaylistData(
+                    httpGetTextWithHeaders(
+                        url = normalizedUrl,
+                        headers = M3U_PLAYLIST_REQUEST_HEADERS,
+                    ),
+                )
             }
             val channels = playlist.channels
             require(channels.isNotEmpty()) { "Bu M3U listesinde oynatılabilir kanal bulunamadı." }
@@ -517,7 +522,7 @@ internal fun parseM3uPlaylistData(content: String): ParsedM3uPlaylist {
                     tvgId = current.tvgId,
                     logoUrl = current.logoUrl,
                     group = current.group,
-                    headers = pendingHeaders + parsedUrl.headers,
+                    headers = defaultM3uStreamHeaders(parsedUrl.url) + pendingHeaders + parsedUrl.headers,
                 )
                 metadata = null
                 pendingHeaders = emptyMap()
@@ -588,6 +593,20 @@ private fun parseExtHttpHeaders(value: String): Map<String, String> {
         }
         .toMap()
 }
+
+private fun defaultM3uStreamHeaders(url: String): Map<String, String> {
+    if (!url.startsWith("http://") && !url.startsWith("https://")) return emptyMap()
+    return M3U_STREAM_REQUEST_HEADERS
+}
+
+private val M3U_PLAYLIST_REQUEST_HEADERS = mapOf(
+    "User-Agent" to "VLC/3.0.0 LibVLC/3.0.0",
+    "Accept" to "application/x-mpegURL, application/vnd.apple.mpegurl, audio/mpegurl, text/plain, */*",
+)
+
+private val M3U_STREAM_REQUEST_HEADERS = mapOf(
+    "User-Agent" to "VLC/3.0.0 LibVLC/3.0.0",
+)
 
 internal fun isLikelyCategoryHeading(name: String): Boolean {
     val normalized = name.trim()

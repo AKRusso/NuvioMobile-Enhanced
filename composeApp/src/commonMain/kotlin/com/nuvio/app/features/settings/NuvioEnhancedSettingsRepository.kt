@@ -24,6 +24,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val streamingShowcaseVideoPreviewEnabled: Boolean = true,
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
+    val showHeroRatings: Boolean = true,
     val showHeroOverview: Boolean = true,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
@@ -101,6 +102,7 @@ private data class StoredNuvioEnhancedSettings(
     val streamingShowcaseVideoPreviewEnabled: Boolean = true,
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
+    val showHeroRatings: Boolean = true,
     val showHeroOverview: Boolean = true,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
@@ -220,6 +222,10 @@ internal object NuvioEnhancedSettingsRepository {
         copy(compactHeroMetadata = enabled)
     }
 
+    fun setShowHeroRatings(enabled: Boolean) = update {
+        copy(showHeroRatings = enabled)
+    }
+
     fun setShowHeroOverview(enabled: Boolean) = update {
         copy(showHeroOverview = enabled)
     }
@@ -315,6 +321,7 @@ internal object NuvioEnhancedSettingsRepository {
             streamingShowcaseVideoPreviewEnabled = stored.streamingShowcaseVideoPreviewEnabled,
             streamingShowcaseVideoPreviewSoundEnabled = stored.streamingShowcaseVideoPreviewSoundEnabled,
             compactHeroMetadata = stored.compactHeroMetadata,
+            showHeroRatings = stored.showHeroRatings,
             showHeroOverview = stored.showHeroOverview,
             heroRefreshHapticsEnabled = stored.heroRefreshHapticsEnabled,
             smartShelvesEnabled = stored.smartShelvesEnabled,

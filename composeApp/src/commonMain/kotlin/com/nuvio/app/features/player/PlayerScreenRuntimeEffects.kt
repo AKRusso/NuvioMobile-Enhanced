@@ -93,14 +93,15 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         WatchProgressRepository.ensureLoaded()
     }
 
-    LaunchedEffect(activeSourceUrl, activeSourceAudioUrl, activeSourceHeaders, activeTorrentInfoHash) {
+    LaunchedEffect(activeSourceUrl, activeSourceAudioUrl, activeSourceHeaders, activeStreamType, activeTorrentInfoHash) {
         val resolvingSourceUrl = activeSourceUrl
         val resolvingAudioUrl = activeSourceAudioUrl
         val resolvingHeaders = activeSourceHeaders
+        val resolvingStreamType = activeStreamType
         val resolvingTorrentInfoHash = activeTorrentInfoHash
         val shouldInspectHls = resolvingTorrentInfoHash == null &&
             resolvingAudioUrl == null &&
-            resolvingSourceUrl.contains(".m3u8", ignoreCase = true)
+            (resolvingStreamType.equals("hls", ignoreCase = true) || resolvingSourceUrl.contains(".m3u8", ignoreCase = true))
 
         selectedPlayerQualityId = null
         showQualityPanel = false
@@ -118,6 +119,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
             PlayerQualityResolver.resolve(
                 sourceUrl = resolvingSourceUrl,
                 requestHeaders = resolvingHeaders,
+                forceHls = resolvingStreamType.equals("hls", ignoreCase = true),
             )
         }.getOrElse { error ->
             PlayerQualitySelectionState(
@@ -129,6 +131,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         if (
             activeSourceUrl != resolvingSourceUrl ||
             activeSourceAudioUrl != resolvingAudioUrl ||
+            activeStreamType != resolvingStreamType ||
             activeTorrentInfoHash != resolvingTorrentInfoHash
         ) {
             return@LaunchedEffect

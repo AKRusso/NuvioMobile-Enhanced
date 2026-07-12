@@ -783,6 +783,8 @@
     <string name="settings_meta_comments_description">Trakt yorumları bölümü.</string>
     <string name="settings_meta_details">Detaylar</string>
     <string name="settings_meta_details_description">Süre, durum, yayın tarihi, dil ve ilgili bilgiler.</string>
+    <string name="settings_meta_hero_trailer_playback">Hero fragman oynatma</string>
+    <string name="settings_meta_hero_trailer_playback_description">Fragman varsa detay sayfasındaki hero alanında fragman önizlemelerini oynat.</string>
     <string name="settings_meta_episode_cards">Bölüm kartları</string>
     <string name="settings_meta_episode_cards_description">Meta veri ekranında bölümlerin nasıl gösterileceğini seç.</string>
     <string name="settings_meta_episode_style_horizontal">Yatay</string>
@@ -1736,6 +1738,8 @@
     <string name="nuvio_enhanced_poster_hero_pull_overview">YUKARI ÇEK: ÖZET</string>
     <string name="nuvio_enhanced_compact_hero_title">Kompakt hero metadata</string>
     <string name="nuvio_enhanced_compact_hero_desc">Hero görseline daha fazla alan bırakmak için tür, kategori, yıl ve puanı daha sıkı tutar.</string>
+    <string name="nuvio_enhanced_hero_ratings_title">Hero puanları</string>
+    <string name="nuvio_enhanced_hero_ratings_desc">Ana sayfa Hero kartlarında IMDb ve harici puan rozetlerini gösterir veya gizler.</string>
     <string name="nuvio_enhanced_hero_overview_title">Hero özet kartı</string>
     <string name="nuvio_enhanced_hero_overview_desc">Hero etiketlerinin altındaki premium cam özet kartını göster veya gizle.</string>
     <string name="nuvio_enhanced_hero_refresh_haptics_title">Hero yenileme titreşimi</string>

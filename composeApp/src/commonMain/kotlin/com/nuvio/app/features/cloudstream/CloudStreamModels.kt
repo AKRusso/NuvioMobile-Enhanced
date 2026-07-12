@@ -18,12 +18,12 @@ data class CloudStreamPluginMetadataDto(
     val version: Int? = null,
     val name: String? = null,
     val internalName: String? = null,
-    val authors: List<String> = emptyList(),
+    val authors: List<String>? = null,
     val description: String? = null,
     val fileSize: Long? = null,
     val repositoryUrl: String? = null,
     val language: String? = null,
-    val tvTypes: List<String> = emptyList(),
+    val tvTypes: List<String>? = null,
     val iconUrl: String? = null,
     val apiVersion: Int? = null,
     val fileHash: String? = null,
@@ -157,11 +157,13 @@ data class CloudStreamFileHash(
 
 enum class CloudStreamRuntimeKind {
     PrecompiledCrossPlatformAdapter,
+    AndroidDex,
     UnsupportedAndroidDex,
 }
 
 enum class CloudStreamPlatformSupport {
     AndroidAndIos,
+    AndroidOnly,
     Unsupported,
 }
 
@@ -172,8 +174,13 @@ data class CloudStreamCompatibility(
     val reason: String,
 ) {
     val isRunnable: Boolean
-        get() = runtimeKind == CloudStreamRuntimeKind.PrecompiledCrossPlatformAdapter &&
-            platformSupport == CloudStreamPlatformSupport.AndroidAndIos
+        get() = when (runtimeKind) {
+            CloudStreamRuntimeKind.PrecompiledCrossPlatformAdapter ->
+                platformSupport == CloudStreamPlatformSupport.AndroidAndIos
+            CloudStreamRuntimeKind.AndroidDex ->
+                platformSupport == CloudStreamPlatformSupport.AndroidOnly
+            CloudStreamRuntimeKind.UnsupportedAndroidDex -> false
+        }
 }
 
 data class CloudStreamInstalledPlugin(

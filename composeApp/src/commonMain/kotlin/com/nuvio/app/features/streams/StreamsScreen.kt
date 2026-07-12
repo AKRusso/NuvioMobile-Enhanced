@@ -113,6 +113,7 @@ fun StreamsScreen(
     episodeNumber: Int? = null,
     episodeTitle: String? = null,
     episodeThumbnail: String? = null,
+    episodeOverview: String? = null,
     resumePositionMs: Long? = null,
     resumeProgressFraction: Float? = null,
     manualSelection: Boolean = false,
@@ -180,14 +181,16 @@ fun StreamsScreen(
         }
     }
 
-    LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection) {
+    LaunchedEffect(type, videoId, seasonNumber, episodeNumber, manualSelection, title) {
         StreamsRepository.load(
             type = type,
             videoId = videoId,
             parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
             season = seasonNumber,
             episode = episodeNumber,
             manualSelection = manualSelection,
+            searchTitle = title,
         )
     }
     val expectedRequestToken = remember(type, videoId, seasonNumber, episodeNumber, manualSelection) {
@@ -237,6 +240,7 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
+                episodeOverview = episodeOverview,
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
@@ -256,6 +260,7 @@ fun StreamsScreen(
                 seasonNumber = seasonNumber,
                 episodeNumber = episodeNumber,
                 episodeTitle = episodeTitle,
+                episodeOverview = episodeOverview,
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
@@ -296,9 +301,11 @@ fun StreamsScreen(
                                 type = type,
                                 videoId = videoId,
                                 parentMetaId = parentMetaId,
+                                parentMetaType = parentMetaType,
                                 season = seasonNumber,
                                 episode = episodeNumber,
                                 manualSelection = manualSelection,
+                                searchTitle = title,
                             )
                         },
                     ),
@@ -476,6 +483,7 @@ private fun MobileStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    episodeOverview: String?,
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
@@ -551,6 +559,10 @@ private fun MobileStreamsLayout(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                         )
                     }
+                    EpisodeSynopsisPanel(
+                        overview = episodeOverview,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                    )
                     ProviderFilterRow(
                         groups = uiState.groups,
                         selectedFilter = uiState.selectedFilter,
@@ -672,7 +684,7 @@ private fun EpisodeHeroBlock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp),
+            .height(226.dp),
     ) {
         // Thumbnail image
         if (thumbnail != null) {
@@ -749,6 +761,55 @@ private fun EpisodeHeroBlock(
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EpisodeSynopsisPanel(
+    overview: String?,
+    modifier: Modifier = Modifier,
+) {
+    val summary = overview?.trim()?.takeIf { it.isNotBlank() } ?: return
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.56f),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                shape = shape,
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(30.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.78f)),
+            )
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
         }

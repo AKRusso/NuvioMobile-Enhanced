@@ -3,6 +3,7 @@ package com.nuvio.app.features.streams
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,6 +61,7 @@ internal fun TabletStreamsLayout(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    episodeOverview: String?,
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
@@ -149,6 +151,7 @@ internal fun TabletStreamsLayout(
                         seasonNumber = seasonNumber,
                         episodeNumber = episodeNumber,
                         episodeTitle = episodeTitle,
+                        episodeOverview = episodeOverview,
                         showTitle = title,
                     )
                 } else {
@@ -282,6 +285,7 @@ private fun TabletEpisodeInfoPanel(
     seasonNumber: Int,
     episodeNumber: Int,
     episodeTitle: String?,
+    episodeOverview: String?,
     showTitle: String,
     modifier: Modifier = Modifier,
 ) {
@@ -292,6 +296,7 @@ private fun TabletEpisodeInfoPanel(
         offset = Offset(0f, 0f),
         blurRadius = 4f,
     )
+    val overview = episodeOverview?.trim()?.takeIf { it.isNotBlank() }
 
     Column(
         modifier = modifier.fillMaxWidth(0.8f),
@@ -343,6 +348,60 @@ private fun TabletEpisodeInfoPanel(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+        if (overview != null) {
+            Spacer(modifier = Modifier.height(14.dp))
+            TabletEpisodeSynopsisPanel(
+                overview = overview,
+                modifier = Modifier.fillMaxWidth(0.92f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun TabletEpisodeSynopsisPanel(
+    overview: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(22.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.42f),
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.36f),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.10f),
+                shape = shape,
+            )
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)),
+            )
+            Text(
+                text = overview,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
+                maxLines = 6,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

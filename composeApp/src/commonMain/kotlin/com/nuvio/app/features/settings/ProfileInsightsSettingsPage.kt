@@ -1247,7 +1247,18 @@ private fun buildProfileInsightsStats(
 ): ProfileInsightsStats {
     val now = WatchedClock.nowEpochMs()
     val recentCutoff = now - ProfileInsightsRecentWindowMs
-    val progressEntries = watchProgressState.entries.filterNot(WatchProgressEntry::isLiveTvProgressEntry)
+    val progressEntries = watchProgressState.entries
+        .filterNot(WatchProgressEntry::isLiveTvProgressEntry)
+        .map(WatchProgressEntry::normalizedCompletion)
+        .distinctBy { entry ->
+            listOf(
+                entry.parentMetaType,
+                entry.parentMetaId,
+                entry.videoId,
+                entry.seasonNumber,
+                entry.episodeNumber,
+            ).joinToString("|")
+        }
     val continueEntries = progressEntries.profileContinueWatchingEntries()
     val libraryItems = libraryState.items.filter(LibraryItem::isProfileInsightContent)
     val watchedItems = watchedState.items.filter(WatchedItem::isProfileInsightContent)
@@ -1255,6 +1266,7 @@ private fun buildProfileInsightsStats(
         watchedItems = watchedItems,
         fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
         libraryItems = libraryItems,
+        progressEntries = progressEntries,
     )
     val normalizedTypes = libraryItems.map { item -> item.type } +
         progressEntries.map { entry -> entry.parentMetaType } +
@@ -1343,6 +1355,7 @@ private fun buildProfileInsightCollections(
         watchedItems = watchedState.items,
         fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
         libraryItems = libraryState.items,
+        progressEntries = watchProgressState.entries,
     )
         .asSequence()
         .sortedByDescending { item -> item.markedAtEpochMs }
@@ -1413,6 +1426,7 @@ private fun buildProfileCompletedContentItems(
     watchedItems: List<WatchedItem>,
     fullyWatchedSeriesKeys: Set<String>,
     libraryItems: List<LibraryItem>,
+    progressEntries: List<WatchProgressEntry> = emptyList(),
 ): List<ProfileCompletedContentItem> {
     val libraryByContentKey = libraryItems
         .mapNotNull { item ->
@@ -1421,6 +1435,16 @@ private fun buildProfileCompletedContentItems(
             "${kind}:${item.id}" to item
         }
         .toMap()
+    val progressByContentKey = progressEntries
+        .filterNot(WatchProgressEntry::isLiveTvProgressEntry)
+        .map(WatchProgressEntry::normalizedCompletion)
+        .mapNotNull { entry ->
+            val kind = entry.parentMetaType.profileCompletedContentKind() ?: return@mapNotNull null
+            if (entry.parentMetaId.isBlank()) return@mapNotNull null
+            "${kind}:${entry.parentMetaId}" to entry
+        }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, entries) -> entries.maxByOrNull(WatchProgressEntry::lastUpdatedEpochMs) }
 
     val eligibleItems = watchedItems
         .asSequence()
@@ -1435,15 +1459,17 @@ private fun buildProfileCompletedContentItems(
         .mapNotNull { (key, group) ->
             val item = group.maxByOrNull(WatchedItem::markedAtEpochMs) ?: return@mapNotNull null
             val libraryItem = libraryByContentKey[key]
+            val progressItem = progressByContentKey[key]
             ProfileCompletedContentItem(
                 id = item.id,
                 kind = "movie",
                 title = item.name.trim().takeIf { it.isNotBlank() }
                     ?: libraryItem?.name?.trim()?.takeIf { it.isNotBlank() }
+                    ?: progressItem?.title?.trim()?.takeIf { it.isNotBlank() }
                     ?: item.id,
                 subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
                     ?: libraryItem?.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
-                imageUrl = item.poster ?: libraryItem?.poster ?: libraryItem?.banner,
+                imageUrl = item.poster ?: libraryItem?.poster ?: libraryItem?.banner ?: progressItem?.profileArtworkUrl(),
                 markedAtEpochMs = item.markedAtEpochMs,
             )
         }
@@ -1465,17 +1491,23 @@ private fun buildProfileCompletedContentItems(
             val representative = topLevelMarker ?: group.maxByOrNull(WatchedItem::markedAtEpochMs)
                 ?: return@mapNotNull null
             val libraryItem = libraryByContentKey[key]
+            val progressItem = progressByContentKey[key]
             ProfileCompletedContentItem(
                 id = representative.id,
                 kind = "series",
                 title = topLevelMarker?.name?.trim()?.takeIf { it.isNotBlank() }
                     ?: libraryItem?.name?.trim()?.takeIf { it.isNotBlank() }
+                    ?: progressItem?.title?.trim()?.takeIf { it.isNotBlank() }
                     ?: representative.name.trim().takeIf { it.isNotBlank() }
                     ?: representative.id,
                 subtitle = topLevelMarker?.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
                     ?: libraryItem?.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
                     ?: representative.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
-                imageUrl = topLevelMarker?.poster ?: libraryItem?.poster ?: libraryItem?.banner ?: representative.poster,
+                imageUrl = topLevelMarker?.poster
+                    ?: libraryItem?.poster
+                    ?: libraryItem?.banner
+                    ?: progressItem?.profileArtworkUrl()
+                    ?: representative.poster,
                 markedAtEpochMs = group.maxOf { item -> item.markedAtEpochMs },
             )
         }
@@ -1513,6 +1545,11 @@ private fun WatchProgressEntry.profileTrackedDurationMs(): Long {
     val explicitPercent = normalizedProgressPercent ?: return 0L
     return (durationMs * (explicitPercent / 100f)).toLong().coerceIn(0L, durationMs)
 }
+
+private fun WatchProgressEntry.profileArtworkUrl(): String? =
+    poster?.takeIf { it.isNotBlank() }
+        ?: background?.takeIf { it.isNotBlank() }
+        ?: episodeThumbnail?.takeIf { it.isNotBlank() }
 
 private fun List<LibraryItem>.profileTopGenre(): String? =
     asSequence()

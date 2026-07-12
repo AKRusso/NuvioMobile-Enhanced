@@ -3,6 +3,7 @@ package com.nuvio.app.features.cloudstream
 import co.touchlab.kermit.Logger
 import com.nuvio.app.features.addons.httpGetBytesWithHeaders
 import com.nuvio.app.features.addons.httpGetText
+import com.nuvio.app.features.addons.httpRequestRaw
 import com.nuvio.app.features.plugins.currentEpochMillis
 import com.nuvio.app.features.profiles.ProfileRepository
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +34,7 @@ actual object CloudStreamRepository {
         val profileId = ProfileRepository.activeProfileId.coerceAtLeast(1)
         if (initialized && currentProfileId == profileId) return
         currentProfileId = profileId
+        CloudStreamPlatformStorage.setActiveProfile(profileId)
         initialized = true
         _uiState.value = restoreState(profileId)
     }
@@ -40,7 +42,9 @@ actual object CloudStreamRepository {
     actual fun onProfileChanged(profileId: Int) {
         refreshJobs.values.forEach { it.cancel() }
         refreshJobs.clear()
+        CloudStreamPlatformRuntime.clear()
         currentProfileId = profileId.coerceAtLeast(1)
+        CloudStreamPlatformStorage.setActiveProfile(currentProfileId)
         initialized = false
         _uiState.value = CloudStreamUiState()
     }
@@ -51,6 +55,7 @@ actual object CloudStreamRepository {
         initialized = false
         currentProfileId = 1
         _uiState.value = CloudStreamUiState()
+        CloudStreamPlatformRuntime.clear()
         CloudStreamPlatformStorage.clearPackages()
         CloudStreamPlatformStorage.clearAllState()
     }
@@ -63,7 +68,7 @@ actual object CloudStreamRepository {
 
     actual suspend fun addRepository(rawUrl: String): AddCloudStreamRepositoryResult {
         initialize()
-        val manifestUrl = runCatching { normalizeCloudStreamRepositoryUrl(rawUrl) }
+        val manifestUrl = runCatching { resolveCloudStreamRepositoryInput(rawUrl) }
             .getOrElse { return AddCloudStreamRepositoryResult.Error(it.message ?: "Invalid repository URL") }
         if (_uiState.value.repositories.any { it.manifest.sourceUrl == manifestUrl }) {
             return AddCloudStreamRepositoryResult.Error("CloudStream repository is already added")
@@ -138,7 +143,10 @@ actual object CloudStreamRepository {
         initialize()
         val normalizedUrl = runCatching { normalizeCloudStreamRepositoryUrl(manifestUrl) }.getOrNull() ?: return
         val removedPlugins = _uiState.value.plugins.filter { it.metadata.repositoryManifestUrl == normalizedUrl }
-        removedPlugins.forEach { CloudStreamPlatformStorage.deletePackage(it.metadata.id.storageKey) }
+        removedPlugins.forEach {
+            CloudStreamPlatformRuntime.unload(it.metadata.id.value)
+            CloudStreamPlatformStorage.deletePackage(it.metadata.id.storageKey)
+        }
         _uiState.update { current ->
             current.copy(
                 repositories = current.repositories.filterNot { it.manifest.sourceUrl == normalizedUrl },
@@ -152,6 +160,96 @@ actual object CloudStreamRepository {
     actual suspend fun installPlugin(pluginId: String): CloudStreamInstallResult = installOrUpdate(pluginId)
 
     actual suspend fun updatePlugin(pluginId: String): CloudStreamInstallResult = installOrUpdate(pluginId)
+
+    actual suspend fun installAndEnablePlugins(pluginIds: List<String>): CloudStreamBulkInstallResult {
+        initialize()
+        val requestedIds = pluginIds.distinct()
+        if (requestedIds.isEmpty()) {
+            return CloudStreamBulkInstallResult(
+                requestedCount = 0,
+                installedCount = 0,
+                enabledCount = 0,
+                skippedCount = 0,
+            )
+        }
+        if (!_uiState.value.securityWarningAccepted) {
+            return CloudStreamBulkInstallResult(
+                requestedCount = requestedIds.size,
+                installedCount = 0,
+                enabledCount = 0,
+                skippedCount = 0,
+                failures = listOf(
+                    CloudStreamBulkInstallFailure(
+                        pluginName = "CloudStream",
+                        message = "Accept the third-party plugin security warning before installation",
+                    ),
+                ),
+            )
+        }
+
+        var installedCount = 0
+        var enabledCount = 0
+        var skippedCount = 0
+        val failures = mutableListOf<CloudStreamBulkInstallFailure>()
+
+        requestedIds.forEach { pluginId ->
+            val before = _uiState.value.plugins.firstOrNull { it.metadata.id.value == pluginId }
+            if (before == null) {
+                failures += CloudStreamBulkInstallFailure(pluginName = pluginId, message = "CloudStream plugin was not found")
+                return@forEach
+            }
+            if (before.isInstalling) {
+                skippedCount += 1
+                return@forEach
+            }
+            if (!before.metadata.status.canInstall) {
+                failures += CloudStreamBulkInstallFailure(
+                    pluginName = before.metadata.name,
+                    message = "This CloudStream plugin is marked as down",
+                )
+                return@forEach
+            }
+            if (!before.compatibility.isRunnable) {
+                failures += CloudStreamBulkInstallFailure(
+                    pluginName = before.metadata.name,
+                    message = before.compatibility.reason,
+                )
+                return@forEach
+            }
+
+            val needsInstall = !before.isInstalled || before.hasUpdate || !before.verified
+            val installResult = if (needsInstall) installOrUpdate(pluginId) else CloudStreamInstallResult.Success(before)
+            when (installResult) {
+                is CloudStreamInstallResult.Success -> {
+                    if (needsInstall) installedCount += 1
+                    setPluginEnabled(pluginId, true)
+                    val after = _uiState.value.plugins.firstOrNull { it.metadata.id.value == pluginId }
+                    if (after?.isRunnable == true) {
+                        enabledCount += 1
+                    } else {
+                        failures += CloudStreamBulkInstallFailure(
+                            pluginName = installResult.plugin.metadata.name,
+                            message = "The package was installed, but could not be enabled because verification or compatibility checks failed.",
+                        )
+                    }
+                }
+                is CloudStreamInstallResult.Error -> {
+                    failures += CloudStreamBulkInstallFailure(
+                        pluginName = before.metadata.name,
+                        message = installResult.message,
+                    )
+                }
+            }
+        }
+
+        return CloudStreamBulkInstallResult(
+            requestedCount = requestedIds.size,
+            installedCount = installedCount,
+            enabledCount = enabledCount,
+            skippedCount = skippedCount,
+            failures = failures,
+        )
+    }
 
     actual fun setPluginEnabled(pluginId: String, enabled: Boolean) {
         initialize()
@@ -169,12 +267,14 @@ actual object CloudStreamRepository {
                 registryRevision = current.registryRevision + if (changed) 1 else 0,
             )
         }
+        if (!enabled) CloudStreamPlatformRuntime.unload(pluginId)
         persist()
     }
 
     actual fun removePlugin(pluginId: String) {
         initialize()
         val plugin = _uiState.value.plugins.firstOrNull { it.metadata.id.value == pluginId } ?: return
+        CloudStreamPlatformRuntime.unload(pluginId)
         CloudStreamPlatformStorage.deletePackage(plugin.metadata.id.storageKey)
         _uiState.update { current ->
             current.copy(
@@ -214,6 +314,13 @@ actual object CloudStreamRepository {
     actual suspend fun load(providerId: String, data: String): Result<CloudStreamLoadItem> =
         providerResult(providerId) { load(data) }
 
+    actual suspend fun loadByExternalId(
+        providerId: String,
+        externalId: String,
+    ): Result<CloudStreamLoadItem?> = providerResult(providerId) {
+        loadByExternalId(externalId)
+    }
+
     actual suspend fun loadLinks(providerId: String, data: String): Result<List<CloudStreamPlaybackSource>> =
         providerResult(providerId) { loadLinks(data) }
 
@@ -239,8 +346,9 @@ actual object CloudStreamRepository {
             }
             CloudStreamPackageInspector.inspect(bytes)
             val expectedHash = item.metadata.fileHash
-            val verified = expectedHash?.matches(bytes) == true
+            val verified = expectedHash?.matches(bytes) ?: true
             if (expectedHash != null) require(verified) { ".cs3 SHA-256 hash mismatch" }
+            CloudStreamPlatformRuntime.unload(pluginId)
             CloudStreamPlatformStorage.savePackageAtomically(item.metadata.id.storageKey, bytes)
             val installed = item.copy(
                 installedVersion = item.metadata.version,
@@ -271,13 +379,38 @@ actual object CloudStreamRepository {
     private suspend fun fetchRepository(
         manifestUrl: String,
     ): Pair<CloudStreamRepositoryManifest, List<CloudStreamPluginMetadata>> {
-        val payload = httpGetText(manifestUrl)
-        val manifest = CloudStreamRepositoryParser.parseRepository(manifestUrl, payload)
-        val lists = manifest.pluginListUrls.map { pluginListUrl ->
-            val listPayload = httpGetText(pluginListUrl)
-            CloudStreamRepositoryParser.parsePluginList(manifest.sourceUrl, pluginListUrl, listPayload)
+        var lastManifestError: Throwable? = null
+        val manifest = cloudStreamManifestCandidates(manifestUrl).firstNotNullOfOrNull { candidate ->
+            runCatching {
+                CloudStreamRepositoryParser.parseRepository(candidate, httpGetText(candidate))
+            }.onFailure { error ->
+                lastManifestError = error
+                log.w(error) { "CloudStream repository manifest failed url=$candidate" }
+            }.getOrNull()
+        } ?: throw lastManifestError ?: IllegalStateException("CloudStream repository manifest could not be loaded")
+        var loadedListCount = 0
+        val lists = manifest.pluginListUrls.mapNotNull { pluginListUrl ->
+            runCatching {
+                val listPayload = httpGetText(pluginListUrl)
+                CloudStreamRepositoryParser.parsePluginList(manifest.sourceUrl, pluginListUrl, listPayload)
+            }.onSuccess {
+                loadedListCount += 1
+            }.onFailure { error ->
+                log.w(error) { "CloudStream plugin list failed url=$pluginListUrl" }
+            }.getOrNull()
         }
+        require(loadedListCount > 0) { "CloudStream repository plugin lists could not be loaded" }
         return manifest to CloudStreamRepositoryParser.mergePluginLists(lists)
+    }
+
+    private fun cloudStreamManifestCandidates(manifestUrl: String): List<String> {
+        val normalized = normalizeCloudStreamRepositoryUrl(manifestUrl)
+        val alternate = when {
+            "/master/repo.json" in normalized -> normalized.replace("/master/repo.json", "/main/repo.json")
+            "/main/repo.json" in normalized -> normalized.replace("/main/repo.json", "/master/repo.json")
+            else -> null
+        }
+        return listOfNotNull(normalized, alternate).distinct()
     }
 
     private fun applyRepositoryRefresh(
@@ -289,7 +422,7 @@ actual object CloudStreamRepository {
             val refreshed = plugins.map { metadata ->
                 previousById[metadata.id.value]?.copy(
                     metadata = metadata,
-                    compatibility = CloudStreamCompatibilityResolver.resolve(metadata),
+                    compatibility = resolveCompatibility(metadata),
                     enabled = previousById[metadata.id.value]?.enabled == true && metadata.status.canInstall,
                     errorMessage = null,
                 ) ?: newPluginItem(metadata)
@@ -310,7 +443,7 @@ actual object CloudStreamRepository {
     private fun newPluginItem(metadata: CloudStreamPluginMetadata): CloudStreamPluginItem =
         CloudStreamPluginItem(
             metadata = metadata,
-            compatibility = CloudStreamCompatibilityResolver.resolve(metadata),
+            compatibility = resolveCompatibility(metadata),
         )
 
     private fun markInstalling(pluginId: String, installing: Boolean, error: String?) {
@@ -353,7 +486,7 @@ actual object CloudStreamRepository {
                     (legacyStorageKey != storageKey &&
                         CloudStreamPlatformStorage.migratePackage(legacyStorageKey, storageKey))
                 )
-            val compatibility = CloudStreamCompatibilityResolver.resolve(metadata)
+            val compatibility = resolveCompatibility(metadata)
             CloudStreamPluginItem(
                 metadata = metadata,
                 compatibility = compatibility,
@@ -440,6 +573,12 @@ actual object CloudStreamRepository {
     private fun runnableProviderIds(): List<String> =
         _uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable).map { it.metadata.id.value }
 
+    private fun resolveCompatibility(metadata: CloudStreamPluginMetadata): CloudStreamCompatibility =
+        CloudStreamCompatibilityResolver.resolve(
+            metadata = metadata,
+            supportsAndroidDex = CloudStreamPlatformRuntime.supportsAndroidDex,
+        )
+
     private suspend fun <T> providerResult(
         providerId: String,
         block: suspend CloudStreamProvider.() -> T,
@@ -448,9 +587,42 @@ actual object CloudStreamRepository {
         if (providerId !in runnableProviderIds()) {
             return Result.failure(IllegalStateException("CloudStream provider is disabled or incompatible"))
         }
-        val provider = CloudStreamProviderRegistry.find(providerId)
-            ?: return Result.failure(IllegalStateException("CloudStream provider adapter was not found"))
-        return runCatching { provider.block() }
+        return runCatching {
+            val plugin = _uiState.value.plugins.firstOrNull { it.metadata.id.value == providerId }
+                ?: error("CloudStream plugin was not found")
+            val provider = CloudStreamProviderRegistry.find(providerId)
+                ?: CloudStreamPlatformRuntime.provider(plugin)
+                ?: error("CloudStream provider adapter was not found")
+            provider.block()
+        }
             .onFailure { log.w(it) { "CloudStream provider request failed id=$providerId" } }
+    }
+
+    private suspend fun resolveCloudStreamRepositoryInput(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        val expanded = when {
+            trimmed.startsWith("!", ignoreCase = false) ->
+                resolveCloudStreamShortLink("https://py.md/${trimmed.removePrefix("!")}")
+            trimmed.matches(Regex("^[a-zA-Z0-9!_-]+$")) ->
+                resolveCloudStreamShortLink("https://cutt.ly/$trimmed")
+            else -> trimmed
+        }
+        return normalizeCloudStreamRepositoryUrl(expanded)
+    }
+
+    private suspend fun resolveCloudStreamShortLink(url: String): String {
+        val response = httpRequestRaw(
+            method = "GET",
+            url = url,
+            headers = emptyMap(),
+            body = "",
+            followRedirects = false,
+        )
+        val location = response.headers["location"]?.substringBefore(',')?.trim()
+        require(!location.isNullOrBlank()) { "CloudStream short repository link did not redirect" }
+        require(!location.startsWith("https://py.md/404") && !location.startsWith("https://cutt.ly/404")) {
+            "CloudStream short repository link was not found"
+        }
+        return location
     }
 }

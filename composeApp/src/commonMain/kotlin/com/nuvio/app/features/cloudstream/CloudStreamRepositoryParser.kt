@@ -1,6 +1,8 @@
 package com.nuvio.app.features.cloudstream
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonArray
 
 object CloudStreamRepositoryParser {
     private val json = Json {
@@ -40,8 +42,13 @@ object CloudStreamRepositoryParser {
     ): List<CloudStreamPluginMetadata> {
         val normalizedRepositoryUrl = normalizeCloudStreamRepositoryUrl(repositoryManifestUrl)
         val normalizedPluginListUrl = resolveCloudStreamUrl(normalizedRepositoryUrl, pluginListUrl)
-        return json.decodeFromString<List<CloudStreamPluginMetadataDto>>(payload)
-            .mapNotNull { dto -> dto.toDomainOrNull(normalizedRepositoryUrl, normalizedPluginListUrl) }
+        return json.parseToJsonElement(payload)
+            .jsonArray
+            .mapNotNull { element ->
+                runCatching { json.decodeFromJsonElement<CloudStreamPluginMetadataDto>(element) }
+                    .getOrNull()
+                    ?.toDomainOrNull(normalizedRepositoryUrl, normalizedPluginListUrl)
+            }
     }
 
     fun mergePluginLists(lists: List<List<CloudStreamPluginMetadata>>): List<CloudStreamPluginMetadata> {
@@ -67,7 +74,7 @@ object CloudStreamRepositoryParser {
         val packageUrl = url?.trim()?.takeIf(String::isNotBlank)?.let { resolveCloudStreamUrl(pluginListUrl, it) }
             ?: return null
         val resolvedVersion = version?.takeIf { it >= 0 } ?: 0
-        val normalizedTvTypes = tvTypes
+        val normalizedTvTypes = tvTypes.orEmpty()
             .map(String::trim)
             .filter(String::isNotBlank)
         return CloudStreamPluginMetadata(
@@ -78,7 +85,7 @@ object CloudStreamRepositoryParser {
             version = resolvedVersion,
             name = displayName,
             internalName = internalName,
-            authors = authors.map(String::trim).filter(String::isNotBlank).distinct(),
+            authors = authors.orEmpty().map(String::trim).filter(String::isNotBlank).distinct(),
             description = description?.trim()?.takeIf(String::isNotBlank),
             fileSize = fileSize?.takeIf { it >= 0 },
             projectUrl = repositoryUrl?.trim()?.takeIf(String::isNotBlank)?.let { resolveCloudStreamUrl(pluginListUrl, it) },

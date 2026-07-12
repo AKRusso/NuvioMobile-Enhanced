@@ -47,6 +47,9 @@ actual fun HeroTrailerPlayerSurface(
     val latestOnReady = rememberUpdatedState(onReady)
     val latestOnEnded = rememberUpdatedState(onEnded)
     val latestOnError = rememberUpdatedState(onError)
+    var lifecycleAllowsPlayback by remember {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
+    }
     var playerContainer by remember { mutableStateOf<HeroTrailerTextureContainer?>(null) }
 
     val dataSourceFactory = remember(context) {
@@ -79,12 +82,19 @@ actual fun HeroTrailerPlayerSurface(
             }
     }
 
-    DisposableEffect(exoPlayer, lifecycleOwner) {
-        fun detachVideoSurface() {
-            playerContainer?.detachPlayer(exoPlayer)
-            playerContainer?.alpha = 0f
-        }
+    fun detachVideoSurface() {
+        playerContainer?.detachPlayer(exoPlayer)
+        playerContainer?.alpha = 0f
+    }
 
+    fun pauseOffscreenPlayback() {
+        exoPlayer.playWhenReady = false
+        exoPlayer.pause()
+        exoPlayer.volume = 0f
+        detachVideoSurface()
+    }
+
+    DisposableEffect(exoPlayer, lifecycleOwner) {
         val listener = object : Player.Listener {
             private var readyReported = false
             private var endedReported = false
@@ -119,15 +129,19 @@ actual fun HeroTrailerPlayerSurface(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
+                    lifecycleAllowsPlayback = true
+                    exoPlayer.volume = if (muted) 0f else 1f
                     if (latestPlayWhenReady.value && exoPlayer.playbackState != Player.STATE_ENDED) {
                         playerContainer?.attachPlayer(exoPlayer)
                         playerContainer?.alpha = 1f
+                        exoPlayer.playWhenReady = true
                         exoPlayer.play()
                     }
                 }
+                Lifecycle.Event.ON_PAUSE,
                 Lifecycle.Event.ON_STOP -> {
-                    exoPlayer.pause()
-                    detachVideoSurface()
+                    lifecycleAllowsPlayback = false
+                    pauseOffscreenPlayback()
                 }
                 else -> Unit
             }
@@ -144,22 +158,27 @@ actual fun HeroTrailerPlayerSurface(
         }
     }
 
-    LaunchedEffect(exoPlayer, playWhenReady) {
+    LaunchedEffect(exoPlayer, playWhenReady, lifecycleAllowsPlayback) {
         if (exoPlayer.playbackState == Player.STATE_ENDED) {
             return@LaunchedEffect
         }
-        exoPlayer.playWhenReady = playWhenReady
-        if (playWhenReady) {
+        val shouldPlay = playWhenReady && lifecycleAllowsPlayback
+        exoPlayer.playWhenReady = shouldPlay
+        if (shouldPlay) {
             playerContainer?.attachPlayer(exoPlayer)
             playerContainer?.alpha = 1f
+            exoPlayer.volume = if (muted) 0f else 1f
             exoPlayer.play()
         } else {
             exoPlayer.pause()
+            if (!lifecycleAllowsPlayback) {
+                detachVideoSurface()
+            }
         }
     }
 
-    LaunchedEffect(exoPlayer, muted) {
-        exoPlayer.volume = if (muted) 0f else 1f
+    LaunchedEffect(exoPlayer, muted, lifecycleAllowsPlayback) {
+        exoPlayer.volume = if (muted || !lifecycleAllowsPlayback) 0f else 1f
     }
 
     AndroidView(
@@ -173,8 +192,11 @@ actual fun HeroTrailerPlayerSurface(
         },
         update = { container ->
             playerContainer = container
-            if (playWhenReady) {
+            if (playWhenReady && lifecycleAllowsPlayback) {
                 container.attachPlayer(exoPlayer)
+            } else {
+                container.detachPlayer(exoPlayer)
+                container.alpha = 0f
             }
         },
     )

@@ -108,9 +108,10 @@ internal object PlayerQualityResolver {
     suspend fun resolve(
         sourceUrl: String,
         requestHeaders: Map<String, String> = emptyMap(),
+        forceHls: Boolean = false,
     ): PlayerQualitySelectionState {
         val normalizedUrl = sourceUrl.trim()
-        if (!looksLikeHlsPlaylist(normalizedUrl)) {
+        if (!forceHls && !looksLikeHlsPlaylist(normalizedUrl)) {
             return PlayerQualitySelectionState(sourceUrl = normalizedUrl)
         }
 

@@ -2285,6 +2285,8 @@
     <string name="nuvio_enhanced_poster_hero_pull_overview">PULL UP FOR OVERVIEW</string>
     <string name="nuvio_enhanced_compact_hero_title">Compact hero metadata</string>
     <string name="nuvio_enhanced_compact_hero_desc">Keeps type, genre, year and rating tighter so the hero artwork has more breathing room.</string>
+    <string name="nuvio_enhanced_hero_ratings_title">Hero ratings</string>
+    <string name="nuvio_enhanced_hero_ratings_desc">Show or hide IMDb and external rating badges on Home hero cards.</string>
     <string name="nuvio_enhanced_hero_overview_title">Hero overview card</string>
     <string name="nuvio_enhanced_hero_overview_desc">Show or hide the premium overview glass card under the hero tags.</string>
     <string name="nuvio_enhanced_hero_refresh_haptics_title">Hero refresh haptics</string>

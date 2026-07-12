@@ -1241,10 +1241,6 @@ private fun ContinueWatchingItem.localizedSmartSignal(compactAirDateText: String
         isReleaseAlert -> stringResource(Res.string.home_continue_watching_signal_new_episode)
         isNextUp && compactAirDateText != null -> stringResource(Res.string.home_continue_watching_signal_scheduled)
         isNextUp -> stringResource(Res.string.home_continue_watching_signal_next_ready)
-        remainingMinutesOrNull()?.let { minutes -> minutes <= 30L } == true ->
-            stringResource(Res.string.home_continue_watching_signal_final_stretch)
-        remainingMinutesOrNull()?.let { minutes -> minutes <= 75L } == true ->
-            stringResource(Res.string.home_continue_watching_signal_quick_finish)
         progressFraction >= 0.70f -> stringResource(Res.string.home_continue_watching_signal_almost_there)
         else -> stringResource(Res.string.home_continue_watching_signal_resume_ready)
     }

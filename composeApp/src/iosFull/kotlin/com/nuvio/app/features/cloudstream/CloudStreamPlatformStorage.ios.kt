@@ -15,8 +15,13 @@ import platform.posix.fwrite
 @OptIn(ExperimentalForeignApi::class)
 internal actual object CloudStreamPlatformStorage {
     private const val stateKey = "cloudstream_state"
+    private var activeProfileId = 1
 
     actual fun initialize(context: Any?) = Unit
+
+    actual fun setActiveProfile(profileId: Int) {
+        activeProfileId = profileId.coerceAtLeast(1)
+    }
 
     actual fun loadState(profileId: Int): String? =
         NSUserDefaults.standardUserDefaults.stringForKey("${stateKey}_$profileId")
@@ -51,8 +56,13 @@ internal actual object CloudStreamPlatformStorage {
         }
     }
 
-    actual fun packageExists(storageKey: String): Boolean =
-        NSFileManager.defaultManager.fileExistsAtPath("${packagesDirectory()}/$storageKey.cs3")
+    actual fun packageExists(storageKey: String): Boolean {
+        val manager = NSFileManager.defaultManager
+        val destination = "${packagesDirectory()}/$storageKey.cs3"
+        if (manager.fileExistsAtPath(destination)) return true
+        val legacy = "${packagesRootDirectory()}/$storageKey.cs3"
+        return manager.fileExistsAtPath(legacy) && manager.copyItemAtPath(legacy, destination, error = null)
+    }
 
     actual fun migratePackage(oldStorageKey: String, newStorageKey: String): Boolean {
         val directory = packagesDirectory()
@@ -60,7 +70,14 @@ internal actual object CloudStreamPlatformStorage {
         val destination = "$directory/$newStorageKey.cs3"
         val manager = NSFileManager.defaultManager
         if (manager.fileExistsAtPath(destination)) return true
-        return manager.fileExistsAtPath(source) && manager.moveItemAtPath(source, destination, error = null)
+        if (manager.fileExistsAtPath(source) && manager.moveItemAtPath(source, destination, error = null)) return true
+        val legacy = "${packagesRootDirectory()}/$oldStorageKey.cs3"
+        return manager.fileExistsAtPath(legacy) && manager.copyItemAtPath(legacy, destination, error = null)
+    }
+
+    actual fun packagePath(storageKey: String): String? {
+        if (!packageExists(storageKey)) return null
+        return "${packagesDirectory()}/$storageKey.cs3"
     }
 
     actual fun deletePackage(storageKey: String) {
@@ -70,7 +87,7 @@ internal actual object CloudStreamPlatformStorage {
     }
 
     actual fun clearPackages() {
-        NSFileManager.defaultManager.removeItemAtPath(packagesDirectory(), error = null)
+        NSFileManager.defaultManager.removeItemAtPath(packagesRootDirectory(), error = null)
     }
 
     actual fun clearAllState() {
@@ -80,6 +97,17 @@ internal actual object CloudStreamPlatformStorage {
     }
 
     private fun packagesDirectory(): String {
+        val directory = "${packagesRootDirectory()}/profile-$activeProfileId"
+        NSFileManager.defaultManager.createDirectoryAtPath(
+            path = directory,
+            withIntermediateDirectories = true,
+            attributes = null,
+            error = null,
+        )
+        return directory
+    }
+
+    private fun packagesRootDirectory(): String {
         val directory = NSHomeDirectory().trimEnd('/') + "/Library/Application Support/NuvioCloudStream/packages"
         NSFileManager.defaultManager.createDirectoryAtPath(
             path = directory,

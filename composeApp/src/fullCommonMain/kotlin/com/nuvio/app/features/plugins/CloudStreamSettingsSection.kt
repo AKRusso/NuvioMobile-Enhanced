@@ -15,9 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,16 +50,25 @@ import com.nuvio.app.core.ui.NuvioPrimaryButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.NuvioSurfaceCard
 import com.nuvio.app.features.cloudstream.AddCloudStreamRepositoryResult
+import com.nuvio.app.features.cloudstream.CloudStreamBulkInstallResult
 import com.nuvio.app.features.cloudstream.CloudStreamInstallResult
+import com.nuvio.app.features.cloudstream.CloudStreamPlatformSupport
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.settings.AppLanguage
+import com.nuvio.app.features.settings.ThemeSettingsRepository
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CloudStreamSettingsSection() {
-    LaunchedEffect(Unit) { CloudStreamRepository.initialize() }
+    LaunchedEffect(Unit) {
+        ThemeSettingsRepository.ensureLoaded()
+        CloudStreamRepository.initialize()
+    }
     val state by CloudStreamRepository.uiState.collectAsStateWithLifecycle()
+    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
+    val copy = remember(selectedAppLanguage) { CloudStreamSettingsCopy.forLanguage(selectedAppLanguage) }
     val scope = rememberCoroutineScope()
     var repositoryUrl by rememberSaveable { mutableStateOf("") }
     var editingRepositoryUrl by rememberSaveable { mutableStateOf<String?>(null) }
@@ -66,6 +77,8 @@ internal fun CloudStreamSettingsSection() {
     var selectedLanguage by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedType by rememberSaveable { mutableStateOf<String?>(null) }
     var message by rememberSaveable { mutableStateOf<String?>(null) }
+    var bulkInstallMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var isBulkInstalling by remember { mutableStateOf(false) }
 
     val languages = remember(state.plugins) {
         state.plugins.mapNotNull { it.metadata.language }.distinct().sorted()
@@ -86,20 +99,28 @@ internal fun CloudStreamSettingsSection() {
                 (selectedType == null || selectedType in item.metadata.rawTvTypes)
         }
     }
+    val bulkActionPlugins = remember(visiblePlugins) {
+        visiblePlugins.filter { item ->
+            !item.isInstalling &&
+                item.metadata.status.canInstall &&
+                item.compatibility.isRunnable &&
+                (!item.isRunnable || item.hasUpdate || !item.isInstalled || !item.verified)
+        }
+    }
 
-    NuvioSectionLabel("CloudStream repository ve eklentileri")
+    NuvioSectionLabel(copy.sectionTitle)
     NuvioSurfaceCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            NuvioInfoBadge(text = "${state.repositories.size} repository")
-            NuvioInfoBadge(text = "${state.plugins.count { it.isInstalled }} kurulu")
-            NuvioInfoBadge(text = "${state.plugins.count { it.isRunnable }} etkin provider")
+            NuvioInfoBadge(text = copy.repositoryCount(state.repositories.size))
+            NuvioInfoBadge(text = copy.installedCount(state.plugins.count { it.isInstalled }))
+            NuvioInfoBadge(text = copy.enabledProviderCount(state.plugins.count { it.isRunnable }))
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Standart .cs3 paketleri Android DEX kodu içerir. Nuvio yalnızca iki platform için uygulamaya derlenmiş, incelenmiş uyumluluk adaptörlerini çalıştırır; diğer eklentiler açıkça uyumsuz görünür.",
+            text = copy.sectionDescription,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -108,20 +129,20 @@ internal fun CloudStreamSettingsSection() {
     if (!state.securityWarningAccepted) {
         NuvioSurfaceCard {
             Text(
-                text = "Üçüncü taraf kod güvenlik uyarısı",
+                text = copy.securityWarningTitle,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Repository ve eklentiler Nuvio tarafından yönetilmez. Yalnızca güvendiğiniz kaynakları ekleyin. Paket hash'i doğrulanmadan provider etkinleştirilemez.",
+                text = copy.securityWarningBody,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(12.dp))
             NuvioPrimaryButton(
-                text = "Uyarıyı okudum ve kabul ediyorum",
+                text = copy.acceptSecurityWarning,
                 onClick = CloudStreamRepository::acceptSecurityWarning,
             )
         }
@@ -129,7 +150,7 @@ internal fun CloudStreamSettingsSection() {
 
     NuvioSurfaceCard {
         Text(
-            text = if (editingRepositoryUrl == null) "CloudStream repository ekle" else "Repository bağlantısını düzenle",
+            text = if (editingRepositoryUrl == null) copy.addRepositoryTitle else copy.editRepositoryTitle,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
@@ -145,9 +166,9 @@ internal fun CloudStreamSettingsSection() {
         Spacer(Modifier.height(12.dp))
         NuvioPrimaryButton(
             text = when {
-                isAddingRepository -> "Repository okunuyor…"
-                editingRepositoryUrl != null -> "Değişikliği uygula"
-                else -> "Repository ekle"
+                isAddingRepository -> copy.repositoryLoading
+                editingRepositoryUrl != null -> copy.applyRepositoryChange
+                else -> copy.addRepository
             },
             enabled = repositoryUrl.isNotBlank() && !isAddingRepository,
             onClick = {
@@ -158,14 +179,14 @@ internal fun CloudStreamSettingsSection() {
                 scope.launch {
                     if (previous != null && requested == previous) {
                         CloudStreamRepository.refreshRepository(previous)
-                        message = "Repository yenileniyor."
+                        message = copy.repositoryRefreshing
                     } else {
                         when (val result = CloudStreamRepository.addRepository(requested)) {
                             is AddCloudStreamRepositoryResult.Success -> {
                                 previous?.let(CloudStreamRepository::removeRepository)
                                 repositoryUrl = ""
                                 editingRepositoryUrl = null
-                                message = "${result.repository.name} eklendi."
+                                message = copy.repositoryAdded(result.repository.name)
                             }
                             is AddCloudStreamRepositoryResult.Error -> message = result.message
                         }
@@ -205,13 +226,13 @@ internal fun CloudStreamSettingsSection() {
                         editingRepositoryUrl = repository.manifest.sourceUrl
                     },
                 ) {
-                    Icon(Icons.Rounded.Edit, contentDescription = "Repository düzenle")
+                    Icon(Icons.Rounded.Edit, contentDescription = copy.editRepositoryContentDescription)
                 }
                 IconButton(onClick = { CloudStreamRepository.refreshRepository(repository.manifest.sourceUrl) }) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = "Repository yenile")
+                    Icon(Icons.Rounded.Refresh, contentDescription = copy.refreshRepositoryContentDescription)
                 }
                 IconButton(onClick = { CloudStreamRepository.removeRepository(repository.manifest.sourceUrl) }) {
-                    Icon(Icons.Rounded.Delete, contentDescription = "Repository kaldır")
+                    Icon(Icons.Rounded.Delete, contentDescription = copy.removeRepositoryContentDescription)
                 }
             }
         }
@@ -219,19 +240,19 @@ internal fun CloudStreamSettingsSection() {
 
     if (state.plugins.isNotEmpty()) {
         NuvioSurfaceCard {
-            Text("Eklenti ara ve filtrele", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(copy.searchAndFilterTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
             NuvioInputField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = "Eklenti, açıklama veya yazar ara",
+                placeholder = copy.searchPlaceholder,
             )
             Spacer(Modifier.height(10.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                CloudStreamFilterChip("Tüm diller", selectedLanguage == null) { selectedLanguage = null }
+                CloudStreamFilterChip(copy.allLanguages, selectedLanguage == null) { selectedLanguage = null }
                 languages.forEach { language ->
                     CloudStreamFilterChip(language.uppercase(), selectedLanguage == language) {
                         selectedLanguage = language.takeUnless { selectedLanguage == language }
@@ -244,13 +265,52 @@ internal fun CloudStreamSettingsSection() {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    CloudStreamFilterChip("Tüm türler", selectedType == null) { selectedType = null }
+                    CloudStreamFilterChip(copy.allTypes, selectedType == null) { selectedType = null }
                     types.forEach { type ->
                         CloudStreamFilterChip(type, selectedType == type) {
                             selectedType = type.takeUnless { selectedType == type }
                         }
                     }
                 }
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                enabled = state.securityWarningAccepted && !isBulkInstalling && bulkActionPlugins.isNotEmpty(),
+                onClick = {
+                    val targetIds = bulkActionPlugins.map { it.metadata.id.value }
+                    isBulkInstalling = true
+                    bulkInstallMessage = null
+                    message = null
+                    scope.launch {
+                        bulkInstallMessage = runCatching {
+                            CloudStreamRepository.installAndEnablePlugins(targetIds).toUserMessage(copy)
+                        }.getOrElse { error ->
+                            error.message ?: copy.bulkInstallFailed
+                        }
+                        isBulkInstalling = false
+                    }
+                },
+            ) {
+                Icon(Icons.Rounded.CloudDownload, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = when {
+                        isBulkInstalling -> copy.bulkInstalling
+                        bulkActionPlugins.isEmpty() -> copy.allInstalledAndActive
+                        else -> copy.installAndEnableAll(bulkActionPlugins.size)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            bulkInstallMessage?.let {
+                Spacer(Modifier.height(10.dp))
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -259,8 +319,28 @@ internal fun CloudStreamSettingsSection() {
         CloudStreamPluginCard(
             plugin = plugin,
             securityWarningAccepted = state.securityWarningAccepted,
+            copy = copy,
             onMessage = { message = it },
         )
+    }
+}
+
+private fun CloudStreamBulkInstallResult.toUserMessage(copy: CloudStreamSettingsCopy): String {
+    if (requestedCount == 0) return copy.noPluginsToInstall
+    val enabledText = copy.enabledPluginCount(enabledCount)
+    val installText = if (installedCount > 0) copy.installedOrUpdatedCount(installedCount) else ""
+    val skippedText = if (skippedCount > 0) copy.pendingOperationCount(skippedCount) else ""
+    val failureText = failures.firstOrNull()?.let { first ->
+        copy.skippedFailureCount(failures.size, first.pluginName, first.message.localizedCloudStreamFailure(copy))
+    }.orEmpty()
+    return when {
+        enabledCount > 0 -> "$enabledText$installText$skippedText$failureText."
+        failures.isNotEmpty() -> {
+            val first = failures.first()
+            copy.noPluginEnabled(first.pluginName, first.message.localizedCloudStreamFailure(copy))
+        }
+        skippedCount > 0 -> copy.onlyPendingOperations(skippedCount)
+        else -> copy.noPluginsToInstall
     }
 }
 
@@ -268,6 +348,7 @@ internal fun CloudStreamSettingsSection() {
 private fun CloudStreamPluginCard(
     plugin: CloudStreamPluginItem,
     securityWarningAccepted: Boolean,
+    copy: CloudStreamSettingsCopy,
     onMessage: (String) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -283,7 +364,7 @@ private fun CloudStreamPluginCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(plugin.metadata.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    plugin.metadata.authors.joinToString().ifBlank { "Yazar belirtilmemiş" },
+                    plugin.metadata.authors.joinToString().ifBlank { copy.unknownAuthor },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -296,22 +377,35 @@ private fun CloudStreamPluginCard(
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            plugin.metadata.description ?: "Açıklama yok.",
+            plugin.metadata.description ?: copy.noDescription,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(10.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            NuvioInfoBadge(text = "Güncel v${plugin.metadata.version}")
-            plugin.installedVersion?.let { NuvioInfoBadge(text = "Kurulu v$it") }
+            NuvioInfoBadge(text = copy.currentVersion(plugin.metadata.version))
+            plugin.installedVersion?.let { NuvioInfoBadge(text = copy.installedVersion(it)) }
             plugin.metadata.language?.let { NuvioInfoBadge(text = it.uppercase()) }
             plugin.metadata.rawTvTypes.forEach { NuvioInfoBadge(text = it) }
-            NuvioInfoBadge(text = if (plugin.verified) "SHA-256 doğrulandı" else "Hash doğrulanmadı")
-            NuvioInfoBadge(text = if (plugin.compatibility.isRunnable) "Android + iOS uyumlu" else "Runtime uyumsuz")
+            NuvioInfoBadge(
+                text = when {
+                    plugin.metadata.fileHash != null && plugin.verified -> copy.sha256Verified
+                    plugin.metadata.fileHash != null -> copy.hashUnverified
+                    plugin.verified -> copy.packageChecked
+                    else -> copy.packageUnchecked
+                },
+            )
+            NuvioInfoBadge(
+                text = when (plugin.compatibility.platformSupport) {
+                    CloudStreamPlatformSupport.AndroidAndIos -> copy.androidAndIosCompatible
+                    CloudStreamPlatformSupport.AndroidOnly -> copy.androidCompatible
+                    CloudStreamPlatformSupport.Unsupported -> copy.runtimeIncompatible
+                },
+            )
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            text = plugin.compatibility.reason,
+            text = copy.compatibilityReason(plugin.compatibility.platformSupport),
             style = MaterialTheme.typography.bodySmall,
             color = if (plugin.compatibility.isRunnable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
         )
@@ -333,8 +427,8 @@ private fun CloudStreamPluginCard(
                         }
                         onMessage(
                             when (result) {
-                                is CloudStreamInstallResult.Success -> "${plugin.metadata.name} paketi doğrulandı ve kuruldu."
-                                is CloudStreamInstallResult.Error -> result.message
+                                is CloudStreamInstallResult.Success -> copy.pluginInstalled(result.plugin.metadata.name)
+                                is CloudStreamInstallResult.Error -> result.message.localizedCloudStreamFailure(copy)
                             },
                         )
                     }
@@ -342,10 +436,10 @@ private fun CloudStreamPluginCard(
             ) {
                 Text(
                     when {
-                        plugin.isInstalling -> "İndiriliyor…"
-                        plugin.hasUpdate -> "Güncelle"
-                        plugin.isInstalled -> "Yeniden kur"
-                        else -> "Kur"
+                        plugin.isInstalling -> copy.downloading
+                        plugin.hasUpdate -> copy.update
+                        plugin.isInstalled -> copy.reinstall
+                        else -> copy.install
                     },
                 )
             }
@@ -354,12 +448,205 @@ private fun CloudStreamPluginCard(
                     modifier = Modifier.weight(1f),
                     onClick = { CloudStreamRepository.removePlugin(plugin.metadata.id.value) },
                 ) {
-                    Text("Kaldır")
+                    Text(copy.remove)
                 }
             }
         }
     }
 }
+
+private class CloudStreamSettingsCopy private constructor(
+    private val turkish: Boolean,
+) {
+    val sectionTitle: String =
+        if (turkish) "CloudStream repository ve eklentileri" else "CloudStream repositories and plugins"
+    val sectionDescription: String =
+        if (turkish) {
+            "Standart .cs3 paketleri indirilen üçüncü taraf kodudur. Android full sürümü bu paketleri CloudStream çalışma zamanı ile çalıştırabilir; iOS yalnızca uygulamaya derlenmiş uyumluluk adaptörlerini kullanabilir. Yalnızca güvendiğiniz depoları ve eklentileri kurun."
+        } else {
+            "Standard .cs3 packages are downloaded third-party code. Android full builds can run them with the embedded CloudStream runtime; iOS can only use compatibility adapters compiled into the app. Only install repositories and plugins you trust."
+        }
+    val securityWarningTitle: String =
+        if (turkish) "Üçüncü taraf kod güvenlik uyarısı" else "Third-party code security warning"
+    val securityWarningBody: String =
+        if (turkish) {
+            "Repository ve eklentiler Nuvio tarafından yönetilmez. Yalnızca güvendiğiniz kaynakları ekleyin. Paket denetlenmeden provider etkinleştirilemez."
+        } else {
+            "Repositories and plugins are not managed by Nuvio. Only add sources you trust. A provider cannot be enabled until its package is checked."
+        }
+    val acceptSecurityWarning: String =
+        if (turkish) "Uyarıyı okudum ve kabul ediyorum" else "I have read and accept the warning"
+    val addRepositoryTitle: String =
+        if (turkish) "CloudStream repository ekle" else "Add CloudStream repository"
+    val editRepositoryTitle: String =
+        if (turkish) "Repository bağlantısını düzenle" else "Edit repository link"
+    val repositoryLoading: String =
+        if (turkish) "Repository okunuyor…" else "Reading repository..."
+    val applyRepositoryChange: String =
+        if (turkish) "Değişikliği uygula" else "Apply changes"
+    val addRepository: String =
+        if (turkish) "Repository ekle" else "Add repository"
+    val repositoryRefreshing: String =
+        if (turkish) "Repository yenileniyor." else "Refreshing repository."
+    val editRepositoryContentDescription: String =
+        if (turkish) "Repository düzenle" else "Edit repository"
+    val refreshRepositoryContentDescription: String =
+        if (turkish) "Repository yenile" else "Refresh repository"
+    val removeRepositoryContentDescription: String =
+        if (turkish) "Repository kaldır" else "Remove repository"
+    val searchAndFilterTitle: String =
+        if (turkish) "Eklenti ara ve filtrele" else "Search and filter plugins"
+    val searchPlaceholder: String =
+        if (turkish) "Eklenti, açıklama veya yazar ara" else "Search plugin, description, or author"
+    val allLanguages: String =
+        if (turkish) "Tüm diller" else "All languages"
+    val allTypes: String =
+        if (turkish) "Tüm türler" else "All types"
+    val bulkInstallFailed: String =
+        if (turkish) "Toplu kurulum tamamlanamadı." else "Bulk install could not be completed."
+    val bulkInstalling: String =
+        if (turkish) "Toplu kurulum yapılıyor…" else "Bulk install in progress..."
+    val allInstalledAndActive: String =
+        if (turkish) "Tümü kurulu ve aktif" else "Everything is installed and active"
+    val noPluginsToInstall: String =
+        if (turkish) "Kurulacak eklenti bulunamadı." else "No plugins to install."
+    val unknownAuthor: String =
+        if (turkish) "Yazar belirtilmemiş" else "Author not specified"
+    val noDescription: String =
+        if (turkish) "Açıklama yok." else "No description."
+    val sha256Verified: String =
+        if (turkish) "SHA-256 doğrulandı" else "SHA-256 verified"
+    val hashUnverified: String =
+        if (turkish) "Hash doğrulanmadı" else "Hash unverified"
+    val packageChecked: String =
+        if (turkish) "Paket denetlendi" else "Package checked"
+    val packageUnchecked: String =
+        if (turkish) "Paket denetlenmedi" else "Package unchecked"
+    val androidAndIosCompatible: String =
+        if (turkish) "Android + iOS uyumlu" else "Android + iOS compatible"
+    val androidCompatible: String =
+        if (turkish) "Android uyumlu" else "Android compatible"
+    val runtimeIncompatible: String =
+        if (turkish) "Runtime uyumsuz" else "Runtime incompatible"
+    val downloading: String =
+        if (turkish) "İndiriliyor…" else "Downloading..."
+    val update: String =
+        if (turkish) "Güncelle" else "Update"
+    val reinstall: String =
+        if (turkish) "Yeniden kur" else "Reinstall"
+    val install: String =
+        if (turkish) "Kur" else "Install"
+    val remove: String =
+        if (turkish) "Kaldır" else "Remove"
+    val acceptSecurityWarningFailure: String =
+        if (turkish) "Üçüncü taraf eklenti güvenlik uyarısını kabul edin." else "Accept the third-party plugin security warning."
+    val pluginNotFoundFailure: String =
+        if (turkish) "Eklenti bulunamadı." else "Plugin was not found."
+    val pluginDownFailure: String =
+        if (turkish) "Bu eklenti şu anda kapalı görünüyor." else "This plugin appears to be down."
+    val packageEnableFailure: String =
+        if (turkish) {
+            "Paket kuruldu ama doğrulama/uyumluluk şartları nedeniyle aktif edilemedi."
+        } else {
+            "The package was installed, but could not be enabled because verification or compatibility checks failed."
+        }
+
+    fun repositoryCount(count: Int): String =
+        if (turkish) "$count repository" else "$count repositories"
+
+    fun installedCount(count: Int): String =
+        if (turkish) "$count kurulu" else "$count installed"
+
+    fun enabledProviderCount(count: Int): String =
+        if (turkish) "$count etkin provider" else "$count enabled providers"
+
+    fun repositoryAdded(name: String): String =
+        if (turkish) "$name eklendi." else "$name added."
+
+    fun installAndEnableAll(count: Int): String =
+        if (turkish) "Tümünü kur ve aktif et ($count)" else "Install and enable all ($count)"
+
+    fun enabledPluginCount(count: Int): String =
+        if (turkish) "$count eklenti aktif edildi" else "$count plugins enabled"
+
+    fun installedOrUpdatedCount(count: Int): String =
+        if (turkish) ", $count paket kuruldu/güncellendi" else ", $count packages installed/updated"
+
+    fun pendingOperationCount(count: Int): String =
+        if (turkish) ", $count işlem zaten sürüyor" else ", $count operations already in progress"
+
+    fun skippedFailureCount(count: Int, pluginName: String, message: String): String =
+        if (turkish) {
+            ". $count eklenti atlandı: $pluginName - $message"
+        } else {
+            ". $count plugins skipped: $pluginName - $message"
+        }
+
+    fun noPluginEnabled(pluginName: String, message: String): String =
+        if (turkish) {
+            "Hiçbir eklenti aktif edilemedi: $pluginName - $message"
+        } else {
+            "No plugins could be enabled: $pluginName - $message"
+        }
+
+    fun onlyPendingOperations(count: Int): String =
+        if (turkish) "$count işlem zaten sürüyor." else "$count operations are already in progress."
+
+    fun currentVersion(version: Int): String =
+        if (turkish) "Güncel v$version" else "Current v$version"
+
+    fun installedVersion(version: Int): String =
+        if (turkish) "Kurulu v$version" else "Installed v$version"
+
+    fun compatibilityReason(platformSupport: CloudStreamPlatformSupport): String =
+        when (platformSupport) {
+            CloudStreamPlatformSupport.AndroidAndIos -> {
+                if (turkish) {
+                    "Bu provider, Nuvio Enhanced içine derlenmiş incelenmiş çapraz platform adaptörü kullanır."
+                } else {
+                    "This provider has a reviewed cross-platform adapter compiled into Nuvio Enhanced."
+                }
+            }
+            CloudStreamPlatformSupport.AndroidOnly -> {
+                if (turkish) {
+                    "Android full sürümü bu standart CloudStream .cs3 paketini gömülü CloudStream çalışma zamanı ile çalıştırır."
+                } else {
+                    "Android full builds execute this standard CloudStream .cs3 package with the embedded CloudStream runtime."
+                }
+            }
+            CloudStreamPlatformSupport.Unsupported -> {
+                if (turkish) {
+                    "Bu standart .cs3 paketi Android DEX kodu içerir ve iOS üzerinde çalışamaz."
+                } else {
+                    "This standard .cs3 package contains Android DEX code, which cannot run on iOS."
+                }
+            }
+        }
+
+    fun pluginInstalled(name: String): String =
+        if (turkish) "$name paketi denetlendi ve kuruldu." else "$name package was checked and installed."
+
+    companion object {
+        fun forLanguage(language: AppLanguage): CloudStreamSettingsCopy =
+            CloudStreamSettingsCopy(turkish = language == AppLanguage.TURKISH)
+    }
+}
+
+private fun String.localizedCloudStreamFailure(copy: CloudStreamSettingsCopy): String =
+    when (this) {
+        "Accept the third-party plugin security warning before installation",
+        "Accept the third-party plugin security warning.",
+        "Üçüncü taraf eklenti güvenlik uyarısını kabul edin." -> copy.acceptSecurityWarningFailure
+        "CloudStream plugin was not found",
+        "Plugin was not found.",
+        "Eklenti bulunamadı." -> copy.pluginNotFoundFailure
+        "This CloudStream plugin is marked as down",
+        "This plugin appears to be down.",
+        "Bu eklenti şu anda kapalı görünüyor." -> copy.pluginDownFailure
+        "The package was installed, but could not be enabled because verification or compatibility checks failed.",
+        "Paket kuruldu ama doğrulama/uyumluluk şartları nedeniyle aktif edilemedi." -> copy.packageEnableFailure
+        else -> this
+    }
 
 @Composable
 private fun CloudStreamFilterChip(

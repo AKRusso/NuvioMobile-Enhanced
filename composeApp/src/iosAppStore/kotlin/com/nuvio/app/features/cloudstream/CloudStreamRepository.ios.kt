@@ -21,6 +21,7 @@ actual object CloudStreamRepository {
     actual fun removePlugin(pluginId: String) = Unit
     actual suspend fun getMainPage(providerId: String, page: Int) = Result.failure<List<Pair<String, List<CloudStreamSearchItem>>>>(UnsupportedOperationException())
     actual suspend fun search(query: String, providerId: String?) = emptyList<Result<List<CloudStreamSearchItem>>>()
+    actual suspend fun loadByExternalId(providerId: String, externalId: String) = Result.failure<CloudStreamLoadItem?>(UnsupportedOperationException())
     actual suspend fun load(providerId: String, data: String) = Result.failure<CloudStreamLoadItem>(UnsupportedOperationException())
     actual suspend fun loadLinks(providerId: String, data: String) = Result.failure<List<CloudStreamPlaybackSource>>(UnsupportedOperationException())
 }

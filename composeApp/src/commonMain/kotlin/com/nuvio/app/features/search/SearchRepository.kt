@@ -16,6 +16,7 @@ import com.nuvio.app.features.catalog.nextCatalogPaginationState
 import com.nuvio.app.features.catalog.supportsPagination
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
+import com.nuvio.app.features.cloudstream.CloudStreamSearchRouteIndex
 import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
@@ -29,12 +30,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withTimeoutOrNull
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
@@ -60,7 +70,11 @@ object SearchRepository {
         }
 
         CloudStreamRepository.initialize()
-        val cloudPlugins = CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable)
+        val cloudPlugins = if (normalizedQuery.length >= CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH) {
+            CloudStreamRepository.uiState.value.plugins.filter(CloudStreamPluginItem::isRunnable)
+        } else {
+            emptyList()
+        }
         val activeAddons = addons.enabledAddons().filter { it.manifest != null }
         if (activeAddons.isEmpty() && cloudPlugins.isEmpty()) {
             activeJob?.cancel()
@@ -151,7 +165,14 @@ object SearchRepository {
 
             val completedResults = results.filterNotNull()
             val sections = results.orderedSections()
-            val cloudSections = cloudSearchSections(normalizedQuery, cloudPlugins)
+            val cloudSections = cloudSearchSections(normalizedQuery, cloudPlugins) { section ->
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = true,
+                        sections = (current.sections + section).distinctBy(HomeCatalogSection::key),
+                    )
+                }
+            }
             val firstFailure = completedResults.firstNotNullOfOrNull { it.error?.message }
             val allFailed = completedResults.isNotEmpty() && completedResults.all { it.error != null }
             val providerSections = sections + cloudSections
@@ -178,21 +199,54 @@ object SearchRepository {
     private suspend fun cloudSearchSections(
         query: String,
         plugins: List<CloudStreamPluginItem>,
-    ): List<HomeCatalogSection> = plugins.mapNotNull { plugin ->
-        val result = CloudStreamRepository.search(query, plugin.metadata.id.value)
+        onSection: (HomeCatalogSection) -> Unit,
+    ): List<HomeCatalogSection> = coroutineScope {
+        val semaphore = Semaphore(CLOUDSTREAM_SEARCH_CONCURRENCY)
+        val sectionMutex = Mutex()
+        val sectionsByProviderId = mutableMapOf<String, HomeCatalogSection>()
+
+        plugins.map { plugin ->
+            async {
+                val section = semaphore.withPermit {
+                    withTimeoutOrNull(CLOUDSTREAM_SEARCH_PROVIDER_TIMEOUT_MS) {
+                        plugin.toCloudSearchSection(query)
+                    }
+                } ?: return@async
+
+                sectionMutex.withLock {
+                    sectionsByProviderId[plugin.metadata.id.value] = section
+                }
+                onSection(section)
+            }
+        }.awaitAll()
+
+        // Preserve repository order in the stable/final state even though sections are
+        // displayed progressively in network completion order while the search runs.
+        plugins.mapNotNull { plugin -> sectionsByProviderId[plugin.metadata.id.value] }
+    }
+
+    private suspend fun CloudStreamPluginItem.toCloudSearchSection(
+        query: String,
+    ): HomeCatalogSection? {
+        val result = CloudStreamRepository.search(query, metadata.id.value)
             .firstOrNull()
             ?.getOrNull()
             .orEmpty()
-        if (result.isEmpty()) return@mapNotNull null
+        if (result.isEmpty()) return null
+        CloudStreamSearchRouteIndex.remember(
+            providerId = metadata.id.value,
+            query = query,
+            items = result,
+        )
         val previews = result.map { it.toMetaPreview() }
         val contentType = result.first().type.nuvioType
-        HomeCatalogSection(
-            key = "cloudstream:${plugin.metadata.id.storageKey}:search:${query.lowercase()}",
-            title = "${plugin.metadata.name} · CloudStream",
-            subtitle = plugin.metadata.language?.uppercase() ?: "CloudStream",
-            addonName = plugin.metadata.name,
+        return HomeCatalogSection(
+            key = "cloudstream:${metadata.id.storageKey}:search:${query.lowercase()}",
+            title = "${metadata.name} · CloudStream",
+            subtitle = metadata.language?.uppercase() ?: "CloudStream",
+            addonName = metadata.name,
             target = CatalogTarget.CloudStream(
-                providerId = plugin.metadata.id.value,
+                providerId = metadata.id.value,
                 categoryName = "search",
                 searchQuery = query,
                 contentType = contentType,
@@ -666,3 +720,7 @@ private fun String.typeSortKey(): String =
         "anime" -> "2_anime"
         else -> "9_$this"
     }
+
+private const val CLOUDSTREAM_SEARCH_MIN_QUERY_LENGTH = 3
+private const val CLOUDSTREAM_SEARCH_CONCURRENCY = 8
+private const val CLOUDSTREAM_SEARCH_PROVIDER_TIMEOUT_MS = 15_000L
