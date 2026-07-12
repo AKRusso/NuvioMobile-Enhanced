@@ -1212,10 +1212,11 @@
     </plurals>
     <string name="cw_new_episode">Neue Folge</string>
     <string name="cw_new_season">Neue Staffel</string>
-    <string name="theme_aurora">Aurora</string>
-    <string name="theme_prism">Prisma</string>
-    <string name="theme_nebula">Nebel</string>
-    <string name="theme_opal">Opal</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Amethyst</string>
+    <string name="theme_blossom">Blüte</string>
+    <string name="theme_lagoon">Lagune</string>
+    <string name="theme_sunset">Sonnenuntergang</string>
     <string name="theme_custom">Benutzerdefiniert</string>
     <string name="settings_appearance_theme_classic">Klassische Designs</string>
     <string name="settings_appearance_theme_enhanced">Erweiterte Designs</string>

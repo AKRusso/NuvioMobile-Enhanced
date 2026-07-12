@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -199,19 +198,7 @@ fun NuvioTheme(
 ) {
     val basePalette = ThemeColors.getColorPalette(appTheme, customFirst, customSecond)
     val animatedVisuals = rememberAnimatedThemeVisuals(appTheme, customFirst, customSecond, animationStyle)
-    val palette = if (animatedVisuals != null) {
-        basePalette.copy(
-            secondary = animatedVisuals.accent,
-            secondaryVariant = animatedVisuals.accentStrong,
-            focusRing = lerp(basePalette.focusRing, animatedVisuals.accent, 0.28f),
-            focusBackground = lerp(basePalette.focusBackground, animatedVisuals.accent, 0.10f),
-            background = lerp(basePalette.background, animatedVisuals.accent, 0.025f),
-            backgroundElevated = lerp(basePalette.backgroundElevated, animatedVisuals.accent, 0.045f),
-            backgroundCard = lerp(basePalette.backgroundCard, animatedVisuals.accent, 0.065f),
-        )
-    } else {
-        basePalette
-    }
+    val palette = basePalette
     val colorScheme = buildColorScheme(palette, amoled = amoled)
     val tokens = defaultNuvioThemeTokens(palette, amoled = amoled, colorScheme = colorScheme)
 

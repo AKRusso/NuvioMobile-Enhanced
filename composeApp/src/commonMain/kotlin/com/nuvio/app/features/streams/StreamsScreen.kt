@@ -1,7 +1,6 @@
 package com.nuvio.app.features.streams
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -77,6 +76,8 @@ import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.core.ui.rememberAnimatedLineBrush
+import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
 import com.nuvio.app.features.downloads.DownloadsRepository
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -805,32 +806,37 @@ private fun FilterChip(
         animationSpec = tween(durationMillis = 140),
         label = "filter_chip_scale",
     )
-    val containerColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        },
-        animationSpec = tween(durationMillis = 180),
-        label = "filter_chip_container",
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (isSelected) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        },
-        animationSpec = tween(durationMillis = 180),
-        label = "filter_chip_content",
-    )
+    val borderBrush = rememberAnimatedLineBrush().takeIf { isSelected }
+    val selectedBackground = rememberAnimatedSoftBrush().takeIf { isSelected }
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = Modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .clip(RoundedCornerShape(16.dp))
-            .background(containerColor)
+            .clip(shape)
+            .then(
+                if (selectedBackground != null) {
+                    Modifier.background(selectedBackground, shape)
+                } else {
+                    Modifier.background(
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        },
+                        shape,
+                    )
+                },
+            )
+            .then(
+                if (borderBrush != null) {
+                    Modifier.border(width = 1.5.dp, brush = borderBrush, shape = shape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -845,7 +851,7 @@ private fun FilterChip(
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 letterSpacing = 0.1.sp,
             ),
-            color = contentColor,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1,
         )
     }

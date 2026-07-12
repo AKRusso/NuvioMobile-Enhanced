@@ -1811,10 +1811,11 @@
     <string name="plugins_repository_filter_desc">Repolar arasında hızlı geçiş yap, sonra tüm listeyi kaydırmadan görünen provider'ları aç veya kapat.</string>
     <string name="plugins_repository_filter_enable_visible">Görünenleri aç</string>
     <string name="plugins_repository_filter_disable_visible">Görünenleri kapat</string>
-    <string name="theme_aurora">Aurora</string>
-    <string name="theme_prism">Prizma</string>
-    <string name="theme_nebula">Bulutsu</string>
-    <string name="theme_opal">Opal</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametist</string>
+    <string name="theme_blossom">Çiçek</string>
+    <string name="theme_lagoon">Lagün</string>
+    <string name="theme_sunset">Gün batımı</string>
     <string name="theme_custom">Özel</string>
     <string name="settings_appearance_theme_classic">Klasik temalar</string>
     <string name="settings_appearance_theme_enhanced">Gelişmiş temalar</string>

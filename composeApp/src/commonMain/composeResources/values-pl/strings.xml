@@ -1869,10 +1869,11 @@
     <string name="updates_github_api_error">Błąd API GitHub releases: %1$d</string>
     <string name="updates_no_channel_release">Nie opublikowano jeszcze żadnej aktualizacji.</string>
     <string name="updates_release_missing_title">Wydanie nie ma tagu ani nazwy</string>
-    <string name="theme_aurora">Zorza</string>
-    <string name="theme_prism">Pryzmat</string>
-    <string name="theme_nebula">Mgławica</string>
-    <string name="theme_opal">Opal</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametyst</string>
+    <string name="theme_blossom">Kwiat</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Zachód słońca</string>
     <string name="theme_custom">Własny</string>
     <string name="settings_appearance_theme_classic">Motywy klasyczne</string>
     <string name="settings_appearance_theme_enhanced">Motywy rozszerzone</string>

@@ -1917,10 +1917,11 @@
         <item quantity="one">%d cím</item>
         <item quantity="other">%d cím</item>
     </plurals>
-    <string name="theme_aurora">Auróra</string>
-    <string name="theme_prism">Prizma</string>
-    <string name="theme_nebula">Köd</string>
-    <string name="theme_opal">Opál</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametiszt</string>
+    <string name="theme_blossom">Virág</string>
+    <string name="theme_lagoon">Lagúna</string>
+    <string name="theme_sunset">Naplemente</string>
     <string name="theme_custom">Egyéni</string>
     <string name="settings_appearance_theme_classic">Klasszikus témák</string>
     <string name="settings_appearance_theme_enhanced">Továbbfejlesztett témák</string>

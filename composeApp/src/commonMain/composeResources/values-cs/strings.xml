@@ -1923,10 +1923,11 @@
     <string name="player_torrent_starting_engine">Spouštění enginu P2P…</string>
     <string name="player_error_failed_start_torrent">Nepodařilo se spustit torrent: %1$s</string>
     <string name="player_error_torrent">Chyba torrentu: %1$s</string>
-    <string name="theme_aurora">Polární záře</string>
-    <string name="theme_prism">Hranol</string>
-    <string name="theme_nebula">Mlhovina</string>
-    <string name="theme_opal">Opál</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametyst</string>
+    <string name="theme_blossom">Květ</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Západ slunce</string>
     <string name="theme_custom">Vlastní</string>
     <string name="settings_appearance_theme_classic">Klasická témata</string>
     <string name="settings_appearance_theme_enhanced">Vylepšená témata</string>

@@ -53,6 +53,7 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
+import com.nuvio.app.core.ui.rememberAnimatedLineBrush
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.settings_homescreen_collection_with_addon
@@ -369,22 +370,36 @@ internal fun SettingsSwitchRow(
                 )
             }
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            modifier = Modifier.padding(start = 4.dp),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = tokens.colors.onAccent,
-                checkedTrackColor = tokens.colors.accent,
-                uncheckedThumbColor = tokens.colors.textMuted,
-                uncheckedTrackColor = if (highlighted) {
-                    tokens.colors.accent.copy(alpha = 0.28f)
-                } else {
-                    tokens.colors.borderDefault
-                },
-            ),
-        )
+        val switchBorder = rememberAnimatedLineBrush().takeIf { checked && enabled }
+        val switchShape = RoundedCornerShape(999.dp)
+        Box(
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .then(
+                    if (switchBorder != null) {
+                        Modifier.border(width = 1.5.dp, brush = switchBorder, shape = switchShape)
+                    } else {
+                        Modifier
+                    },
+                )
+                .padding(2.dp),
+        ) {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = tokens.colors.onAccent,
+                    checkedTrackColor = tokens.colors.accent,
+                    uncheckedThumbColor = tokens.colors.textMuted,
+                    uncheckedTrackColor = if (highlighted) {
+                        tokens.colors.accent.copy(alpha = 0.28f)
+                    } else {
+                        tokens.colors.borderDefault
+                    },
+                ),
+            )
+        }
     }
 }
 

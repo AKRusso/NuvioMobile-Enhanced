@@ -1341,10 +1341,11 @@
     <string name="unit_bytes_kb">KB</string>
     <string name="unit_bytes_mb">MB</string>
     <string name="unit_bytes_gb">GB</string>
-    <string name="theme_aurora">Aurora</string>
-    <string name="theme_prism">Prisma</string>
-    <string name="theme_nebula">Nebulosa</string>
-    <string name="theme_opal">Opala</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametista</string>
+    <string name="theme_blossom">Flor</string>
+    <string name="theme_lagoon">Lagoa</string>
+    <string name="theme_sunset">Pôr do sol</string>
     <string name="theme_custom">Personalizado</string>
     <string name="settings_appearance_theme_classic">Temas clássicos</string>
     <string name="settings_appearance_theme_enhanced">Temas Enhanced</string>

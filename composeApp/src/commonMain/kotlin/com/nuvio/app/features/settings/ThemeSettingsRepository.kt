@@ -62,15 +62,7 @@ object ThemeSettingsRepository {
     private fun loadFromDisk() {
         hasLoaded = true
         val stored = ThemeSettingsStorage.loadSelectedTheme()
-        val theme = if (stored != null) {
-            try {
-                AppTheme.valueOf(stored)
-            } catch (_: IllegalArgumentException) {
-                AppTheme.WHITE
-            }
-        } else {
-            AppTheme.WHITE
-        }
+        val theme = stored.toAppTheme()
         _selectedTheme.value = theme
         _customThemeFirstColor.value = ThemeSettingsStorage.loadCustomThemeFirstColor()
             .toThemeAccentColor(ThemeAccentColor.PINK)
@@ -161,3 +153,12 @@ private fun String?.toThemeAccentColor(fallback: ThemeAccentColor): ThemeAccentC
 
 private fun String?.toThemeAnimationStyle(fallback: ThemeAnimationStyle): ThemeAnimationStyle =
     this?.let { stored -> ThemeAnimationStyle.entries.firstOrNull { it.name == stored } } ?: fallback
+
+private fun String?.toAppTheme(): AppTheme = when (this) {
+    "AURORA", "LAVENDER" -> AppTheme.MESSENGER
+    "PRISM" -> AppTheme.AMETHYST
+    "NEBULA", "ORCHID" -> AppTheme.BLOSSOM
+    "OPAL", "TWILIGHT" -> AppTheme.LAGOON
+    "ULTRAVIOLET" -> AppTheme.SUNSET
+    else -> this?.let { stored -> AppTheme.entries.firstOrNull { it.name == stored } } ?: AppTheme.WHITE
+}

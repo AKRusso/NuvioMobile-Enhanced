@@ -108,50 +108,59 @@ object ThemeColors {
         backgroundCard = Color(0xFF241A1F),
     )
 
-    val Aurora = ThemeColorPalette(
-        secondary = Color(0xFFFF5F9E),
-        secondaryVariant = Color(0xFF8B5CF6),
-        nativeAccentHex = "#FF5F9E",
-        focusRing = Color(0xFF67D5FF),
-        focusBackground = Color(0xFF2A1838),
-        background = Color(0xFF0E0C12),
-        backgroundElevated = Color(0xFF1A1720),
-        backgroundCard = Color(0xFF231D2A),
+    val Messenger = ThemeColorPalette(
+        secondary = Color(0xFF168AFF),
+        secondaryVariant = Color(0xFF0072FF),
+        nativeAccentHex = "#168AFF",
+        focusRing = Color(0xFF38BDF8),
+        focusBackground = Color(0xFF132B45),
+        background = Color(0xFF090E15),
+        backgroundElevated = Color(0xFF131A23),
+        backgroundCard = Color(0xFF192432),
     )
 
-    val Prism = ThemeColorPalette(
-        secondary = Color(0xFF4CC9FF),
-        secondaryVariant = Color(0xFFFF4FB3),
-        nativeAccentHex = "#4CC9FF",
-        onSecondary = Color(0xFF101318),
-        focusRing = Color(0xFFFFFF66),
-        focusBackground = Color(0xFF172B38),
-        background = Color(0xFF0B0E12),
-        backgroundElevated = Color(0xFF171B20),
-        backgroundCard = Color(0xFF1D2429),
+    val Amethyst = ThemeColorPalette(
+        secondary = Color(0xFF8B5CF6),
+        secondaryVariant = Color(0xFF7C3AED),
+        nativeAccentHex = "#8B5CF6",
+        focusRing = Color(0xFFA855F7),
+        focusBackground = Color(0xFF281A3D),
+        background = Color(0xFF0F0B14),
+        backgroundElevated = Color(0xFF1B1522),
+        backgroundCard = Color(0xFF251B2F),
     )
 
-    val Nebula = ThemeColorPalette(
-        secondary = Color(0xFF9D68FF),
-        secondaryVariant = Color(0xFF38D9D0),
-        nativeAccentHex = "#9D68FF",
-        focusRing = Color(0xFFFF62B0),
-        focusBackground = Color(0xFF291B3B),
-        background = Color(0xFF0E0B13),
-        backgroundElevated = Color(0xFF1B1721),
-        backgroundCard = Color(0xFF251D2D),
+    val Blossom = ThemeColorPalette(
+        secondary = Color(0xFFEC4899),
+        secondaryVariant = Color(0xFFDB2777),
+        nativeAccentHex = "#EC4899",
+        focusRing = Color(0xFFF472B6),
+        focusBackground = Color(0xFF3D1830),
+        background = Color(0xFF120A10),
+        backgroundElevated = Color(0xFF21141D),
+        backgroundCard = Color(0xFF2D1926),
     )
 
-    val Opal = ThemeColorPalette(
-        secondary = Color(0xFF57E0C1),
-        secondaryVariant = Color(0xFFFF7FAE),
-        nativeAccentHex = "#57E0C1",
-        onSecondary = Color(0xFF101318),
-        focusRing = Color(0xFFC7A8FF),
-        focusBackground = Color(0xFF19342F),
-        background = Color(0xFF0B100F),
-        backgroundElevated = Color(0xFF171D1C),
-        backgroundCard = Color(0xFF1C2724),
+    val Lagoon = ThemeColorPalette(
+        secondary = Color(0xFF14B8A6),
+        secondaryVariant = Color(0xFF0891B2),
+        nativeAccentHex = "#14B8A6",
+        focusRing = Color(0xFF2DD4BF),
+        focusBackground = Color(0xFF123A3A),
+        background = Color(0xFF081110),
+        backgroundElevated = Color(0xFF121E1D),
+        backgroundCard = Color(0xFF182A28),
+    )
+
+    val Sunset = ThemeColorPalette(
+        secondary = Color(0xFFF97316),
+        secondaryVariant = Color(0xFFF43F5E),
+        nativeAccentHex = "#F97316",
+        focusRing = Color(0xFFFB7185),
+        focusBackground = Color(0xFF402019),
+        background = Color(0xFF120C09),
+        backgroundElevated = Color(0xFF211713),
+        backgroundCard = Color(0xFF2D1E18),
     )
 
     val Custom = ThemeColorPalette(
@@ -189,10 +198,11 @@ object ThemeColors {
         AppTheme.EMERALD -> Emerald
         AppTheme.AMBER -> Amber
         AppTheme.ROSE -> Rose
-        AppTheme.AURORA -> Aurora
-        AppTheme.PRISM -> Prism
-        AppTheme.NEBULA -> Nebula
-        AppTheme.OPAL -> Opal
+        AppTheme.MESSENGER -> Messenger
+        AppTheme.AMETHYST -> Amethyst
+        AppTheme.BLOSSOM -> Blossom
+        AppTheme.LAGOON -> Lagoon
+        AppTheme.SUNSET -> Sunset
         AppTheme.CUSTOM -> Custom.copy(
             secondary = customFirst.color,
             secondaryVariant = customSecond.color,
@@ -209,29 +219,35 @@ object ThemeColors {
         customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
         customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
     ): List<Color> = when (theme) {
-        AppTheme.AURORA -> listOf(
-            Color(0xFFFF2F92),
-            Color(0xFF7C4DFF),
-            Color(0xFF00E5FF),
-            Color(0xFFFFB000),
+        AppTheme.MESSENGER -> listOf(
+            Color(0xFF0072FF),
+            Color(0xFF168AFF),
+            Color(0xFF00A8FF),
+            Color(0xFF38BDF8),
         )
-        AppTheme.PRISM -> listOf(
-            Color(0xFF00D6FF),
-            Color(0xFFFF2F92),
-            Color(0xFFFFFF4A),
-            Color(0xFF00D66B),
+        AppTheme.AMETHYST -> listOf(
+            Color(0xFF6D28D9),
+            Color(0xFF7C3AED),
+            Color(0xFF9333EA),
+            Color(0xFFA855F7),
         )
-        AppTheme.NEBULA -> listOf(
-            Color(0xFF8B5CFF),
-            Color(0xFFFF3D9A),
-            Color(0xFF00D4FF),
-            Color(0xFFFFB86B),
+        AppTheme.BLOSSOM -> listOf(
+            Color(0xFFDB2777),
+            Color(0xFFEC4899),
+            Color(0xFFF472B6),
+            Color(0xFFF43F7D),
         )
-        AppTheme.OPAL -> listOf(
-            Color(0xFF00FFC6),
-            Color(0xFFFF4FA3),
-            Color(0xFF7C6DFF),
-            Color(0xFFFFE16B),
+        AppTheme.LAGOON -> listOf(
+            Color(0xFF0891B2),
+            Color(0xFF06B6D4),
+            Color(0xFF14B8A6),
+            Color(0xFF2DD4BF),
+        )
+        AppTheme.SUNSET -> listOf(
+            Color(0xFFF43F5E),
+            Color(0xFFFB7185),
+            Color(0xFFF97316),
+            Color(0xFFFB923C),
         )
         AppTheme.CUSTOM -> listOf(
             customFirst.color,

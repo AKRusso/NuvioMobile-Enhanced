@@ -1519,10 +1519,11 @@
   <string name="supporters_contributors_donation_progress_complete">Coperto. Qualsiasi supporto ulteriore andrà allo sviluppo.</string>
   <string name="supporters_contributors_donation_progress_remaining">Dopo il 100%, eventuale supporto in più andrà allo sviluppo.</string>
   <string name="supporters_contributors_donate_button">Dona a Nuvio</string>
-    <string name="theme_aurora">Aurora</string>
-    <string name="theme_prism">Prisma</string>
-    <string name="theme_nebula">Nebulosa</string>
-    <string name="theme_opal">Opale</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametista</string>
+    <string name="theme_blossom">Fioritura</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Tramonto</string>
     <string name="theme_custom">Personalizzato</string>
     <string name="settings_appearance_theme_classic">Temi classici</string>
     <string name="settings_appearance_theme_enhanced">Temi avanzati</string>

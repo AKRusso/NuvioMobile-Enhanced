@@ -157,10 +157,11 @@ internal fun LazyListScope.appearanceSettingsContent(
                     ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_enhanced))
                     ThemeGrid(
                         themes = listOf(
-                            AppTheme.AURORA,
-                            AppTheme.PRISM,
-                            AppTheme.NEBULA,
-                            AppTheme.OPAL,
+                            AppTheme.MESSENGER,
+                            AppTheme.AMETHYST,
+                            AppTheme.BLOSSOM,
+                            AppTheme.LAGOON,
+                            AppTheme.SUNSET,
                             AppTheme.CUSTOM,
                         ),
                         selectedTheme = selectedTheme,
@@ -400,6 +401,8 @@ private fun ThemeChip(
 ) {
     val palette = ThemeColors.getColorPalette(theme, customFirst, customSecond)
     val previewBrush = theme.previewBrush(palette, customFirst, customSecond)
+    val selectedPreviewBrush = rememberAnimatedAccentBrush()
+        .takeIf { isSelected && theme.isEnhanced && theme != AppTheme.CUSTOM }
     val checkColor = if (theme.isEnhanced) Color.White else palette.onSecondary
 
     Column(
@@ -450,7 +453,7 @@ private fun ThemeChip(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(previewBrush),
+                        .background(selectedPreviewBrush ?: previewBrush),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (isSelected) {
@@ -490,7 +493,7 @@ private fun ThemeChip(
                 .clip(RoundedCornerShape(2.dp))
                 .background(
                     if (theme.isEnhanced) {
-                        previewBrush
+                        selectedPreviewBrush ?: previewBrush
                     } else {
                         Brush.linearGradient(listOf(palette.focusRing, palette.secondary))
                     },
@@ -539,32 +542,49 @@ private fun ThemeAnimationStyleChip(
     Box(
         modifier = Modifier
             .clip(shape)
+            .background(backgroundColor, shape)
             .then(
                 if (selectedBrush != null) {
-                    Modifier.background(selectedBrush, shape)
+                    Modifier.border(width = 1.5.dp, brush = selectedBrush, shape = shape)
                 } else {
-                    Modifier.background(backgroundColor, shape)
+                    Modifier.border(
+                        width = 1.dp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
+                        } else {
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.50f)
+                        },
+                        shape = shape,
+                    )
                 },
-            )
-            .border(
-                width = 1.dp,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.62f)
-                } else {
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.50f)
-                },
-                shape = shape,
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Text(
-            text = stringResource(style.labelRes),
-            style = MaterialTheme.typography.labelMedium,
-            color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1,
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 22.dp, height = 5.dp)
+                    .clip(shape)
+                    .then(
+                        if (selectedBrush != null) {
+                            Modifier.background(selectedBrush)
+                        } else {
+                            Modifier.background(MaterialTheme.colorScheme.primary)
+                        },
+                    ),
+            )
+            Text(
+                text = stringResource(style.labelRes),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
     }
 }
 

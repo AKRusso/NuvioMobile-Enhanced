@@ -1918,10 +1918,11 @@
     <string name="player_torrent_starting_engine">P2Pエンジンを起動中…</string>
     <string name="player_error_failed_start_torrent">トレントの開始に失敗しました：%1$s</string>
     <string name="player_error_torrent">トレントエラー：%1$s</string>
-    <string name="theme_aurora">オーロラ</string>
-    <string name="theme_prism">プリズム</string>
-    <string name="theme_nebula">星雲</string>
-    <string name="theme_opal">オパール</string>
+    <string name="theme_messenger">メッセンジャー</string>
+    <string name="theme_amethyst">アメジスト</string>
+    <string name="theme_blossom">ブロッサム</string>
+    <string name="theme_lagoon">ラグーン</string>
+    <string name="theme_sunset">サンセット</string>
     <string name="theme_custom">カスタム</string>
     <string name="settings_appearance_theme_classic">クラシックテーマ</string>
     <string name="settings_appearance_theme_enhanced">拡張テーマ</string>

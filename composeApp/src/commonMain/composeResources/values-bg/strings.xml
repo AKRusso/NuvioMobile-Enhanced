@@ -1892,10 +1892,11 @@
     <string name="trakt_error_add_list_failed">Добавянето към списък в Trakt не бе успешно</string>
     <string name="trakt_error_missing_ids">Липсват съвместими Trakt идентификатори</string>
     <string name="trakt_error_empty_response">Празно тяло на отговора</string>
-    <string name="theme_aurora">Аврора</string>
-    <string name="theme_prism">Призма</string>
-    <string name="theme_nebula">Мъглявина</string>
-    <string name="theme_opal">Опал</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Аметист</string>
+    <string name="theme_blossom">Цвят</string>
+    <string name="theme_lagoon">Лагуна</string>
+    <string name="theme_sunset">Залез</string>
     <string name="theme_custom">Персонализирана</string>
     <string name="settings_appearance_theme_classic">Класически теми</string>
     <string name="settings_appearance_theme_enhanced">Подобрени теми</string>

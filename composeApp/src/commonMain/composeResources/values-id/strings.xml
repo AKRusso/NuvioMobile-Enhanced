@@ -1442,10 +1442,11 @@
     <plurals name="cw_airs_in_days_short">
         <item quantity="other">%1$d hari lagi</item>
     </plurals>
-    <string name="theme_aurora">Aurora</string>
-    <string name="theme_prism">Prisma</string>
-    <string name="theme_nebula">Nebula</string>
-    <string name="theme_opal">Opal</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametis</string>
+    <string name="theme_blossom">Mekar</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Matahari terbenam</string>
     <string name="theme_custom">Kustom</string>
     <string name="settings_appearance_theme_classic">Tema klasik</string>
     <string name="settings_appearance_theme_enhanced">Tema yang disempurnakan</string>

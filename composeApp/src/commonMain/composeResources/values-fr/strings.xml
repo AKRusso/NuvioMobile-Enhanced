@@ -1967,10 +1967,11 @@
         <item quantity="one">%d titre</item>
         <item quantity="other">%d titres</item>
     </plurals>
-    <string name="theme_aurora">Aurore</string>
-    <string name="theme_prism">Prisme</string>
-    <string name="theme_nebula">Nébuleuse</string>
-    <string name="theme_opal">Opale</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Améthyste</string>
+    <string name="theme_blossom">Floraison</string>
+    <string name="theme_lagoon">Lagon</string>
+    <string name="theme_sunset">Coucher de soleil</string>
     <string name="theme_custom">Personnalisé</string>
     <string name="settings_appearance_theme_classic">Thèmes classiques</string>
     <string name="settings_appearance_theme_enhanced">Thèmes améliorés</string>

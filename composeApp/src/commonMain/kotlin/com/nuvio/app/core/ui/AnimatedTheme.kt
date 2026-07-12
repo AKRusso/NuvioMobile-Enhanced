@@ -15,7 +15,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
@@ -69,11 +68,11 @@ internal fun rememberAnimatedThemeVisuals(
     )
 
     val actionColors = when (animationStyle) {
-        ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 14, alpha = 1f)
-        else -> phasedColors(colors, phase, samples = 14, alpha = 1f)
+        ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 18, alpha = 1f)
+        else -> phasedColors(colors, phase, samples = 18, alpha = 1f)
     }
-    val chipColors = phasedColors(colors, phase + 0.12f, samples = 10, alpha = animationStyle.chipAlpha)
-    val lineColors = phasedColors(colors, phase + 0.26f, samples = 10, alpha = animationStyle.lineAlpha)
+    val chipColors = actionColors.map { it.copy(alpha = animationStyle.chipAlpha) }
+    val lineColors = actionColors
     val (start, end) = gradientOffsets(animationStyle, phase)
     val accent = sampleLoop(colors, phase)
     val accentStrong = lerp(accent, sampleLoop(colors, phase + 0.34f), 0.62f)
@@ -106,32 +105,25 @@ internal fun rememberAnimatedThemeVisuals(
 
 private val ThemeAnimationStyle.durationMillis: Int
     get() = when (this) {
-        ThemeAnimationStyle.FLOW -> 6_400
-        ThemeAnimationStyle.SHIMMER -> 3_600
-        ThemeAnimationStyle.WAVE -> 5_200
-        ThemeAnimationStyle.VIVID_WAVE -> 4_200
+        ThemeAnimationStyle.FLOW -> 14_000
+        ThemeAnimationStyle.SHIMMER -> 12_000
+        ThemeAnimationStyle.WAVE -> 18_000
+        ThemeAnimationStyle.VIVID_WAVE -> 15_000
         ThemeAnimationStyle.STILL -> 1_000
     }
 
 private val ThemeAnimationStyle.chipAlpha: Float
     get() = when (this) {
-        ThemeAnimationStyle.VIVID_WAVE -> 0.30f
+        ThemeAnimationStyle.VIVID_WAVE -> 0.26f
         ThemeAnimationStyle.SHIMMER -> 0.20f
-        else -> 0.24f
-    }
-
-private val ThemeAnimationStyle.lineAlpha: Float
-    get() = when (this) {
-        ThemeAnimationStyle.VIVID_WAVE -> 0.84f
-        ThemeAnimationStyle.SHIMMER -> 0.76f
-        else -> 0.78f
+        else -> 0.22f
     }
 
 private val ThemeAnimationStyle.softAlpha: Float
     get() = when (this) {
-        ThemeAnimationStyle.VIVID_WAVE -> 0.13f
-        ThemeAnimationStyle.WAVE -> 0.12f
-        else -> 0.10f
+        ThemeAnimationStyle.VIVID_WAVE -> 0.11f
+        ThemeAnimationStyle.WAVE -> 0.09f
+        else -> 0.08f
     }
 
 private fun stylePalette(
@@ -140,17 +132,12 @@ private fun stylePalette(
 ): List<Color> {
     if (colors.isEmpty()) return colors
     return when (style) {
-        ThemeAnimationStyle.VIVID_WAVE -> colors.map { boostContrast(it, 1.36f) }
-        ThemeAnimationStyle.WAVE -> colors.flatMap { color ->
-            listOf(
-                boostContrast(color, 1.16f),
-                lerp(color, Color(0xFF00D9FF), 0.18f),
-            )
-        }
-        ThemeAnimationStyle.SHIMMER -> colors.map { boostContrast(it, 1.12f) }
+        ThemeAnimationStyle.VIVID_WAVE -> colors.map { boostContrast(it, 1.18f) }
+        ThemeAnimationStyle.WAVE -> colors.map { boostContrast(it, 1.06f) }
+        ThemeAnimationStyle.SHIMMER -> colors.map { boostContrast(it, 1.08f) }
         ThemeAnimationStyle.FLOW,
         ThemeAnimationStyle.STILL,
-        -> colors.map { boostContrast(it, 1.08f) }
+        -> colors
     }
 }
 
@@ -161,36 +148,35 @@ private fun gradientOffsets(
     val wave = normalizedPhase(phase) * TwoPi
     return when (style) {
         ThemeAnimationStyle.SHIMMER -> {
-            val drift = sin(wave) * 160f
-            Offset(-760f + drift, -280f) to Offset(920f + drift, 520f)
+            Offset(-720f, -180f) to Offset(920f, 420f)
         }
         ThemeAnimationStyle.WAVE -> {
             Offset(
-                x = -640f + sin(wave) * 520f,
-                y = -460f + cos(wave * 2f) * 190f,
+                x = -680f + sin(wave) * 180f,
+                y = -360f + cos(wave) * 110f,
             ) to Offset(
-                x = 980f + cos(wave) * 460f,
-                y = 620f + sin(wave * 2f) * 240f,
+                x = 980f + cos(wave) * 180f,
+                y = 560f + sin(wave) * 110f,
             )
         }
         ThemeAnimationStyle.VIVID_WAVE -> {
             Offset(
-                x = -820f + sin(wave * 2f) * 620f,
-                y = -540f + cos(wave) * 340f,
+                x = -760f + sin(wave) * 240f,
+                y = -420f + cos(wave * 2f) * 140f,
             ) to Offset(
-                x = 1_080f + cos(wave * 2f) * 560f,
-                y = 720f + sin(wave) * 360f,
+                x = 1_020f + cos(wave) * 240f,
+                y = 620f + sin(wave * 2f) * 140f,
             )
         }
         ThemeAnimationStyle.FLOW,
         ThemeAnimationStyle.STILL,
         -> {
             Offset(
-                x = -620f + cos(wave) * 260f,
-                y = -360f + sin(wave) * 220f,
+                x = -720f,
+                y = -220f,
             ) to Offset(
-                x = 940f - cos(wave) * 260f,
-                y = 520f - sin(wave) * 220f,
+                x = 920f,
+                y = 420f,
             )
         }
     }
@@ -216,9 +202,9 @@ private fun shimmerColors(
     List(samples.coerceAtLeast(6)) { index ->
         val track = index.toFloat() / (samples - 1).coerceAtLeast(1).toFloat()
         val base = sampleLoop(colors, normalizedPhase(track + phase))
-        val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.18f)
+        val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.14f)
             .coerceIn(0f, 1f)
-        lerp(base, Color.White, highlight * 0.24f).copy(alpha = alpha)
+        lerp(base, Color.White, highlight * 0.16f).copy(alpha = alpha)
     }
 
 private fun sampleLoop(colors: List<Color>, phase: Float): Color {
@@ -228,7 +214,7 @@ private fun sampleLoop(colors: List<Color>, phase: Float): Color {
     val position = normalizedPhase(phase) * colors.size
     val index = floor(position).toInt().coerceIn(0, colors.lastIndex)
     val nextIndex = (index + 1) % colors.size
-    val fraction = smoothStep(position - index)
+    val fraction = position - index
     return lerp(colors[index], colors[nextIndex], fraction)
 }
 
@@ -245,13 +231,8 @@ private fun normalizedPhase(value: Float): Float {
     return if (wrapped < 0f) wrapped + 1f else wrapped
 }
 
-private fun smoothStep(value: Float): Float {
-    val t = value.coerceIn(0f, 1f)
-    return t * t * (3f - 2f * t)
-}
-
 private fun circularDistance(first: Float, second: Float): Float {
-    val distance = abs(normalizedPhase(first) - normalizedPhase(second))
+    val distance = kotlin.math.abs(normalizedPhase(first) - normalizedPhase(second))
     return kotlin.math.min(distance, 1f - distance)
 }
 
