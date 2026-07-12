@@ -20,6 +20,7 @@ import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleStorage
+import com.nuvio.app.core.ui.toThemeHex
 import com.nuvio.app.features.settings.ThemeSettingsStorage
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
@@ -329,8 +330,8 @@ object ProfileSettingsSync {
 
     private fun currentObservedStateSignature(): String = listOf(
         "theme=${ThemeSettingsRepository.selectedTheme.value.name}",
-        "theme_custom_first=${ThemeSettingsRepository.customThemeFirstColor.value.name}",
-        "theme_custom_second=${ThemeSettingsRepository.customThemeSecondColor.value.name}",
+        "theme_custom_first=${ThemeSettingsRepository.customThemeFirstColor.value.toThemeHex()}",
+        "theme_custom_second=${ThemeSettingsRepository.customThemeSecondColor.value.toThemeHex()}",
         "theme_animation_style=${ThemeSettingsRepository.themeAnimationStyle.value.name}",
         "amoled=${ThemeSettingsRepository.amoledEnabled.value}",
         "liquid_glass_tab_bar=${ThemeSettingsRepository.liquidGlassNativeTabBarEnabled.value}",

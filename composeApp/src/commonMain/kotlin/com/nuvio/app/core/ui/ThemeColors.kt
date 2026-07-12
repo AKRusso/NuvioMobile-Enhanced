@@ -190,8 +190,8 @@ object ThemeColors {
 
     fun getColorPalette(
         theme: AppTheme,
-        customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
-        customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+        customFirst: Color = ThemeAccentColor.PINK.color,
+        customSecond: Color = ThemeAccentColor.CYAN.color,
     ): ThemeColorPalette = when (theme) {
         AppTheme.CRIMSON -> Crimson
         AppTheme.OCEAN -> Ocean
@@ -205,20 +205,20 @@ object ThemeColors {
         AppTheme.LAGOON -> Lagoon
         AppTheme.SUNSET -> Sunset
         AppTheme.CUSTOM -> Custom.copy(
-            secondary = customFirst.color,
-            secondaryVariant = customSecond.color,
-            nativeAccentHex = customFirst.color.toAccentHex(),
-            onSecondary = customFirst.color.contentColor(),
-            onSecondaryVariant = customSecond.color.contentColor(),
-            focusRing = customSecond.color,
+            secondary = customFirst,
+            secondaryVariant = customSecond,
+            nativeAccentHex = customFirst.toThemeHex(),
+            onSecondary = customFirst.contentColor(),
+            onSecondaryVariant = customSecond.contentColor(),
+            focusRing = customSecond,
         )
         AppTheme.WHITE -> White
     }
 
     fun animatedColors(
         theme: AppTheme,
-        customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
-        customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+        customFirst: Color = ThemeAccentColor.PINK.color,
+        customSecond: Color = ThemeAccentColor.CYAN.color,
     ): List<Color> = when (theme) {
         AppTheme.MESSENGER -> listOf(
             Color(0xFF006DFF),
@@ -261,12 +261,12 @@ object ThemeColors {
             Color(0xFFFDBA74),
         )
         AppTheme.CUSTOM -> listOf(
-            customFirst.color,
-            lerp(customFirst.color, Color.White, 0.28f),
-            lerp(customFirst.color, customSecond.color, 0.50f),
-            customSecond.color,
-            lerp(customSecond.color, Color.White, 0.28f),
-            lerp(customSecond.color, customFirst.color, 0.35f),
+            customFirst,
+            lerp(customFirst, Color.White, 0.18f),
+            lerp(customFirst, customSecond, 0.38f),
+            customSecond,
+            lerp(customSecond, Color.White, 0.18f),
+            lerp(customSecond, customFirst, 0.32f),
         )
         else -> emptyList()
     }
@@ -275,8 +275,23 @@ object ThemeColors {
 private fun Color.contentColor(): Color =
     if (luminance() > 0.55f) Color(0xFF101318) else Color.White
 
-private fun Color.toAccentHex(): String {
+internal fun Color.toThemeHex(): String {
     fun channel(value: Float): String =
         (value.coerceIn(0f, 1f) * 255f).toInt().toString(16).padStart(2, '0').uppercase()
     return "#${channel(red)}${channel(green)}${channel(blue)}"
+}
+
+internal fun String?.toThemeColor(fallback: Color): Color {
+    val value = this?.trim().orEmpty()
+    ThemeAccentColor.entries.firstOrNull { it.name == value }?.let { return it.color }
+    val hex = value.removePrefix("#")
+    if (hex.length != 6 || hex.any { !it.isDigit() && it.lowercaseChar() !in 'a'..'f' }) return fallback
+    return runCatching {
+        Color(
+            red = hex.substring(0, 2).toInt(16) / 255f,
+            green = hex.substring(2, 4).toInt(16) / 255f,
+            blue = hex.substring(4, 6).toInt(16) / 255f,
+            alpha = 1f,
+        )
+    }.getOrDefault(fallback)
 }

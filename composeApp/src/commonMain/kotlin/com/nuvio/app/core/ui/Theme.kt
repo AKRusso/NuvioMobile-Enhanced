@@ -190,8 +190,8 @@ private val NuvioRippleConfiguration = RippleConfiguration(
 fun NuvioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     appTheme: AppTheme = AppTheme.WHITE,
-    customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
-    customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    customFirst: Color = ThemeAccentColor.PINK.color,
+    customSecond: Color = ThemeAccentColor.CYAN.color,
     animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
     amoled: Boolean = false,
     content: @Composable () -> Unit,

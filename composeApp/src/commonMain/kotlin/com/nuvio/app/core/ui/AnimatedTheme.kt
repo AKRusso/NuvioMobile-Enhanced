@@ -11,10 +11,21 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositeShader
+import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.RadialGradientShader
+import androidx.compose.ui.graphics.Shader
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.lerp
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.sin
 
 internal data class AnimatedThemeVisuals(
     val accent: Color,
@@ -36,8 +47,8 @@ internal val currentAnimatedThemeVisuals: AnimatedThemeVisuals?
 @Composable
 internal fun rememberAnimatedThemeVisuals(
     theme: AppTheme,
-    customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
-    customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    customFirst: Color = ThemeAccentColor.PINK.color,
+    customSecond: Color = ThemeAccentColor.CYAN.color,
     animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
 ): AnimatedThemeVisuals? {
     if (!theme.isEnhanced) return null
@@ -72,6 +83,7 @@ internal fun rememberAnimatedThemeVisuals(
 
     val actionColors = when (animationStyle) {
         ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 18, alpha = 1f)
+        ThemeAnimationStyle.WAVE -> colors
         else -> phasedColors(colors, phase, samples = 18, alpha = 1f)
     }
     val chipColors = actionColors.map { it.copy(alpha = animationStyle.chipAlpha) }
@@ -83,13 +95,14 @@ internal fun rememberAnimatedThemeVisuals(
     return AnimatedThemeVisuals(
         accent = accent,
         accentStrong = accentStrong,
-        brush = themeBrush(animationStyle, actionColors),
-        chipBrush = themeBrush(animationStyle, chipColors),
-        lineBrush = themeBrush(animationStyle, lineColors),
+        brush = themeBrush(animationStyle, actionColors, phase),
+        chipBrush = themeBrush(animationStyle, chipColors, phase),
+        lineBrush = themeBrush(animationStyle, lineColors, phase),
         selectionBrush = Brush.horizontalGradient(selectionColors),
         softBrush = themeBrush(
             animationStyle,
             actionColors.map { it.copy(alpha = animationStyle.softAlpha) },
+            phase,
         ),
     )
 }
@@ -135,13 +148,49 @@ private fun stylePalette(
 private fun themeBrush(
     style: ThemeAnimationStyle,
     colors: List<Color>,
+    phase: Float,
 ): Brush = when (style) {
     ThemeAnimationStyle.FLOW,
     ThemeAnimationStyle.STILL,
     -> Brush.horizontalGradient(colors)
     ThemeAnimationStyle.SHIMMER -> Brush.linearGradient(colors)
-    ThemeAnimationStyle.WAVE -> Brush.radialGradient(colors)
+    ThemeAnimationStyle.WAVE -> MeshMotionBrush(colors, phase)
     ThemeAnimationStyle.VIVID_WAVE -> Brush.sweepGradient(colors + colors.first())
+}
+
+private class MeshMotionBrush(
+    private val colors: List<Color>,
+    private val phase: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val palette = colors.ifEmpty { listOf(Color.Transparent) }
+        val width = size.width.coerceAtLeast(1f)
+        val height = size.height.coerceAtLeast(1f)
+        val angle = normalizedPhase(phase) * TwoPi
+        var shader = LinearGradientShader(
+            from = Offset.Zero,
+            to = Offset(width, height),
+            colors = listOf(palette[0], palette[1 % palette.size], palette[2 % palette.size]),
+        )
+        val radius = max(width, height) * 0.92f
+        val centers = listOf(
+            Offset(width * (0.20f + sin(angle) * 0.16f), height * (0.24f + cos(angle) * 0.18f)),
+            Offset(width * (0.78f + cos(angle * 0.83f) * 0.14f), height * (0.28f + sin(angle) * 0.17f)),
+            Offset(width * (0.30f + cos(angle * 1.17f) * 0.18f), height * (0.76f + sin(angle * 0.91f) * 0.15f)),
+            Offset(width * (0.76f + sin(angle * 0.73f) * 0.15f), height * (0.74f + cos(angle) * 0.17f)),
+        )
+        centers.forEachIndexed { index, center ->
+            val color = palette[(index + 2) % palette.size]
+            val blob = RadialGradientShader(
+                center = center,
+                radius = radius,
+                colors = listOf(color, color.copy(alpha = 0f)),
+                colorStops = listOf(0f, 1f),
+            )
+            shader = CompositeShader(shader, blob, BlendMode.SrcOver)
+        }
+        return shader
+    }
 }
 
 private fun highlightColors(
@@ -180,7 +229,8 @@ private fun shimmerColors(
         val base = sampleLoop(colors, normalizedPhase(track + phase))
         val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.14f)
             .coerceIn(0f, 1f)
-        lerp(base, Color.White, highlight * 0.16f).copy(alpha = alpha)
+        val sheen = sampleLoop(colors, normalizedPhase(track + phase + 0.28f))
+        lerp(base, sheen, highlight * 0.42f).copy(alpha = alpha)
     }
 
 private fun sampleLoop(colors: List<Color>, phase: Float): Color {
@@ -215,8 +265,8 @@ private fun circularDistance(first: Float, second: Float): Float {
 @Composable
 internal fun rememberAnimatedAccentBrush(
     previewTheme: AppTheme? = null,
-    customFirst: ThemeAccentColor = ThemeAccentColor.PINK,
-    customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
+    customFirst: Color = ThemeAccentColor.PINK.color,
+    customSecond: Color = ThemeAccentColor.CYAN.color,
     animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
 ): Brush? = if (previewTheme != null) {
     rememberAnimatedThemeVisuals(previewTheme, customFirst, customSecond, animationStyle)?.brush
@@ -235,3 +285,5 @@ internal fun rememberAnimatedSelectionBrush(): Brush? = currentAnimatedThemeVisu
 
 @Composable
 internal fun rememberAnimatedSoftBrush(): Brush? = currentAnimatedThemeVisuals?.softBrush
+
+private const val TwoPi = 6.2831855f
