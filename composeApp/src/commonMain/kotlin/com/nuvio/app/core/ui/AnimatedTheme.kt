@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.lerp
 import kotlin.math.cos
 import kotlin.math.floor
@@ -82,9 +83,8 @@ internal fun rememberAnimatedThemeVisuals(
     }
 
     val actionColors = when (animationStyle) {
-        ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 18, alpha = 1f)
-        ThemeAnimationStyle.WAVE -> colors
-        else -> phasedColors(colors, phase, samples = 18, alpha = 1f)
+        ThemeAnimationStyle.VIVID_WAVE -> phasedColors(colors, phase, samples = 18, alpha = 1f)
+        else -> colors
     }
     val chipColors = actionColors.map { it.copy(alpha = animationStyle.chipAlpha) }
     val lineColors = actionColors
@@ -97,7 +97,7 @@ internal fun rememberAnimatedThemeVisuals(
         accentStrong = accentStrong,
         brush = themeBrush(animationStyle, actionColors, phase),
         chipBrush = themeBrush(animationStyle, chipColors, phase),
-        lineBrush = themeBrush(animationStyle, lineColors, phase),
+        lineBrush = ImmiscibleLineBrush(lineColors, phase),
         selectionBrush = Brush.horizontalGradient(selectionColors),
         softBrush = themeBrush(
             animationStyle,
@@ -150,12 +150,63 @@ private fun themeBrush(
     colors: List<Color>,
     phase: Float,
 ): Brush = when (style) {
-    ThemeAnimationStyle.FLOW,
-    ThemeAnimationStyle.STILL,
-    -> Brush.horizontalGradient(colors)
-    ThemeAnimationStyle.SHIMMER -> Brush.linearGradient(colors)
+    ThemeAnimationStyle.FLOW -> FlowMotionBrush(colors, phase)
+    ThemeAnimationStyle.STILL -> Brush.horizontalGradient(colors)
+    ThemeAnimationStyle.SHIMMER -> ShimmerMotionBrush(colors, phase)
     ThemeAnimationStyle.WAVE -> MeshMotionBrush(colors, phase)
     ThemeAnimationStyle.VIVID_WAVE -> Brush.sweepGradient(colors + colors.first())
+}
+
+private class FlowMotionBrush(
+    private val colors: List<Color>,
+    private val phase: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val palette = loopPalette(colors)
+        val width = size.width.coerceAtLeast(1f)
+        val height = size.height.coerceAtLeast(1f)
+        val period = max(width * 1.35f, height * 4.5f)
+        val shift = normalizedPhase(phase) * period
+        return LinearGradientShader(
+            from = Offset(-period + shift, -height * 0.35f),
+            to = Offset(shift, height * 1.35f),
+            colors = palette,
+            tileMode = TileMode.Repeated,
+        )
+    }
+}
+
+private class ShimmerMotionBrush(
+    private val colors: List<Color>,
+    private val phase: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val palette = colors.ifEmpty { listOf(Color.Transparent) }
+        val width = size.width.coerceAtLeast(1f)
+        val height = size.height.coerceAtLeast(1f)
+        val base = LinearGradientShader(
+            from = Offset.Zero,
+            to = Offset(width, height),
+            colors = palette,
+        )
+        val progress = normalizedPhase(phase)
+        val center = Offset(
+            x = width * (-0.28f + progress * 1.56f),
+            y = height * (0.5f + sin(progress * TwoPi) * 0.28f),
+        )
+        val glowColor = sampleLoop(palette, progress + 0.38f)
+        val glow = RadialGradientShader(
+            center = center,
+            radius = max(width * 0.34f, height * 2.8f),
+            colors = listOf(
+                glowColor,
+                glowColor.copy(alpha = glowColor.alpha * 0.72f),
+                glowColor.copy(alpha = 0f),
+            ),
+            colorStops = listOf(0f, 0.36f, 1f),
+        )
+        return CompositeShader(base, glow, BlendMode.SrcOver)
+    }
 }
 
 private class MeshMotionBrush(
@@ -172,12 +223,12 @@ private class MeshMotionBrush(
             to = Offset(width, height),
             colors = listOf(palette[0], palette[1 % palette.size], palette[2 % palette.size]),
         )
-        val radius = max(width, height) * 0.92f
+        val radius = max(width * 0.44f, height * 2.4f)
         val centers = listOf(
-            Offset(width * (0.20f + sin(angle) * 0.16f), height * (0.24f + cos(angle) * 0.18f)),
-            Offset(width * (0.78f + cos(angle * 0.83f) * 0.14f), height * (0.28f + sin(angle) * 0.17f)),
-            Offset(width * (0.30f + cos(angle * 1.17f) * 0.18f), height * (0.76f + sin(angle * 0.91f) * 0.15f)),
-            Offset(width * (0.76f + sin(angle * 0.73f) * 0.15f), height * (0.74f + cos(angle) * 0.17f)),
+            Offset(width * (0.16f + sin(angle) * 0.24f), height * (0.20f + cos(angle) * 0.24f)),
+            Offset(width * (0.82f + cos(angle) * 0.22f), height * (0.24f + sin(angle) * 0.26f)),
+            Offset(width * (0.24f + cos(angle + 2.1f) * 0.25f), height * (0.78f + sin(angle) * 0.22f)),
+            Offset(width * (0.78f + sin(angle + 1.4f) * 0.24f), height * (0.76f + cos(angle) * 0.24f)),
         )
         centers.forEachIndexed { index, center ->
             val color = palette[(index + 2) % palette.size]
@@ -191,6 +242,50 @@ private class MeshMotionBrush(
         }
         return shader
     }
+}
+
+private class ImmiscibleLineBrush(
+    private val colors: List<Color>,
+    private val phase: Float,
+) : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val palette = colors.ifEmpty { listOf(Color.Transparent) }
+        val width = size.width.coerceAtLeast(1f)
+        val height = size.height.coerceAtLeast(1f)
+        val first = palette.first()
+        val second = palette[(palette.size / 2).coerceAtMost(palette.lastIndex)]
+        val third = palette.last()
+        val angle = normalizedPhase(phase) * TwoPi
+        var shader = LinearGradientShader(
+            from = Offset.Zero,
+            to = Offset(width, 0f),
+            colors = listOf(first, first),
+        )
+        val drops = listOf(
+            Triple(second, 0.24f + sin(angle) * 0.16f, 0.92f),
+            Triple(second, 0.67f + cos(angle * 0.84f) * 0.18f, 1.35f),
+            Triple(third, 0.48f + sin(angle + 2.2f) * 0.20f, 0.72f),
+        )
+        drops.forEachIndexed { index, (color, centerX, scale) ->
+            val center = Offset(
+                x = width * centerX,
+                y = height * (0.5f + sin(angle + index * 1.7f) * 0.22f),
+            )
+            val drop = RadialGradientShader(
+                center = center,
+                radius = max(height * 1.7f, width * 0.16f) * scale,
+                colors = listOf(color, color, color.copy(alpha = 0f), color.copy(alpha = 0f)),
+                colorStops = listOf(0f, 0.76f, 0.80f, 1f),
+            )
+            shader = CompositeShader(shader, drop, BlendMode.SrcOver)
+        }
+        return shader
+    }
+}
+
+private fun loopPalette(colors: List<Color>): List<Color> {
+    val palette = colors.ifEmpty { listOf(Color.Transparent) }
+    return if (palette.first() == palette.last()) palette else palette + palette.first()
 }
 
 private fun highlightColors(
@@ -216,21 +311,6 @@ private fun phasedColors(
     List(samples.coerceAtLeast(4)) { index ->
         val position = normalizedPhase(phase + index.toFloat() / samples.toFloat())
         sampleLoop(colors, position).copy(alpha = alpha)
-    }
-
-private fun shimmerColors(
-    colors: List<Color>,
-    phase: Float,
-    samples: Int,
-    alpha: Float,
-): List<Color> =
-    List(samples.coerceAtLeast(6)) { index ->
-        val track = index.toFloat() / (samples - 1).coerceAtLeast(1).toFloat()
-        val base = sampleLoop(colors, normalizedPhase(track + phase))
-        val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.14f)
-            .coerceIn(0f, 1f)
-        val sheen = sampleLoop(colors, normalizedPhase(track + phase + 0.28f))
-        lerp(base, sheen, highlight * 0.42f).copy(alpha = alpha)
     }
 
 private fun sampleLoop(colors: List<Color>, phase: Float): Color {
