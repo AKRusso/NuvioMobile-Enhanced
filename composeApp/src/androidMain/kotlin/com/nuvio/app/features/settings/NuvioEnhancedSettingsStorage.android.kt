@@ -8,6 +8,7 @@ internal actual object NuvioEnhancedSettingsStorage {
     private const val preferencesName = "nuvio_enhanced_settings"
     private const val payloadKey = "enhanced_settings_payload"
     private const val onboardingCompletedKey = "enhanced_onboarding_completed"
+    private const val communitySnapshotKey = "enhanced_community_snapshot"
 
     private var preferences: SharedPreferences? = null
 
@@ -35,6 +36,16 @@ internal actual object NuvioEnhancedSettingsStorage {
         preferences
             ?.edit()
             ?.putBoolean(onboardingCompletedKey, completed)
+            ?.apply()
+    }
+
+    actual fun loadCommunitySnapshot(): String? =
+        preferences?.getString(communitySnapshotKey, null)
+
+    actual fun saveCommunitySnapshot(payload: String) {
+        preferences
+            ?.edit()
+            ?.putString(communitySnapshotKey, payload)
             ?.apply()
     }
 }

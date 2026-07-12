@@ -1924,7 +1924,10 @@
     <string name="nuvio_enhanced_onboarding_members">Πάνω από 1.000 μέλη κοινότητας</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Συμμετοχή στο Discord</string>
     <string name="nuvio_enhanced_onboarding_start">Έναρξη εξερεύνησης</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Εμφάνιση καλωσορίσματος ξανά</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Δείτε ξανά την εισαγωγή της πρώτης εκκίνησης.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Φτιαγμένο για</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">περισσότερα</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Μέλη</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Σε σύνδεση</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Ενισχύσεις</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Διαχειριστής</string>
 </resources>

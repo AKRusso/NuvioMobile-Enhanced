@@ -1455,7 +1455,10 @@
     <string name="nuvio_enhanced_onboarding_members">1.000+ anggota komunitas</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Bergabung ke Discord kami</string>
     <string name="nuvio_enhanced_onboarding_start">Mulai menjelajah</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Tampilkan sambutan lagi</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Lihat kembali pengenalan saat pertama kali aplikasi dibuka.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Dibuat untuk</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">lebih banyak</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Anggota</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Boost</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrator</string>
 </resources>

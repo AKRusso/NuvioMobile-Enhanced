@@ -1935,7 +1935,10 @@
     <string name="nuvio_enhanced_onboarding_members">Viac ako 1 000 členov komunity</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Pripojiť sa na Discord</string>
     <string name="nuvio_enhanced_onboarding_start">Začať objavovať</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Zobraziť privítanie znova</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Znova si pozrite úvod pri prvom spustení.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Vytvorené pre</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">viac</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Členovia</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Boosty</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Správca</string>
 </resources>

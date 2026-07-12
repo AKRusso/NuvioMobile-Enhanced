@@ -2356,7 +2356,10 @@
     <string name="nuvio_enhanced_onboarding_members">1,000+ community members</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Join our Discord</string>
     <string name="nuvio_enhanced_onboarding_start">Start exploring</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Show welcome again</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Preview the first-launch introduction again.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Made to do</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">more</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Members</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Admin</string>
 </resources>

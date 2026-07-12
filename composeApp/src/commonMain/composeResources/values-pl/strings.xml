@@ -1882,7 +1882,10 @@
     <string name="nuvio_enhanced_onboarding_members">Ponad 1000 członków społeczności</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Dołącz do naszego Discorda</string>
     <string name="nuvio_enhanced_onboarding_start">Zacznij odkrywać</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Pokaż powitanie ponownie</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Zobacz ponownie wprowadzenie z pierwszego uruchomienia.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Stworzone, by robić</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">więcej</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Członkowie</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Ulepszenia</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrator</string>
 </resources>

@@ -1980,7 +1980,10 @@
     <string name="nuvio_enhanced_onboarding_members">Plus de 1 000 membres</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Rejoindre notre Discord</string>
     <string name="nuvio_enhanced_onboarding_start">Commencer l’exploration</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Revoir l’accueil</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Affichez à nouveau l’introduction du premier lancement.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Conçu pour faire</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">plus</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Membres</string>
+    <string name="nuvio_enhanced_onboarding_online_label">En ligne</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrateur</string>
 </resources>

@@ -1,23 +1,19 @@
 package com.nuvio.app.features.onboarding
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -49,6 +45,7 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,15 +63,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -83,6 +79,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.PlatformBackHandler
 import com.nuvio.app.core.ui.appIconPainter
@@ -94,14 +92,17 @@ import nuvio.composeapp.generated.resources.nuvio_enhanced_concierge_desc
 import nuvio.composeapp.generated.resources.nuvio_enhanced_concierge_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_live_tv_desc
 import nuvio.composeapp.generated.resources.nuvio_enhanced_live_tv_title
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_admin_role
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_boosts_label
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_community_body
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_community_title
-import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_admin_role
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_developer_role
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_body
-import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_title
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_title_accent
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_title_lead
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_join_discord
-import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_members
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_members_label
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_online_label
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_start
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_body
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_note
@@ -125,23 +126,26 @@ import kotlin.math.sin
 
 private const val OnboardingPageCount = 4
 
-private val OnboardingBackground = Color(0xFF05050A)
-private val OnboardingSurface = Color(0xFF11111A)
-private val OnboardingSurfaceRaised = Color(0xFF181724)
-private val OnboardingText = Color(0xFFF8F7FF)
-private val OnboardingTextMuted = Color(0xFFB7B3C7)
-private val OnboardingPurple = Color(0xFF8B5CF6)
-private val OnboardingBlue = Color(0xFF3B82F6)
-private val OnboardingViolet = Color(0xFFC026D3)
-private val OnboardingPink = Color(0xFFEC4899)
+private val BackgroundTop = Color(0xFF0B1220)
+private val BackgroundBottom = Color(0xFF07090D)
+private val SurfaceDark = Color(0xFF11151D)
+private val SurfaceRaised = Color(0xFF171C25)
+private val BorderSoft = Color(0xFF2A303C)
+private val TextPrimary = Color(0xFFF5F7FA)
+private val TextSecondary = Color(0xFFA8B0BE)
+private val AccentBlue = Color(0xFF73A7FF)
+private val AccentCyan = Color(0xFF4FD1C5)
+private val AccentAmber = Color(0xFFF2B766)
+private val AccentGreen = Color(0xFF68C78A)
+private val AccentViolet = Color(0xFFA78BFA)
+private val AccentPink = Color(0xFFF472B6)
 private val DiscordBlue = Color(0xFF5865F2)
 
-private val EnhancedGradient = listOf(
-    OnboardingPurple,
-    OnboardingBlue,
-    OnboardingViolet,
-    OnboardingPink,
-    OnboardingPurple,
+private val AccentGradient = listOf(
+    Color(0xFF60A5FA),
+    Color(0xFF8B5CF6),
+    Color(0xFFD946EF),
+    Color(0xFF60A5FA),
 )
 
 @Composable
@@ -151,16 +155,24 @@ internal fun EnhancedOnboardingScreen(
     modifier: Modifier = Modifier,
 ) {
     var page by remember { mutableIntStateOf(0) }
-    val motion = rememberInfiniteTransition(label = "enhanced_onboarding_motion")
-    val phase = motion.animateFloat(
+    val community by remember {
+        EnhancedCommunityRepository.ensureLoaded()
+        EnhancedCommunityRepository.snapshot
+    }.collectAsStateWithLifecycle()
+    val motion = rememberInfiniteTransition(label = "onboarding_accent")
+    val accentPhase = motion.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 7600, easing = LinearEasing),
+            animation = tween(1500, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
-        label = "enhanced_onboarding_phase",
+        label = "onboarding_accent_phase",
     )
+
+    LaunchedEffect(Unit) {
+        EnhancedCommunityRepository.loadOnce()
+    }
 
     PlatformBackHandler(enabled = true) {
         if (page > 0) page--
@@ -169,46 +181,40 @@ internal fun EnhancedOnboardingScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(OnboardingBackground),
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(BackgroundTop, BackgroundBottom, BackgroundBottom),
+                ),
+            ),
     ) {
-        LivingBackdrop(phase = phase)
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 18.dp, vertical = 10.dp),
+                .padding(horizontal = 20.dp, vertical = 10.dp),
         ) {
-            OnboardingProgress(
-                currentPage = page,
-                phase = phase,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
-
+            PageProgress(page = page)
             AnimatedContent(
                 targetState = page,
                 modifier = Modifier.weight(1f),
                 transitionSpec = {
-                    (fadeIn(tween(320, easing = FastOutSlowInEasing)) +
-                        scaleIn(spring(), initialScale = 0.985f))
+                    (fadeIn(tween(260, easing = FastOutSlowInEasing)) +
+                        slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it / 20 })
                         .togetherWith(
-                            fadeOut(tween(180)) +
-                                scaleOut(tween(220), targetScale = 1.01f),
+                            fadeOut(tween(150)) + slideOutVertically(tween(180)) { -it / 24 },
                         )
                 },
-                label = "enhanced_onboarding_page",
+                label = "onboarding_page",
             ) { currentPage ->
                 when (currentPage) {
-                    0 -> WelcomePage(phase = phase)
-                    1 -> FeaturesPage(phase = phase)
-                    2 -> TeamPage(phase = phase)
-                    else -> CommunityPage(phase = phase, onJoinDiscord = onJoinDiscord)
+                    0 -> WelcomePage(accentPhase)
+                    1 -> FeaturesPage(accentPhase)
+                    2 -> TeamPage()
+                    else -> CommunityPage(community, onJoinDiscord)
                 }
             }
-
-            OnboardingNavigation(
+            PageNavigation(
                 page = page,
-                phase = phase,
                 onBack = { page-- },
                 onNext = {
                     if (page == OnboardingPageCount - 1) onComplete() else page++
@@ -219,233 +225,161 @@ internal fun EnhancedOnboardingScreen(
 }
 
 @Composable
-private fun LivingBackdrop(phase: State<Float>) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val angle = phase.value * (PI * 2.0)
-        val orbitX = cos(angle).toFloat()
-        val orbitY = sin(angle).toFloat()
-
-        drawRect(color = OnboardingBackground)
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(OnboardingBlue.copy(alpha = 0.24f), Color.Transparent),
-                center = Offset(
-                    x = size.width * (0.84f + orbitX * 0.08f),
-                    y = size.height * (0.12f + orbitY * 0.06f),
-                ),
-                radius = size.maxDimension * 0.58f,
-            ),
+private fun PageProgress(page: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "0${page + 1}",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary,
+            fontWeight = FontWeight.Bold,
         )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(OnboardingViolet.copy(alpha = 0.20f), Color.Transparent),
-                center = Offset(
-                    x = size.width * (0.10f - orbitY * 0.06f),
-                    y = size.height * (0.56f + orbitX * 0.08f),
-                ),
-                radius = size.maxDimension * 0.62f,
-            ),
-        )
-        drawRect(
-            brush = Brush.radialGradient(
-                colors = listOf(OnboardingPurple.copy(alpha = 0.18f), Color.Transparent),
-                center = Offset(
-                    x = size.width * (0.78f - orbitX * 0.07f),
-                    y = size.height * (0.92f - orbitY * 0.04f),
-                ),
-                radius = size.maxDimension * 0.50f,
-            ),
-        )
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, OnboardingBackground.copy(alpha = 0.42f)),
-            ),
+        Row(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            repeat(OnboardingPageCount) { index ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(2.dp)
+                        .background(
+                            if (index <= page) TextPrimary else TextPrimary.copy(alpha = 0.14f),
+                            CircleShape,
+                        ),
+                )
+            }
+        }
+        Text(
+            text = "0$OnboardingPageCount",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary,
         )
     }
 }
 
 @Composable
 private fun WelcomePage(phase: State<Float>) {
-    val stage = rememberEntranceStage(3)
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-    ) {
-        AnimatedVisibility(
-            visible = stage >= 1,
-            modifier = Modifier.align(Alignment.TopEnd),
-            enter = fadeIn(tween(520)) + scaleIn(tween(620), initialScale = 0.88f),
-        ) {
-            Box(
-                modifier = Modifier
-                    .offset(x = 52.dp, y = (-34).dp)
-                    .size(238.dp)
-                    .clip(RoundedCornerShape(bottomStart = 72.dp))
-                    .animatedGlow(phase = phase, glowAlpha = 0.20f),
-            ) {
-                Image(
-                    painter = painterResource(Res.drawable.nuvio_enhanced_onboarding_logo),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
-
-        Column(
+    PageColumn(centered = false) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 190.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .height(220.dp),
         ) {
-            AnimatedVisibility(
-                visible = stage >= 2,
-                enter = fadeIn(tween(480)) + slideInVertically(tween(520)) { it / 7 },
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BrandTitle(phase = phase)
-                    Text(
-                        text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = OnboardingText,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-
-            AnimatedVisibility(
-                visible = stage >= 3,
-                enter = fadeIn(tween(560)) + slideInVertically(tween(560)) { it / 8 },
-            ) {
-                Surface(
-                    color = OnboardingSurface.copy(alpha = 0.78f),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, OnboardingPurple.copy(alpha = 0.28f)),
-                ) {
-                    Text(
-                        text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_body),
-                        modifier = Modifier.padding(16.dp),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = OnboardingTextMuted,
-                    )
-                }
-            }
+            Image(
+                painter = painterResource(Res.drawable.nuvio_enhanced_onboarding_logo),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 38.dp, y = (-24).dp)
+                    .size(210.dp)
+                    .clip(RoundedCornerShape(bottomStart = 48.dp)),
+            )
         }
-    }
-}
 
-@Composable
-private fun BrandTitle(phase: State<Float>) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Nuvio",
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
+                color = TextPrimary,
+                fontWeight = FontWeight.Black,
+            )
+            TransientAccentText(
+                text = "Enhanced",
+                phase = phase,
+                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
+            )
+        }
         Text(
-            text = "Nuvio",
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 36.sp),
-            color = OnboardingText,
-            fontWeight = FontWeight.Black,
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = TextPrimary,
+            fontWeight = FontWeight.SemiBold,
         )
-        GradientText(
-            text = "Enhanced",
-            phase = phase,
-            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 36.sp),
-            fontWeight = FontWeight.Black,
-            glow = true,
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .height(3.dp)
+                .background(AccentBlue, CircleShape),
+        )
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextSecondary,
         )
     }
 }
 
 @Composable
 private fun FeaturesPage(phase: State<Float>) {
-    val stage = rememberEntranceStage(6)
-    OnboardingPageContainer {
-        OnboardingHeading(
-            visible = stage >= 1,
-            title = stringResource(Res.string.nuvio_enhanced_onboarding_features_title),
-            body = stringResource(Res.string.nuvio_enhanced_onboarding_features_body),
-            phase = phase,
-            settleTitle = true,
-        )
-        FeatureRow(
-            visible = stage >= 2,
-            phase = phase,
-            icon = Icons.Rounded.Home,
-            title = Res.string.nuvio_enhanced_smart_resume_title,
-            description = Res.string.nuvio_enhanced_smart_resume_desc,
-        )
-        FeatureRow(
-            visible = stage >= 3,
-            phase = phase,
-            icon = Icons.Rounded.Star,
-            title = Res.string.nuvio_enhanced_concierge_title,
-            description = Res.string.nuvio_enhanced_concierge_desc,
-        )
-        FeatureRow(
-            visible = stage >= 4,
-            phase = phase,
-            icon = Icons.Rounded.Notifications,
-            title = Res.string.nuvio_enhanced_release_digest_title,
-            description = Res.string.nuvio_enhanced_release_digest_desc,
-        )
-        FeatureRow(
-            visible = stage >= 5,
-            phase = phase,
-            icon = Icons.Rounded.LiveTv,
-            title = Res.string.nuvio_enhanced_live_tv_title,
-            description = Res.string.nuvio_enhanced_live_tv_desc,
-        )
-    }
-}
-
-@Composable
-private fun TeamPage(phase: State<Float>) {
-    val stage = rememberEntranceStage(5)
-    OnboardingPageContainer {
-        OnboardingHeading(
-            visible = stage >= 1,
-            title = stringResource(Res.string.nuvio_enhanced_onboarding_team_title),
-            body = stringResource(Res.string.nuvio_enhanced_onboarding_team_body),
-            phase = phase,
-            centered = true,
-        )
-        DeveloperCard(
-            visible = stage >= 2,
-            phase = phase,
-            avatar = Res.drawable.onboarding_developer_yesnt,
-            displayName = "yesn't",
-            handle = "@yesnt10",
-            accent = OnboardingViolet,
-            isAdmin = false,
-        )
-        DeveloperConnector(visible = stage >= 3, phase = phase)
-        DeveloperCard(
-            visible = stage >= 3,
-            phase = phase,
-            avatar = Res.drawable.onboarding_developer_russo,
-            displayName = "Russo",
-            handle = "@AKRusso",
-            accent = OnboardingBlue,
-            isAdmin = true,
-        )
-        AnimatedVisibility(
-            visible = stage >= 4,
-            enter = gentleEntrance(),
+    PageColumn(centered = false) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = OnboardingSurface.copy(alpha = 0.82f),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Brush.linearGradient(EnhancedGradient)),
-            ) {
-                Text(
-                    text = stringResource(Res.string.nuvio_enhanced_onboarding_team_note),
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = OnboardingTextMuted,
-                    textAlign = TextAlign.Center,
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_features_title_lead),
+                style = MaterialTheme.typography.headlineMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Black,
+            )
+            TransientAccentText(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_features_title_accent),
+                phase = phase,
+                style = MaterialTheme.typography.headlineMedium,
+            )
+        }
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_features_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextSecondary,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = SurfaceDark.copy(alpha = 0.88f),
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, BorderSoft),
+        ) {
+            Column {
+                FeatureListItem(
+                    number = "01",
+                    icon = Icons.Rounded.Home,
+                    tone = AccentBlue,
+                    title = Res.string.nuvio_enhanced_smart_resume_title,
+                    description = Res.string.nuvio_enhanced_smart_resume_desc,
+                )
+                FeatureDivider()
+                FeatureListItem(
+                    number = "02",
+                    icon = Icons.Rounded.Star,
+                    tone = AccentAmber,
+                    title = Res.string.nuvio_enhanced_concierge_title,
+                    description = Res.string.nuvio_enhanced_concierge_desc,
+                )
+                FeatureDivider()
+                FeatureListItem(
+                    number = "03",
+                    icon = Icons.Rounded.Notifications,
+                    tone = AccentCyan,
+                    title = Res.string.nuvio_enhanced_release_digest_title,
+                    description = Res.string.nuvio_enhanced_release_digest_desc,
+                )
+                FeatureDivider()
+                FeatureListItem(
+                    number = "04",
+                    icon = Icons.Rounded.LiveTv,
+                    tone = AccentGreen,
+                    title = Res.string.nuvio_enhanced_live_tv_title,
+                    description = Res.string.nuvio_enhanced_live_tv_desc,
                 )
             }
         }
@@ -453,409 +387,441 @@ private fun TeamPage(phase: State<Float>) {
 }
 
 @Composable
-private fun CommunityPage(
-    phase: State<Float>,
-    onJoinDiscord: () -> Unit,
+private fun FeatureListItem(
+    number: String,
+    icon: ImageVector,
+    tone: Color,
+    title: StringResource,
+    description: StringResource,
 ) {
-    val stage = rememberEntranceStage(4)
-    OnboardingPageContainer(centered = true) {
-        AnimatedVisibility(
-            visible = stage >= 1,
-            enter = fadeIn(tween(460)) + scaleIn(tween(560), initialScale = 0.84f),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(112.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .animatedGradientBackground(phase),
-                contentAlignment = Alignment.Center,
-            ) {
-                Surface(
-                    modifier = Modifier.size(86.dp),
-                    color = Color(0xFF171823),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            painter = appIconPainter(AppIconResource.DiscordMark),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(52.dp),
-                        )
-                    }
-                }
-            }
-        }
-
-        OnboardingHeading(
-            visible = stage >= 2,
-            title = stringResource(Res.string.nuvio_enhanced_onboarding_community_title),
-            body = stringResource(Res.string.nuvio_enhanced_onboarding_community_body),
-            phase = phase,
-            centered = true,
+    Row(
+        modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Text(
+            text = number,
+            style = MaterialTheme.typography.labelSmall,
+            color = tone,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 4.dp),
         )
-
-        AnimatedVisibility(
-            visible = stage >= 3,
-            enter = gentleEntrance(),
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(tone.copy(alpha = 0.13f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF171823).copy(alpha = 0.94f),
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, DiscordBlue.copy(alpha = 0.62f)),
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Box {
-                            Image(
-                                painter = painterResource(Res.drawable.onboarding_developer_yesnt),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(CircleShape),
-                            )
-                            Image(
-                                painter = painterResource(Res.drawable.onboarding_developer_russo),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .padding(start = 26.dp)
-                                    .size(38.dp)
-                                    .clip(CircleShape)
-                                    .border(2.dp, Color(0xFF171823), CircleShape),
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Nuvio Enhanced",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = OnboardingText,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                text = "discord.gg/nuvioenhanced",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFFB5BAFF),
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF23A55A)),
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DiscordBlue.copy(alpha = 0.13f))
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF23A55A)),
-                        )
-                        Text(
-                            text = stringResource(Res.string.nuvio_enhanced_onboarding_members),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = OnboardingText,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-
-                    OnboardingActionButton(
-                        text = stringResource(Res.string.nuvio_enhanced_onboarding_join_discord),
-                        phase = phase,
-                        icon = null,
-                        onClick = onJoinDiscord,
-                    )
-                }
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tone,
+                modifier = Modifier.size(19.dp),
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = stringResource(title),
+                style = MaterialTheme.typography.titleSmall,
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(description),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
 
 @Composable
-private fun OnboardingPageContainer(
-    centered: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(top = 20.dp, bottom = 18.dp),
-        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        content = content,
+private fun FeatureDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 76.dp),
+        thickness = 1.dp,
+        color = BorderSoft.copy(alpha = 0.72f),
     )
 }
 
 @Composable
-private fun OnboardingHeading(
-    visible: Boolean,
-    title: String,
-    body: String,
-    phase: State<Float>,
-    centered: Boolean = false,
-    settleTitle: Boolean = false,
-) {
-    var titleAnimated by remember { mutableStateOf(true) }
-    LaunchedEffect(settleTitle) {
-        if (settleTitle) {
-            delay(2100)
-            titleAnimated = false
-        }
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = gentleEntrance(),
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GradientText(
-                text = title,
-                phase = phase,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-                animated = !settleTitle || titleAnimated,
-                glow = titleAnimated,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodyLarge,
-                color = OnboardingTextMuted,
-                textAlign = if (centered) TextAlign.Center else TextAlign.Start,
-            )
-        }
-    }
-}
-
-@Composable
-private fun FeatureRow(
-    visible: Boolean,
-    phase: State<Float>,
-    icon: ImageVector,
-    title: StringResource,
-    description: StringResource,
-) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = gentleEntrance(),
-    ) {
+private fun TeamPage() {
+    PageColumn(centered = false) {
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_team_title),
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_team_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextSecondary,
+        )
         Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        listOf(
-                            OnboardingPurple.copy(alpha = 0.48f),
-                            OnboardingBlue.copy(alpha = 0.12f),
-                            Color.Transparent,
-                        ),
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                ),
-            color = OnboardingSurface.copy(alpha = 0.88f),
+            modifier = Modifier.fillMaxWidth(),
+            color = SurfaceDark.copy(alpha = 0.88f),
             shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, BorderSoft),
         ) {
-            Row(
-                modifier = Modifier.padding(13.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .animatedGradientBackground(phase),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp),
-                    )
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    GradientText(
-                        text = stringResource(title),
-                        phase = phase,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        glow = true,
-                    )
-                    Text(
-                        text = stringResource(description),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = OnboardingTextMuted,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+            Column {
+                DeveloperProfile(
+                    avatar = Res.drawable.onboarding_developer_yesnt,
+                    displayName = "yesn't",
+                    handle = "@yesnt10",
+                    isAdmin = false,
+                )
+                HorizontalDivider(color = BorderSoft)
+                DeveloperProfile(
+                    avatar = Res.drawable.onboarding_developer_russo,
+                    displayName = "Russo",
+                    handle = "@AKRusso",
+                    isAdmin = true,
+                )
             }
         }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 5.dp)
+                    .width(3.dp)
+                    .height(42.dp)
+                    .background(AccentBlue, CircleShape),
+            )
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_team_note),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+            )
+        }
     }
 }
 
 @Composable
-private fun DeveloperCard(
-    visible: Boolean,
-    phase: State<Float>,
+private fun DeveloperProfile(
     avatar: DrawableResource,
     displayName: String,
     handle: String,
-    accent: Color,
     isAdmin: Boolean,
 ) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = gentleEntrance(),
+    Row(
+        modifier = Modifier.padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        listOf(accent.copy(alpha = 0.78f), OnboardingPurple.copy(alpha = 0.18f)),
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                ),
-            color = OnboardingSurfaceRaised.copy(alpha = 0.94f),
-            shape = RoundedCornerShape(8.dp),
+        Box {
+            Image(
+                painter = painterResource(avatar),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(14.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceDark)
+                    .padding(3.dp)
+                    .clip(CircleShape)
+                    .background(AccentGreen),
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(15.dp),
-            ) {
-                Box {
-                    Box(
-                        modifier = Modifier
-                            .size(68.dp)
-                            .clip(CircleShape)
-                            .animatedGradientBackground(phase)
-                            .padding(3.dp),
-                    ) {
-                        Image(
-                            painter = painterResource(avatar),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape),
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(17.dp)
-                            .clip(CircleShape)
-                            .background(OnboardingSurfaceRaised)
-                            .padding(3.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF23A55A)),
+            Text(
+                text = displayName,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = handle,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (isAdmin) {
+                    RoleBadge(
+                        text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
+                        color = AccentPink,
                     )
                 }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = displayName,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = OnboardingText,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = handle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = OnboardingTextMuted,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        if (isAdmin) {
-                            DeveloperRoleBadge(
-                                text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
-                                color = OnboardingPink,
-                            )
-                        }
-                        DeveloperRoleBadge(
-                            text = stringResource(Res.string.nuvio_enhanced_onboarding_developer_role),
-                            color = accent,
-                        )
-                    }
-                }
+                RoleBadge(
+                    text = stringResource(Res.string.nuvio_enhanced_onboarding_developer_role),
+                    color = AccentBlue,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun DeveloperRoleBadge(
-    text: String,
-    color: Color,
-) {
+private fun RoleBadge(text: String, color: Color) {
     Surface(
-        color = color.copy(alpha = 0.18f),
-        shape = RoundedCornerShape(5.dp),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.34f)),
+        color = color.copy(alpha = 0.11f),
+        shape = RoundedCornerShape(4.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.25f)),
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
             style = MaterialTheme.typography.labelSmall,
             color = color,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun CommunityPage(
+    snapshot: EnhancedCommunitySnapshot,
+    onJoinDiscord: () -> Unit,
+) {
+    PageColumn(centered = false) {
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_community_title),
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_community_body),
+            style = MaterialTheme.typography.bodyLarge,
+            color = TextSecondary,
+        )
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = SurfaceDark,
+            shape = RoundedCornerShape(8.dp),
+            border = BorderStroke(1.dp, BorderSoft),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(13.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ServerIcon(snapshot.iconUrl)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = snapshot.serverName,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = snapshot.serverTag,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(AccentGreen),
+                    )
+                }
+
+                HorizontalDivider(color = BorderSoft)
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    CommunityStat(
+                        value = snapshot.memberCount.toString(),
+                        label = stringResource(Res.string.nuvio_enhanced_onboarding_members_label),
+                        modifier = Modifier.weight(1f),
+                    )
+                    CommunityStat(
+                        value = snapshot.onlineCount?.toString() ?: "--",
+                        label = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (snapshot.boostCount != null) {
+                        CommunityStat(
+                            value = snapshot.boostCount.toString(),
+                            label = stringResource(Res.string.nuvio_enhanced_onboarding_boosts_label),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
+
+                if (snapshot.members.isNotEmpty()) {
+                    HorizontalDivider(color = BorderSoft)
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Text(
+                            text = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        snapshot.members.take(4).forEach { member ->
+                            CommunityMemberRow(member)
+                        }
+                    }
+                }
+
+                DiscordButton(onClick = onJoinDiscord)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServerIcon(iconUrl: String?) {
+    Box(
+        modifier = Modifier
+            .size(54.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(SurfaceRaised),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (iconUrl != null) {
+            AsyncImage(
+                model = iconUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Icon(
+                painter = appIconPainter(AppIconResource.DiscordMark),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(30.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommunityStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = TextPrimary,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+        )
+    }
+}
+
+@Composable
+private fun CommunityMemberRow(member: EnhancedCommunityMember) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(SurfaceRaised),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (member.avatarUrl != null) {
+                AsyncImage(
+                    model = member.avatarUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Text(
+                    text = member.username.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Text(
+            text = member.username,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .clip(CircleShape)
+                .background(AccentGreen),
+        )
+    }
+}
+
+@Composable
+private fun DiscordButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(DiscordBlue)
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = appIconPainter(AppIconResource.DiscordMark),
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(21.dp),
+        )
+        Spacer(Modifier.width(9.dp))
+        Text(
+            text = stringResource(Res.string.nuvio_enhanced_onboarding_join_discord),
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White,
             fontWeight = FontWeight.Bold,
         )
     }
 }
 
 @Composable
-private fun DeveloperConnector(
-    visible: Boolean,
-    phase: State<Float>,
+private fun PageColumn(
+    centered: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    AnimatedVisibility(visible = visible, enter = fadeIn(tween(300))) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(2.dp)
-                .padding(horizontal = 54.dp)
-                .animatedGradientBackground(phase),
-        )
-    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 18.dp, bottom = 18.dp),
+        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        content = content,
+    )
 }
 
 @Composable
-private fun OnboardingNavigation(
+private fun PageNavigation(
     page: Int,
-    phase: State<Float>,
     onBack: () -> Unit,
     onNext: () -> Unit,
 ) {
@@ -866,14 +832,15 @@ private fun OnboardingNavigation(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (page > 0) {
-            SecondaryOnboardingButton(
+            NavigationButton(
                 text = stringResource(Res.string.action_back),
                 icon = Icons.Rounded.ArrowBack,
+                primary = false,
                 modifier = Modifier.weight(1f),
                 onClick = onBack,
             )
         }
-        OnboardingActionButton(
+        NavigationButton(
             text = stringResource(
                 if (page == OnboardingPageCount - 1) {
                     Res.string.nuvio_enhanced_onboarding_start
@@ -881,8 +848,8 @@ private fun OnboardingNavigation(
                     Res.string.action_next
                 },
             ),
-            phase = phase,
             icon = Icons.Rounded.ArrowForward,
+            primary = true,
             modifier = Modifier.weight(if (page > 0) 1f else 2f),
             onClick = onNext,
         )
@@ -890,224 +857,94 @@ private fun OnboardingNavigation(
 }
 
 @Composable
-private fun OnboardingActionButton(
+private fun NavigationButton(
     text: String,
-    phase: State<Float>,
-    icon: ImageVector?,
+    icon: ImageVector,
+    primary: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
+    val background = if (primary) TextPrimary else SurfaceDark
+    val contentColor = if (primary) BackgroundBottom else TextPrimary
     Row(
         modifier = modifier
-            .height(52.dp)
+            .height(50.dp)
             .clip(RoundedCornerShape(8.dp))
-            .animatedGradientBackground(phase)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 16.dp),
+            .background(background)
+            .then(
+                if (primary) Modifier else Modifier.border(1.dp, BorderSoft, RoundedCornerShape(8.dp)),
+            )
+            .clickable(role = Role.Button, onClick = onClick),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (!primary) {
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(17.dp))
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             text = text,
             style = MaterialTheme.typography.labelLarge,
-            color = Color.White,
+            color = contentColor,
             fontWeight = FontWeight.Bold,
         )
-        if (icon != null) {
+        if (primary) {
             Spacer(Modifier.width(8.dp))
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp),
-            )
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(17.dp))
         }
     }
 }
 
 @Composable
-private fun SecondaryOnboardingButton(
-    text: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(OnboardingSurface.copy(alpha = 0.86f))
-            .border(1.dp, Color.White.copy(alpha = 0.20f), RoundedCornerShape(8.dp))
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 14.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = OnboardingTextMuted,
-            modifier = Modifier.size(18.dp),
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = OnboardingText,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-private fun GradientText(
+private fun TransientAccentText(
     text: String,
     phase: State<Float>,
     style: TextStyle,
-    modifier: Modifier = Modifier,
-    fontWeight: FontWeight = FontWeight.Bold,
-    textAlign: TextAlign = TextAlign.Start,
-    animated: Boolean = true,
-    glow: Boolean = false,
 ) {
-    Box(modifier = modifier) {
-        if (glow) {
+    var animated by remember(text) { mutableStateOf(true) }
+    LaunchedEffect(text) {
+        delay(1200)
+        animated = false
+    }
+    Box {
+        if (animated) {
             Text(
                 text = text,
                 modifier = Modifier
-                    .blur(9.dp)
-                    .alpha(0.52f),
+                    .blur(7.dp)
+                    .alpha(0.22f),
                 style = style,
-                color = OnboardingViolet,
-                fontWeight = fontWeight,
-                textAlign = textAlign,
+                color = AccentViolet,
+                fontWeight = FontWeight.Black,
             )
         }
         Text(
             text = text,
-            modifier = Modifier.animatedGradientText(
-                phase = phase,
-                animated = animated,
-            ),
+            modifier = Modifier.accentGradient(phase, animated),
             style = style,
             color = Color.White,
-            fontWeight = fontWeight,
-            textAlign = textAlign,
+            fontWeight = FontWeight.Black,
         )
     }
 }
 
-private fun Modifier.animatedGradientText(
+private fun Modifier.accentGradient(
     phase: State<Float>,
     animated: Boolean,
 ): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen
 }.drawWithContent {
     drawContent()
-    val progress = if (animated) phase.value else 0.18f
+    val progress = if (animated) phase.value else 0.22f
     val angle = progress * (PI * 2.0)
-    val orbitX = cos(angle).toFloat()
-    val orbitY = sin(angle).toFloat()
+    val offsetX = cos(angle).toFloat() * size.width * 0.24f
+    val offsetY = sin(angle).toFloat() * size.height * 0.30f
     drawRect(
         brush = Brush.linearGradient(
-            colors = EnhancedGradient,
-            start = Offset(
-                x = -size.width * 0.45f + orbitX * size.width * 0.28f,
-                y = -size.height + orbitY * size.height * 0.45f,
-            ),
-            end = Offset(
-                x = size.width * 1.45f + orbitX * size.width * 0.28f,
-                y = size.height * 2f + orbitY * size.height * 0.45f,
-            ),
+            colors = AccentGradient,
+            start = Offset(-size.width * 0.35f + offsetX, -size.height + offsetY),
+            end = Offset(size.width * 1.35f + offsetX, size.height * 2f + offsetY),
         ),
         blendMode = BlendMode.SrcIn,
     )
-}
-
-@Composable
-private fun OnboardingProgress(
-    currentPage: Int,
-    phase: State<Float>,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        repeat(OnboardingPageCount) { index ->
-            Box(
-                modifier = Modifier
-                    .height(5.dp)
-                    .width(if (index == currentPage) 28.dp else 7.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (index == currentPage) {
-                            Modifier.animatedGradientBackground(phase)
-                        } else {
-                            Modifier.background(Color.White.copy(alpha = 0.22f))
-                        },
-                    ),
-            )
-        }
-    }
-}
-
-private fun Modifier.animatedGradientBackground(phase: State<Float>): Modifier = drawBehind {
-    val angle = phase.value * (PI * 2.0)
-    val orbitX = cos(angle).toFloat()
-    val orbitY = sin(angle).toFloat()
-    val travel = size.maxDimension.coerceAtLeast(1f)
-    drawRect(
-        brush = Brush.linearGradient(
-            colors = EnhancedGradient,
-            start = Offset(
-                x = -travel * 0.35f + orbitX * travel * 0.25f,
-                y = -travel * 0.25f + orbitY * travel * 0.20f,
-            ),
-            end = Offset(
-                x = size.width + travel * 0.35f + orbitX * travel * 0.25f,
-                y = size.height + travel * 0.25f + orbitY * travel * 0.20f,
-            ),
-        ),
-    )
-}
-
-private fun Modifier.animatedGlow(
-    phase: State<Float>,
-    glowAlpha: Float,
-): Modifier = drawBehind {
-    val angle = phase.value * (PI * 2.0)
-    val orbitX = cos(angle).toFloat()
-    val orbitY = sin(angle).toFloat()
-    drawCircle(
-        brush = Brush.radialGradient(
-            colors = listOf(
-                OnboardingBlue.copy(alpha = glowAlpha),
-                OnboardingViolet.copy(alpha = glowAlpha * 0.62f),
-                Color.Transparent,
-            ),
-            center = Offset(
-                x = size.width * (0.5f + orbitX * 0.08f),
-                y = size.height * (0.5f + orbitY * 0.08f),
-            ),
-            radius = size.maxDimension * 0.72f,
-        ),
-        radius = size.maxDimension * 0.72f,
-    )
-}
-
-private fun gentleEntrance() =
-    fadeIn(tween(420, easing = FastOutSlowInEasing)) +
-        slideInVertically(tween(480, easing = FastOutSlowInEasing)) { it / 8 }
-
-@Composable
-private fun rememberEntranceStage(stageCount: Int): Int {
-    var stage by remember { mutableIntStateOf(0) }
-    LaunchedEffect(stageCount) {
-        repeat(stageCount) { index ->
-            delay(if (index == 0) 60 else 72)
-            stage = index + 1
-        }
-    }
-    return stage
 }

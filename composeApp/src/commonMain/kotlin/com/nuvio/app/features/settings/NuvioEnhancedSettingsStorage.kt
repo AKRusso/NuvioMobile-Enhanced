@@ -5,4 +5,6 @@ internal expect object NuvioEnhancedSettingsStorage {
     fun savePayload(payload: String)
     fun loadOnboardingCompleted(): Boolean?
     fun saveOnboardingCompleted(completed: Boolean)
+    fun loadCommunitySnapshot(): String?
+    fun saveCommunitySnapshot(payload: String)
 }

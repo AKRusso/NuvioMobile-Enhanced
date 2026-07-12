@@ -1930,7 +1930,10 @@
     <string name="nuvio_enhanced_onboarding_members">Több mint 1000 közösségi tag</string>
     <string name="nuvio_enhanced_onboarding_join_discord">Csatlakozás a Discordhoz</string>
     <string name="nuvio_enhanced_onboarding_start">Felfedezés indítása</string>
-    <string name="nuvio_enhanced_onboarding_show_again">Üdvözlés újbóli megjelenítése</string>
-    <string name="nuvio_enhanced_onboarding_show_again_desc">Tekintsd meg újra az első indítás bemutatóját.</string>
+    <string name="nuvio_enhanced_onboarding_features_title_lead">Többre</string>
+    <string name="nuvio_enhanced_onboarding_features_title_accent">tervezve</string>
+    <string name="nuvio_enhanced_onboarding_members_label">Tagok</string>
+    <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_boosts_label">Kiemelések</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Adminisztrátor</string>
 </resources>
