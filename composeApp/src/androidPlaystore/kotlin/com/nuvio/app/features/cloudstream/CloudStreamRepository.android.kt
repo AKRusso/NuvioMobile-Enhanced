@@ -17,6 +17,19 @@ actual object CloudStreamRepository {
     actual fun removeRepository(manifestUrl: String) = Unit
     actual suspend fun installPlugin(pluginId: String): CloudStreamInstallResult = CloudStreamInstallResult.Error("CloudStream is available only in full builds")
     actual suspend fun updatePlugin(pluginId: String): CloudStreamInstallResult = CloudStreamInstallResult.Error("CloudStream is available only in full builds")
+    actual suspend fun installAndEnablePlugins(pluginIds: List<String>): CloudStreamBulkInstallResult =
+        CloudStreamBulkInstallResult(
+            requestedCount = pluginIds.distinct().size,
+            installedCount = 0,
+            enabledCount = 0,
+            skippedCount = 0,
+            failures = listOf(
+                CloudStreamBulkInstallFailure(
+                    pluginName = "CloudStream",
+                    message = "CloudStream is available only in full builds",
+                ),
+            ),
+        )
     actual fun setPluginEnabled(pluginId: String, enabled: Boolean) = Unit
     actual fun removePlugin(pluginId: String) = Unit
     actual suspend fun getMainPage(providerId: String, page: Int) = Result.failure<List<Pair<String, List<CloudStreamSearchItem>>>>(UnsupportedOperationException())
