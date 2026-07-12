@@ -22,10 +22,10 @@ import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.lerp
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.sin
 
 internal data class AnimatedThemeVisuals(
@@ -90,7 +90,7 @@ internal fun rememberAnimatedThemeVisuals(
     val lineColors = actionColors
     val selectionColors = highlightColors(colors, phase, samples = 24, strength = 0.72f)
     val accent = sampleLoop(colors, phase)
-    val accentStrong = lerp(accent, sampleLoop(colors, phase + 0.34f), 0.62f)
+    val accentStrong = smoothColorLerp(accent, sampleLoop(colors, phase + 0.34f), 0.62f)
 
     return AnimatedThemeVisuals(
         accent = accent,
@@ -136,11 +136,11 @@ private fun stylePalette(
 ): List<Color> {
     if (colors.isEmpty()) return colors
     return when (style) {
-        ThemeAnimationStyle.VIVID_WAVE -> colors.map { enhanceColor(it, saturation = 1.34f, contrast = 1.24f) }
-        ThemeAnimationStyle.WAVE -> colors.map { enhanceColor(it, saturation = 1.26f, contrast = 1.18f) }
-        ThemeAnimationStyle.SHIMMER -> colors.map { enhanceColor(it, saturation = 1.22f, contrast = 1.16f) }
-        ThemeAnimationStyle.FLOW -> colors.map { enhanceColor(it, saturation = 1.18f, contrast = 1.12f) }
-        ThemeAnimationStyle.STILL -> colors.map { enhanceColor(it, saturation = 1.12f, contrast = 1.08f) }
+        ThemeAnimationStyle.VIVID_WAVE -> colors.map { enhanceColor(it, saturation = 1.28f, contrast = 1.14f) }
+        ThemeAnimationStyle.WAVE -> colors.map { enhanceColor(it, saturation = 1.22f, contrast = 1.11f) }
+        ThemeAnimationStyle.SHIMMER -> colors.map { enhanceColor(it, saturation = 1.18f, contrast = 1.09f) }
+        ThemeAnimationStyle.FLOW -> colors.map { enhanceColor(it, saturation = 1.16f, contrast = 1.07f) }
+        ThemeAnimationStyle.STILL -> colors.map { enhanceColor(it, saturation = 1.10f, contrast = 1.04f) }
     }
 }
 
@@ -150,10 +150,12 @@ private fun themeBrush(
     phase: Float,
 ): Brush = when (style) {
     ThemeAnimationStyle.FLOW -> FlowMotionBrush(colors, phase)
-    ThemeAnimationStyle.STILL -> Brush.horizontalGradient(colors)
+    ThemeAnimationStyle.STILL -> Brush.horizontalGradient(smoothGradientPalette(colors, steps = 8))
     ThemeAnimationStyle.SHIMMER -> ShimmerMotionBrush(colors, phase)
     ThemeAnimationStyle.WAVE -> MeshMotionBrush(colors, phase)
-    ThemeAnimationStyle.VIVID_WAVE -> Brush.sweepGradient(colors + colors.first())
+    ThemeAnimationStyle.VIVID_WAVE -> Brush.sweepGradient(
+        smoothGradientPalette(colors, steps = 8, closed = true),
+    )
 }
 
 private class FlowMotionBrush(
@@ -162,12 +164,14 @@ private class FlowMotionBrush(
 ) : ShaderBrush() {
     override fun createShader(size: Size): Shader {
         val source = colors.ifEmpty { listOf(Color.Transparent) }
-        val palette = loopPalette(
+        val palette = smoothGradientPalette(
             listOf(
                 source.first(),
                 source[source.size / 2],
                 source.last(),
             ),
+            steps = 10,
+            closed = true,
         )
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
@@ -190,7 +194,10 @@ private class ShimmerMotionBrush(
         val palette = colors.ifEmpty { listOf(Color.Transparent) }
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
-        val baseColors = listOf(palette.first(), palette[palette.size / 2], palette.last())
+        val baseColors = smoothGradientPalette(
+            listOf(palette.first(), palette[palette.size / 2], palette.last()),
+            steps = 10,
+        )
         val base = LinearGradientShader(
             from = Offset(-width * 0.18f, height),
             to = Offset(width * 1.18f, 0f),
@@ -229,7 +236,10 @@ private class MeshMotionBrush(
         var shader = LinearGradientShader(
             from = Offset.Zero,
             to = Offset(width, height),
-            colors = listOf(palette[0], palette[1 % palette.size], palette[2 % palette.size]),
+            colors = smoothGradientPalette(
+                listOf(palette.first(), palette[palette.size / 2], palette.last()),
+                steps = 8,
+            ),
         )
         val radius = max(width * 0.44f, height * 2.4f)
         val centers = listOf(
@@ -239,7 +249,7 @@ private class MeshMotionBrush(
             Offset(width * (0.78f + sin(angle + 1.4f) * 0.24f), height * (0.76f + cos(angle) * 0.24f)),
         )
         centers.forEachIndexed { index, center ->
-            val color = palette[(index + 2) % palette.size]
+            val color = palette[(index * palette.size / centers.size) % palette.size]
             val blob = RadialGradientShader(
                 center = center,
                 radius = radius,
@@ -263,15 +273,19 @@ private class ImmiscibleLineBrush(
         val first = palette.first()
         val second = palette[(palette.size / 2).coerceAtMost(palette.lastIndex)]
         val angle = normalizedPhase(phase) * TwoPi
-        val boundary = (0.5f + sin(angle) * 0.22f).coerceIn(0.22f, 0.78f)
-        val softEdge = (height / width * 0.30f).coerceIn(0.018f, 0.055f)
+        val boundary = (0.5f + sin(angle) * 0.18f).coerceIn(0.26f, 0.74f)
+        val softEdge = (height / width * 0.65f).coerceIn(0.06f, 0.14f)
+        val transitionStart = smoothColorLerp(first, second, 0.18f)
+        val transitionEnd = smoothColorLerp(first, second, 0.82f)
         return LinearGradientShader(
             from = Offset.Zero,
             to = Offset(width, 0f),
-            colors = listOf(first, first, second, second),
+            colors = listOf(first, first, transitionStart, transitionEnd, second, second),
             colorStops = listOf(
                 0f,
                 (boundary - softEdge).coerceAtLeast(0f),
+                (boundary - softEdge * 0.35f).coerceAtLeast(0f),
+                (boundary + softEdge * 0.35f).coerceAtMost(1f),
                 (boundary + softEdge).coerceAtMost(1f),
                 1f,
             ),
@@ -279,9 +293,25 @@ private class ImmiscibleLineBrush(
     }
 }
 
-private fun loopPalette(colors: List<Color>): List<Color> {
-    val palette = colors.ifEmpty { listOf(Color.Transparent) }
-    return if (palette.first() == palette.last()) palette else palette + palette.first()
+private fun smoothGradientPalette(
+    colors: List<Color>,
+    steps: Int,
+    closed: Boolean = false,
+): List<Color> {
+    val palette = colors.ifEmpty { return listOf(Color.Transparent) }
+    if (palette.size == 1) return palette
+    val segmentCount = if (closed) palette.size else palette.lastIndex
+    return buildList {
+        repeat(segmentCount) { segment ->
+            val start = palette[segment]
+            val end = palette[(segment + 1) % palette.size]
+            repeat(steps.coerceAtLeast(2)) { step ->
+                val fraction = step.toFloat() / steps.coerceAtLeast(2).toFloat()
+                add(smoothColorLerp(start, end, smoothStep(fraction)))
+            }
+        }
+        add(if (closed) palette.first() else palette.last())
+    }
 }
 
 private fun highlightColors(
@@ -295,7 +325,7 @@ private fun highlightColors(
         val base = sampleLoop(colors, normalizedPhase(track + phase))
         val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.10f)
             .coerceIn(0f, 1f)
-        lerp(base, Color.White, highlight * strength)
+        smoothColorLerp(base, Color.White, highlight * strength)
     }
 
 private fun phasedColors(
@@ -316,8 +346,30 @@ private fun sampleLoop(colors: List<Color>, phase: Float): Color {
     val position = normalizedPhase(phase) * colors.size
     val index = floor(position).toInt().coerceIn(0, colors.lastIndex)
     val nextIndex = (index + 1) % colors.size
-    val fraction = position - index
-    return lerp(colors[index], colors[nextIndex], fraction)
+    val fraction = smoothStep(position - index)
+    return smoothColorLerp(colors[index], colors[nextIndex], fraction)
+}
+
+private fun smoothStep(value: Float): Float {
+    val clamped = value.coerceIn(0f, 1f)
+    return clamped * clamped * (3f - 2f * clamped)
+}
+
+private fun smoothColorLerp(start: Color, end: Color, fraction: Float): Color {
+    val amount = fraction.coerceIn(0f, 1f)
+    fun channel(first: Float, second: Float): Float {
+        val firstLinear = first.coerceIn(0f, 1f).pow(2.2f)
+        val secondLinear = second.coerceIn(0f, 1f).pow(2.2f)
+        return (firstLinear + (secondLinear - firstLinear) * amount)
+            .coerceIn(0f, 1f)
+            .pow(1f / 2.2f)
+    }
+    return Color(
+        red = channel(start.red, end.red),
+        green = channel(start.green, end.green),
+        blue = channel(start.blue, end.blue),
+        alpha = start.alpha + (end.alpha - start.alpha) * amount,
+    )
 }
 
 private fun enhanceColor(
