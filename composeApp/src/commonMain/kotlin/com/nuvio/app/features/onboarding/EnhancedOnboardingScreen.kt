@@ -413,19 +413,19 @@ private fun TeamPage(phase: State<Float>) {
         DeveloperCard(
             visible = stage >= 2,
             phase = phase,
-            avatar = Res.drawable.onboarding_developer_russo,
-            displayName = "Russo",
-            handle = "@AKRusso",
-            accent = OnboardingBlue,
+            avatar = Res.drawable.onboarding_developer_yesnt,
+            displayName = "yesn't",
+            handle = "@yesnt10",
+            accent = OnboardingViolet,
         )
         DeveloperConnector(visible = stage >= 3, phase = phase)
         DeveloperCard(
             visible = stage >= 3,
             phase = phase,
-            avatar = Res.drawable.onboarding_developer_yesnt,
-            displayName = "yesn't",
-            handle = "@yesnt10",
-            accent = OnboardingViolet,
+            avatar = Res.drawable.onboarding_developer_russo,
+            displayName = "Russo",
+            handle = "@AKRusso",
+            accent = OnboardingBlue,
         )
         AnimatedVisibility(
             visible = stage >= 4,
@@ -512,7 +512,7 @@ private fun CommunityPage(
                     ) {
                         Box {
                             Image(
-                                painter = painterResource(Res.drawable.onboarding_developer_russo),
+                                painter = painterResource(Res.drawable.onboarding_developer_yesnt),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -520,7 +520,7 @@ private fun CommunityPage(
                                     .clip(CircleShape),
                             )
                             Image(
-                                painter = painterResource(Res.drawable.onboarding_developer_yesnt),
+                                painter = painterResource(Res.drawable.onboarding_developer_russo),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
