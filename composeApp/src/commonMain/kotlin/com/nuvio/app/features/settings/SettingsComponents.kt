@@ -53,7 +53,7 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
-import com.nuvio.app.core.ui.rememberAnimatedLineBrush
+import com.nuvio.app.core.ui.rememberAnimatedSelectionBrush
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.settings_homescreen_collection_with_addon
@@ -370,7 +370,7 @@ internal fun SettingsSwitchRow(
                 )
             }
         }
-        val switchBorder = rememberAnimatedLineBrush().takeIf { checked && enabled }
+        val switchBorder = rememberAnimatedSelectionBrush().takeIf { checked && enabled }
         val switchShape = RoundedCornerShape(999.dp)
         Box(
             modifier = Modifier

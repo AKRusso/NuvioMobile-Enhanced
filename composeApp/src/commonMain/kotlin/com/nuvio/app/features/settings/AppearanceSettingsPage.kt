@@ -174,6 +174,9 @@ internal fun LazyListScope.appearanceSettingsContent(
 
                     ThemeAnimationStyleSelector(
                         selectedStyle = animationStyle,
+                        previewTheme = selectedTheme.takeIf { it.isEnhanced } ?: AppTheme.MESSENGER,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
                         onStyleSelected = ThemeSettingsRepository::setThemeAnimationStyle,
                     )
 
@@ -402,7 +405,7 @@ private fun ThemeChip(
     val palette = ThemeColors.getColorPalette(theme, customFirst, customSecond)
     val previewBrush = theme.previewBrush(palette, customFirst, customSecond)
     val selectedPreviewBrush = rememberAnimatedAccentBrush()
-        .takeIf { isSelected && theme.isEnhanced && theme != AppTheme.CUSTOM }
+        .takeIf { isSelected && theme.isEnhanced }
     val checkColor = if (theme.isEnhanced) Color.White else palette.onSecondary
 
     Column(
@@ -453,7 +456,7 @@ private fun ThemeChip(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(selectedPreviewBrush ?: previewBrush),
+                        .background(previewBrush),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (isSelected) {
@@ -505,6 +508,9 @@ private fun ThemeChip(
 @Composable
 private fun ThemeAnimationStyleSelector(
     selectedStyle: ThemeAnimationStyle,
+    previewTheme: AppTheme,
+    customFirst: ThemeAccentColor,
+    customSecond: ThemeAccentColor,
     onStyleSelected: (ThemeAnimationStyle) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -519,6 +525,9 @@ private fun ThemeAnimationStyleSelector(
                 ThemeAnimationStyleChip(
                     style = style,
                     selected = style == selectedStyle,
+                    previewTheme = previewTheme,
+                    customFirst = customFirst,
+                    customSecond = customSecond,
                     onClick = { onStyleSelected(style) },
                 )
             }
@@ -530,10 +539,19 @@ private fun ThemeAnimationStyleSelector(
 private fun ThemeAnimationStyleChip(
     style: ThemeAnimationStyle,
     selected: Boolean,
+    previewTheme: AppTheme,
+    customFirst: ThemeAccentColor,
+    customSecond: ThemeAccentColor,
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(999.dp)
-    val selectedBrush = rememberAnimatedAccentBrush().takeIf { selected && style != ThemeAnimationStyle.STILL }
+    val previewBrush = rememberAnimatedAccentBrush(
+        previewTheme = previewTheme,
+        customFirst = customFirst,
+        customSecond = customSecond,
+        animationStyle = style,
+    )
+    val selectedBrush = previewBrush.takeIf { selected }
     val backgroundColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -567,11 +585,11 @@ private fun ThemeAnimationStyleChip(
         ) {
             Box(
                 modifier = Modifier
-                    .size(width = 22.dp, height = 5.dp)
+                    .size(width = 36.dp, height = 7.dp)
                     .clip(shape)
                     .then(
-                        if (selectedBrush != null) {
-                            Modifier.background(selectedBrush)
+                        if (previewBrush != null) {
+                            Modifier.background(previewBrush)
                         } else {
                             Modifier.background(MaterialTheme.colorScheme.primary)
                         },

@@ -11,13 +11,10 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.sin
 
 internal data class AnimatedThemeVisuals(
     val accent: Color,
@@ -25,6 +22,7 @@ internal data class AnimatedThemeVisuals(
     val brush: Brush,
     val chipBrush: Brush,
     val lineBrush: Brush,
+    val selectionBrush: Brush,
     val softBrush: Brush,
 )
 
@@ -42,7 +40,7 @@ internal fun rememberAnimatedThemeVisuals(
     customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
     animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
 ): AnimatedThemeVisuals? {
-    if (!theme.isEnhanced || animationStyle == ThemeAnimationStyle.STILL) return null
+    if (!theme.isEnhanced) return null
 
     val colors = remember(theme, customFirst, customSecond, animationStyle) {
         stylePalette(
@@ -53,19 +51,24 @@ internal fun rememberAnimatedThemeVisuals(
     }
     if (colors.isEmpty()) return null
 
-    val transition = rememberInfiniteTransition(label = "theme_animation")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = animationStyle.durationMillis,
-                easing = LinearEasing,
+    val phase = if (animationStyle == ThemeAnimationStyle.STILL) {
+        0f
+    } else {
+        val transition = rememberInfiniteTransition(label = "theme_animation")
+        val animatedPhase by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(
+                    durationMillis = animationStyle.durationMillis,
+                    easing = LinearEasing,
+                ),
+                repeatMode = RepeatMode.Restart,
             ),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "theme_animation_phase",
-    )
+            label = "theme_animation_phase",
+        )
+        animatedPhase
+    }
 
     val actionColors = when (animationStyle) {
         ThemeAnimationStyle.SHIMMER -> shimmerColors(colors, phase, samples = 18, alpha = 1f)
@@ -73,32 +76,20 @@ internal fun rememberAnimatedThemeVisuals(
     }
     val chipColors = actionColors.map { it.copy(alpha = animationStyle.chipAlpha) }
     val lineColors = actionColors
-    val (start, end) = gradientOffsets(animationStyle, phase)
+    val selectionColors = highlightColors(colors, phase, samples = 24, strength = 0.72f)
     val accent = sampleLoop(colors, phase)
     val accentStrong = lerp(accent, sampleLoop(colors, phase + 0.34f), 0.62f)
 
     return AnimatedThemeVisuals(
         accent = accent,
         accentStrong = accentStrong,
-        brush = Brush.linearGradient(
-            colors = actionColors,
-            start = start,
-            end = end,
-        ),
-        chipBrush = Brush.linearGradient(
-            colors = chipColors,
-            start = start,
-            end = end,
-        ),
-        lineBrush = Brush.linearGradient(
-            colors = lineColors,
-            start = start,
-            end = end,
-        ),
-        softBrush = Brush.linearGradient(
-            colors = actionColors.map { it.copy(alpha = animationStyle.softAlpha) },
-            start = start,
-            end = end,
+        brush = themeBrush(animationStyle, actionColors),
+        chipBrush = themeBrush(animationStyle, chipColors),
+        lineBrush = themeBrush(animationStyle, lineColors),
+        selectionBrush = Brush.horizontalGradient(selectionColors),
+        softBrush = themeBrush(
+            animationStyle,
+            actionColors.map { it.copy(alpha = animationStyle.softAlpha) },
         ),
     )
 }
@@ -141,46 +132,31 @@ private fun stylePalette(
     }
 }
 
-private fun gradientOffsets(
+private fun themeBrush(
     style: ThemeAnimationStyle,
-    phase: Float,
-): Pair<Offset, Offset> {
-    val wave = normalizedPhase(phase) * TwoPi
-    return when (style) {
-        ThemeAnimationStyle.SHIMMER -> {
-            Offset(-720f, -180f) to Offset(920f, 420f)
-        }
-        ThemeAnimationStyle.WAVE -> {
-            Offset(
-                x = -680f + sin(wave) * 180f,
-                y = -360f + cos(wave) * 110f,
-            ) to Offset(
-                x = 980f + cos(wave) * 180f,
-                y = 560f + sin(wave) * 110f,
-            )
-        }
-        ThemeAnimationStyle.VIVID_WAVE -> {
-            Offset(
-                x = -760f + sin(wave) * 240f,
-                y = -420f + cos(wave * 2f) * 140f,
-            ) to Offset(
-                x = 1_020f + cos(wave) * 240f,
-                y = 620f + sin(wave * 2f) * 140f,
-            )
-        }
-        ThemeAnimationStyle.FLOW,
-        ThemeAnimationStyle.STILL,
-        -> {
-            Offset(
-                x = -720f,
-                y = -220f,
-            ) to Offset(
-                x = 920f,
-                y = 420f,
-            )
-        }
-    }
+    colors: List<Color>,
+): Brush = when (style) {
+    ThemeAnimationStyle.FLOW,
+    ThemeAnimationStyle.STILL,
+    -> Brush.horizontalGradient(colors)
+    ThemeAnimationStyle.SHIMMER -> Brush.linearGradient(colors)
+    ThemeAnimationStyle.WAVE -> Brush.radialGradient(colors)
+    ThemeAnimationStyle.VIVID_WAVE -> Brush.sweepGradient(colors + colors.first())
 }
+
+private fun highlightColors(
+    colors: List<Color>,
+    phase: Float,
+    samples: Int,
+    strength: Float,
+): List<Color> =
+    List(samples.coerceAtLeast(8)) { index ->
+        val track = index.toFloat() / (samples - 1).coerceAtLeast(1).toFloat()
+        val base = sampleLoop(colors, normalizedPhase(track + phase))
+        val highlight = (1f - circularDistance(track, normalizedPhase(phase)) / 0.10f)
+            .coerceIn(0f, 1f)
+        lerp(base, Color.White, highlight * strength)
+    }
 
 private fun phasedColors(
     colors: List<Color>,
@@ -255,6 +231,7 @@ internal fun rememberAnimatedChipBrush(): Brush? = currentAnimatedThemeVisuals?.
 internal fun rememberAnimatedLineBrush(): Brush? = currentAnimatedThemeVisuals?.lineBrush
 
 @Composable
-internal fun rememberAnimatedSoftBrush(): Brush? = currentAnimatedThemeVisuals?.softBrush
+internal fun rememberAnimatedSelectionBrush(): Brush? = currentAnimatedThemeVisuals?.selectionBrush
 
-private const val TwoPi = 6.2831855f
+@Composable
+internal fun rememberAnimatedSoftBrush(): Brush? = currentAnimatedThemeVisuals?.softBrush

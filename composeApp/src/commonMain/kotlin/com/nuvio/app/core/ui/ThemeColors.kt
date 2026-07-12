@@ -1,6 +1,7 @@
 package com.nuvio.app.core.ui
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.theme_color_blue
@@ -220,40 +221,52 @@ object ThemeColors {
         customSecond: ThemeAccentColor = ThemeAccentColor.CYAN,
     ): List<Color> = when (theme) {
         AppTheme.MESSENGER -> listOf(
-            Color(0xFF0072FF),
+            Color(0xFF006DFF),
             Color(0xFF168AFF),
             Color(0xFF00A8FF),
             Color(0xFF38BDF8),
+            Color(0xFF5CC8FF),
+            Color(0xFF8AD8FF),
         )
         AppTheme.AMETHYST -> listOf(
             Color(0xFF6D28D9),
             Color(0xFF7C3AED),
             Color(0xFF9333EA),
             Color(0xFFA855F7),
+            Color(0xFFC084FC),
+            Color(0xFFD8B4FE),
         )
         AppTheme.BLOSSOM -> listOf(
             Color(0xFFDB2777),
             Color(0xFFEC4899),
             Color(0xFFF472B6),
+            Color(0xFFFDA4AF),
             Color(0xFFF43F7D),
+            Color(0xFFFB7185),
         )
         AppTheme.LAGOON -> listOf(
             Color(0xFF0891B2),
             Color(0xFF06B6D4),
+            Color(0xFF22D3EE),
             Color(0xFF14B8A6),
             Color(0xFF2DD4BF),
+            Color(0xFF5EEAD4),
         )
         AppTheme.SUNSET -> listOf(
             Color(0xFFF43F5E),
             Color(0xFFFB7185),
+            Color(0xFFFDA4AF),
             Color(0xFFF97316),
             Color(0xFFFB923C),
+            Color(0xFFFDBA74),
         )
         AppTheme.CUSTOM -> listOf(
             customFirst.color,
+            lerp(customFirst.color, Color.White, 0.28f),
+            lerp(customFirst.color, customSecond.color, 0.50f),
             customSecond.color,
-            customFirst.color.copy(alpha = 0.82f),
-            customSecond.color.copy(alpha = 0.82f),
+            lerp(customSecond.color, Color.White, 0.28f),
+            lerp(customSecond.color, customFirst.color, 0.35f),
         )
         else -> emptyList()
     }

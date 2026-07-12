@@ -211,12 +211,12 @@ fun DetailActionButtons(
                         .clip(CircleShape),
                     shape = CircleShape,
                     color = if (actionsExpanded) {
-                        MaterialTheme.colorScheme.onBackground
+                        MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
                     },
                     contentColor = if (actionsExpanded) {
-                        MaterialTheme.colorScheme.background
+                        MaterialTheme.colorScheme.onPrimary
                     } else {
                         MaterialTheme.colorScheme.onSurface
                     },
@@ -261,8 +261,8 @@ private fun DetailCompactAction(
             .size(size)
             .clip(CircleShape),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.onBackground,
-        contentColor = MaterialTheme.colorScheme.background,
+        color = MaterialTheme.colorScheme.primary,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         tonalElevation = 6.dp,
         shadowElevation = 8.dp,
     ) {
@@ -307,12 +307,12 @@ private fun DetailIconAction(
             .clip(CircleShape),
         shape = CircleShape,
         color = if (active) {
-            MaterialTheme.colorScheme.onBackground
+            MaterialTheme.colorScheme.primary
         } else {
             MaterialTheme.colorScheme.surfaceVariant
         },
         contentColor = if (active) {
-            MaterialTheme.colorScheme.background
+            MaterialTheme.colorScheme.onPrimary
         } else {
             MaterialTheme.colorScheme.onSurface
         },

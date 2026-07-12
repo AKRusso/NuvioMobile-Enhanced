@@ -76,7 +76,7 @@ import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
-import com.nuvio.app.core.ui.rememberAnimatedLineBrush
+import com.nuvio.app.core.ui.rememberAnimatedSelectionBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
 import com.nuvio.app.features.downloads.DownloadsRepository
@@ -806,7 +806,7 @@ private fun FilterChip(
         animationSpec = tween(durationMillis = 140),
         label = "filter_chip_scale",
     )
-    val borderBrush = rememberAnimatedLineBrush().takeIf { isSelected }
+    val borderBrush = rememberAnimatedSelectionBrush().takeIf { isSelected }
     val selectedBackground = rememberAnimatedSoftBrush().takeIf { isSelected }
     val shape = RoundedCornerShape(16.dp)
     Box(
