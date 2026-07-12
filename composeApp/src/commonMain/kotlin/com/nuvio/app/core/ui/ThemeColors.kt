@@ -192,27 +192,31 @@ object ThemeColors {
         theme: AppTheme,
         customFirst: Color = ThemeAccentColor.PINK.color,
         customSecond: Color = ThemeAccentColor.CYAN.color,
-    ): ThemeColorPalette = when (theme) {
-        AppTheme.CRIMSON -> Crimson
-        AppTheme.OCEAN -> Ocean
-        AppTheme.VIOLET -> Violet
-        AppTheme.EMERALD -> Emerald
-        AppTheme.AMBER -> Amber
-        AppTheme.ROSE -> Rose
-        AppTheme.MESSENGER -> Messenger
-        AppTheme.AMETHYST -> Amethyst
-        AppTheme.BLOSSOM -> Blossom
-        AppTheme.LAGOON -> Lagoon
-        AppTheme.SUNSET -> Sunset
-        AppTheme.CUSTOM -> Custom.copy(
-            secondary = customFirst,
-            secondaryVariant = customSecond,
-            nativeAccentHex = customFirst.toThemeHex(),
-            onSecondary = customFirst.contentColor(),
-            onSecondaryVariant = customSecond.contentColor(),
-            focusRing = customSecond,
-        )
-        AppTheme.WHITE -> White
+    ): ThemeColorPalette {
+        val accessibleFirst = customFirst.toAccessibleAccent()
+        val accessibleSecond = customSecond.toAccessibleAccent()
+        return when (theme) {
+            AppTheme.CRIMSON -> Crimson
+            AppTheme.OCEAN -> Ocean
+            AppTheme.VIOLET -> Violet
+            AppTheme.EMERALD -> Emerald
+            AppTheme.AMBER -> Amber
+            AppTheme.ROSE -> Rose
+            AppTheme.MESSENGER -> Messenger
+            AppTheme.AMETHYST -> Amethyst
+            AppTheme.BLOSSOM -> Blossom
+            AppTheme.LAGOON -> Lagoon
+            AppTheme.SUNSET -> Sunset
+            AppTheme.CUSTOM -> Custom.copy(
+                secondary = accessibleFirst,
+                secondaryVariant = accessibleSecond,
+                nativeAccentHex = accessibleFirst.toThemeHex(),
+                onSecondary = Color.White,
+                onSecondaryVariant = Color.White,
+                focusRing = accessibleSecond,
+            )
+            AppTheme.WHITE -> White
+        }
     }
 
     fun animatedColors(
@@ -272,13 +276,22 @@ object ThemeColors {
     }
 }
 
-private fun Color.contentColor(): Color =
-    if (luminance() > 0.55f) Color(0xFF101318) else Color.White
-
 internal fun Color.toThemeHex(): String {
     fun channel(value: Float): String =
         (value.coerceIn(0f, 1f) * 255f).toInt().toString(16).padStart(2, '0').uppercase()
     return "#${channel(red)}${channel(green)}${channel(blue)}"
+}
+
+internal fun Color.toAccessibleAccent(): Color {
+    var adjusted = copy(alpha = 1f)
+    repeat(12) {
+        adjusted = when {
+            adjusted.luminance() < AccessibleAccentMinLuminance -> lerp(adjusted, Color.White, 0.12f)
+            adjusted.luminance() > AccessibleAccentMaxLuminance -> lerp(adjusted, Color.Black, 0.12f)
+            else -> return adjusted
+        }
+    }
+    return adjusted
 }
 
 internal fun String?.toThemeColor(fallback: Color): Color {
@@ -295,3 +308,6 @@ internal fun String?.toThemeColor(fallback: Color): Color {
         )
     }.getOrDefault(fallback)
 }
+
+private const val AccessibleAccentMinLuminance = 0.12f
+private const val AccessibleAccentMaxLuminance = 0.24f

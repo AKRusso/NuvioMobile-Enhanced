@@ -58,6 +58,7 @@ internal fun rememberAnimatedThemeVisuals(
         stylePalette(
             ThemeColors.animatedColors(theme, customFirst, customSecond)
                 .map { it.copy(alpha = 1f) },
+            theme,
             animationStyle,
         )
     }
@@ -132,15 +133,21 @@ private val ThemeAnimationStyle.softAlpha: Float
 
 private fun stylePalette(
     colors: List<Color>,
+    theme: AppTheme,
     style: ThemeAnimationStyle,
 ): List<Color> {
     if (colors.isEmpty()) return colors
-    return when (style) {
+    val enhanced = when (style) {
         ThemeAnimationStyle.VIVID_WAVE -> colors.map { enhanceColor(it, saturation = 1.28f, contrast = 1.14f) }
         ThemeAnimationStyle.WAVE -> colors.map { enhanceColor(it, saturation = 1.22f, contrast = 1.11f) }
         ThemeAnimationStyle.SHIMMER -> colors.map { enhanceColor(it, saturation = 1.18f, contrast = 1.09f) }
         ThemeAnimationStyle.FLOW -> colors.map { enhanceColor(it, saturation = 1.16f, contrast = 1.07f) }
         ThemeAnimationStyle.STILL -> colors.map { enhanceColor(it, saturation = 1.10f, contrast = 1.04f) }
+    }
+    return if (theme == AppTheme.CUSTOM) {
+        enhanced.map(Color::toAccessibleAccent)
+    } else {
+        enhanced
     }
 }
 
