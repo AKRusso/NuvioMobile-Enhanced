@@ -1938,4 +1938,5 @@
     <string name="nuvio_enhanced_onboarding_start">Začít objevovat</string>
     <string name="nuvio_enhanced_onboarding_show_again">Zobrazit uvítání znovu</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Znovu si prohlédněte úvod při prvním spuštění.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Správce</string>
 </resources>

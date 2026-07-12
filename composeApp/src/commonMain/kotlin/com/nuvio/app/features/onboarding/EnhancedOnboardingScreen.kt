@@ -96,6 +96,7 @@ import nuvio.composeapp.generated.resources.nuvio_enhanced_live_tv_desc
 import nuvio.composeapp.generated.resources.nuvio_enhanced_live_tv_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_community_body
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_community_title
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_admin_role
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_developer_role
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_body
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_title
@@ -417,6 +418,7 @@ private fun TeamPage(phase: State<Float>) {
             displayName = "yesn't",
             handle = "@yesnt10",
             accent = OnboardingViolet,
+            isAdmin = false,
         )
         DeveloperConnector(visible = stage >= 3, phase = phase)
         DeveloperCard(
@@ -426,6 +428,7 @@ private fun TeamPage(phase: State<Float>) {
             displayName = "Russo",
             handle = "@AKRusso",
             accent = OnboardingBlue,
+            isAdmin = true,
         )
         AnimatedVisibility(
             visible = stage >= 4,
@@ -728,6 +731,7 @@ private fun DeveloperCard(
     displayName: String,
     handle: String,
     accent: Color,
+    isAdmin: Boolean,
 ) {
     AnimatedVisibility(
         visible = visible,
@@ -794,22 +798,41 @@ private fun DeveloperCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = OnboardingTextMuted,
                     )
-                    Surface(
-                        color = accent.copy(alpha = 0.18f),
-                        shape = RoundedCornerShape(5.dp),
-                        border = BorderStroke(1.dp, accent.copy(alpha = 0.30f)),
-                    ) {
-                        Text(
+                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        if (isAdmin) {
+                            DeveloperRoleBadge(
+                                text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
+                                color = OnboardingPink,
+                            )
+                        }
+                        DeveloperRoleBadge(
                             text = stringResource(Res.string.nuvio_enhanced_onboarding_developer_role),
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
                             color = accent,
-                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeveloperRoleBadge(
+    text: String,
+    color: Color,
+) {
+    Surface(
+        color = color.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(5.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.34f)),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 

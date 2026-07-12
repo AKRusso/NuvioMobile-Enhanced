@@ -1926,4 +1926,5 @@
     <string name="nuvio_enhanced_onboarding_start">Έναρξη εξερεύνησης</string>
     <string name="nuvio_enhanced_onboarding_show_again">Εμφάνιση καλωσορίσματος ξανά</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Δείτε ξανά την εισαγωγή της πρώτης εκκίνησης.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Διαχειριστής</string>
 </resources>

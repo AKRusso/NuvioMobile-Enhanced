@@ -1938,4 +1938,5 @@
     <string name="nuvio_enhanced_onboarding_start">Empezar a explorar</string>
     <string name="nuvio_enhanced_onboarding_show_again">Mostrar bienvenida de nuevo</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Vuelve a ver la introducción del primer inicio.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Administrador</string>
 </resources>

@@ -1820,4 +1820,5 @@
     <string name="nuvio_enhanced_onboarding_start">Keşfetmeye başla</string>
     <string name="nuvio_enhanced_onboarding_show_again">Karşılamayı tekrar göster</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">İlk açılış tanıtımını yeniden görüntüle.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Yönetici</string>
 </resources>

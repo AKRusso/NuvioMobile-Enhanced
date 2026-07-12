@@ -1859,4 +1859,5 @@
     <string name="nuvio_enhanced_onboarding_start">Começar a explorar</string>
     <string name="nuvio_enhanced_onboarding_show_again">Mostrar boas-vindas novamente</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Reveja a introdução apresentada no primeiro arranque.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Administrador</string>
 </resources>

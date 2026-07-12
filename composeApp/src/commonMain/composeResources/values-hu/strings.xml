@@ -1932,4 +1932,5 @@
     <string name="nuvio_enhanced_onboarding_start">Felfedezés indítása</string>
     <string name="nuvio_enhanced_onboarding_show_again">Üdvözlés újbóli megjelenítése</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Tekintsd meg újra az első indítás bemutatóját.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Adminisztrátor</string>
 </resources>

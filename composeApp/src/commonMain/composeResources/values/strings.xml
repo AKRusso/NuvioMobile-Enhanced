@@ -2358,4 +2358,5 @@
     <string name="nuvio_enhanced_onboarding_start">Start exploring</string>
     <string name="nuvio_enhanced_onboarding_show_again">Show welcome again</string>
     <string name="nuvio_enhanced_onboarding_show_again_desc">Preview the first-launch introduction again.</string>
+    <string name="nuvio_enhanced_onboarding_admin_role">Admin</string>
 </resources>
