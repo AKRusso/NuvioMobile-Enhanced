@@ -1,9 +1,11 @@
 package com.nuvio.app.features.onboarding
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -20,6 +22,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -36,6 +39,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -63,13 +67,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
@@ -155,6 +162,8 @@ internal fun EnhancedOnboardingScreen(
     modifier: Modifier = Modifier,
 ) {
     var page by remember { mutableIntStateOf(0) }
+    var introLogoDocked by remember { mutableStateOf(false) }
+    var introContentVisible by remember { mutableStateOf(false) }
     val community by remember {
         EnhancedCommunityRepository.ensureLoaded()
         EnhancedCommunityRepository.snapshot
@@ -172,6 +181,13 @@ internal fun EnhancedOnboardingScreen(
 
     LaunchedEffect(Unit) {
         EnhancedCommunityRepository.loadOnce()
+    }
+
+    LaunchedEffect(Unit) {
+        delay(500)
+        introLogoDocked = true
+        delay(600)
+        introContentVisible = true
     }
 
     PlatformBackHandler(enabled = true) {
@@ -193,7 +209,12 @@ internal fun EnhancedOnboardingScreen(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp, vertical = 10.dp),
         ) {
-            PageProgress(page = page)
+            AnimatedVisibility(
+                visible = page > 0 || introContentVisible,
+                enter = fadeIn(tween(260)),
+            ) {
+                PageProgress(page = page)
+            }
             AnimatedContent(
                 targetState = page,
                 modifier = Modifier.weight(1f),
@@ -207,19 +228,28 @@ internal fun EnhancedOnboardingScreen(
                 label = "onboarding_page",
             ) { currentPage ->
                 when (currentPage) {
-                    0 -> WelcomePage(accentPhase)
+                    0 -> WelcomePage(
+                        phase = accentPhase,
+                        logoDocked = introLogoDocked,
+                        contentVisible = introContentVisible,
+                    )
                     1 -> FeaturesPage(accentPhase)
                     2 -> TeamPage()
-                    else -> CommunityPage(community, onJoinDiscord)
+                    else -> CommunityPage(community, accentPhase, onJoinDiscord)
                 }
             }
-            PageNavigation(
-                page = page,
-                onBack = { page-- },
-                onNext = {
-                    if (page == OnboardingPageCount - 1) onComplete() else page++
-                },
-            )
+            AnimatedVisibility(
+                visible = page > 0 || introContentVisible,
+                enter = fadeIn(tween(260)),
+            ) {
+                PageNavigation(
+                    page = page,
+                    onBack = { page-- },
+                    onNext = {
+                        if (page == OnboardingPageCount - 1) onComplete() else page++
+                    },
+                )
+            }
         }
     }
 }
@@ -264,63 +294,113 @@ private fun PageProgress(page: Int) {
 }
 
 @Composable
-private fun WelcomePage(phase: State<Float>) {
-    PageColumn(centered = false) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp),
-        ) {
+private fun WelcomePage(
+    phase: State<Float>,
+    logoDocked: Boolean,
+    contentVisible: Boolean,
+) {
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize(),
+    ) {
+        val expandedLogoSize = 196.dp
+        val logoSize by animateDpAsState(
+            targetValue = if (logoDocked) 82.dp else expandedLogoSize,
+            animationSpec = tween(620, easing = FastOutSlowInEasing),
+            label = "welcome_logo_size",
+        )
+        val logoX by animateDpAsState(
+            targetValue = if (logoDocked) 0.dp else (maxWidth - expandedLogoSize) / 2,
+            animationSpec = tween(620, easing = FastOutSlowInEasing),
+            label = "welcome_logo_x",
+        )
+        val logoY by animateDpAsState(
+            targetValue = if (logoDocked) 10.dp else (maxHeight - expandedLogoSize) / 2,
+            animationSpec = tween(620, easing = FastOutSlowInEasing),
+            label = "welcome_logo_y",
+        )
+
+        Box(modifier = Modifier.fillMaxSize()) {
             Image(
                 painter = painterResource(Res.drawable.nuvio_enhanced_onboarding_logo),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 38.dp, y = (-24).dp)
-                    .size(210.dp)
-                    .clip(RoundedCornerShape(bottomStart = 48.dp)),
+                    .offset(x = logoX, y = logoY)
+                    .size(logoSize)
+                    .clip(LogoCutoutShape),
             )
-        }
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "Nuvio",
-                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
-                color = TextPrimary,
-                fontWeight = FontWeight.Black,
-            )
-            TransientAccentText(
-                text = "Enhanced",
-                phase = phase,
-                style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
-            )
+            AnimatedVisibility(
+                visible = contentVisible,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 112.dp),
+                enter = fadeIn(tween(420)) + slideInVertically(tween(440)) { it / 10 },
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Nuvio",
+                            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Black,
+                        )
+                        TransientAccentText(
+                            text = "Enhanced",
+                            phase = phase,
+                            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
+                        )
+                    }
+                    Text(
+                        text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(44.dp)
+                            .height(3.dp)
+                            .background(AccentBlue, CircleShape),
+                    )
+                    Text(
+                        text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_body),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = TextSecondary,
+                    )
+                }
+            }
         }
-        Text(
-            text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_title),
-            style = MaterialTheme.typography.titleLarge,
-            color = TextPrimary,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Box(
-            modifier = Modifier
-                .width(44.dp)
-                .height(3.dp)
-                .background(AccentBlue, CircleShape),
-        )
-        Text(
-            text = stringResource(Res.string.nuvio_enhanced_onboarding_welcome_body),
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextSecondary,
-        )
     }
+}
+
+private val LogoCutoutShape = GenericShape { size, _ ->
+    moveTo(size.width * 0.20f, size.height * 0.06f)
+    quadraticBezierTo(size.width * 0.10f, size.height * 0.16f, size.width * 0.10f, size.height * 0.34f)
+    lineTo(size.width * 0.10f, size.height * 0.66f)
+    quadraticBezierTo(size.width * 0.10f, size.height * 0.84f, size.width * 0.20f, size.height * 0.94f)
+    lineTo(size.width * 0.80f, size.height * 0.66f)
+    quadraticBezierTo(size.width * 0.94f, size.height * 0.58f, size.width * 0.94f, size.height * 0.50f)
+    quadraticBezierTo(size.width * 0.94f, size.height * 0.42f, size.width * 0.80f, size.height * 0.34f)
+    close()
 }
 
 @Composable
 private fun FeaturesPage(phase: State<Float>) {
+    var selectedFeature by remember { mutableIntStateOf(0) }
+    val features = remember {
+        listOf(
+            FeaturePreview(Icons.Rounded.Home, AccentBlue, Res.string.nuvio_enhanced_smart_resume_title, Res.string.nuvio_enhanced_smart_resume_desc),
+            FeaturePreview(Icons.Rounded.Star, AccentAmber, Res.string.nuvio_enhanced_concierge_title, Res.string.nuvio_enhanced_concierge_desc),
+            FeaturePreview(Icons.Rounded.Notifications, AccentCyan, Res.string.nuvio_enhanced_release_digest_title, Res.string.nuvio_enhanced_release_digest_desc),
+            FeaturePreview(Icons.Rounded.LiveTv, AccentGreen, Res.string.nuvio_enhanced_live_tv_title, Res.string.nuvio_enhanced_live_tv_desc),
+        )
+    }
+
     PageColumn(centered = false) {
         Row(
             verticalAlignment = Alignment.Bottom,
@@ -343,110 +423,224 @@ private fun FeaturesPage(phase: State<Float>) {
             style = MaterialTheme.typography.bodyLarge,
             color = TextSecondary,
         )
-        Surface(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            color = SurfaceDark.copy(alpha = 0.88f),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, BorderSoft),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column {
-                FeatureListItem(
-                    number = "01",
-                    icon = Icons.Rounded.Home,
-                    tone = AccentBlue,
-                    title = Res.string.nuvio_enhanced_smart_resume_title,
-                    description = Res.string.nuvio_enhanced_smart_resume_desc,
+            features.forEachIndexed { index, feature ->
+                FeatureSelector(
+                    feature = feature,
+                    selected = selectedFeature == index,
+                    modifier = Modifier.weight(1f),
+                    onClick = { selectedFeature = index },
                 )
-                FeatureDivider()
-                FeatureListItem(
-                    number = "02",
-                    icon = Icons.Rounded.Star,
-                    tone = AccentAmber,
-                    title = Res.string.nuvio_enhanced_concierge_title,
-                    description = Res.string.nuvio_enhanced_concierge_desc,
-                )
-                FeatureDivider()
-                FeatureListItem(
-                    number = "03",
-                    icon = Icons.Rounded.Notifications,
-                    tone = AccentCyan,
-                    title = Res.string.nuvio_enhanced_release_digest_title,
-                    description = Res.string.nuvio_enhanced_release_digest_desc,
-                )
-                FeatureDivider()
-                FeatureListItem(
-                    number = "04",
-                    icon = Icons.Rounded.LiveTv,
-                    tone = AccentGreen,
-                    title = Res.string.nuvio_enhanced_live_tv_title,
-                    description = Res.string.nuvio_enhanced_live_tv_desc,
-                )
+            }
+        }
+        AnimatedContent(
+            targetState = selectedFeature,
+            transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(140))) },
+            label = "feature_preview",
+        ) { index ->
+            FeaturePreviewPanel(feature = features[index], index = index)
+        }
+    }
+}
+
+private data class FeaturePreview(
+    val icon: ImageVector,
+    val tone: Color,
+    val title: StringResource,
+    val description: StringResource,
+)
+
+@Composable
+private fun FeatureSelector(
+    feature: FeaturePreview,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = modifier
+            .height(52.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (selected) feature.tone.copy(alpha = 0.16f) else SurfaceDark)
+            .border(1.dp, if (selected) feature.tone.copy(alpha = 0.72f) else BorderSoft, RoundedCornerShape(8.dp))
+            .clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = feature.icon,
+            contentDescription = stringResource(feature.title),
+            tint = if (selected) feature.tone else TextSecondary,
+            modifier = Modifier.size(21.dp),
+        )
+    }
+}
+
+@Composable
+private fun FeaturePreviewPanel(feature: FeaturePreview, index: Int) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = SurfaceDark.copy(alpha = 0.92f),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, BorderSoft),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(feature.tone.copy(alpha = 0.13f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(feature.icon, contentDescription = null, tint = feature.tone, modifier = Modifier.size(20.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(feature.title), style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(feature.description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            FeatureVisual(index = index, tone = feature.tone)
+        }
+    }
+}
+
+@Composable
+private fun FeatureVisual(index: Int, tone: Color) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().height(154.dp),
+        color = BackgroundBottom.copy(alpha = 0.86f),
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        when (index) {
+            0 -> ResumeVisual(tone)
+            1 -> ConciergeVisual(tone)
+            2 -> RadarVisual(tone)
+            else -> LiveTvVisual(tone)
+        }
+    }
+}
+
+@Composable
+private fun ResumeVisual(tone: Color) {
+    Row(
+        modifier = Modifier.padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(84.dp)
+                .height(122.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Brush.verticalGradient(listOf(tone.copy(alpha = 0.72f), Color(0xFF152033)))),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(25.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+            PreviewLine(0.86f, 12.dp)
+            PreviewLine(0.62f, 8.dp)
+            Spacer(Modifier.height(11.dp))
+            Box(Modifier.fillMaxWidth().height(5.dp).background(BorderSoft, CircleShape)) {
+                Box(Modifier.fillMaxWidth(0.72f).height(5.dp).background(tone, CircleShape))
+            }
+            Text("72%", style = MaterialTheme.typography.labelMedium, color = tone, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ConciergeVisual(tone: Color) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        repeat(3) { index ->
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(8.dp)).background(SurfaceRaised.copy(alpha = 0.72f)).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icons.Rounded.Star, contentDescription = null, tint = tone.copy(alpha = 1f - index * 0.16f), modifier = Modifier.size(17.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    PreviewLine(0.72f - index * 0.08f, 8.dp)
+                    PreviewLine(0.48f + index * 0.07f, 5.dp)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun FeatureListItem(
-    number: String,
-    icon: ImageVector,
-    tone: Color,
-    title: StringResource,
-    description: StringResource,
-) {
+private fun RadarVisual(tone: Color) {
     Row(
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
+        modifier = Modifier.padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = number,
-            style = MaterialTheme.typography.labelSmall,
-            color = tone,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(top = 4.dp),
-        )
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(tone.copy(alpha = 0.13f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tone,
-                modifier = Modifier.size(19.dp),
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
-            Text(
-                text = stringResource(title),
-                style = MaterialTheme.typography.titleSmall,
-                color = TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = stringResource(description),
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+        listOf("12", "18", "24").forEachIndexed { index, day ->
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(108.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (index == 1) tone.copy(alpha = 0.16f) else SurfaceRaised)
+                    .border(1.dp, if (index == 1) tone.copy(alpha = 0.7f) else BorderSoft, RoundedCornerShape(8.dp))
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(day, style = MaterialTheme.typography.titleMedium, color = if (index == 1) tone else TextPrimary, fontWeight = FontWeight.Bold)
+                Icon(Icons.Rounded.Notifications, contentDescription = null, tint = if (index == 1) tone else TextSecondary, modifier = Modifier.size(20.dp))
+                PreviewLine(0.75f, 5.dp)
+            }
         }
     }
 }
 
 @Composable
-private fun FeatureDivider() {
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 76.dp),
-        thickness = 1.dp,
-        color = BorderSoft.copy(alpha = 0.72f),
+private fun LiveTvVisual(tone: Color) {
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        repeat(3) { index ->
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(
+                    modifier = Modifier.size(34.dp).clip(RoundedCornerShape(8.dp)).background(tone.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Rounded.LiveTv, contentDescription = null, tint = tone, modifier = Modifier.size(17.dp))
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    PreviewLine(0.70f - index * 0.07f, 8.dp)
+                    Box(Modifier.fillMaxWidth().height(4.dp).background(BorderSoft, CircleShape)) {
+                        Box(Modifier.fillMaxWidth(0.30f + index * 0.20f).height(4.dp).background(tone.copy(alpha = 0.82f), CircleShape))
+                    }
+                }
+                Text("${20 + index}:00", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewLine(widthFraction: Float, height: androidx.compose.ui.unit.Dp) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction.coerceIn(0.1f, 1f))
+            .height(height)
+            .background(TextSecondary.copy(alpha = 0.30f), CircleShape),
     )
 }
 
@@ -464,27 +658,24 @@ private fun TeamPage() {
             style = MaterialTheme.typography.bodyLarge,
             color = TextSecondary,
         )
-        Surface(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            color = SurfaceDark.copy(alpha = 0.88f),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, BorderSoft),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column {
-                DeveloperProfile(
-                    avatar = Res.drawable.onboarding_developer_yesnt,
-                    displayName = "yesn't",
-                    handle = "@yesnt10",
-                    isAdmin = false,
-                )
-                HorizontalDivider(color = BorderSoft)
-                DeveloperProfile(
-                    avatar = Res.drawable.onboarding_developer_russo,
-                    displayName = "Russo",
-                    handle = "@AKRusso",
-                    isAdmin = true,
-                )
-            }
+            DeveloperTile(
+                avatar = Res.drawable.onboarding_developer_yesnt,
+                displayName = "yesn't",
+                handle = "@yesnt10",
+                isAdmin = false,
+                modifier = Modifier.weight(1f),
+            )
+            DeveloperTile(
+                avatar = Res.drawable.onboarding_developer_russo,
+                displayName = "Russo",
+                handle = "@AKRusso",
+                isAdmin = true,
+                modifier = Modifier.weight(1f),
+            )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -507,41 +698,34 @@ private fun TeamPage() {
 }
 
 @Composable
-private fun DeveloperProfile(
+private fun DeveloperTile(
     avatar: DrawableResource,
     displayName: String,
     handle: String,
     isAdmin: Boolean,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier.padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    Surface(
+        modifier = modifier,
+        color = SurfaceDark.copy(alpha = 0.88f),
+        shape = RoundedCornerShape(8.dp),
+        border = BorderStroke(1.dp, BorderSoft),
     ) {
-        Box {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
             Image(
                 painter = painterResource(avatar),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(CircleShape),
+                    .fillMaxWidth()
+                    .height(108.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, BorderSoft, RoundedCornerShape(8.dp)),
             )
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(SurfaceDark)
-                    .padding(3.dp)
-                    .clip(CircleShape)
-                    .background(AccentGreen),
-            )
-        }
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
-        ) {
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.titleMedium,
@@ -553,7 +737,10 @@ private fun DeveloperProfile(
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary,
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
                 if (isAdmin) {
                     RoleBadge(
                         text = stringResource(Res.string.nuvio_enhanced_onboarding_admin_role),
@@ -589,6 +776,7 @@ private fun RoleBadge(text: String, color: Color) {
 @Composable
 private fun CommunityPage(
     snapshot: EnhancedCommunitySnapshot,
+    phase: State<Float>,
     onJoinDiscord: () -> Unit,
 ) {
     PageColumn(centered = false) {
@@ -613,12 +801,13 @@ private fun CommunityPage(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(13.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(9.dp),
                 ) {
                     ServerIcon(snapshot.iconUrl)
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = snapshot.serverName,
                             style = MaterialTheme.typography.titleLarge,
@@ -631,12 +820,6 @@ private fun CommunityPage(
                             color = TextSecondary,
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(9.dp)
-                            .clip(CircleShape)
-                            .background(AccentGreen),
-                    )
                 }
 
                 HorizontalDivider(color = BorderSoft)
@@ -676,7 +859,7 @@ private fun CommunityPage(
                     }
                 }
 
-                DiscordButton(onClick = onJoinDiscord)
+                DiscordButton(phase = phase, onClick = onJoinDiscord)
             }
         }
     }
@@ -686,7 +869,7 @@ private fun CommunityPage(
 private fun ServerIcon(iconUrl: String?) {
     Box(
         modifier = Modifier
-            .size(54.dp)
+            .size(68.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(SurfaceRaised),
         contentAlignment = Alignment.Center,
@@ -776,31 +959,63 @@ private fun CommunityMemberRow(member: EnhancedCommunityMember) {
 }
 
 @Composable
-private fun DiscordButton(onClick: () -> Unit) {
-    Row(
+private fun DiscordButton(
+    phase: State<Float>,
+    onClick: () -> Unit,
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(DiscordBlue)
-            .clickable(role = Role.Button, onClick = onClick),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
+            .height(56.dp)
+            .rotatingRainbowBorder(phase)
+            .padding(3.dp),
     ) {
-        Icon(
-            painter = appIconPainter(AppIconResource.DiscordMark),
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(21.dp),
-        )
-        Spacer(Modifier.width(9.dp))
-        Text(
-            text = stringResource(Res.string.nuvio_enhanced_onboarding_join_discord),
-            style = MaterialTheme.typography.labelLarge,
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(8.dp))
+                .background(DiscordBlue)
+                .clickable(role = Role.Button, onClick = onClick),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = appIconPainter(AppIconResource.DiscordMark),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(21.dp),
+            )
+            Spacer(Modifier.width(9.dp))
+            Text(
+                text = stringResource(Res.string.nuvio_enhanced_onboarding_join_discord),
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+private fun Modifier.rotatingRainbowBorder(phase: State<Float>): Modifier = drawBehind {
+    val hueShift = phase.value * 360f
+    val colors = (0..6).map { index ->
+        Color.hsv(
+            hue = (hueShift + index * 60f) % 360f,
+            saturation = 0.78f,
+            value = 1f,
         )
     }
+    val cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx())
+    drawRoundRect(
+        brush = Brush.sweepGradient(colors.map { it.copy(alpha = 0.24f) }),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = 8.dp.toPx()),
+    )
+    drawRoundRect(
+        brush = Brush.sweepGradient(colors),
+        cornerRadius = cornerRadius,
+        style = Stroke(width = 2.dp.toPx()),
+    )
 }
 
 @Composable
