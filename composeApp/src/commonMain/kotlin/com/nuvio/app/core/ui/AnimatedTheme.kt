@@ -136,12 +136,11 @@ private fun stylePalette(
 ): List<Color> {
     if (colors.isEmpty()) return colors
     return when (style) {
-        ThemeAnimationStyle.VIVID_WAVE -> colors.map { boostContrast(it, 1.18f) }
-        ThemeAnimationStyle.WAVE -> colors.map { boostContrast(it, 1.06f) }
-        ThemeAnimationStyle.SHIMMER -> colors.map { boostContrast(it, 1.08f) }
-        ThemeAnimationStyle.FLOW,
-        ThemeAnimationStyle.STILL,
-        -> colors
+        ThemeAnimationStyle.VIVID_WAVE -> colors.map { enhanceColor(it, saturation = 1.34f, contrast = 1.24f) }
+        ThemeAnimationStyle.WAVE -> colors.map { enhanceColor(it, saturation = 1.26f, contrast = 1.18f) }
+        ThemeAnimationStyle.SHIMMER -> colors.map { enhanceColor(it, saturation = 1.22f, contrast = 1.16f) }
+        ThemeAnimationStyle.FLOW -> colors.map { enhanceColor(it, saturation = 1.18f, contrast = 1.12f) }
+        ThemeAnimationStyle.STILL -> colors.map { enhanceColor(it, saturation = 1.12f, contrast = 1.08f) }
     }
 }
 
@@ -162,10 +161,17 @@ private class FlowMotionBrush(
     private val phase: Float,
 ) : ShaderBrush() {
     override fun createShader(size: Size): Shader {
-        val palette = loopPalette(colors)
+        val source = colors.ifEmpty { listOf(Color.Transparent) }
+        val palette = loopPalette(
+            listOf(
+                source.first(),
+                source[source.size / 2],
+                source.last(),
+            ),
+        )
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
-        val period = max(width * 1.35f, height * 4.5f)
+        val period = max(width * 2.15f, height * 6f)
         val shift = normalizedPhase(phase) * period
         return LinearGradientShader(
             from = Offset(-period + shift, -height * 0.35f),
@@ -184,15 +190,17 @@ private class ShimmerMotionBrush(
         val palette = colors.ifEmpty { listOf(Color.Transparent) }
         val width = size.width.coerceAtLeast(1f)
         val height = size.height.coerceAtLeast(1f)
+        val baseColors = listOf(palette.first(), palette[palette.size / 2], palette.last())
         val base = LinearGradientShader(
-            from = Offset.Zero,
-            to = Offset(width, height),
-            colors = palette,
+            from = Offset(-width * 0.18f, height),
+            to = Offset(width * 1.18f, 0f),
+            colors = baseColors,
         )
         val progress = normalizedPhase(phase)
+        val angle = progress * TwoPi
         val center = Offset(
-            x = width * (-0.28f + progress * 1.56f),
-            y = height * (0.5f + sin(progress * TwoPi) * 0.28f),
+            x = width * (0.5f + cos(angle) * 0.72f),
+            y = height * (0.5f + sin(angle) * 0.34f),
         )
         val glowColor = sampleLoop(palette, progress + 0.38f)
         val glow = RadialGradientShader(
@@ -254,32 +262,20 @@ private class ImmiscibleLineBrush(
         val height = size.height.coerceAtLeast(1f)
         val first = palette.first()
         val second = palette[(palette.size / 2).coerceAtMost(palette.lastIndex)]
-        val third = palette.last()
         val angle = normalizedPhase(phase) * TwoPi
-        var shader = LinearGradientShader(
+        val boundary = (0.5f + sin(angle) * 0.22f).coerceIn(0.22f, 0.78f)
+        val softEdge = (height / width * 0.30f).coerceIn(0.018f, 0.055f)
+        return LinearGradientShader(
             from = Offset.Zero,
             to = Offset(width, 0f),
-            colors = listOf(first, first),
+            colors = listOf(first, first, second, second),
+            colorStops = listOf(
+                0f,
+                (boundary - softEdge).coerceAtLeast(0f),
+                (boundary + softEdge).coerceAtMost(1f),
+                1f,
+            ),
         )
-        val drops = listOf(
-            Triple(second, 0.24f + sin(angle) * 0.16f, 0.92f),
-            Triple(second, 0.67f + cos(angle * 0.84f) * 0.18f, 1.35f),
-            Triple(third, 0.48f + sin(angle + 2.2f) * 0.20f, 0.72f),
-        )
-        drops.forEachIndexed { index, (color, centerX, scale) ->
-            val center = Offset(
-                x = width * centerX,
-                y = height * (0.5f + sin(angle + index * 1.7f) * 0.22f),
-            )
-            val drop = RadialGradientShader(
-                center = center,
-                radius = max(height * 1.7f, width * 0.16f) * scale,
-                colors = listOf(color, color, color.copy(alpha = 0f), color.copy(alpha = 0f)),
-                colorStops = listOf(0f, 0.76f, 0.80f, 1f),
-            )
-            shader = CompositeShader(shader, drop, BlendMode.SrcOver)
-        }
-        return shader
     }
 }
 
@@ -324,13 +320,23 @@ private fun sampleLoop(colors: List<Color>, phase: Float): Color {
     return lerp(colors[index], colors[nextIndex], fraction)
 }
 
-private fun boostContrast(color: Color, amount: Float): Color =
-    Color(
-        red = ((color.red - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
-        green = ((color.green - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
-        blue = ((color.blue - 0.5f) * amount + 0.5f).coerceIn(0f, 1f),
+private fun enhanceColor(
+    color: Color,
+    saturation: Float,
+    contrast: Float,
+): Color {
+    val gray = color.red * 0.299f + color.green * 0.587f + color.blue * 0.114f
+    fun channel(value: Float): Float {
+        val saturated = gray + (value - gray) * saturation
+        return ((saturated - 0.5f) * contrast + 0.5f).coerceIn(0f, 1f)
+    }
+    return Color(
+        red = channel(color.red),
+        green = channel(color.green),
+        blue = channel(color.blue),
         alpha = color.alpha,
     )
+}
 
 private fun normalizedPhase(value: Float): Float {
     val wrapped = value - floor(value)

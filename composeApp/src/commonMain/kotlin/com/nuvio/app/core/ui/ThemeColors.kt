@@ -262,11 +262,11 @@ object ThemeColors {
         )
         AppTheme.CUSTOM -> listOf(
             customFirst,
-            lerp(customFirst, Color.White, 0.18f),
-            lerp(customFirst, customSecond, 0.38f),
+            lerp(customFirst, Color.Black, 0.14f),
+            lerp(customFirst, customSecond, 0.30f),
             customSecond,
-            lerp(customSecond, Color.White, 0.18f),
-            lerp(customSecond, customFirst, 0.32f),
+            lerp(customSecond, Color.White, 0.12f),
+            lerp(customSecond, customFirst, 0.28f),
         )
         else -> emptyList()
     }
