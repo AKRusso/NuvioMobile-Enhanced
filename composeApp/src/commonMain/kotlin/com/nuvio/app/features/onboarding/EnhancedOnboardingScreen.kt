@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -48,6 +50,7 @@ import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LiveTv
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -94,6 +97,7 @@ import kotlinx.coroutines.delay
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_back
 import nuvio.composeapp.generated.resources.action_next
+import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.nuvio_enhanced_concierge_desc
 import nuvio.composeapp.generated.resources.nuvio_enhanced_concierge_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_live_tv_desc
@@ -200,7 +204,10 @@ internal fun EnhancedOnboardingScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .widthIn(max = 620.dp)
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .align(Alignment.Center)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 20.dp, vertical = 10.dp),
         ) {
@@ -315,6 +322,12 @@ private fun WelcomePage(
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
+            WelcomeArtwork(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(220.dp),
+            )
             Image(
                 painter = painterResource(Res.drawable.nuvio_enhanced_onboarding_logo),
                 contentDescription = null,
@@ -369,6 +382,33 @@ private fun WelcomePage(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun WelcomeArtwork(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp)),
+    ) {
+        SampleArtwork(
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(0.44f),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            BackgroundBottom,
+                            BackgroundBottom.copy(alpha = 0.12f),
+                            BackgroundBottom.copy(alpha = 0.58f),
+                        ),
+                    ),
+                ),
+        )
     }
 }
 
@@ -474,39 +514,35 @@ private fun FeatureSelector(
 
 @Composable
 private fun FeaturePreviewPanel(feature: FeaturePreview, index: Int) {
-    Surface(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        color = SurfaceDark.copy(alpha = 0.92f),
-        shape = RoundedCornerShape(8.dp),
-        border = BorderStroke(1.dp, BorderSoft),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(11.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(11.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(feature.tone.copy(alpha = 0.13f)),
+                contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier = Modifier.size(38.dp).clip(RoundedCornerShape(8.dp)).background(feature.tone.copy(alpha = 0.13f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(feature.icon, contentDescription = null, tint = feature.tone, modifier = Modifier.size(20.dp))
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(feature.title), style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        stringResource(feature.description),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Icon(feature.icon, contentDescription = null, tint = feature.tone, modifier = Modifier.size(20.dp))
             }
-            FeatureVisual(index = index, tone = feature.tone)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(stringResource(feature.title), style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                Text(
+                    stringResource(feature.description),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
+        FeatureVisual(index = index, tone = feature.tone)
     }
 }
 
@@ -561,6 +597,11 @@ private fun ResumeVisual(tone: Color) {
                 style = MaterialTheme.typography.labelMedium,
                 color = tone,
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                SampleMetadataChip("2026")
+                SampleMetadataChip("1h 48m")
+                SampleMetadataChip("8.4")
+            }
             Text(
                 text = stringResource(Res.string.nuvio_enhanced_onboarding_sample_description),
                 style = MaterialTheme.typography.bodySmall,
@@ -578,15 +619,39 @@ private fun ResumeVisual(tone: Color) {
                     Box(Modifier.fillMaxWidth(0.72f).height(5.dp).background(tone, CircleShape))
                 }
                 Text("72%", style = MaterialTheme.typography.labelSmall, color = tone, fontWeight = FontWeight.Bold)
-                Box(
-                    modifier = Modifier.size(30.dp).clip(CircleShape).background(tone),
-                    contentAlignment = Alignment.Center,
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(tone)
+                        .padding(horizontal = 9.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Icon(Icons.Rounded.ArrowForward, contentDescription = null, tint = BackgroundBottom, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = BackgroundBottom, modifier = Modifier.size(15.dp))
+                    Text(
+                        text = stringResource(Res.string.action_play),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = BackgroundBottom,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SampleMetadataChip(value: String) {
+    Text(
+        text = value,
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.42f))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape)
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+        style = MaterialTheme.typography.labelSmall,
+        color = TextPrimary,
+    )
 }
 
 @Composable
@@ -780,35 +845,6 @@ private fun CommunityPage(
 
         CommunityHero(snapshot)
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = SurfaceDark.copy(alpha = 0.88f),
-            shape = RoundedCornerShape(8.dp),
-            border = BorderStroke(1.dp, BorderSoft),
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 14.dp),
-            ) {
-                CommunityStat(
-                    value = snapshot.memberCount.toString(),
-                    label = stringResource(Res.string.nuvio_enhanced_onboarding_members_label),
-                    modifier = Modifier.weight(1f),
-                )
-                CommunityStat(
-                    value = snapshot.onlineCount?.toString() ?: "--",
-                    label = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
-                    modifier = Modifier.weight(1f),
-                )
-                if (snapshot.boostCount != null) {
-                    CommunityStat(
-                        value = snapshot.boostCount.toString(),
-                        label = stringResource(Res.string.nuvio_enhanced_onboarding_boosts_label),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
-        }
-
         CommunityChannels()
 
         if (visibleMembers.isNotEmpty()) {
@@ -855,7 +891,7 @@ private fun CommunityHero(snapshot: EnhancedCommunitySnapshot) {
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, DiscordBlue.copy(alpha = 0.36f)),
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
@@ -864,6 +900,7 @@ private fun CommunityHero(snapshot: EnhancedCommunitySnapshot) {
                     ),
                 )
                 .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -923,6 +960,26 @@ private fun CommunityHero(snapshot: EnhancedCommunitySnapshot) {
                     tint = Color.White,
                     modifier = Modifier.size(28.dp),
                 )
+            }
+            HorizontalDivider(color = Color.White.copy(alpha = 0.12f))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                CommunityStat(
+                    value = snapshot.memberCount.toString(),
+                    label = stringResource(Res.string.nuvio_enhanced_onboarding_members_label),
+                    modifier = Modifier.weight(1f),
+                )
+                CommunityStat(
+                    value = snapshot.onlineCount?.toString() ?: "--",
+                    label = stringResource(Res.string.nuvio_enhanced_onboarding_online_label),
+                    modifier = Modifier.weight(1f),
+                )
+                if (snapshot.boostCount != null) {
+                    CommunityStat(
+                        value = snapshot.boostCount.toString(),
+                        label = stringResource(Res.string.nuvio_enhanced_onboarding_boosts_label),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
