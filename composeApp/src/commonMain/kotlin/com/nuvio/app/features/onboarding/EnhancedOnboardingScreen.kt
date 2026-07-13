@@ -347,7 +347,7 @@ private fun WelcomePage(
                             color = TextPrimary,
                             fontWeight = FontWeight.Black,
                         )
-                        TransientAccentText(
+                        AnimatedAccentText(
                             text = "Enhanced",
                             phase = phase,
                             style = MaterialTheme.typography.headlineLarge.copy(fontSize = 35.sp),
@@ -498,7 +498,7 @@ private fun FeaturesPage(phase: State<Float>) {
                 color = TextPrimary,
                 fontWeight = FontWeight.Black,
             )
-            TransientAccentText(
+            AnimatedAccentText(
                 text = stringResource(Res.string.nuvio_enhanced_onboarding_features_title_accent),
                 phase = phase,
                 style = MaterialTheme.typography.headlineMedium,
@@ -1392,31 +1392,35 @@ private fun NavigationButton(
 }
 
 @Composable
-private fun TransientAccentText(
+private fun AnimatedAccentText(
     text: String,
     phase: State<Float>,
     style: TextStyle,
 ) {
-    var animated by remember(text) { mutableStateOf(true) }
-    LaunchedEffect(text) {
-        delay(1200)
-        animated = false
-    }
     Box {
-        if (animated) {
-            Text(
-                text = text,
-                modifier = Modifier
-                    .blur(7.dp)
-                    .alpha(0.22f),
-                style = style,
-                color = AccentViolet,
-                fontWeight = FontWeight.Black,
-            )
-        }
         Text(
             text = text,
-            modifier = Modifier.accentGradient(phase, animated),
+            modifier = Modifier
+                .blur(12.dp)
+                .alpha(0.42f)
+                .accentGradient(phase),
+            style = style,
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            text = text,
+            modifier = Modifier
+                .blur(5.dp)
+                .alpha(0.48f)
+                .accentGradient(phase),
+            style = style,
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+        )
+        Text(
+            text = text,
+            modifier = Modifier.accentGradient(phase),
             style = style,
             color = Color.White,
             fontWeight = FontWeight.Black,
@@ -1426,12 +1430,11 @@ private fun TransientAccentText(
 
 private fun Modifier.accentGradient(
     phase: State<Float>,
-    animated: Boolean,
 ): Modifier = graphicsLayer {
     compositingStrategy = CompositingStrategy.Offscreen
 }.drawWithContent {
     drawContent()
-    val progress = if (animated) phase.value else 0.22f
+    val progress = phase.value
     val angle = progress * (PI * 2.0)
     val offsetX = cos(angle).toFloat() * size.width * 0.24f
     val offsetY = sin(angle).toFloat() * size.height * 0.30f
