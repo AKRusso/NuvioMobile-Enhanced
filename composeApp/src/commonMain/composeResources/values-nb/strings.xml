@@ -1368,4 +1368,28 @@
         <item quantity="one">Om %d dag</item>
         <item quantity="other">Om %d dager</item>
     </plurals>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametyst</string>
+    <string name="theme_blossom">Blomst</string>
+    <string name="theme_lagoon">Lagune</string>
+    <string name="theme_sunset">Solnedgang</string>
+    <string name="theme_custom">Egendefinert</string>
+    <string name="settings_appearance_theme_classic">Klassiske temaer</string>
+    <string name="settings_appearance_theme_enhanced">Forbedrede temaer</string>
+    <string name="settings_appearance_theme_custom_first">Første farge</string>
+    <string name="settings_appearance_theme_custom_second">Andre farge</string>
+    <string name="settings_appearance_theme_animation_style">Animasjonsstil</string>
+    <string name="theme_animation_flow">Flyt</string>
+    <string name="theme_animation_shimmer">Skimmer</string>
+    <string name="theme_animation_wave">Bølge</string>
+    <string name="theme_animation_vivid_wave">Livlig bølge</string>
+    <string name="theme_animation_still">Still</string>
+    <string name="theme_color_pink">Rosa</string>
+    <string name="theme_color_purple">Lilla</string>
+    <string name="theme_color_blue">Blå</string>
+    <string name="theme_color_cyan">Cyan</string>
+    <string name="theme_color_green">Grønn</string>
+    <string name="theme_color_yellow">Gul</string>
+    <string name="theme_color_red">Rød</string>
+    <string name="theme_color_white">Hvit</string>
 </resources>

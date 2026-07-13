@@ -255,6 +255,7 @@ internal fun AddonFilterChip(
                     isSelected -> tokens.colors.overlaySelected
                     else -> tokens.colors.surfacePopover
                 },
+                tokens.shapes.chip,
             )
             .then(
                 if (isSelected) {
@@ -301,7 +302,7 @@ internal fun PanelChipButton(
     Box(
         modifier = Modifier
             .clip(tokens.shapes.compactCard)
-            .background(tokens.colors.surfacePopover)
+            .background(tokens.colors.surfacePopover, tokens.shapes.compactCard)
             .border(tokens.borders.thin, tokens.colors.borderSubtle, tokens.shapes.compactCard)
             .clickable(onClick = onClick)
             .padding(horizontal = NuvioTokens.Space.s12, vertical = NuvioTokens.Space.s6),

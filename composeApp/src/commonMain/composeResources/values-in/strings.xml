@@ -1442,4 +1442,28 @@
     <plurals name="cw_airs_in_days_short">
         <item quantity="other">%1$d hari lagi</item>
     </plurals>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametis</string>
+    <string name="theme_blossom">Mekar</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Matahari terbenam</string>
+    <string name="theme_custom">Kustom</string>
+    <string name="settings_appearance_theme_classic">Tema klasik</string>
+    <string name="settings_appearance_theme_enhanced">Tema yang disempurnakan</string>
+    <string name="settings_appearance_theme_custom_first">Warna pertama</string>
+    <string name="settings_appearance_theme_custom_second">Warna kedua</string>
+    <string name="settings_appearance_theme_animation_style">Gaya animasi</string>
+    <string name="theme_animation_flow">Alur</string>
+    <string name="theme_animation_shimmer">Kilau</string>
+    <string name="theme_animation_wave">Gelombang</string>
+    <string name="theme_animation_vivid_wave">Gelombang hidup</string>
+    <string name="theme_animation_still">Diam</string>
+    <string name="theme_color_pink">Merah muda</string>
+    <string name="theme_color_purple">Ungu</string>
+    <string name="theme_color_blue">Biru</string>
+    <string name="theme_color_cyan">Sian</string>
+    <string name="theme_color_green">Hijau</string>
+    <string name="theme_color_yellow">Kuning</string>
+    <string name="theme_color_red">Merah</string>
+    <string name="theme_color_white">Putih</string>
 </resources>

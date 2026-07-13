@@ -1,8 +1,11 @@
 package com.nuvio.app.features.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListScope
@@ -21,9 +26,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,11 +40,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.toThemeHex
+import kotlin.math.max
+import kotlin.math.min
 import com.nuvio.app.core.ui.AppTheme
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
@@ -44,6 +63,10 @@ import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.labelRes
 import com.nuvio.app.core.ui.ThemeColors
+import com.nuvio.app.core.ui.ThemeAccentColor
+import com.nuvio.app.core.ui.ThemeAnimationStyle
+import com.nuvio.app.core.ui.isEnhanced
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.cd_selected
@@ -66,6 +89,11 @@ import nuvio.composeapp.generated.resources.settings_appearance_poster_customiza
 import nuvio.composeapp.generated.resources.settings_appearance_section_display
 import nuvio.composeapp.generated.resources.settings_appearance_section_home
 import nuvio.composeapp.generated.resources.settings_appearance_section_theme
+import nuvio.composeapp.generated.resources.settings_appearance_theme_classic
+import nuvio.composeapp.generated.resources.settings_appearance_theme_animation_style
+import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_first
+import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_second
+import nuvio.composeapp.generated.resources.settings_appearance_theme_enhanced
 import nuvio.composeapp.generated.resources.settings_content_discovery_collections_description
 import nuvio.composeapp.generated.resources.settings_content_discovery_homescreen_description
 import nuvio.composeapp.generated.resources.settings_content_discovery_meta_screen_description
@@ -96,51 +124,85 @@ internal fun LazyListScope.appearanceSettingsContent(
     onPosterCustomizationClick: () -> Unit,
 ) {
     item {
+        val customFirst by remember { ThemeSettingsRepository.customThemeFirstColor }.collectAsState()
+        val customSecond by remember { ThemeSettingsRepository.customThemeSecondColor }.collectAsState()
+        val animationStyle by remember { ThemeSettingsRepository.themeAnimationStyle }.collectAsState()
         SettingsSection(
             title = stringResource(Res.string.settings_appearance_section_theme),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
-                val themes = listOf(AppTheme.WHITE) + AppTheme.entries.filterNot { it == AppTheme.WHITE }
                 val horizontalPadding = if (isTablet) 20.dp else 16.dp
                 val verticalPadding = if (isTablet) 18.dp else 14.dp
                 val themeSpacing = if (isTablet) 16.dp else 12.dp
-                BoxWithConstraints(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(
                             horizontal = horizontalPadding,
                             vertical = verticalPadding,
                         ),
+                    verticalArrangement = Arrangement.spacedBy(themeSpacing),
                 ) {
-                    val preferredColumns = if (isTablet) 4 else 3
-                    val minThemeCellWidth = if (isTablet) 92.dp else 78.dp
-                    val themeColumns = ((maxWidth + themeSpacing) / (minThemeCellWidth + themeSpacing))
-                        .toInt()
-                        .coerceAtLeast(1)
-                        .coerceAtMost(preferredColumns)
+                    ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_classic))
+                    ThemeGrid(
+                        themes = listOf(
+                            AppTheme.WHITE,
+                            AppTheme.CRIMSON,
+                            AppTheme.OCEAN,
+                            AppTheme.VIOLET,
+                            AppTheme.EMERALD,
+                            AppTheme.AMBER,
+                            AppTheme.ROSE,
+                        ),
+                        selectedTheme = selectedTheme,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        isTablet = isTablet,
+                        spacing = themeSpacing,
+                        onThemeSelected = onThemeSelected,
+                    )
 
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(themeSpacing),
-                    ) {
-                        themes.chunked(themeColumns).forEach { rowThemes ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(themeSpacing),
-                            ) {
-                                rowThemes.forEach { theme ->
-                                    ThemeChip(
-                                        theme = theme,
-                                        isSelected = theme == selectedTheme,
-                                        onClick = { onThemeSelected(theme) },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                repeat(themeColumns - rowThemes.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
-                            }
-                        }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f))
+
+                    ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_enhanced))
+                    ThemeGrid(
+                        themes = listOf(
+                            AppTheme.MESSENGER,
+                            AppTheme.AMETHYST,
+                            AppTheme.BLOSSOM,
+                            AppTheme.LAGOON,
+                            AppTheme.SUNSET,
+                            AppTheme.CUSTOM,
+                        ),
+                        selectedTheme = selectedTheme,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        isTablet = isTablet,
+                        spacing = themeSpacing,
+                        onThemeSelected = onThemeSelected,
+                    )
+
+                    ThemeAnimationStyleSelector(
+                        selectedStyle = animationStyle,
+                        previewTheme = selectedTheme.takeIf { it.isEnhanced } ?: AppTheme.MESSENGER,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        onStyleSelected = ThemeSettingsRepository::setThemeAnimationStyle,
+                    )
+
+                    if (selectedTheme == AppTheme.CUSTOM) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f))
+                        CustomThemeColorPicker(
+                            label = stringResource(Res.string.settings_appearance_theme_custom_first),
+                            selectedColor = customFirst,
+                            onColorSelected = ThemeSettingsRepository::setCustomThemeFirstColor,
+                        )
+                        CustomThemeColorPicker(
+                            label = stringResource(Res.string.settings_appearance_theme_custom_second),
+                            selectedColor = customSecond,
+                            onColorSelected = ThemeSettingsRepository::setCustomThemeSecondColor,
+                        )
                     }
                 }
             }
@@ -348,8 +410,14 @@ private fun ThemeChip(
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    customFirst: Color = ThemeAccentColor.PINK.color,
+    customSecond: Color = ThemeAccentColor.CYAN.color,
 ) {
-    val palette = ThemeColors.getColorPalette(theme)
+    val palette = ThemeColors.getColorPalette(theme, customFirst, customSecond)
+    val previewBrush = theme.previewBrush(palette, customFirst, customSecond)
+    val selectedPreviewBrush = rememberAnimatedAccentBrush()
+        .takeIf { isSelected && theme.isEnhanced }
+    val checkColor = if (theme.isEnhanced) Color.White else palette.onSecondary
 
     Column(
         modifier = modifier
@@ -374,20 +442,42 @@ private fun ThemeChip(
                 ),
             contentAlignment = Alignment.Center,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(palette.secondary),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = stringResource(Res.string.cd_selected),
-                        tint = palette.onSecondary,
-                        modifier = Modifier.size(22.dp),
-                    )
+            if (theme == AppTheme.CUSTOM) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(customThemeRingBrush())
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = stringResource(Res.string.cd_selected),
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(previewBrush),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = stringResource(Res.string.cd_selected),
+                            tint = checkColor,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
             }
         }
@@ -415,7 +505,473 @@ private fun ThemeChip(
             modifier = Modifier
                 .size(width = 36.dp, height = 3.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(palette.focusRing),
+                .background(
+                    if (theme.isEnhanced) {
+                        selectedPreviewBrush ?: previewBrush
+                    } else {
+                        Brush.linearGradient(listOf(palette.focusRing, palette.secondary))
+                    },
+                ),
         )
     }
+}
+
+@Composable
+private fun ThemeAnimationStyleSelector(
+    selectedStyle: ThemeAnimationStyle,
+    previewTheme: AppTheme,
+    customFirst: Color,
+    customSecond: Color,
+    onStyleSelected: (ThemeAnimationStyle) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_animation_style))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ThemeAnimationStyle.entries.forEach { style ->
+                ThemeAnimationStyleChip(
+                    style = style,
+                    selected = style == selectedStyle,
+                    previewTheme = previewTheme,
+                    customFirst = customFirst,
+                    customSecond = customSecond,
+                    onClick = { onStyleSelected(style) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeAnimationStyleChip(
+    style: ThemeAnimationStyle,
+    selected: Boolean,
+    previewTheme: AppTheme,
+    customFirst: Color,
+    customSecond: Color,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(999.dp)
+    val previewBrush = rememberAnimatedAccentBrush(
+        previewTheme = previewTheme,
+        customFirst = customFirst,
+        customSecond = customSecond,
+        animationStyle = style,
+    )
+    val selectedBrush = previewBrush.takeIf { selected }
+    val backgroundColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    }
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .background(backgroundColor, shape)
+            .then(
+                if (selectedBrush != null) {
+                    Modifier.border(width = 1.5.dp, brush = selectedBrush, shape = shape)
+                } else {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
+                        } else {
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.50f)
+                        },
+                        shape = shape,
+                    )
+                },
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(width = 36.dp, height = 7.dp)
+                    .clip(shape)
+                    .then(
+                        if (previewBrush != null) {
+                            Modifier.background(previewBrush)
+                        } else {
+                            Modifier.background(MaterialTheme.colorScheme.primary)
+                        },
+                    ),
+            )
+            Text(
+                text = stringResource(style.labelRes),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+private fun AppTheme.previewBrush(
+    palette: com.nuvio.app.core.ui.ThemeColorPalette,
+    customFirst: Color,
+    customSecond: Color,
+): Brush {
+    if (!isEnhanced) {
+        return Brush.linearGradient(listOf(palette.secondary, palette.focusRing))
+    }
+
+    val colors = ThemeColors.animatedColors(this, customFirst, customSecond)
+        .takeIf { it.isNotEmpty() }
+        ?: listOf(palette.secondary, palette.secondaryVariant, palette.focusRing)
+    return Brush.sweepGradient(colors + colors.first())
+}
+
+private fun customThemeRingBrush(): Brush =
+    Brush.sweepGradient(
+        listOf(
+            Color(0xFFFF004D),
+            Color(0xFFFFD23F),
+            Color(0xFF00E676),
+            Color(0xFF00D9FF),
+            Color(0xFF3D5AFE),
+            Color(0xFFFF4FD8),
+            Color(0xFFFF004D),
+        ),
+    )
+
+@Composable
+private fun ThemeSectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+    )
+}
+
+@Composable
+private fun ThemeGrid(
+    themes: List<AppTheme>,
+    selectedTheme: AppTheme,
+    customFirst: Color,
+    customSecond: Color,
+    isTablet: Boolean,
+    spacing: androidx.compose.ui.unit.Dp,
+    onThemeSelected: (AppTheme) -> Unit,
+) {
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val preferredColumns = if (isTablet) 4 else 3
+        val minThemeCellWidth = if (isTablet) 92.dp else 78.dp
+        val columns = ((maxWidth + spacing) / (minThemeCellWidth + spacing))
+            .toInt()
+            .coerceAtLeast(1)
+            .coerceAtMost(preferredColumns)
+
+        Column(verticalArrangement = Arrangement.spacedBy(spacing)) {
+            themes.chunked(columns).forEach { rowThemes ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(spacing),
+                ) {
+                    rowThemes.forEach { theme ->
+                        ThemeChip(
+                            theme = theme,
+                            isSelected = theme == selectedTheme,
+                            customFirst = customFirst,
+                            customSecond = customSecond,
+                            onClick = { onThemeSelected(theme) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    repeat(columns - rowThemes.size) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomThemeColorPicker(
+    label: String,
+    selectedColor: Color,
+    onColorSelected: (Color) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var hexValue by remember(selectedColor) { mutableStateOf(selectedColor.toThemeHex()) }
+    var hsv by remember(selectedColor) { mutableStateOf(selectedColor.toHsv()) }
+    val pickerShape = RoundedCornerShape(8.dp)
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(pickerShape)
+                .clickable { expanded = !expanded }
+                .padding(vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium,
+                )
+                Text(
+                    text = selectedColor.toThemeHex(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                    .padding(4.dp)
+                    .clip(CircleShape)
+                    .background(selectedColor),
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            ThemeAccentColor.entries.forEach { option ->
+                val colorName = stringResource(option.labelRes)
+                val selected = option.color == selectedColor
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .semantics { contentDescription = colorName }
+                        .then(
+                            if (selected) {
+                                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                            } else {
+                                Modifier.border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                            },
+                        )
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(option.color)
+                        .clickable { onColorSelected(option.color) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selected) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = if (option.color.luminance() > 0.55f) Color.Black else Color.White,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = expanded) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(pickerShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.56f))
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SaturationValuePicker(
+                    hsv = hsv,
+                    onHsvChanged = { updated ->
+                        hsv = updated
+                        onColorSelected(updated.toColor())
+                    },
+                )
+                HuePicker(
+                    hue = hsv.hue,
+                    onHueChanged = { hue ->
+                        val updated = hsv.copy(hue = hue)
+                        hsv = updated
+                        onColorSelected(updated.toColor())
+                    },
+                )
+                OutlinedTextField(
+                    value = hexValue,
+                    onValueChange = { input ->
+                        val normalized = input.take(7).uppercase()
+                        hexValue = normalized
+                        normalized.toColorOrNull()?.let(onColorSelected)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    placeholder = { Text("#RRGGBB") },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaturationValuePicker(
+    hsv: HsvColor,
+    onHsvChanged: (HsvColor) -> Unit,
+) {
+    fun update(position: androidx.compose.ui.geometry.Offset, width: Float, height: Float) {
+        if (width <= 0f || height <= 0f) return
+        onHsvChanged(
+            hsv.copy(
+                saturation = (position.x / width).coerceIn(0f, 1f),
+                value = (1f - position.y / height).coerceIn(0f, 1f),
+            ),
+        )
+    }
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .pointerInput(hsv.hue) {
+                detectTapGestures { update(it, size.width.toFloat(), size.height.toFloat()) }
+            }
+            .pointerInput(hsv.hue) {
+                detectDragGestures(
+                    onDragStart = { update(it, size.width.toFloat(), size.height.toFloat()) },
+                    onDrag = { change, _ ->
+                        update(change.position, size.width.toFloat(), size.height.toFloat())
+                    },
+                )
+            },
+    ) {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                listOf(Color.White, HsvColor(hsv.hue, 1f, 1f).toColor()),
+            ),
+        )
+        drawRect(brush = Brush.verticalGradient(listOf(Color.Transparent, Color.Black)))
+        drawCircle(
+            color = Color.Black.copy(alpha = 0.62f),
+            radius = 8.dp.toPx(),
+            center = androidx.compose.ui.geometry.Offset(
+                hsv.saturation * size.width,
+                (1f - hsv.value) * size.height,
+            ),
+        )
+        drawCircle(
+            color = Color.White,
+            radius = 7.dp.toPx(),
+            center = androidx.compose.ui.geometry.Offset(
+                hsv.saturation * size.width,
+                (1f - hsv.value) * size.height,
+            ),
+            style = Stroke(width = 2.dp.toPx()),
+        )
+    }
+}
+
+@Composable
+private fun HuePicker(
+    hue: Float,
+    onHueChanged: (Float) -> Unit,
+) {
+    fun update(x: Float, width: Float) {
+        if (width <= 0f) return
+        onHueChanged((x / width).coerceIn(0f, 1f) * 360f)
+    }
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(18.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .pointerInput(Unit) {
+                detectTapGestures { update(it.x, size.width.toFloat()) }
+            }
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragStart = { update(it.x, size.width.toFloat()) },
+                    onDrag = { change, _ -> update(change.position.x, size.width.toFloat()) },
+                )
+            },
+    ) {
+        drawRect(
+            brush = Brush.horizontalGradient(
+                listOf(
+                    Color.Red,
+                    Color.Yellow,
+                    Color.Green,
+                    Color.Cyan,
+                    Color.Blue,
+                    Color.Magenta,
+                    Color.Red,
+                ),
+            ),
+        )
+        val markerX = (hue / 360f).coerceIn(0f, 1f) * size.width
+        drawCircle(
+            color = Color.White,
+            radius = 6.dp.toPx(),
+            center = androidx.compose.ui.geometry.Offset(markerX, size.height / 2f),
+            style = Stroke(width = 2.dp.toPx()),
+        )
+    }
+}
+
+private data class HsvColor(
+    val hue: Float,
+    val saturation: Float,
+    val value: Float,
+) {
+    fun toColor(): Color {
+        val normalizedHue = ((hue % 360f) + 360f) % 360f
+        val chroma = value * saturation
+        val section = normalizedHue / 60f
+        val secondary = chroma * (1f - kotlin.math.abs(section % 2f - 1f))
+        val match = value - chroma
+        val (red, green, blue) = when (section.toInt()) {
+            0 -> Triple(chroma, secondary, 0f)
+            1 -> Triple(secondary, chroma, 0f)
+            2 -> Triple(0f, chroma, secondary)
+            3 -> Triple(0f, secondary, chroma)
+            4 -> Triple(secondary, 0f, chroma)
+            else -> Triple(chroma, 0f, secondary)
+        }
+        return Color(red + match, green + match, blue + match)
+    }
+}
+
+private fun Color.toHsv(): HsvColor {
+    val highest = max(red, max(green, blue))
+    val lowest = min(red, min(green, blue))
+    val delta = highest - lowest
+    val hue = when {
+        delta == 0f -> 0f
+        highest == red -> 60f * (((green - blue) / delta) % 6f)
+        highest == green -> 60f * ((blue - red) / delta + 2f)
+        else -> 60f * ((red - green) / delta + 4f)
+    }
+    return HsvColor(
+        hue = if (hue < 0f) hue + 360f else hue,
+        saturation = if (highest == 0f) 0f else delta / highest,
+        value = highest,
+    )
+}
+
+private fun String.toColorOrNull(): Color? {
+    val hex = trim().removePrefix("#")
+    if (hex.length != 6 || hex.any { !it.isDigit() && it.lowercaseChar() !in 'a'..'f' }) return null
+    return Color(
+        red = hex.substring(0, 2).toInt(16) / 255f,
+        green = hex.substring(2, 4).toInt(16) / 255f,
+        blue = hex.substring(4, 6).toInt(16) / 255f,
+    )
 }

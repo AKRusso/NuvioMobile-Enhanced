@@ -12,12 +12,18 @@ import platform.Foundation.NSUserDefaults
 
 actual object ThemeSettingsStorage {
     private const val selectedThemeKey = "selected_theme"
+    private const val customThemeFirstColorKey = "custom_theme_first_color"
+    private const val customThemeSecondColorKey = "custom_theme_second_color"
+    private const val themeAnimationStyleKey = "theme_animation_style"
     private const val amoledEnabledKey = "amoled_enabled"
     private const val liquidGlassNativeTabBarEnabledKey = "liquid_glass_native_tab_bar_enabled"
     private const val liquidGlassAutoHideOnScrollEnabledKey = "liquid_glass_auto_hide_on_scroll_enabled"
     private const val selectedAppLanguageKey = "selected_app_language"
     private val profileScopedSyncKeys = listOf(
         selectedThemeKey,
+        customThemeFirstColorKey,
+        customThemeSecondColorKey,
+        themeAnimationStyleKey,
         amoledEnabledKey,
         liquidGlassNativeTabBarEnabledKey,
         liquidGlassAutoHideOnScrollEnabledKey,
@@ -28,6 +34,36 @@ actual object ThemeSettingsStorage {
 
     actual fun saveSelectedTheme(themeName: String) {
         NSUserDefaults.standardUserDefaults.setObject(themeName, forKey = ProfileScopedKey.of(selectedThemeKey))
+    }
+
+    actual fun loadCustomThemeFirstColor(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(customThemeFirstColorKey))
+
+    actual fun saveCustomThemeFirstColor(colorName: String) {
+        NSUserDefaults.standardUserDefaults.setObject(
+            colorName,
+            forKey = ProfileScopedKey.of(customThemeFirstColorKey),
+        )
+    }
+
+    actual fun loadCustomThemeSecondColor(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(customThemeSecondColorKey))
+
+    actual fun saveCustomThemeSecondColor(colorName: String) {
+        NSUserDefaults.standardUserDefaults.setObject(
+            colorName,
+            forKey = ProfileScopedKey.of(customThemeSecondColorKey),
+        )
+    }
+
+    actual fun loadThemeAnimationStyle(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(themeAnimationStyleKey))
+
+    actual fun saveThemeAnimationStyle(styleName: String) {
+        NSUserDefaults.standardUserDefaults.setObject(
+            styleName,
+            forKey = ProfileScopedKey.of(themeAnimationStyleKey),
+        )
     }
 
     actual fun loadAmoledEnabled(): Boolean? {
@@ -109,6 +145,9 @@ actual object ThemeSettingsStorage {
 
     actual fun exportToSyncPayload(): JsonObject = buildJsonObject {
         loadSelectedTheme()?.let { put(selectedThemeKey, encodeSyncString(it)) }
+        loadCustomThemeFirstColor()?.let { put(customThemeFirstColorKey, encodeSyncString(it)) }
+        loadCustomThemeSecondColor()?.let { put(customThemeSecondColorKey, encodeSyncString(it)) }
+        loadThemeAnimationStyle()?.let { put(themeAnimationStyleKey, encodeSyncString(it)) }
         loadAmoledEnabled()?.let { put(amoledEnabledKey, encodeSyncBoolean(it)) }
         loadLiquidGlassNativeTabBarEnabled()?.let { put(liquidGlassNativeTabBarEnabledKey, encodeSyncBoolean(it)) }
         loadLiquidGlassAutoHideOnScrollEnabled()?.let { put(liquidGlassAutoHideOnScrollEnabledKey, encodeSyncBoolean(it)) }
@@ -120,6 +159,9 @@ actual object ThemeSettingsStorage {
         }
 
         payload.decodeSyncString(selectedThemeKey)?.let(::saveSelectedTheme)
+        payload.decodeSyncString(customThemeFirstColorKey)?.let(::saveCustomThemeFirstColor)
+        payload.decodeSyncString(customThemeSecondColorKey)?.let(::saveCustomThemeSecondColor)
+        payload.decodeSyncString(themeAnimationStyleKey)?.let(::saveThemeAnimationStyle)
         payload.decodeSyncBoolean(amoledEnabledKey)?.let(::saveAmoledEnabled)
         payload.decodeSyncBoolean(liquidGlassNativeTabBarEnabledKey)?.let(::saveLiquidGlassNativeTabBarEnabled)
         payload.decodeSyncBoolean(liquidGlassAutoHideOnScrollEnabledKey)?.let(::saveLiquidGlassAutoHideOnScrollEnabled)

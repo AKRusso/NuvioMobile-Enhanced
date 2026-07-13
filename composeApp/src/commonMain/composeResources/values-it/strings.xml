@@ -1519,4 +1519,27 @@
   <string name="supporters_contributors_donation_progress_complete">Coperto. Qualsiasi supporto ulteriore andrà allo sviluppo.</string>
   <string name="supporters_contributors_donation_progress_remaining">Dopo il 100%, eventuale supporto in più andrà allo sviluppo.</string>
   <string name="supporters_contributors_donate_button">Dona a Nuvio</string>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametista</string>
+    <string name="theme_blossom">Fioritura</string>
+    <string name="theme_lagoon">Laguna</string>
+    <string name="theme_sunset">Tramonto</string>
+    <string name="theme_custom">Personalizzato</string>
+    <string name="settings_appearance_theme_classic">Temi classici</string>
+    <string name="settings_appearance_theme_enhanced">Temi avanzati</string>
+    <string name="settings_appearance_theme_custom_first">Primo colore</string>
+    <string name="settings_appearance_theme_custom_second">Secondo colore</string>
+    <string name="settings_appearance_theme_animation_style">Stile animazione</string>
+    <string name="theme_animation_flow">Flusso</string>
+    <string name="theme_animation_shimmer">Bagliore</string>
+    <string name="theme_animation_wave">Onda</string>
+    <string name="theme_animation_vivid_wave">Onda vivida</string>
+    <string name="theme_animation_still">Fermo</string>
+    <string name="theme_color_pink">Rosa</string>
+    <string name="theme_color_purple">Viola</string>
+    <string name="theme_color_blue">Blu</string>
+    <string name="theme_color_cyan">Ciano</string>
+    <string name="theme_color_green">Verde</string>
+    <string name="theme_color_yellow">Giallo</string>
+    <string name="theme_color_red">Rosso</string>
 </resources>

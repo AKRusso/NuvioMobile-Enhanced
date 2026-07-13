@@ -22,6 +22,7 @@ fun NuvioProgressBar(
 ) {
     val tokens = MaterialTheme.nuvio
     val clampedProgress = progress.coerceIn(0f, 1f)
+    val animatedBrush = rememberAnimatedAccentBrush()
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -35,7 +36,13 @@ fun NuvioProgressBar(
                 .width(NuvioTokens.Space.none)
                 .height(height)
                 .clip(tokens.shapes.chip)
-                .background(fillColor),
+                .then(
+                    if (animatedBrush != null) {
+                        Modifier.background(animatedBrush)
+                    } else {
+                        Modifier.background(fillColor)
+                    },
+                ),
         )
     }
 }

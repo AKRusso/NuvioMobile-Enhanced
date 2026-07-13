@@ -86,6 +86,9 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.extractReleaseYearForDisplay
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.rememberAnimatedLineBrush
+import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaExternalRating
@@ -1558,7 +1561,10 @@ private fun StreamingShowcaseNetflixButton(
     val height = if (compact) 42.dp else 48.dp
     val iconSize = if (compact) 19.dp else 22.dp
     val textStyle = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
-    val foregroundColor = if (primary) {
+    val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
+    val foregroundColor = if (accentBrush != null) {
+        MaterialTheme.colorScheme.onPrimary
+    } else if (primary) {
         Color.Black.copy(alpha = if (enabled) 0.90f else 0.50f)
     } else {
         Color.White.copy(alpha = if (enabled) 0.94f else 0.48f)
@@ -1567,16 +1573,24 @@ private fun StreamingShowcaseNetflixButton(
         modifier = modifier
             .height(height)
             .clip(shape)
-            .background(
-                if (primary) {
-                    Color.White.copy(alpha = if (enabled) 0.96f else 0.54f)
-                } else {
-                    Color(0xFF2B2D34).copy(alpha = if (enabled) 0.72f else 0.38f)
+            .then(
+                when {
+                    accentBrush != null -> Modifier.background(accentBrush, shape)
+                    else -> Modifier.background(
+                        if (primary) {
+                            Color.White.copy(alpha = if (enabled) 0.96f else 0.54f)
+                        } else {
+                            Color(0xFF2B2D34).copy(alpha = if (enabled) 0.72f else 0.38f)
+                        },
+                        shape,
+                    )
                 },
             )
             .border(
                 width = 1.dp,
-                color = if (primary) {
+                color = if (accentBrush != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.34f else 0.16f)
+                } else if (primary) {
                     Color.White.copy(alpha = 0.36f)
                 } else {
                     Color.White.copy(alpha = 0.14f)
@@ -1620,19 +1634,35 @@ private fun StreamingShowcaseButton(
     val verticalPadding = if (compact) 9.dp else 12.dp
     val iconSize = if (compact) 18.dp else 21.dp
     val itemSpacing = if (compact) 7.dp else 10.dp
+    val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
+    val contentColor = if (accentBrush != null) {
+        MaterialTheme.colorScheme.onPrimary
+    } else if (primary) {
+        Color.Black.copy(alpha = 0.92f)
+    } else {
+        Color.White.copy(alpha = 0.92f)
+    }
     Row(
         modifier = Modifier
             .clip(shape)
-            .background(
-                if (primary) {
-                    Color.White.copy(alpha = if (enabled) 0.96f else 0.56f)
-                } else {
-                    Color.White.copy(alpha = if (enabled) 0.13f else 0.07f)
+            .then(
+                when {
+                    accentBrush != null -> Modifier.background(accentBrush, shape)
+                    else -> Modifier.background(
+                        if (primary) {
+                            Color.White.copy(alpha = if (enabled) 0.96f else 0.56f)
+                        } else {
+                            Color.White.copy(alpha = if (enabled) 0.13f else 0.07f)
+                        },
+                        shape,
+                    )
                 },
             )
             .border(
                 width = 1.dp,
-                color = if (primary) {
+                color = if (accentBrush != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
+                } else if (primary) {
                     Color.Black.copy(alpha = 0.14f)
                 } else {
                     Color.White.copy(alpha = 0.20f)
@@ -1648,12 +1678,12 @@ private fun StreamingShowcaseButton(
             imageVector = imageVector,
             contentDescription = null,
             modifier = Modifier.size(iconSize),
-            tint = if (primary) Color.Black.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.92f),
+            tint = contentColor,
         )
         Text(
             text = text,
             style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,
-            color = if (primary) Color.Black.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.92f),
+            color = contentColor,
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -2415,6 +2445,7 @@ private fun HeroMetaGlassRail(
         NuvioHeroDisplayMode.Balanced -> 0.30f
         NuvioHeroDisplayMode.InfoRich -> 0.36f
     }
+    val softBrush = rememberAnimatedSoftBrush()
     Box(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
@@ -2424,14 +2455,21 @@ private fun HeroMetaGlassRail(
                 .fillMaxWidth(railWidthFraction)
                 .widthIn(max = railMaxWidth)
                 .clip(railShape)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.background.copy(alpha = backgroundAlphaStart),
-                            MaterialTheme.colorScheme.background.copy(alpha = 0.20f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                        ),
-                    ),
+                .then(
+                    if (softBrush != null) {
+                        Modifier.background(softBrush, railShape)
+                    } else {
+                        Modifier.background(
+                            Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background.copy(alpha = backgroundAlphaStart),
+                                    MaterialTheme.colorScheme.background.copy(alpha = 0.20f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                ),
+                            ),
+                            railShape,
+                        )
+                    },
                 )
                 .border(
                     width = 1.dp,
@@ -2523,7 +2561,7 @@ private fun HeroMetaLabel(
     val modifier = if (item.emphasized) {
         Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.88f), RoundedCornerShape(999.dp))
             .padding(horizontal = if (compact) 9.dp else 10.dp, vertical = if (compact) 3.dp else 4.dp)
     } else {
         Modifier
@@ -2553,23 +2591,40 @@ private fun HeroCtaButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(44.dp)
+    val accentBrush = rememberAnimatedAccentBrush()
+    val softBrush = rememberAnimatedSoftBrush()
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(44.dp))
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                        Color.Transparent,
-                    ),
-                ),
+            .clip(shape)
+            .then(
+                if (softBrush != null) {
+                    Modifier.background(softBrush)
+                } else {
+                    Modifier.background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.34f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    )
+                },
             )
             .padding(2.dp),
     ) {
         Surface(
-            modifier = Modifier.clickable(enabled = enabled, onClick = onClick),
-            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .then(
+                    if (accentBrush != null) {
+                        Modifier.background(accentBrush, RoundedCornerShape(40.dp))
+                    } else {
+                        Modifier
+                    },
+                )
+                .clickable(enabled = enabled, onClick = onClick),
+            color = if (accentBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = RoundedCornerShape(40.dp),
             shadowElevation = 10.dp,
@@ -2590,6 +2645,7 @@ private fun HeroPageIndicator(
     onClick: () -> Unit,
 ) {
     val progress = activeFraction.coerceIn(0f, 1f)
+    val lineBrush = rememberAnimatedLineBrush()
     Box(
         modifier = Modifier
             .width(8.dp + (28.dp * progress))
@@ -2604,7 +2660,13 @@ private fun HeroPageIndicator(
                     .fillMaxHeight()
                     .fillMaxWidth(progress.coerceAtLeast(0.18f))
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
+                    .then(
+                        if (lineBrush != null) {
+                            Modifier.background(lineBrush)
+                        } else {
+                            Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.86f))
+                        },
+                    ),
             )
         }
     }

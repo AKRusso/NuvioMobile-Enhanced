@@ -1,6 +1,8 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,9 +18,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Lock
@@ -34,9 +38,11 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -53,6 +59,7 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
+import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.settings_homescreen_collection_with_addon
@@ -369,21 +376,57 @@ internal fun SettingsSwitchRow(
                 )
             }
         }
-        Switch(
+        SettingsGradientSwitch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
             enabled = enabled,
+            highlighted = highlighted,
             modifier = Modifier.padding(start = 4.dp),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = tokens.colors.onAccent,
-                checkedTrackColor = tokens.colors.accent,
-                uncheckedThumbColor = tokens.colors.textMuted,
-                uncheckedTrackColor = if (highlighted) {
-                    tokens.colors.accent.copy(alpha = 0.28f)
+        )
+    }
+}
+
+@Composable
+private fun SettingsGradientSwitch(
+    checked: Boolean,
+    enabled: Boolean,
+    highlighted: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    val trackShape = RoundedCornerShape(999.dp)
+    val trackBrush = rememberAnimatedAccentBrush().takeIf { checked && enabled }
+    val thumbOffset by animateDpAsState(
+        targetValue = if (checked) 20.dp else 0.dp,
+        animationSpec = tween(durationMillis = 180),
+        label = "settings_switch_thumb",
+    )
+    Box(
+        modifier = modifier
+            .size(width = 52.dp, height = 32.dp)
+            .clip(trackShape)
+            .then(
+                if (trackBrush != null) {
+                    Modifier.background(trackBrush)
                 } else {
-                    tokens.colors.borderDefault
+                    Modifier.background(
+                        when {
+                            checked -> tokens.colors.accent
+                            highlighted -> tokens.colors.accent.copy(alpha = 0.28f)
+                            else -> tokens.colors.borderDefault
+                        },
+                    )
                 },
-            ),
+            )
+            .padding(4.dp)
+            .alpha(if (enabled) 1f else tokens.opacity.medium),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .offset(x = thumbOffset)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (checked) tokens.colors.onAccent else tokens.colors.textMuted),
         )
     }
 }

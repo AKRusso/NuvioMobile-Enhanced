@@ -289,15 +289,19 @@ fun NuvioPrimaryButton(
     onClick: () -> Unit = {},
 ) {
     val tokens = MaterialTheme.nuvio
+    val shape = tokens.shapes.button
+    val animatedBrush = rememberAnimatedAccentBrush().takeIf { enabled }
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(NuvioTokens.Space.s48 + NuvioTokens.Space.s4),
+            .height(NuvioTokens.Space.s48 + NuvioTokens.Space.s4)
+            .clip(shape)
+            .then(if (animatedBrush != null) Modifier.background(animatedBrush, shape) else Modifier),
         enabled = enabled,
-        shape = tokens.shapes.button,
+        shape = shape,
         colors = ButtonDefaults.buttonColors(
-            containerColor = tokens.colors.accent,
+            containerColor = if (animatedBrush != null) Color.Transparent else tokens.colors.accent,
             contentColor = tokens.colors.onAccent,
             disabledContainerColor = tokens.colors.accent.copy(alpha = tokens.opacity.disabled),
             disabledContentColor = tokens.colors.onAccent.copy(alpha = tokens.opacity.disabled),

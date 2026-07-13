@@ -1917,4 +1917,28 @@
         <item quantity="one">%d cím</item>
         <item quantity="other">%d cím</item>
     </plurals>
+    <string name="theme_messenger">Messenger</string>
+    <string name="theme_amethyst">Ametiszt</string>
+    <string name="theme_blossom">Virág</string>
+    <string name="theme_lagoon">Lagúna</string>
+    <string name="theme_sunset">Naplemente</string>
+    <string name="theme_custom">Egyéni</string>
+    <string name="settings_appearance_theme_classic">Klasszikus témák</string>
+    <string name="settings_appearance_theme_enhanced">Továbbfejlesztett témák</string>
+    <string name="settings_appearance_theme_custom_first">Első szín</string>
+    <string name="settings_appearance_theme_custom_second">Második szín</string>
+    <string name="settings_appearance_theme_animation_style">Animáció stílusa</string>
+    <string name="theme_animation_flow">Áramlás</string>
+    <string name="theme_animation_shimmer">Csillogás</string>
+    <string name="theme_animation_wave">Hullám</string>
+    <string name="theme_animation_vivid_wave">Élénk hullám</string>
+    <string name="theme_animation_still">Álló</string>
+    <string name="theme_color_pink">Rózsaszín</string>
+    <string name="theme_color_purple">Lila</string>
+    <string name="theme_color_blue">Kék</string>
+    <string name="theme_color_cyan">Cián</string>
+    <string name="theme_color_green">Zöld</string>
+    <string name="theme_color_yellow">Sárga</string>
+    <string name="theme_color_red">Piros</string>
+    <string name="theme_color_white">Fehér</string>
 </resources>

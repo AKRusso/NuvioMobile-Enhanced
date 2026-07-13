@@ -190,10 +190,15 @@ private val NuvioRippleConfiguration = RippleConfiguration(
 fun NuvioTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     appTheme: AppTheme = AppTheme.WHITE,
+    customFirst: Color = ThemeAccentColor.PINK.color,
+    customSecond: Color = ThemeAccentColor.CYAN.color,
+    animationStyle: ThemeAnimationStyle = ThemeAnimationStyle.FLOW,
     amoled: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val palette = ThemeColors.getColorPalette(appTheme)
+    val basePalette = ThemeColors.getColorPalette(appTheme, customFirst, customSecond)
+    val animatedVisuals = rememberAnimatedThemeVisuals(appTheme, customFirst, customSecond, animationStyle)
+    val palette = basePalette
     val colorScheme = buildColorScheme(palette, amoled = amoled)
     val tokens = defaultNuvioThemeTokens(palette, amoled = amoled, colorScheme = colorScheme)
 
@@ -208,6 +213,7 @@ fun NuvioTheme(
         LocalRippleConfiguration provides NuvioRippleConfiguration,
         LocalOverscrollFactory provides null,
         LocalAppTheme provides appTheme,
+        LocalAnimatedThemeVisuals provides animatedVisuals,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,

@@ -433,7 +433,22 @@ fun App() {
         ThemeSettingsRepository.selectedTheme
     }.collectAsStateWithLifecycle()
     val amoledEnabled by remember { ThemeSettingsRepository.amoledEnabled }.collectAsStateWithLifecycle()
-    NuvioTheme(appTheme = selectedTheme, amoled = amoledEnabled) {
+    val customThemeFirstColor by remember {
+        ThemeSettingsRepository.customThemeFirstColor
+    }.collectAsStateWithLifecycle()
+    val customThemeSecondColor by remember {
+        ThemeSettingsRepository.customThemeSecondColor
+    }.collectAsStateWithLifecycle()
+    val themeAnimationStyle by remember {
+        ThemeSettingsRepository.themeAnimationStyle
+    }.collectAsStateWithLifecycle()
+    NuvioTheme(
+        appTheme = selectedTheme,
+        customFirst = customThemeFirstColor,
+        customSecond = customThemeSecondColor,
+        animationStyle = themeAnimationStyle,
+        amoled = amoledEnabled,
+    ) {
         LaunchedEffect(Unit) {
             AuthRepository.initialize()
         }

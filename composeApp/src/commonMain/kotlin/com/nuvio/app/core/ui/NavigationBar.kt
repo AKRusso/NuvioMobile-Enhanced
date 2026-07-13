@@ -30,10 +30,11 @@ fun NuvioNavigationBar(
     content: @Composable NuvioNavigationBarScope.() -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
+    val animatedAccent = currentAnimatedThemeVisuals?.accent
     Column(modifier.fillMaxWidth()) {
         HorizontalDivider(
             thickness = tokens.borders.hairline,
-            color = tokens.colors.borderDefault,
+            color = animatedAccent?.copy(alpha = 0.30f) ?: tokens.colors.borderDefault,
         )
         Row(
             modifier = Modifier

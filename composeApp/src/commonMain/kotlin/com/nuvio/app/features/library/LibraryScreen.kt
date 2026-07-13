@@ -737,11 +737,12 @@ private fun LibraryChip(
     onClick: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(18.dp)
     Surface(
         modifier = Modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(shape)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = shape,
         color = if (selected) colorScheme.primaryContainer else colorScheme.surfaceContainerLow,
         border = if (selected) BorderStroke(1.dp, colorScheme.primary.copy(alpha = 0.45f)) else null,
     ) {
