@@ -1823,6 +1823,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Üyeler</string>
     <string name="nuvio_enhanced_onboarding_online_label">Çevrimiçi</string>
     <string name="nuvio_enhanced_onboarding_more_members">Ve daha fazla üye...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Unutulmuş bir yayın, bir astronotu sinyalin başladığı okyanusa geri götürür.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Bilim kurgu • Gizem</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Takviyeler</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Yönetici</string>
 </resources>

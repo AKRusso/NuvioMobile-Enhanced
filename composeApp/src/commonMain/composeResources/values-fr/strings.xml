@@ -1985,6 +1985,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Membres</string>
     <string name="nuvio_enhanced_onboarding_online_label">En ligne</string>
     <string name="nuvio_enhanced_onboarding_more_members">Et d’autres membres...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Une transmission oubliée ramène un astronaute vers l’océan où le signal a commencé.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Science-fiction • Mystère</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrateur</string>
 </resources>

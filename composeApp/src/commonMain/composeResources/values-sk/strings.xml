@@ -1940,6 +1940,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Členovia</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
     <string name="nuvio_enhanced_onboarding_more_members">A ďalší členovia...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Zabudnutý prenos zavedie astronauta späť k oceánu, kde sa signál začal.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Sci-fi • Záhada</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosty</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Správca</string>
 </resources>

@@ -1935,6 +1935,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Tagok</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
     <string name="nuvio_enhanced_onboarding_more_members">És további tagok...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Egy elfeledett adás visszahív egy űrhajóst az óceánhoz, ahol a jel elkezdődött.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Tudományos-fantasztikus • Rejtély</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Kiemelések</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Adminisztrátor</string>
 </resources>

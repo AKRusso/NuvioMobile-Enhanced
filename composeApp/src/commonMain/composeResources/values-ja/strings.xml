@@ -1936,6 +1936,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">メンバー</string>
     <string name="nuvio_enhanced_onboarding_online_label">オンライン</string>
     <string name="nuvio_enhanced_onboarding_more_members">ほかのメンバーも参加中...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">忘れられた通信に導かれ、宇宙飛行士は信号が始まった海へ戻っていく。</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">SF • ミステリー</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">ブースト</string>
     <string name="nuvio_enhanced_onboarding_admin_role">管理者</string>
 </resources>

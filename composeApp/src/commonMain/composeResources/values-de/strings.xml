@@ -1230,6 +1230,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Mitglieder</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
     <string name="nuvio_enhanced_onboarding_more_members">Und weitere Mitglieder...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Eine vergessene Übertragung führt einen Astronauten zurück zu dem Ozean, an dem das Signal begann.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Science-Fiction • Mystery</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrator</string>
 </resources>

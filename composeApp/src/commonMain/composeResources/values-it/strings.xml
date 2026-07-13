@@ -1537,6 +1537,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Membri</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
     <string name="nuvio_enhanced_onboarding_more_members">E altri membri...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Una trasmissione dimenticata riporta un astronauta all’oceano dove il segnale ha avuto inizio.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Fantascienza • Mistero</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boost</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Amministratore</string>
 </resources>

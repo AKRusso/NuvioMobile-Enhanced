@@ -1887,6 +1887,8 @@
     <string name="nuvio_enhanced_onboarding_members_label">Członkowie</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
     <string name="nuvio_enhanced_onboarding_more_members">I kolejni członkowie...</string>
+    <string name="nuvio_enhanced_onboarding_sample_description">Zapomniana transmisja prowadzi astronautę z powrotem nad ocean, gdzie pojawił się sygnał.</string>
+    <string name="nuvio_enhanced_onboarding_sample_genre">Science fiction • Tajemnica</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Ulepszenia</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrator</string>
 </resources>
