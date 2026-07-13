@@ -1385,6 +1385,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">mer</string>
     <string name="nuvio_enhanced_onboarding_members_label">Medlemmer</string>
     <string name="nuvio_enhanced_onboarding_online_label">Pålogget</string>
+    <string name="nuvio_enhanced_onboarding_more_members">Og flere medlemmer...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrator</string>
 </resources>

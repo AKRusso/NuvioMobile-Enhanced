@@ -1934,6 +1934,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">tervezve</string>
     <string name="nuvio_enhanced_onboarding_members_label">Tagok</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_more_members">És további tagok...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Kiemelések</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Adminisztrátor</string>
 </resources>

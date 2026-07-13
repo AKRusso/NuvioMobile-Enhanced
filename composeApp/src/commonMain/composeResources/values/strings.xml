@@ -2360,6 +2360,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">more</string>
     <string name="nuvio_enhanced_onboarding_members_label">Members</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_more_members">And more members...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Admin</string>
 </resources>

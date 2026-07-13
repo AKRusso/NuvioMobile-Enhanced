@@ -1984,6 +1984,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">plus</string>
     <string name="nuvio_enhanced_onboarding_members_label">Membres</string>
     <string name="nuvio_enhanced_onboarding_online_label">En ligne</string>
+    <string name="nuvio_enhanced_onboarding_more_members">Et d’autres membres...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Boosts</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrateur</string>
 </resources>

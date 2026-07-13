@@ -102,7 +102,7 @@ internal object EnhancedCommunityRepository {
         return runCatching {
             json.decodeFromString<DiscordWidgetResponse>(response.body).members
                 .filter { it.username.isNotBlank() }
-                .take(6)
+                .take(10)
                 .map { member ->
                     EnhancedCommunityMember(
                         username = member.username,

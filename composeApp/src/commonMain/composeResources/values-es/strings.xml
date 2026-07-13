@@ -1940,6 +1940,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">más</string>
     <string name="nuvio_enhanced_onboarding_members_label">Miembros</string>
     <string name="nuvio_enhanced_onboarding_online_label">En línea</string>
+    <string name="nuvio_enhanced_onboarding_more_members">Y más miembros...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Mejoras</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrador</string>
 </resources>

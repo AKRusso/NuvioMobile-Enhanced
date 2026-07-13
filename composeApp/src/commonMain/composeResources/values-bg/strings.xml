@@ -1909,6 +1909,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">повече</string>
     <string name="nuvio_enhanced_onboarding_members_label">Членове</string>
     <string name="nuvio_enhanced_onboarding_online_label">Онлайн</string>
+    <string name="nuvio_enhanced_onboarding_more_members">И още членове...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Бустове</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Администратор</string>
 </resources>

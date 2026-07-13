@@ -1928,6 +1928,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">περισσότερα</string>
     <string name="nuvio_enhanced_onboarding_members_label">Μέλη</string>
     <string name="nuvio_enhanced_onboarding_online_label">Σε σύνδεση</string>
+    <string name="nuvio_enhanced_onboarding_more_members">Και περισσότερα μέλη...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Ενισχύσεις</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Διαχειριστής</string>
 </resources>

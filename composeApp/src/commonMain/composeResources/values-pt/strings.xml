@@ -1861,6 +1861,7 @@
     <string name="nuvio_enhanced_onboarding_features_title_accent">mais</string>
     <string name="nuvio_enhanced_onboarding_members_label">Membros</string>
     <string name="nuvio_enhanced_onboarding_online_label">Online</string>
+    <string name="nuvio_enhanced_onboarding_more_members">E mais membros...</string>
     <string name="nuvio_enhanced_onboarding_boosts_label">Impulsos</string>
     <string name="nuvio_enhanced_onboarding_admin_role">Administrador</string>
 </resources>

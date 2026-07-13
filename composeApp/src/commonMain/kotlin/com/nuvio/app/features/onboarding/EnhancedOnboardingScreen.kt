@@ -108,6 +108,7 @@ import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_t
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_features_title_lead
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_join_discord
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_members_label
+import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_more_members
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_online_label
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_start
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_team_body
@@ -964,7 +965,7 @@ private fun CommunityPage(
     val visibleMembers = remember(snapshot.members) {
         snapshot.members
             .sortedWith(compareBy<EnhancedCommunityMember>({ statusPriority(it.status) }, { it.username.lowercase() }))
-            .take(5)
+            .take(10)
     }
     PageColumn(centered = false) {
         Text(
@@ -1053,13 +1054,18 @@ private fun CommunityPage(
                 Column {
                     visibleMembers.forEachIndexed { index, member ->
                         CommunityMemberRow(member)
-                        if (index < visibleMembers.lastIndex) {
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 54.dp),
-                                color = BorderSoft.copy(alpha = 0.72f),
-                            )
-                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 54.dp),
+                            color = BorderSoft.copy(alpha = 0.72f),
+                        )
                     }
+                    Text(
+                        text = stringResource(Res.string.nuvio_enhanced_onboarding_more_members),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = DiscordBlue,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
         }
