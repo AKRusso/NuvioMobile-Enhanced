@@ -1386,6 +1386,12 @@
     <string name="streams_link_copied">Yayın bağlantısı kopyalandı</string>
     <string name="streams_no_direct_link">Doğrudan yayın bağlantısı yok</string>
     <string name="streams_no_metadata">Meta veri yok</string>
+    <string name="streams_pin_source_confirm">Sabitle</string>
+    <string name="streams_pin_source_message">%1$s kaynak listesinin en üstüne taşınsın mı?</string>
+    <string name="streams_pin_source_title">Kaynak sabitlensin mi?</string>
+    <string name="streams_unpin_source_confirm">Kaldır</string>
+    <string name="streams_unpin_source_message">%1$s sabitlenmiş yayın kaynaklarından kaldırılsın mı?</string>
+    <string name="streams_unpin_source_title">Sabitlenmiş kaynak kaldırılsın mı?</string>
     <string name="streams_refresh">Yayınları yenile</string>
     <string name="streams_resume_from_percent">%1$d% konumundan devam et</string>
     <string name="streams_resume_from_time">%1$s konumundan devam et</string>
@@ -1713,8 +1719,8 @@
     <string name="nuvio_enhanced_library_health_desc">Eksik görsel, zayıf metadata ve yaklaşan yayın kapsamı için kütüphane kalite taraması ekler.</string>
     <string name="nuvio_enhanced_live_tv_title">Canlı TV sekmesi</string>
     <string name="nuvio_enhanced_live_tv_desc">Özellik verisini kaldırmadan ana navigasyonda Canlı TV'yi göster veya gizle.</string>
-    <string name="nuvio_enhanced_content_warnings_title">İçerik uyarıları</string>
-    <string name="nuvio_enhanced_content_warnings_desc">Oynatma başlarken kısa ebeveyn rehberi uyarılarını gösterir. Daha temiz bir player açılışı için kapatabilirsin.</string>
+    <string name="nuvio_enhanced_source_pinning_title">Sabitlenmiş yayın kaynakları</string>
+    <string name="nuvio_enhanced_source_pinning_desc">Seçilen yayın kaynağını listenin en üstüne sabitlemeden önce onay ister.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">Player durum göstergesi</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">Player kontrolleri görünürken üstte Wi-Fi/LTE, saat ve batarya bilgisini kompakt bir göstergeyle gösterir.</string>
     <string name="nuvio_enhanced_hero_display_title">Hero gösterim modu</string>

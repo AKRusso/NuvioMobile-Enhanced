@@ -35,10 +35,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -73,6 +76,8 @@ import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.TraktListPickerDialog
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.features.ai.AiAssistantSettingsRepository
+import com.nuvio.app.features.details.components.AiAssistantSheet
 import com.nuvio.app.features.details.components.DetailActionButtons
 import com.nuvio.app.features.details.components.DetailSecondaryAction
 import com.nuvio.app.features.details.components.CommentDetailSheet
@@ -162,6 +167,10 @@ fun MetaDetailsScreen(
         TmdbSettingsRepository.ensureLoaded()
         TmdbSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    val aiAssistantSettings by remember {
+        AiAssistantSettingsRepository.ensureLoaded()
+        AiAssistantSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
     val libraryUiState by remember {
         LibraryRepository.ensureLoaded()
         LibraryRepository.uiState
@@ -203,11 +212,15 @@ fun MetaDetailsScreen(
     var pickerError by remember(type, id) { mutableStateOf<String?>(null) }
     var episodeImdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
+    var showAiAssistant by remember(type, id) { mutableStateOf(false) }
 
     val shouldShowComments = commentsEnabled &&
         traktAuthUiState.mode == TraktConnectionMode.CONNECTED &&
         displayedMeta != null &&
         displayedMeta.type.lowercase().let { it == "movie" || it == "series" || it == "show" || it == "tv" }
+    val supportsAiAssistant = displayedMeta?.type
+        ?.lowercase()
+        ?.let { it in setOf("movie", "film", "series", "show", "tv", "tvshow") } == true
 
     LaunchedEffect(displayedMeta?.id) {
         deferredMetaWorkAllowed = false
@@ -1170,6 +1183,35 @@ fun MetaDetailsScreen(
                             onToggleSaved = toggleSaved,
                             modifier = Modifier.zIndex(2f),
                         )
+
+                        if (aiAssistantSettings.enabled && supportsAiAssistant) {
+                            SmallFloatingActionButton(
+                                onClick = { showAiAssistant = true },
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(
+                                        end = 18.dp,
+                                        bottom = nuvioSafeBottomPadding(18.dp),
+                                    )
+                                    .zIndex(3f),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoAwesome,
+                                    contentDescription = stringResource(Res.string.ai_chat_title),
+                                )
+                            }
+                        }
+
+                        if (showAiAssistant) {
+                            AiAssistantSheet(
+                                meta = meta,
+                                settings = aiAssistantSettings,
+                                onDismiss = { showAiAssistant = false },
+                            )
+                        }
 
                         selectedEpisodeForActions?.let { selectedEpisode ->
                             val isSelectedEpisodeWatched = remember(meta, selectedEpisode, watchedUiState.watchedKeys, progressByVideoId) {

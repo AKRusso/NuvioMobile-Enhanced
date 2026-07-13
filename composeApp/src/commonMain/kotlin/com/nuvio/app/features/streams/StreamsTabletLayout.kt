@@ -65,10 +65,14 @@ internal fun TabletStreamsLayout(
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
+    pinnedSourceIds: List<String>,
+    sourcePinningEnabled: Boolean,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
+    onSourcePinRequested: (AddonStreamGroup) -> Unit,
+    onSourceUnpinRequested: (AddonStreamGroup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hazeState = rememberHazeState()
@@ -198,7 +202,11 @@ internal fun TabletStreamsLayout(
                         ProviderFilterRow(
                             groups = uiState.groups,
                             selectedFilter = uiState.selectedFilter,
+                            pinnedSourceIds = pinnedSourceIds,
+                            sourcePinningEnabled = sourcePinningEnabled,
                             onFilterSelected = { addonId -> StreamsRepository.selectFilter(addonId) },
+                            onSourcePinRequested = onSourcePinRequested,
+                            onSourceUnpinRequested = onSourceUnpinRequested,
                         )
 
                         ActiveScrapersStatusBlock(
@@ -210,6 +218,7 @@ internal fun TabletStreamsLayout(
                             uiState = uiState,
                             debridEnabled = debridEnabled,
                             appendInstantServiceToDefaultName = appendInstantServiceToDefaultName,
+                            pinnedSourceIds = pinnedSourceIds,
                             onStreamSelected = onStreamSelected,
                             onStreamLongPress = onStreamLongPress,
                             resumePositionMs = resumePositionMs,

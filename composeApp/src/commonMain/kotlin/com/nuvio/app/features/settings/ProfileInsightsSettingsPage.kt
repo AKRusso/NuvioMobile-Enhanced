@@ -1,5 +1,6 @@
 package com.nuvio.app.features.settings
 
+import co.touchlab.kermit.Logger
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -125,6 +126,8 @@ import nuvio.composeapp.generated.resources.profile_insights_taste_title
 import nuvio.composeapp.generated.resources.profile_insights_title
 import org.jetbrains.compose.resources.stringResource
 
+private val profileInsightsLog = Logger.withTag("ProfileInsights")
+
 internal fun LazyListScope.profileInsightsContent(
     isTablet: Boolean,
     onSwitchProfile: (() -> Unit)?,
@@ -177,6 +180,7 @@ private fun ProfileInsightsBody(
     }
 
     val activeProfile = profileState.activeProfile
+    val activeProfileIndex = activeProfile?.profileIndex ?: ProfileRepository.activeProfileId
     val avatarItem = remember(activeProfile?.avatarId, avatars) {
         activeProfile
             ?.avatarId
@@ -188,25 +192,38 @@ private fun ProfileInsightsBody(
         ?.trim()
         ?.takeIf { it.isNotBlank() }
         ?: profileNameFallback
-    val stats = remember(watchProgressState, watchedState, fullyWatchedSeriesKeys, libraryState, todayIsoDate) {
-        buildProfileInsightsStats(
-            watchProgressState = watchProgressState,
-            watchedState = watchedState,
-            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
-            libraryState = libraryState,
-            todayIsoDate = todayIsoDate,
-        )
+    val stats = remember(activeProfileIndex, watchProgressState, watchedState, fullyWatchedSeriesKeys, libraryState, todayIsoDate) {
+        runCatching {
+            buildProfileInsightsStats(
+                watchProgressState = watchProgressState,
+                watchedState = watchedState,
+                fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+                libraryState = libraryState,
+                todayIsoDate = todayIsoDate,
+            )
+        }.onFailure { error ->
+            profileInsightsLog.e(error) { "Failed to build profile insights stats profile=$activeProfileIndex" }
+        }.getOrElse {
+            emptyProfileInsightsStats()
+        }
     }
-    val continueWatchingItems = remember(watchProgressState.entries) {
-        watchProgressState.entries
-            .profileContinueWatchingEntries(limit = ProfileConciergeContinueWatchingLimit)
-            .map(WatchProgressEntry::toContinueWatchingItem)
+    val continueWatchingItems = remember(activeProfileIndex, watchProgressState.entries) {
+        runCatching {
+            watchProgressState.entries
+                .profileContinueWatchingEntries(limit = ProfileConciergeContinueWatchingLimit)
+                .map(WatchProgressEntry::toContinueWatchingItem)
+        }.onFailure { error ->
+            profileInsightsLog.e(error) { "Failed to build profile continue watching items profile=$activeProfileIndex" }
+        }.getOrElse {
+            emptyList()
+        }
     }
     val continueTitle = stringResource(Res.string.profile_insights_stat_continue)
     val completedTitle = stringResource(Res.string.profile_insights_stat_completed)
     val libraryTitle = stringResource(Res.string.profile_insights_stat_library)
     val upcomingTitle = stringResource(Res.string.profile_insights_stat_upcoming)
     val insightCollections = remember(
+        activeProfileIndex,
         watchProgressState,
         watchedState,
         fullyWatchedSeriesKeys,
@@ -217,20 +234,35 @@ private fun ProfileInsightsBody(
         libraryTitle,
         upcomingTitle,
     ) {
-        buildProfileInsightCollections(
-            watchProgressState = watchProgressState,
-            watchedState = watchedState,
-            fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
-            libraryState = libraryState,
-            todayIsoDate = todayIsoDate,
-            continueTitle = continueTitle,
-            completedTitle = completedTitle,
-            libraryTitle = libraryTitle,
-            upcomingTitle = upcomingTitle,
-        )
+        runCatching {
+            buildProfileInsightCollections(
+                watchProgressState = watchProgressState,
+                watchedState = watchedState,
+                fullyWatchedSeriesKeys = fullyWatchedSeriesKeys,
+                libraryState = libraryState,
+                todayIsoDate = todayIsoDate,
+                continueTitle = continueTitle,
+                completedTitle = completedTitle,
+                libraryTitle = libraryTitle,
+                upcomingTitle = upcomingTitle,
+            )
+        }.onFailure { error ->
+            profileInsightsLog.e(error) { "Failed to build profile insight collections profile=$activeProfileIndex" }
+        }.getOrElse {
+            emptyProfileInsightCollections(
+                continueTitle = continueTitle,
+                completedTitle = completedTitle,
+                libraryTitle = libraryTitle,
+                upcomingTitle = upcomingTitle,
+            )
+        }
     }
     var selectedInsightCollection by remember { mutableStateOf<ProfileInsightCollection?>(null) }
+    LaunchedEffect(activeProfileIndex) {
+        selectedInsightCollection = null
+    }
     val profileRadarItems = remember(
+        activeProfileIndex,
         todayIsoDate,
         continueWatchingItems,
         libraryState.items,
@@ -239,16 +271,23 @@ private fun ProfileInsightsBody(
         if (!nuvioEnhancedSettings.releaseRadarHomeSignalsEnabled) {
             emptyList()
         } else {
-            buildHomeReleaseRadarItems(
-                todayIsoDate = todayIsoDate,
-                continueWatchingItems = continueWatchingItems,
-                libraryItems = libraryState.items,
-                catalogSections = emptyList(),
-                resolvedLibraryDetails = emptyMap(),
-            ).filteredByNuvioEnhancedReleaseRadar(nuvioEnhancedSettings)
+            runCatching {
+                buildHomeReleaseRadarItems(
+                    todayIsoDate = todayIsoDate,
+                    continueWatchingItems = continueWatchingItems,
+                    libraryItems = libraryState.items,
+                    catalogSections = emptyList(),
+                    resolvedLibraryDetails = emptyMap(),
+                ).filteredByNuvioEnhancedReleaseRadar(nuvioEnhancedSettings)
+            }.onFailure { error ->
+                profileInsightsLog.e(error) { "Failed to build profile radar items profile=$activeProfileIndex" }
+            }.getOrElse {
+                emptyList()
+            }
         }
     }
     val conciergeState = remember(
+        activeProfileIndex,
         profileName,
         continueWatchingItems,
         profileRadarItems,
@@ -258,16 +297,20 @@ private fun ProfileInsightsBody(
         if (!nuvioEnhancedSettings.enhancedHomeFeaturesEnabled || !nuvioEnhancedSettings.nuvioConciergeEnabled) {
             null
         } else {
-            buildHomeConciergeState(
-                profileName = profileName,
-                continueWatchingItems = continueWatchingItems,
-                releaseRadarItems = profileRadarItems,
-                libraryItems = libraryState.items,
-                catalogSections = emptyList(),
-                smartResumeEnabled = nuvioEnhancedSettings.smartResumeEnabled,
-                releaseRadarEnabled = nuvioEnhancedSettings.releaseRadarHomeSignalsEnabled,
-                profileStatsEnabled = nuvioEnhancedSettings.profileStatsEnabled,
-            )
+            runCatching {
+                buildHomeConciergeState(
+                    profileName = profileName,
+                    continueWatchingItems = continueWatchingItems,
+                    releaseRadarItems = profileRadarItems,
+                    libraryItems = libraryState.items,
+                    catalogSections = emptyList(),
+                    smartResumeEnabled = nuvioEnhancedSettings.smartResumeEnabled,
+                    releaseRadarEnabled = nuvioEnhancedSettings.releaseRadarHomeSignalsEnabled,
+                    profileStatsEnabled = nuvioEnhancedSettings.profileStatsEnabled,
+                )
+            }.onFailure { error ->
+                profileInsightsLog.e(error) { "Failed to build profile concierge state profile=$activeProfileIndex" }
+            }.getOrNull()
         }
     }
 
@@ -1421,6 +1464,52 @@ private fun buildProfileInsightCollections(
         ),
     )
 }
+
+private fun emptyProfileInsightsStats(): ProfileInsightsStats =
+    ProfileInsightsStats(
+        continueCount = 0,
+        completedCount = 0,
+        libraryCount = 0,
+        trackedDurationMs = 0L,
+        recentActivityCount = 0,
+        upcomingCount = 0,
+        smartResume = null,
+        topGenre = null,
+        topType = null,
+        tasteSegments = emptyList(),
+        movieShare = 0.5f,
+        typeBalanceLabel = ProfileTasteBalanceLabel.Learning,
+        dnaChips = listOf(ProfileTasteDnaChip.Learning),
+    )
+
+private fun emptyProfileInsightCollections(
+    continueTitle: String,
+    completedTitle: String,
+    libraryTitle: String,
+    upcomingTitle: String,
+): Map<ProfileInsightCollectionKind, ProfileInsightCollection> =
+    mapOf(
+        ProfileInsightCollectionKind.Continue to ProfileInsightCollection(
+            title = continueTitle,
+            subtitle = "",
+            items = emptyList(),
+        ),
+        ProfileInsightCollectionKind.Completed to ProfileInsightCollection(
+            title = completedTitle,
+            subtitle = "",
+            items = emptyList(),
+        ),
+        ProfileInsightCollectionKind.Library to ProfileInsightCollection(
+            title = libraryTitle,
+            subtitle = "",
+            items = emptyList(),
+        ),
+        ProfileInsightCollectionKind.Upcoming to ProfileInsightCollection(
+            title = upcomingTitle,
+            subtitle = "",
+            items = emptyList(),
+        ),
+    )
 
 private fun buildProfileCompletedContentItems(
     watchedItems: List<WatchedItem>,

@@ -17,6 +17,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val releaseRadarHomeSignalsEnabled: Boolean = true,
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
+    val streamSourcePinningEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -31,7 +32,6 @@ internal data class NuvioEnhancedSettingsUiState(
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
-    val contentWarningsEnabled: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -75,7 +75,6 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     HeroExperienceControls("hero_experience_controls"),
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
-    ContentWarnings("content_warnings"),
     PlayerStatusOverlay("player_status_overlay"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
@@ -84,6 +83,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ReleaseRadarDigest("release_radar_digest"),
     QuietHomeMode("quiet_home_mode"),
     LibraryHealth("library_health"),
+    StreamSourcePinning("stream_source_pinning"),
 }
 
 @Serializable
@@ -94,6 +94,7 @@ private data class StoredNuvioEnhancedSettings(
     val releaseRadarHomeSignalsEnabled: Boolean = true,
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
+    val streamSourcePinningEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -108,7 +109,6 @@ private data class StoredNuvioEnhancedSettings(
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
-    val contentWarningsEnabled: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -187,6 +187,10 @@ internal object NuvioEnhancedSettingsRepository {
         copy(liveTvEnabled = enabled)
     }
 
+    fun setStreamSourcePinningEnabled(enabled: Boolean) = update {
+        copy(streamSourcePinningEnabled = enabled)
+    }
+
     fun setHeroDisplayMode(mode: NuvioHeroDisplayMode) = update {
         copy(heroDisplayMode = mode)
     }
@@ -249,10 +253,6 @@ internal object NuvioEnhancedSettingsRepository {
         copy(libraryHealthEnabled = enabled)
     }
 
-    fun setContentWarningsEnabled(enabled: Boolean) = update {
-        copy(contentWarningsEnabled = enabled)
-    }
-
     fun setPlayerStatusOverlayEnabled(enabled: Boolean) = update {
         copy(playerStatusOverlayEnabled = enabled)
     }
@@ -313,6 +313,7 @@ internal object NuvioEnhancedSettingsRepository {
             releaseRadarHomeSignalsEnabled = stored.releaseRadarHomeSignalsEnabled,
             profileStatsEnabled = stored.profileStatsEnabled,
             liveTvEnabled = stored.liveTvEnabled,
+            streamSourcePinningEnabled = stored.streamSourcePinningEnabled,
             heroDisplayMode = stored.heroDisplayMode,
             heroArtworkSource = stored.heroArtworkSource,
             posterArtHeroEnabled = stored.posterArtHeroEnabled,
@@ -327,7 +328,6 @@ internal object NuvioEnhancedSettingsRepository {
             releaseRadarDigestEnabled = stored.releaseRadarDigestEnabled,
             quietHomeModeEnabled = stored.quietHomeModeEnabled,
             libraryHealthEnabled = stored.libraryHealthEnabled,
-            contentWarningsEnabled = stored.contentWarningsEnabled,
             playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
             showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,

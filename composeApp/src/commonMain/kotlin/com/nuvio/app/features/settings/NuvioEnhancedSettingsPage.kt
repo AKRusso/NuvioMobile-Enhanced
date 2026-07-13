@@ -311,14 +311,14 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
-                    title = stringResource(Res.string.nuvio_enhanced_content_warnings_title),
-                    description = stringResource(Res.string.nuvio_enhanced_content_warnings_desc),
-                    checked = settings.contentWarningsEnabled,
+                    title = stringResource(Res.string.nuvio_enhanced_source_pinning_title),
+                    description = stringResource(Res.string.nuvio_enhanced_source_pinning_desc),
+                    checked = settings.streamSourcePinningEnabled,
                     isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.ContentWarnings),
+                    highlighted = isNew(NuvioEnhancedFeature.StreamSourcePinning),
                     onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.ContentWarnings)
-                        NuvioEnhancedSettingsRepository.setContentWarningsEnabled(it)
+                        markSeen(NuvioEnhancedFeature.StreamSourcePinning)
+                        NuvioEnhancedSettingsRepository.setStreamSourcePinningEnabled(it)
                     },
                 )
                 SettingsGroupDivider(isTablet = isTablet)

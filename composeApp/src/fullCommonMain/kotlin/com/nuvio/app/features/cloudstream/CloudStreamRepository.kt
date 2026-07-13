@@ -342,7 +342,11 @@ actual object CloudStreamRepository {
             )
             require(bytes.isNotEmpty()) { "Downloaded .cs3 package is empty" }
             item.metadata.fileSize?.let { expectedSize ->
-                require(bytes.size.toLong() == expectedSize) { ".cs3 file size mismatch" }
+                if (bytes.size.toLong() != expectedSize) {
+                    log.w {
+                        "CloudStream package metadata size mismatch id=$pluginId expected=$expectedSize actual=${bytes.size}"
+                    }
+                }
             }
             CloudStreamPackageInspector.inspect(bytes)
             val expectedHash = item.metadata.fileHash

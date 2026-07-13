@@ -193,7 +193,6 @@ internal fun PlayerScreenRuntime.emitStopScrobbleForCurrentProgress() {
 
 internal fun PlayerScreenRuntime.tryShowParentalGuide() {
     if (
-        nuvioEnhancedSettingsUiState.contentWarningsEnabled &&
         !parentalGuideHasShown &&
         parentalWarnings.isNotEmpty() &&
         !playbackStartedForParentalGuide

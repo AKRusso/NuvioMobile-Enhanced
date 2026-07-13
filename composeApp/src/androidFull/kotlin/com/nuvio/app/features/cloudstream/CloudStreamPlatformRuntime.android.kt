@@ -101,7 +101,12 @@ internal actual object CloudStreamPlatformRuntime {
         val file = File(filePath)
         require(file.isFile) { "Installed CloudStream package is missing" }
         item.metadata.fileSize?.let { expectedSize ->
-            require(file.length() == expectedSize) { "Installed CloudStream package size does not match metadata" }
+            if (file.length() != expectedSize) {
+                log.w {
+                    "Installed CloudStream package metadata size mismatch id=${item.metadata.id.value} " +
+                        "expected=$expectedSize actual=${file.length()}"
+                }
+            }
         }
         item.metadata.fileHash?.let { expectedHash ->
             require(expectedHash.matches(file.readBytes())) {

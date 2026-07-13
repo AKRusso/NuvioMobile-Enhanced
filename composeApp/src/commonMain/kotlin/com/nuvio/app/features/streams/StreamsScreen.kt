@@ -5,9 +5,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.SearchOff
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
@@ -69,11 +72,13 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
+import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.rememberAnimatedSelectionBrush
@@ -90,6 +95,7 @@ import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
 import com.nuvio.app.features.debrid.toastMessage
 import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -142,6 +148,14 @@ fun StreamsScreen(
         WatchProgressRepository.ensureLoaded()
         WatchProgressRepository.uiState
     }.collectAsStateWithLifecycle()
+    val sourcePreferences by remember {
+        StreamSourcePreferencesRepository.ensureLoaded()
+        StreamSourcePreferencesRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val enhancedSettings by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
     remember {
         DownloadsRepository.ensureLoaded()
     }
@@ -150,6 +164,13 @@ fun StreamsScreen(
     val streamLinkCopiedText = stringResource(Res.string.streams_link_copied)
     val noDirectStreamLinkText = stringResource(Res.string.streams_no_direct_link)
     var streamActionsTarget by remember(videoId) { mutableStateOf<StreamItem?>(null) }
+    var sourcePinTarget by remember(videoId) { mutableStateOf<AddonStreamGroup?>(null) }
+    var sourceUnpinTarget by remember(videoId) { mutableStateOf<AddonStreamGroup?>(null) }
+    val sourcePinningEnabled = enhancedSettings.streamSourcePinningEnabled
+    val activePinnedSourceIds = sourcePreferences.pinnedSources
+        .map { it.id }
+        .takeIf { sourcePinningEnabled }
+        .orEmpty()
     val downloadScope = rememberCoroutineScope()
     var preferredFilterApplied by remember(videoId) { mutableStateOf(false) }
     var autoPlayOverlayLogoLoadError by remember(logo) { mutableStateOf(false) }
@@ -245,12 +266,16 @@ fun StreamsScreen(
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
+                pinnedSourceIds = activePinnedSourceIds,
+                sourcePinningEnabled = sourcePinningEnabled,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
                 onStreamSelected = { stream, positionMs, progressFraction ->
                     onStreamSelected(stream, positionMs, progressFraction)
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
+                onSourcePinRequested = { source -> sourcePinTarget = source },
+                onSourceUnpinRequested = { source -> sourceUnpinTarget = source },
             )
         } else {
             MobileStreamsLayout(
@@ -265,12 +290,16 @@ fun StreamsScreen(
                 uiState = uiState,
                 debridEnabled = debridSettings.canResolvePlayableLinks,
                 appendInstantServiceToDefaultName = debridSettings.canResolvePlayableLinks && !debridSettings.hasCustomStreamFormatting,
+                pinnedSourceIds = activePinnedSourceIds,
+                sourcePinningEnabled = sourcePinningEnabled,
                 resumePositionMs = effectiveResumePositionMs,
                 resumeProgressFraction = effectiveResumeProgressFraction,
                 onStreamSelected = { stream, positionMs, progressFraction ->
                     onStreamSelected(stream, positionMs, progressFraction)
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
+                onSourcePinRequested = { source -> sourcePinTarget = source },
+                onSourceUnpinRequested = { source -> sourceUnpinTarget = source },
             )
         }
 
@@ -472,6 +501,53 @@ fun StreamsScreen(
                 )
             },
         )
+
+        val pinTarget = sourcePinTarget
+        NuvioStatusModal(
+            title = stringResource(Res.string.streams_pin_source_title),
+            message = stringResource(
+                Res.string.streams_pin_source_message,
+                pinTarget?.addonName.orEmpty(),
+            ),
+            isVisible = pinTarget != null,
+            confirmText = stringResource(Res.string.streams_pin_source_confirm),
+            dismissText = stringResource(Res.string.action_cancel),
+            onConfirm = {
+                val target = sourcePinTarget
+                if (target != null) {
+                    StreamSourcePreferencesRepository.pinSource(
+                        sourceId = target.addonId,
+                        sourceName = target.addonName,
+                    )
+                }
+                sourcePinTarget = null
+            },
+            onDismiss = {
+                sourcePinTarget = null
+            },
+        )
+
+        val unpinTarget = sourceUnpinTarget
+        NuvioStatusModal(
+            title = stringResource(Res.string.streams_unpin_source_title),
+            message = stringResource(
+                Res.string.streams_unpin_source_message,
+                unpinTarget?.addonName.orEmpty(),
+            ),
+            isVisible = unpinTarget != null,
+            confirmText = stringResource(Res.string.streams_unpin_source_confirm),
+            dismissText = stringResource(Res.string.action_cancel),
+            onConfirm = {
+                val target = sourceUnpinTarget
+                if (target != null) {
+                    StreamSourcePreferencesRepository.unpinSource(target.addonId)
+                }
+                sourceUnpinTarget = null
+            },
+            onDismiss = {
+                sourceUnpinTarget = null
+            },
+        )
     }
 }
 
@@ -488,10 +564,14 @@ private fun MobileStreamsLayout(
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
+    pinnedSourceIds: List<String>,
+    sourcePinningEnabled: Boolean,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
+    onSourcePinRequested: (AddonStreamGroup) -> Unit,
+    onSourceUnpinRequested: (AddonStreamGroup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -567,13 +647,18 @@ private fun MobileStreamsLayout(
                     ProviderFilterRow(
                         groups = uiState.groups,
                         selectedFilter = uiState.selectedFilter,
+                        pinnedSourceIds = pinnedSourceIds,
+                        sourcePinningEnabled = sourcePinningEnabled,
                         onFilterSelected = { addonId -> StreamsRepository.selectFilter(addonId) },
+                        onSourcePinRequested = onSourcePinRequested,
+                        onSourceUnpinRequested = onSourceUnpinRequested,
                     )
 
                     StreamList(
                         uiState = uiState,
                         debridEnabled = debridEnabled,
                         appendInstantServiceToDefaultName = appendInstantServiceToDefaultName,
+                        pinnedSourceIds = pinnedSourceIds,
                         onStreamSelected = onStreamSelected,
                         onStreamLongPress = onStreamLongPress,
                         resumePositionMs = resumePositionMs,
@@ -821,14 +906,35 @@ private fun EpisodeSynopsisPanel(
 // Provider Filter Row
 // ---------------------------------------------------------------------------
 
+private fun List<AddonStreamGroup>.withPinnedGroupsFirst(pinnedSourceIds: List<String>): List<AddonStreamGroup> {
+    if (pinnedSourceIds.isEmpty()) return this
+    val pinnedOrder = pinnedSourceIds
+        .mapIndexed { index, sourceId -> sourceId to index }
+        .toMap()
+    return withIndex()
+        .sortedWith(
+            compareBy<IndexedValue<AddonStreamGroup>> { indexedGroup ->
+                pinnedOrder[indexedGroup.value.addonId] ?: Int.MAX_VALUE
+            }.thenBy { indexedGroup -> indexedGroup.index },
+        )
+        .map { indexedGroup -> indexedGroup.value }
+}
+
 @Composable
 internal fun ProviderFilterRow(
     groups: List<AddonStreamGroup>,
     selectedFilter: String?,
+    pinnedSourceIds: List<String>,
+    sourcePinningEnabled: Boolean,
     onFilterSelected: (String?) -> Unit,
+    onSourcePinRequested: (AddonStreamGroup) -> Unit,
+    onSourceUnpinRequested: (AddonStreamGroup) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val addonGroups = groups.filter { it.streams.isNotEmpty() || it.isLoading }
+    val addonGroups = groups
+        .filter { it.streams.isNotEmpty() || it.isLoading }
+        .withPinnedGroupsFirst(pinnedSourceIds)
+    val pinnedSourceIdSet = pinnedSourceIds.toSet()
     if (addonGroups.isEmpty()) return
 
     Row(
@@ -842,23 +948,39 @@ internal fun ProviderFilterRow(
         FilterChip(
             label = stringResource(Res.string.collections_tab_all),
             isSelected = selectedFilter == null,
+            isPinned = false,
             onClick = { onFilterSelected(null) },
+            onLongClick = null,
         )
         addonGroups.forEach { group ->
+            val isPinned = group.addonId in pinnedSourceIdSet
             FilterChip(
                 label = group.addonName,
                 isSelected = selectedFilter == group.addonId,
+                isPinned = isPinned,
                 onClick = { onFilterSelected(group.addonId) },
+                onLongClick = if (sourcePinningEnabled) {
+                    if (isPinned) {
+                        { onSourceUnpinRequested(group) }
+                    } else {
+                        { onSourcePinRequested(group) }
+                    }
+                } else {
+                    null
+                },
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FilterChip(
     label: String,
     isSelected: Boolean,
+    isPinned: Boolean,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -898,23 +1020,38 @@ private fun FilterChip(
                     Modifier
                 },
             )
-            .clickable(
+            .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
+                onLongClick = onLongClick,
             )
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontSize = 14.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                letterSpacing = 0.1.sp,
-            ),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (isPinned) {
+                Icon(
+                    imageVector = Icons.Rounded.PushPin,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = if (isSelected || isPinned) FontWeight.Bold else FontWeight.SemiBold,
+                    letterSpacing = 0.1.sp,
+                    textDecoration = if (isPinned) TextDecoration.Underline else TextDecoration.None,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -953,13 +1090,14 @@ internal fun StreamList(
     uiState: StreamsUiState,
     debridEnabled: Boolean,
     appendInstantServiceToDefaultName: Boolean,
+    pinnedSourceIds: List<String>,
     onStreamSelected: (stream: StreamItem, resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit,
     onStreamLongPress: (StreamItem) -> Unit,
     resumePositionMs: Long?,
     resumeProgressFraction: Float?,
     modifier: Modifier = Modifier,
 ) {
-    val filteredGroups = uiState.filteredGroups
+    val filteredGroups = uiState.filteredGroups.withPinnedGroupsFirst(pinnedSourceIds)
     val hasGroups = filteredGroups.isNotEmpty()
     val hasAnyStreams = filteredGroups.any { it.streams.isNotEmpty() }
     val anyLoading = filteredGroups.any { it.isLoading }
