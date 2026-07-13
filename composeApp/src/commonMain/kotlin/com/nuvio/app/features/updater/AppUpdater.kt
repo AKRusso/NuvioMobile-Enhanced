@@ -57,7 +57,7 @@ import org.jetbrains.compose.resources.stringResource
 private const val gitHubOwner = "yesnt10"
 private const val gitHubRepo = "NuvioMobile-Enhanced"
 private const val gitHubApiBase = "https://api.github.com"
-private const val releaseChannelBranch = "cmp-rewrite"
+private val releaseChannelBranches = listOf("enhanced", "cmp-rewrite")
 
 data class AppUpdate(
     val tag: String,
@@ -222,14 +222,18 @@ private object AppUpdaterRepository {
     }
 
     private fun GitHubReleaseDto.matchesRequestedChannel(): Boolean {
-        val channel = releaseChannelBranch
-        if (targetCommitish?.trim()?.equals(channel, ignoreCase = true) == true) {
+        if (releaseChannelBranches.any { channel ->
+                targetCommitish?.trim()?.equals(channel, ignoreCase = true) == true
+            }
+        ) {
             return true
         }
 
         return listOf(tagName, name)
             .filterNotNull()
-            .any { value -> value.contains(channel, ignoreCase = true) }
+            .any { value ->
+                releaseChannelBranches.any { channel -> value.contains(channel, ignoreCase = true) }
+            }
     }
 
     private fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {

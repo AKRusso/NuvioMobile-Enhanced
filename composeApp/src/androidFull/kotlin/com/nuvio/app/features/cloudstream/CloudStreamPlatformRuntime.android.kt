@@ -58,13 +58,12 @@ internal actual object CloudStreamPlatformRuntime {
     private val loadedLock = Any()
     private val loaded = linkedMapOf<String, LoadedPlugin>()
     private var appContext: Context? = null
+    private var activityReference: WeakReference<Activity>? = null
 
     actual fun initialize(context: Any?) {
         val androidContext = context as? Context ?: return
         appContext = androidContext.applicationContext
-        (androidContext as? Activity)?.let(CommonActivity::setActivityInstance)
-        CloudStreamApp.context = androidContext.applicationContext
-        setContext(WeakReference(androidContext.applicationContext as Any))
+        activityReference = (androidContext as? Activity)?.let(::WeakReference)
     }
 
     actual suspend fun provider(plugin: CloudStreamPluginItem): CloudStreamProvider? {
@@ -95,6 +94,7 @@ internal actual object CloudStreamPlatformRuntime {
 
     private fun loadPlugin(item: CloudStreamPluginItem): LoadedPlugin {
         val context = requireNotNull(appContext) { "CloudStream Android runtime is not initialized" }
+        prepareHostContext(context)
         val filePath = requireNotNull(CloudStreamPlatformStorage.packagePath(item.metadata.id.storageKey)) {
             "Installed CloudStream package is missing"
         }
@@ -136,7 +136,7 @@ internal actual object CloudStreamPlatformRuntime {
         PluginManager.currentlyLoading = item.metadata.internalName
         val identityContext = CloudStreamIdentityContext(context)
         CloudStreamApp.context = identityContext
-        setContext(WeakReference(identityContext as Any))
+        setContext(WeakReference(identityContext))
         applyHostCompatibilityDefaults(pluginClassName)
         if (manifest.requiresResources) instance.attachResources(identityContext, file)
 
@@ -183,6 +183,12 @@ internal actual object CloudStreamPlatformRuntime {
         } finally {
             PluginManager.currentlyLoading = null
         }
+    }
+
+    private fun prepareHostContext(context: Context) {
+        activityReference?.get()?.let(CommonActivity::setActivityInstance)
+        CloudStreamApp.context = context
+        setContext(WeakReference(context))
     }
 
     /**
