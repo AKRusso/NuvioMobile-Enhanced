@@ -122,7 +122,6 @@ import nuvio.composeapp.generated.resources.nuvio_enhanced_release_digest_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_smart_resume_desc
 import nuvio.composeapp.generated.resources.nuvio_enhanced_smart_resume_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_onboarding_logo
-import nuvio.composeapp.generated.resources.onboarding_sample_movie
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -322,12 +321,6 @@ private fun WelcomePage(
         )
 
         Box(modifier = Modifier.fillMaxSize()) {
-            WelcomeArtwork(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(220.dp),
-            )
             Image(
                 painter = painterResource(Res.drawable.nuvio_enhanced_onboarding_logo),
                 contentDescription = null,
@@ -382,33 +375,6 @@ private fun WelcomePage(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun WelcomeArtwork(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp)),
-    ) {
-        SampleArtwork(
-            modifier = Modifier
-                .fillMaxSize()
-                .alpha(0.44f),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            BackgroundBottom,
-                            BackgroundBottom.copy(alpha = 0.12f),
-                            BackgroundBottom.copy(alpha = 0.58f),
-                        ),
-                    ),
-                ),
-        )
     }
 }
 
@@ -567,9 +533,18 @@ private fun FeatureVisual(index: Int, tone: Color) {
 @Composable
 private fun ResumeVisual(tone: Color) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        tone.copy(alpha = 0.28f),
+                        BackgroundBottom.copy(alpha = 0.96f),
+                        AccentViolet.copy(alpha = 0.16f),
+                    ),
+                ),
+            ),
     ) {
-        SampleArtwork(Modifier.fillMaxSize())
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -662,11 +637,13 @@ private fun ConciergeVisual(tone: Color) {
             .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(13.dp),
     ) {
-        SampleArtwork(
+        SampleVisual(
             modifier = Modifier
                 .width(104.dp)
                 .fillMaxSize()
                 .clip(RoundedCornerShape(8.dp)),
+            tone = tone,
+            icon = Icons.Rounded.Star,
         )
         Column(
             modifier = Modifier.weight(1f),
@@ -743,11 +720,13 @@ private fun RadarVisual(tone: Color) {
                     verticalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Text(day, style = MaterialTheme.typography.titleMedium, color = TextPrimary, fontWeight = FontWeight.Black)
-                    SampleArtwork(
+                    SampleVisual(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp)
                             .clip(RoundedCornerShape(6.dp)),
+                        tone = if (index == 1) tone else TextSecondary,
+                        icon = Icons.Rounded.Notifications,
                     )
                     Text("20:${index}0", style = MaterialTheme.typography.labelSmall, color = if (index == 1) tone else TextSecondary)
                 }
@@ -783,7 +762,11 @@ private fun LiveTvVisual(tone: Color) {
                         .background(if (index == 0) tone.copy(alpha = 0.2f) else BorderSoft.copy(alpha = 0.7f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SampleArtwork(Modifier.fillMaxSize())
+                    SampleVisual(
+                        modifier = Modifier.fillMaxSize(),
+                        tone = if (index == 0) tone else TextSecondary,
+                        icon = Icons.Rounded.LiveTv,
+                    )
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
@@ -810,13 +793,39 @@ private fun LiveTvVisual(tone: Color) {
 }
 
 @Composable
-private fun SampleArtwork(modifier: Modifier = Modifier) {
-    Image(
-        painter = painterResource(Res.drawable.onboarding_sample_movie),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier,
-    )
+private fun SampleVisual(
+    modifier: Modifier = Modifier,
+    tone: Color,
+    icon: ImageVector,
+) {
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(
+                listOf(
+                    tone.copy(alpha = 0.42f),
+                    AccentViolet.copy(alpha = 0.24f),
+                    SurfaceDark,
+                ),
+            ),
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(BackgroundBottom.copy(alpha = 0.52f))
+                .border(1.dp, tone.copy(alpha = 0.52f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = TextPrimary,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    }
 }
 
 @Composable
