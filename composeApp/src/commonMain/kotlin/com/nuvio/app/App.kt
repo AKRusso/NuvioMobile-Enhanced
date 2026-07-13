@@ -23,11 +23,14 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tv
@@ -68,7 +71,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -93,6 +99,8 @@ import coil3.svg.SvgDecoder
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
+import com.nuvio.app.core.diagnostics.CrashDiagnostics
+import com.nuvio.app.core.diagnostics.LocalCrashReport
 import com.nuvio.app.core.deeplink.AppDeepLink
 import com.nuvio.app.core.deeplink.AppDeepLinkRepository
 import com.nuvio.app.core.network.NetworkCondition
@@ -465,6 +473,9 @@ fun App() {
         val networkStatusUiState by remember {
             NetworkStatusRepository.uiState
         }.collectAsStateWithLifecycle()
+        val pendingCrashReport by remember {
+            CrashDiagnostics.pendingReport
+        }.collectAsStateWithLifecycle()
 
         LaunchedEffect(
             profileState.activeProfile?.profileIndex,
@@ -722,6 +733,13 @@ fun App() {
                 }
             }
         }
+
+        LocalCrashReportDialog(
+            report = pendingCrashReport,
+            onDismiss = { report ->
+                CrashDiagnostics.dismiss(report.id)
+            },
+        )
     }
 }
 
@@ -3322,6 +3340,74 @@ private fun MainAppContent(
                     .zIndex(25f),
             )
         }
+}
+
+@Composable
+private fun LocalCrashReportDialog(
+    report: LocalCrashReport?,
+    onDismiss: (LocalCrashReport) -> Unit,
+) {
+    if (report == null || !CrashDiagnostics.reportsSupported) return
+
+    val clipboardManager = LocalClipboardManager.current
+    var copied by remember(report.id) { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = { onDismiss(report) },
+        title = {
+            Text(stringResource(Res.string.crash_report_title))
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(Res.string.crash_report_description))
+                Text(
+                    text = report.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.nuvio.colors.textPrimary,
+                )
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 280.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.nuvio.colors.surfaceCard,
+                ) {
+                    Text(
+                        text = report.details,
+                        modifier = Modifier
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.nuvio.colors.textMuted,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    clipboardManager.setText(AnnotatedString(report.details))
+                    copied = true
+                },
+            ) {
+                Text(
+                    stringResource(
+                        if (copied) {
+                            Res.string.crash_report_copied
+                        } else {
+                            Res.string.crash_report_copy
+                        },
+                    ),
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss(report) }) {
+                Text(stringResource(Res.string.action_close))
+            }
+        },
+    )
 }
 
 @Composable

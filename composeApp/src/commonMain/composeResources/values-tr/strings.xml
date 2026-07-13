@@ -21,6 +21,10 @@
     <string name="action_save">Kaydet</string>
     <string name="action_saving">Kaydediliyor...</string>
     <string name="action_validate">Doğrula</string>
+    <string name="crash_report_title">Son crash yakalandı</string>
+    <string name="crash_report_description">Nuvio önceki açılıştaki çökme raporunu yerel olarak kaydetti. Bu cihaza özel crash'i düzeltebilmemiz için raporu kopyalayıp geliştiriciye gönder.</string>
+    <string name="crash_report_copy">Raporu kopyala</string>
+    <string name="crash_report_copied">Kopyalandı</string>
     <string name="addon_installing">Kuruluyor</string>
     <string name="addon_title">Eklentiler</string>
     <string name="addons_badge_active">Aktif</string>

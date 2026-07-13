@@ -22,6 +22,10 @@
     <string name="action_saving">Saving…</string>
     <string name="action_switch">Switch</string>
     <string name="action_validate">Validate</string>
+    <string name="crash_report_title">Last crash detected</string>
+    <string name="crash_report_description">Nuvio saved a local crash report from the previous launch. Copy it and send it to the developer so this device-specific crash can be fixed.</string>
+    <string name="crash_report_copy">Copy report</string>
+    <string name="crash_report_copied">Copied</string>
     <string name="addon_installing">Installing</string>
     <string name="addon_title">Addons</string>
     <string name="addons_badge_active">Active</string>
