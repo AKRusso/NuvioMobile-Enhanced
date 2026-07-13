@@ -16,6 +16,7 @@ import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -402,9 +403,14 @@ object HomeRepository {
             val sources = collectionHeroSources(collections)
             val sourceResults = sources.map { source ->
                 async {
-                    withTimeoutOrNull(HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS) {
-                        source.resolveCollectionHeroItems(addons)
-                    }.orEmpty()
+                    try {
+                        withTimeoutOrNull(HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS) {
+                            source.resolveCollectionHeroItems(addons)
+                        }.orEmpty()
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        emptyList()
+                    }
                 }
             }.awaitAll()
             val random = Random((nextRequestKey.hashCode()).absoluteValue + 7)
