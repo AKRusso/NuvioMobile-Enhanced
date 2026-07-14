@@ -29,6 +29,18 @@ class AppUpdaterVersionUtilsTest {
     }
 
     @Test
+    fun `apk asset build code makes same release tag newer`() {
+        assertTrue(
+            VersionUtils.isRemoteNewer(
+                remote = "v0.2.23",
+                local = "0.2.23",
+                localBuildCode = 97,
+                remoteBuildCode = VersionUtils.firstBuildCode("Nuvio-Enhanced-v0.2.23-build98-full.apk"),
+            ),
+        )
+    }
+
+    @Test
     fun `legacy enhanced tag extracts trailing build code`() {
         assertEquals(88, VersionUtils.parseBuildCode("enhanced-v0.2.13-88"))
         assertEquals(listOf(0, 2, 13), VersionUtils.parseVersionParts("enhanced-v0.2.13-88"))

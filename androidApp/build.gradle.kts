@@ -32,6 +32,10 @@ fun envOrLocalProperty(key: String): String? =
     providers.environmentVariable(key).orNull?.trim()?.takeIf { it.isNotBlank() }
         ?: localProps.getProperty(key)?.trim()?.takeIf { it.isNotBlank() }
 
+val legacyUpdateCompatSigning = envOrLocalProperty("NUVIO_LEGACY_UPDATE_COMPAT_SIGNING")
+    ?.toBooleanStrictOrNull()
+    ?: true
+val legacyUpdateCompatKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
 val sentryAuthToken = envOrLocalProperty("SENTRY_AUTH_TOKEN")
 val sentryOrg = envOrLocalProperty("SENTRY_ORG")
 val sentryProject = envOrLocalProperty("SENTRY_PROJECT")
@@ -50,7 +54,14 @@ android {
 
     signingConfigs {
         create("release") {
-            if (releaseKeystore != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null) {
+            if (legacyUpdateCompatSigning && legacyUpdateCompatKeystore.exists()) {
+                // Build 97 shipped with the Android debug certificate. Keep this signing
+                // certificate for package-update compatibility until a planned migration.
+                storeFile = legacyUpdateCompatKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            } else if (releaseKeystore != null && releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null) {
                 storeFile = releaseKeystore
                 storePassword = releaseStorePassword
                 keyAlias = releaseKeyAlias

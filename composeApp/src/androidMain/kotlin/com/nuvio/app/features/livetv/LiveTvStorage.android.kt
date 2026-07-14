@@ -12,6 +12,9 @@ actual object LiveTvStorage {
     private const val stalkerMacAddressKey = "stalker_mac_address"
     private const val stalkerUsernameKey = "stalker_username"
     private const val stalkerPasswordKey = "stalker_password"
+    private const val xtreamServerUrlKey = "xtream_server_url"
+    private const val xtreamUsernameKey = "xtream_username"
+    private const val xtreamPasswordKey = "xtream_password"
     private const val favoriteUrlsKey = "favorite_channel_urls"
     private const val recentChannelUrlKey = "recent_channel_url"
     private const val recentChannelNameKey = "recent_channel_name"
@@ -50,6 +53,7 @@ actual object LiveTvStorage {
     actual fun loadSourceType(): LiveTvSourceType =
         when (preferences?.getScopedString(sourceTypeKey) ?: LiveTvSourceType.M3u.name) {
             LiveTvSourceType.Stalker.name -> LiveTvSourceType.Stalker
+            LiveTvSourceType.Xtream.name -> LiveTvSourceType.Xtream
             else -> LiveTvSourceType.M3u
         }
 
@@ -91,6 +95,21 @@ actual object LiveTvStorage {
             putScopedString(stalkerMacAddressKey, settings.macAddress)
             putScopedString(stalkerUsernameKey, settings.username)
             putScopedString(stalkerPasswordKey, settings.password)
+        }?.apply()
+    }
+
+    actual fun loadXtreamSettings(): LiveTvXtreamSettings =
+        LiveTvXtreamSettings(
+            serverUrl = preferences?.getScopedString(xtreamServerUrlKey).orEmpty(),
+            username = preferences?.getScopedString(xtreamUsernameKey).orEmpty(),
+            password = preferences?.getScopedString(xtreamPasswordKey).orEmpty(),
+        )
+
+    actual fun saveXtreamSettings(settings: LiveTvXtreamSettings) {
+        preferences?.edit()?.apply {
+            putScopedString(xtreamServerUrlKey, settings.serverUrl)
+            putScopedString(xtreamUsernameKey, settings.username)
+            putScopedString(xtreamPasswordKey, settings.password)
         }?.apply()
     }
 

@@ -87,17 +87,20 @@ fun FolderDetailScreen(
     }.collectAsState()
     val folder = uiState.folder
     val coverImageUrl = folder?.coverImageUrl?.takeIf { it.isNotBlank() }
+    val heroImageUrl = folder?.heroBackdropUrl?.takeIf { it.isNotBlank() } ?: coverImageUrl
+    val titleLogoUrl = folder?.titleLogoUrl?.takeIf { it.isNotBlank() }
+    val hasHeroBanner = heroImageUrl != null || titleLogoUrl != null
     val density = LocalDensity.current
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val maxHeroHeightPx = with(density) { FolderCoverHeight.toPx() }
-    var heroHeightPx by remember(coverImageUrl, maxHeroHeightPx) {
-        mutableFloatStateOf(if (coverImageUrl != null) maxHeroHeightPx else 0f)
+    var heroHeightPx by remember(hasHeroBanner, maxHeroHeightPx) {
+        mutableFloatStateOf(if (hasHeroBanner) maxHeroHeightPx else 0f)
     }
 
-    val heroScrollConnection = remember(coverImageUrl, maxHeroHeightPx) {
+    val heroScrollConnection = remember(hasHeroBanner, maxHeroHeightPx) {
         object : NestedScrollConnection {
             fun consumeHeroDelta(deltaY: Float): Float {
-                if (coverImageUrl == null || deltaY == 0f) return 0f
+                if (!hasHeroBanner || deltaY == 0f) return 0f
                 val previousHeight = heroHeightPx
                 val nextHeight = (previousHeight + deltaY).coerceIn(0f, maxHeroHeightPx)
                 heroHeightPx = nextHeight
@@ -117,12 +120,12 @@ fun FolderDetailScreen(
     }
 
     val heroHeight = with(density) { heroHeightPx.toDp() }
-    val heroCollapseFraction = if (coverImageUrl == null || maxHeroHeightPx == 0f) {
+    val heroCollapseFraction = if (!hasHeroBanner || maxHeroHeightPx == 0f) {
         1f
     } else {
         1f - (heroHeightPx / maxHeroHeightPx)
     }
-    val contentModifier = if (coverImageUrl != null) {
+    val contentModifier = if (hasHeroBanner) {
         Modifier.nestedScroll(heroScrollConnection)
     } else {
         Modifier
@@ -133,10 +136,11 @@ fun FolderDetailScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
-        if (coverImageUrl != null && heroHeight > 0.dp) {
+        if (hasHeroBanner && heroHeight > 0.dp) {
             FolderCoverImage(
-                imageUrl = coverImageUrl,
-                title = folder.title,
+                imageUrl = heroImageUrl,
+                titleLogoUrl = titleLogoUrl,
+                title = folder?.title ?: uiState.collectionTitle,
                 modifier = Modifier.height(heroHeight),
             )
         }
@@ -144,8 +148,8 @@ fun FolderDetailScreen(
         NuvioScreenHeader(
             title = folder?.title ?: uiState.collectionTitle,
             modifier = Modifier.padding(horizontal = 16.dp),
-            includeStatusBarPadding = coverImageUrl == null,
-            topPadding = if (coverImageUrl != null) statusBarTop * heroCollapseFraction else null,
+            includeStatusBarPadding = !hasHeroBanner,
+            topPadding = if (hasHeroBanner) statusBarTop * heroCollapseFraction else null,
             onBack = onBack,
         )
 
@@ -191,18 +195,37 @@ fun FolderDetailScreen(
 
 @Composable
 private fun FolderCoverImage(
-    imageUrl: String,
+    imageUrl: String?,
+    titleLogoUrl: String?,
     title: String,
     modifier: Modifier = Modifier,
 ) {
-    AsyncImage(
-        model = imageUrl,
-        contentDescription = title,
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(FolderCoverHeight),
-        contentScale = ContentScale.Crop,
-    )
+            .height(FolderCoverHeight)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+        }
+        if (titleLogoUrl != null) {
+            AsyncImage(
+                model = titleLogoUrl,
+                contentDescription = title,
+                modifier = Modifier
+                    .fillMaxWidth(0.58f)
+                    .height(88.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
+    }
 }
 
 @Composable

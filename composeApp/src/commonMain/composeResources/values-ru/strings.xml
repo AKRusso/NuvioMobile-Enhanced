@@ -94,6 +94,7 @@
     <string name="collections_editor_placeholder_backdrop">Фоновое изображение URL (необязательно)</string>
     <string name="collections_editor_placeholder_folder">Имя папки</string>
     <string name="collections_editor_placeholder_gif">Анимированный GIF URL (воспроизводится только при фокусировке)</string>
+    <string name="collections_editor_placeholder_title_logo">URL логотипа заголовка (необязательно)</string>
     <string name="collections_editor_placeholder_name">Название коллекции</string>
     <string name="collections_editor_save_changes">Сохранить изменения</string>
     <string name="collections_editor_section_appearance">Появление</string>
@@ -345,6 +346,8 @@
     <string name="live_tv_settings">Настройки прямого эфира</string>
     <string name="live_tv_source_m3u">М3У</string>
     <string name="live_tv_source_stalker">Сталкер Портал</string>
+    <string name="live_tv_source_xtream">Xtream</string>
+    <string name="live_tv_provider_settings_title">Настройки провайдера Live TV</string>
     <string name="live_tv_all">Все</string>
     <string name="live_tv_stalker_settings_title">Расширенное IPTV</string>
     <string name="live_tv_stalker_settings_description">Подключите провайдеров, использующих промежуточное ПО Сталкер. Требуется портал URL и MAC-адрес.</string>
@@ -352,6 +355,10 @@
     <string name="live_tv_stalker_mac_hint">MAC-адрес, например. 00:1А:79:12:34:56</string>
     <string name="live_tv_stalker_username_hint">Имя пользователя (необязательно)</string>
     <string name="live_tv_stalker_password_hint">Пароль (необязательно)</string>
+    <string name="live_tv_xtream_settings_description">Используйте URL сервера, имя пользователя и пароль, если IPTV-провайдер не предоставляет M3U.</string>
+    <string name="live_tv_xtream_server_hint">URL сервера</string>
+    <string name="live_tv_xtream_username_hint">Имя пользователя</string>
+    <string name="live_tv_xtream_password_hint">Пароль</string>
     <string name="live_tv_load">Загрузить каналы</string>
     <string name="live_tv_load_file">Выберите файл M3U</string>
     <string name="live_tv_add_source">Изменить источник</string>
@@ -2229,6 +2236,8 @@
     <string name="nuvio_enhanced_source_pinning_desc">Запрашивать подтверждение перед закреплением выбранного источника потока вверху списка выбора.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">Наложение статуса игрока</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">Покажите Wi-Fi/LTE, время и заряд батареи на компактном верхнем экране, при этом элементы управления плеером будут видны.</string>
+    <string name="nuvio_enhanced_status_bar_title">Строка состояния</string>
+    <string name="nuvio_enhanced_status_bar_desc">Показывает строку состояния Android во всем приложении. Отключите для более чистого полноэкранного вида.</string>
     <string name="nuvio_enhanced_hero_display_title">Режим отображения героя</string>
     <string name="nuvio_enhanced_hero_display_desc">Cinematic сохраняет доминирование изображения, Balanced — премиум-версия по умолчанию, Info Rich отображает больше метаданных.</string>
     <string name="nuvio_enhanced_hero_mode_info_rich">Информация богатая</string>

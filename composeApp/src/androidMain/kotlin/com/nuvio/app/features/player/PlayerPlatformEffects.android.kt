@@ -43,12 +43,12 @@ actual fun EnterImmersivePlayerMode(keepScreenAwake: Boolean) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         val previousBehavior = controller.systemBarsBehavior
 
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.hide(WindowInsetsCompat.Type.navigationBars())
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         onDispose {
-            controller.show(WindowInsetsCompat.Type.systemBars())
+            controller.show(WindowInsetsCompat.Type.navigationBars())
             controller.systemBarsBehavior = previousBehavior
         }
     }

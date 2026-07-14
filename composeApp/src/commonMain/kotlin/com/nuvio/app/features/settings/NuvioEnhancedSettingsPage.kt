@@ -335,6 +335,18 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_status_bar_title),
+                    description = stringResource(Res.string.nuvio_enhanced_status_bar_desc),
+                    checked = settings.statusBarVisible,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.StatusBarVisibility),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.StatusBarVisibility)
+                        NuvioEnhancedSettingsRepository.setStatusBarVisible(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
                     description = stringResource(Res.string.settings_continue_watching_ready_badge_description),
                     checked = settings.showContinueWatchingReadyBadge,

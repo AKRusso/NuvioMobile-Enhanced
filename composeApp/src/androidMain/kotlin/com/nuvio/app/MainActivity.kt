@@ -2,7 +2,9 @@ package com.nuvio.app
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +18,7 @@ import com.nuvio.app.core.deeplink.handleAppUrl
 import com.nuvio.app.core.network.DnsOverHttpsSettingsStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.core.sync.SyncClientIdentityStorage
+import com.nuvio.app.core.ui.AppSystemUiController
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.ai.AiAssistantSettingsStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
@@ -26,6 +29,7 @@ import com.nuvio.app.features.downloads.DownloadsLiveStatusPlatform
 import com.nuvio.app.features.downloads.DownloadsPlatformDownloader
 import com.nuvio.app.features.downloads.DownloadsStorage
 import com.nuvio.app.features.library.LibraryStorage
+import com.nuvio.app.features.livetv.LiveTvIncomingSourceRepository
 import com.nuvio.app.features.livetv.LiveTvStorage
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
 import com.nuvio.app.features.home.HomeCatalogSettingsStorage
@@ -71,6 +75,9 @@ class MainActivity : AppCompatActivity() {
         installSplashScreen()
         CrashDiagnostics.initialize(applicationContext)
         enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(
+                scrim = 0x00000000,
+            ),
             navigationBarStyle = SystemBarStyle.dark(
                 scrim = 0xFF020404.toInt(),
             ),
@@ -131,6 +138,7 @@ class MainActivity : AppCompatActivity() {
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
         NuvioEnhancedBackupFileBridge.bindActivity(this)
+        AppSystemUiController.bind(this)
         handleIncomingAppIntent(intent)
 
         setContent {
@@ -160,6 +168,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
         NuvioEnhancedBackupFileBridge.unbindActivity(this)
+        AppSystemUiController.unbind(this)
         super.onDestroy()
     }
 
@@ -183,8 +192,82 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleIncomingAppIntent(intent: Intent?) {
-        val appUrl = intent?.dataString?.trim().orEmpty()
+        if (intent == null) return
+        if (handleSharedStreamIntent(intent)) {
+            return
+        }
+        val appUrl = intent.dataString?.trim().orEmpty()
         if (appUrl.isBlank()) return
         handleAppUrl(appUrl)
+    }
+
+    private fun handleSharedStreamIntent(intent: Intent): Boolean {
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()
+                if (!sharedText.isNullOrBlank()) {
+                    LiveTvIncomingSourceRepository.submitText(sharedText)
+                    return true
+                }
+                val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                if (uri != null && submitPlaylistUri(uri)) {
+                    return true
+                }
+            }
+
+            Intent.ACTION_VIEW -> {
+                val dataString = intent.dataString?.trim().orEmpty()
+                if (dataString.startsWith("magnet:", ignoreCase = true)) {
+                    LiveTvIncomingSourceRepository.submitText(dataString)
+                    return true
+                }
+                if (dataString.startsWith("http://", ignoreCase = true) ||
+                    dataString.startsWith("https://", ignoreCase = true)
+                ) {
+                    val loweredPath = dataString.substringBefore('?').substringBefore('#').lowercase()
+                    if (
+                        loweredPath.endsWith(".m3u") ||
+                        loweredPath.endsWith(".m3u8") ||
+                        loweredPath.endsWith(".mp4") ||
+                        loweredPath.endsWith(".mkv") ||
+                        loweredPath.endsWith(".webm") ||
+                        loweredPath.endsWith(".mov") ||
+                        loweredPath.endsWith(".ts")
+                    ) {
+                        LiveTvIncomingSourceRepository.submitText(dataString)
+                        return true
+                    }
+                }
+                val data = intent.data
+                if (data != null && submitPlaylistUri(data)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun submitPlaylistUri(uri: Uri): Boolean {
+        val text = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                input.bufferedReader().use { reader -> reader.readText() }
+            }
+        }.getOrNull()?.trim().orEmpty()
+        if (text.isBlank()) return false
+        val fileName = displayNameFor(uri)
+        LiveTvIncomingSourceRepository.submitPlaylistData(fileName = fileName, data = text)
+        return true
+    }
+
+    private fun displayNameFor(uri: Uri): String {
+        if (uri.scheme == "file") {
+            return uri.lastPathSegment?.substringAfterLast('/').orEmpty().ifBlank { "Shared M3U playlist" }
+        }
+        return runCatching {
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+            }
+        }.getOrNull().orEmpty().ifBlank { "Shared M3U playlist" }
     }
 }

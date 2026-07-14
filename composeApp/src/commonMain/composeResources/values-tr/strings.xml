@@ -90,6 +90,7 @@
     <string name="collections_editor_placeholder_backdrop">Arka plan görseli URL'si (isteğe bağlı)</string>
     <string name="collections_editor_placeholder_folder">Klasör adı</string>
     <string name="collections_editor_placeholder_gif">Animasyonlu GIF URL'si (yalnızca odaktayken oynar)</string>
+    <string name="collections_editor_placeholder_title_logo">Başlık logosu URL'si (isteğe bağlı)</string>
     <string name="collections_editor_placeholder_name">Koleksiyon adı</string>
     <string name="collections_editor_save_changes">Değişiklikleri kaydet</string>
     <string name="collections_editor_save">Kaydet</string>
@@ -322,12 +323,18 @@
     <string name="live_tv_settings">Canlı TV ayarları</string>
     <string name="live_tv_source_m3u">M3U</string>
     <string name="live_tv_source_stalker">Stalker Portal</string>
+    <string name="live_tv_source_xtream">Xtream</string>
+    <string name="live_tv_provider_settings_title">Canlı TV sağlayıcı ayarları</string>
     <string name="live_tv_stalker_settings_title">İleri düzey IPTV</string>
     <string name="live_tv_stalker_settings_description">Stalker middleware kullanan sağlayıcıları bağla. Portal URL ve MAC adresi zorunludur.</string>
     <string name="live_tv_stalker_portal_hint">Portal URL, örn. http://ornek.com/stalker_portal</string>
     <string name="live_tv_stalker_mac_hint">MAC adresi, örn. 00:1A:79:12:34:56</string>
     <string name="live_tv_stalker_username_hint">Kullanıcı adı (opsiyonel)</string>
     <string name="live_tv_stalker_password_hint">Şifre (opsiyonel)</string>
+    <string name="live_tv_xtream_settings_description">IPTV sağlayıcın M3U sunmuyorsa sunucu URL'si, kullanıcı adı ve şifreyle bağlan.</string>
+    <string name="live_tv_xtream_server_hint">Sunucu URL'si</string>
+    <string name="live_tv_xtream_username_hint">Kullanıcı adı</string>
+    <string name="live_tv_xtream_password_hint">Şifre</string>
     <string name="live_tv_load">Kanalları yükle</string>
     <string name="live_tv_load_file">M3U dosyası seç</string>
     <string name="live_tv_add_source">Kaynağı düzenle</string>
@@ -1727,6 +1734,8 @@
     <string name="nuvio_enhanced_source_pinning_desc">Seçilen yayın kaynağını listenin en üstüne sabitlemeden önce onay ister.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">Player durum göstergesi</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">Player kontrolleri görünürken üstte Wi-Fi/LTE, saat ve batarya bilgisini kompakt bir göstergeyle gösterir.</string>
+    <string name="nuvio_enhanced_status_bar_title">Durum çubuğu</string>
+    <string name="nuvio_enhanced_status_bar_desc">Android durum çubuğunu uygulama genelinde gösterir. Daha temiz tam ekran görünüm için kapatabilirsin.</string>
     <string name="nuvio_enhanced_hero_display_title">Hero gösterim modu</string>
     <string name="nuvio_enhanced_hero_display_desc">Cinematic görseli öne çıkarır, Balanced premium varsayılandır, Info Rich daha fazla metadata gösterir.</string>
     <string name="nuvio_enhanced_hero_mode_cinematic">Cinematic</string>

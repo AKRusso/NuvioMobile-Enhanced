@@ -33,6 +33,7 @@ object LiveTvRepository {
             sourceType = LiveTvStorage.loadSourceType(),
             sourceUrl = LiveTvStorage.loadSourceUrl().orEmpty(),
             stalkerSettings = LiveTvStorage.loadStalkerSettings(),
+            xtreamSettings = LiveTvStorage.loadXtreamSettings(),
             favoriteUrls = LiveTvStorage.loadFavoriteUrls(),
             recentChannel = LiveTvStorage.loadRecentChannel(),
         )
@@ -59,13 +60,37 @@ object LiveTvRepository {
         )
 
         return runCatching {
-            val playlist = withContext(Dispatchers.Default) {
-                parseM3uPlaylistData(
-                    httpGetTextWithHeaders(
-                        url = normalizedUrl,
-                        headers = M3U_PLAYLIST_REQUEST_HEADERS,
-                    ),
+            if (normalizedUrl.looksLikeDirectVideoUrl()) {
+                val channel = directStreamChannel(normalizedUrl)
+                LiveTvStorage.saveSourceUrl(normalizedUrl)
+                LiveTvStorage.saveLocalPlaylistData("")
+                LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
+                mutableUiState.value = LiveTvUiState(
+                    sourceType = LiveTvSourceType.M3u,
+                    sourceUrl = normalizedUrl,
+                    stalkerSettings = mutableUiState.value.stalkerSettings,
+                    xtreamSettings = mutableUiState.value.xtreamSettings,
+                    channels = listOf(channel),
+                    favoriteUrls = mutableUiState.value.favoriteUrls,
+                    recentChannel = mutableUiState.value.recentChannel,
+                    isLoaded = true,
                 )
+                return@runCatching listOf(channel)
+            }
+
+            val playlist = withContext(Dispatchers.Default) {
+                val playlistData = httpGetTextWithHeaders(
+                    url = normalizedUrl,
+                    headers = M3U_PLAYLIST_REQUEST_HEADERS,
+                )
+                if (playlistData.looksLikeHlsManifest()) {
+                    ParsedM3uPlaylist(
+                        channels = listOf(directStreamChannel(normalizedUrl)),
+                        epgUrls = emptyList(),
+                    )
+                } else {
+                    parseM3uPlaylistData(playlistData)
+                }
             }
             val channels = playlist.channels
             require(channels.isNotEmpty()) { "Bu M3U listesinde oynatılabilir kanal bulunamadı." }
@@ -76,6 +101,7 @@ object LiveTvRepository {
                 sourceType = LiveTvSourceType.M3u,
                 sourceUrl = normalizedUrl,
                 stalkerSettings = mutableUiState.value.stalkerSettings,
+                xtreamSettings = mutableUiState.value.xtreamSettings,
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
                 recentChannel = mutableUiState.value.recentChannel,
@@ -122,6 +148,7 @@ object LiveTvRepository {
                 sourceType = LiveTvSourceType.M3u,
                 sourceUrl = displayName,
                 stalkerSettings = mutableUiState.value.stalkerSettings,
+                xtreamSettings = mutableUiState.value.xtreamSettings,
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
                 recentChannel = mutableUiState.value.recentChannel,
@@ -181,6 +208,7 @@ object LiveTvRepository {
                 sourceType = LiveTvSourceType.Stalker,
                 sourceUrl = normalizedSettings.portalUrl,
                 stalkerSettings = normalizedSettings,
+                xtreamSettings = mutableUiState.value.xtreamSettings,
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
                 recentChannel = mutableUiState.value.recentChannel,
@@ -192,6 +220,55 @@ object LiveTvRepository {
                 isLoading = false,
                 isLoaded = mutableUiState.value.channels.isNotEmpty(),
                 errorMessage = error.message ?: "Stalker Portal yüklenemedi.",
+            )
+        }
+    }
+
+    suspend fun loadXtream(settings: LiveTvXtreamSettings): Result<List<LiveTvChannel>> {
+        val normalizedSettings = settings.normalized()
+        if (!normalizedSettings.isConfigured) {
+            val error = IllegalArgumentException("Server URL, username, and password are required.")
+            mutableUiState.value = mutableUiState.value.copy(errorMessage = error.message)
+            return Result.failure(error)
+        }
+        if (!normalizedSettings.serverUrl.startsWith("http://") && !normalizedSettings.serverUrl.startsWith("https://")) {
+            val error = IllegalArgumentException("Enter a valid HTTP or HTTPS Xtream server URL.")
+            mutableUiState.value = mutableUiState.value.copy(errorMessage = error.message)
+            return Result.failure(error)
+        }
+
+        mutableUiState.value = mutableUiState.value.copy(
+            sourceType = LiveTvSourceType.Xtream,
+            sourceUrl = normalizedSettings.serverUrl,
+            xtreamSettings = normalizedSettings,
+            isLoading = true,
+            errorMessage = null,
+        )
+
+        return runCatching {
+            val channels = withContext(Dispatchers.Default) {
+                fetchXtreamChannels(normalizedSettings)
+            }
+            require(channels.isNotEmpty()) { "No playable channels were found for this Xtream provider." }
+            LiveTvStorage.saveLocalPlaylistData("")
+            LiveTvStorage.saveSourceType(LiveTvSourceType.Xtream)
+            LiveTvStorage.saveXtreamSettings(normalizedSettings)
+            mutableUiState.value = LiveTvUiState(
+                sourceType = LiveTvSourceType.Xtream,
+                sourceUrl = normalizedSettings.serverUrl,
+                stalkerSettings = mutableUiState.value.stalkerSettings,
+                xtreamSettings = normalizedSettings,
+                channels = channels,
+                favoriteUrls = mutableUiState.value.favoriteUrls,
+                recentChannel = mutableUiState.value.recentChannel,
+                isLoaded = true,
+            )
+            channels
+        }.onFailure { error ->
+            mutableUiState.value = mutableUiState.value.copy(
+                isLoading = false,
+                isLoaded = mutableUiState.value.channels.isNotEmpty(),
+                errorMessage = error.message ?: "Xtream provider could not be loaded.",
             )
         }
     }
@@ -211,6 +288,7 @@ object LiveTvRepository {
         mutableUiState.value = LiveTvUiState(
             sourceType = LiveTvSourceType.M3u,
             stalkerSettings = LiveTvStorage.loadStalkerSettings(),
+            xtreamSettings = LiveTvStorage.loadXtreamSettings(),
             favoriteUrls = mutableUiState.value.favoriteUrls,
             recentChannel = mutableUiState.value.recentChannel,
         )
@@ -266,6 +344,8 @@ internal expect object LiveTvStorage {
     fun saveLocalPlaylistData(data: String)
     fun loadStalkerSettings(): LiveTvStalkerSettings
     fun saveStalkerSettings(settings: LiveTvStalkerSettings)
+    fun loadXtreamSettings(): LiveTvXtreamSettings
+    fun saveXtreamSettings(settings: LiveTvXtreamSettings)
     fun loadFavoriteUrls(): Set<String>
     fun saveFavoriteUrls(urls: Set<String>)
     fun loadRecentChannel(): LiveTvRecentChannel?
@@ -293,6 +373,68 @@ private suspend fun resolveStalkerPlaybackChannel(channel: LiveTvChannel): LiveT
         streamUrl = resolvedUrl,
         headers = channel.headers + LiveTvRepositoryStalker.playbackHeaders(session),
     )
+}
+
+private suspend fun fetchXtreamChannels(settings: LiveTvXtreamSettings): List<LiveTvChannel> {
+    val categories = LiveTvRepositoryXtream.getLiveCategories(settings)
+    return LiveTvRepositoryXtream.getLiveStreams(settings, categories)
+}
+
+private object LiveTvRepositoryXtream {
+    suspend fun getLiveCategories(settings: LiveTvXtreamSettings): Map<String, String> {
+        val data = request(settings, action = "get_live_categories").jsonArrayOrEmpty()
+        return data.associateNotNull { element ->
+            val obj = element as? JsonObject ?: return@associateNotNull null
+            val id = obj.stringValue("category_id") ?: obj.stringValue("id") ?: return@associateNotNull null
+            val name = obj.stringValue("category_name") ?: obj.stringValue("name") ?: return@associateNotNull null
+            id to name
+        }
+    }
+
+    suspend fun getLiveStreams(
+        settings: LiveTvXtreamSettings,
+        categories: Map<String, String>,
+    ): List<LiveTvChannel> {
+        val data = request(settings, action = "get_live_streams").jsonArrayOrEmpty()
+        return data.mapIndexedNotNull { index, element ->
+            val obj = element as? JsonObject ?: return@mapIndexedNotNull null
+            val name = obj.stringValue("name") ?: return@mapIndexedNotNull null
+            val streamId = obj.stringValue("stream_id") ?: obj.stringValue("id") ?: return@mapIndexedNotNull null
+            val directSource = obj.stringValue("direct_source")
+                ?.takeIf { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
+            val extension = obj.stringValue("container_extension")
+                ?.trim()
+                ?.trimStart('.')
+                ?.takeIf(String::isNotBlank)
+                ?: "ts"
+            val streamUrl = directSource ?: settings.liveStreamUrl(streamId, extension)
+            val categoryId = obj.stringValue("category_id")
+            LiveTvChannel(
+                id = "xtream-$streamId-$index",
+                name = name,
+                streamUrl = streamUrl,
+                tvgId = obj.stringValue("epg_channel_id") ?: obj.stringValue("tvg_id"),
+                logoUrl = obj.stringValue("stream_icon") ?: obj.stringValue("logo"),
+                group = categoryId?.let(categories::get).orEmpty(),
+                headers = M3U_STREAM_REQUEST_HEADERS,
+            )
+        }.distinctBy { it.streamUrl }
+    }
+
+    private suspend fun request(settings: LiveTvXtreamSettings, action: String): JsonElement {
+        val parameters = buildMap {
+            put("username", settings.username)
+            put("password", settings.password)
+            put("action", action)
+        }
+        val url = settings.playerApiEndpoint() + parameters.entries.joinToString(
+            separator = "&",
+            prefix = "?",
+        ) { (key, value) ->
+            "${key.encodeURLParameter()}=${value.encodeURLParameter()}"
+        }
+        return stalkerJson.parseToJsonElement(httpGetTextWithHeaders(url, M3U_PLAYLIST_REQUEST_HEADERS))
+    }
 }
 
 private object LiveTvRepositoryStalker {
@@ -438,6 +580,29 @@ private fun LiveTvStalkerSettings.normalized(): LiveTvStalkerSettings =
         password = password.trim(),
     )
 
+private fun LiveTvXtreamSettings.normalized(): LiveTvXtreamSettings =
+    copy(
+        serverUrl = serverUrl.trim().trimEnd('/').substringBefore("/player_api.php").trimEnd('/'),
+        username = username.trim(),
+        password = password.trim(),
+    )
+
+private fun LiveTvXtreamSettings.playerApiEndpoint(): String =
+    "${serverUrl.trim().trimEnd('/')}/player_api.php"
+
+private fun LiveTvXtreamSettings.liveStreamUrl(streamId: String, extension: String): String =
+    buildString {
+        append(serverUrl.trim().trimEnd('/'))
+        append("/live/")
+        append(username.encodeURLParameter())
+        append("/")
+        append(password.encodeURLParameter())
+        append("/")
+        append(streamId.encodeURLParameter())
+        append(".")
+        append(extension.trim().trimStart('.').ifBlank { "ts" })
+    }
+
 private fun LiveTvStalkerSettings.portalEndpoint(): String {
     val normalized = portalUrl.trim().trimEnd('/')
     return when {
@@ -465,6 +630,11 @@ private fun JsonObject.stringValue(name: String): String? =
 
 private fun JsonObject.arrayValue(name: String): List<JsonElement> =
     (this[name] as? JsonArray)?.toList().orEmpty()
+
+private fun JsonElement.jsonArrayOrEmpty(): List<JsonElement> =
+    (this as? JsonArray)?.toList()
+        ?: (this as? JsonObject)?.arrayValue("data")
+        ?: emptyList()
 
 private inline fun <K, V> Iterable<JsonElement>.associateNotNull(transform: (JsonElement) -> Pair<K, V>?): Map<K, V> =
     mapNotNull(transform).toMap()
@@ -503,6 +673,10 @@ internal fun parseM3uPlaylistData(content: String): ParsedM3uPlaylist {
                 pendingHeaders = pendingHeaders + ("User-Agent" to line.substringAfter('=').trim())
             }
 
+            line.startsWith("#EXTVLCOPT:http-referrer=", ignoreCase = true) -> {
+                pendingHeaders = pendingHeaders + ("Referer" to line.substringAfter('=').trim())
+            }
+
             line.startsWith("#EXTHTTP:", ignoreCase = true) -> {
                 pendingHeaders = pendingHeaders + parseExtHttpHeaders(line.substringAfter(':'))
             }
@@ -523,6 +697,7 @@ internal fun parseM3uPlaylistData(content: String): ParsedM3uPlaylist {
                     logoUrl = current.logoUrl,
                     group = current.group,
                     headers = defaultM3uStreamHeaders(parsedUrl.url) + pendingHeaders + parsedUrl.headers,
+                    streamType = parsedUrl.url.inferM3uStreamType(),
                 )
                 metadata = null
                 pendingHeaders = emptyMap()
@@ -598,6 +773,38 @@ private fun defaultM3uStreamHeaders(url: String): Map<String, String> {
     if (!url.startsWith("http://") && !url.startsWith("https://")) return emptyMap()
     return M3U_STREAM_REQUEST_HEADERS
 }
+
+private fun directStreamChannel(url: String): LiveTvChannel =
+    LiveTvChannel(
+        id = "direct-${url.hashCode()}",
+        name = url.substringBefore('?').substringAfterLast('/').ifBlank { "Live stream" },
+        streamUrl = url,
+        group = "Direct stream",
+        headers = defaultM3uStreamHeaders(url),
+        streamType = url.inferM3uStreamType(),
+    )
+
+private fun String.looksLikeDirectVideoUrl(): Boolean {
+    val normalized = substringBefore('#').substringBefore('?').lowercase()
+    if (normalized.endsWith(".m3u") || normalized.endsWith(".m3u8")) return false
+    return listOf(".mp4", ".mkv", ".webm", ".mov", ".avi", ".ts", ".mpeg", ".mpg")
+        .any(normalized::endsWith)
+}
+
+private fun String.inferM3uStreamType(): String? {
+    val normalized = substringBefore('#').substringBefore('?').lowercase()
+    return when {
+        normalized.endsWith(".m3u8") -> "hls"
+        normalized.endsWith(".mkv") -> "matroska"
+        normalized.endsWith(".mp4") || normalized.endsWith(".m4v") -> "mp4"
+        normalized.endsWith(".webm") -> "webm"
+        normalized.endsWith(".ts") || normalized.endsWith(".mts") || normalized.endsWith(".m2ts") -> "mpegts"
+        else -> null
+    }
+}
+
+internal fun String.looksLikeHlsManifest(): Boolean =
+    lineSequence().any { it.trim().startsWith("#EXT-X-", ignoreCase = true) }
 
 private val M3U_PLAYLIST_REQUEST_HEADERS = mapOf(
     "User-Agent" to "VLC/3.0.0 LibVLC/3.0.0",

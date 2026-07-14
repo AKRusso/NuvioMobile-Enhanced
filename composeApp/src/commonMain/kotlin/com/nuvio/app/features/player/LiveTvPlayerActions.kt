@@ -14,7 +14,7 @@ internal fun PlayerScreenRuntime.switchToLiveTvChannel(channel: LiveTvChannel) {
     activeSourceAudioUrl = null
     activeSourceHeaders = sanitizePlaybackHeaders(channel.headers)
     activeSourceResponseHeaders = emptyMap()
-    activeStreamType = null
+    activeStreamType = channel.streamType
     activeSourceIdentityKey = "live-tv:${channel.streamUrl}"
     activeStreamTitle = channel.name
     activeStreamSubtitle = null
@@ -30,6 +30,7 @@ internal fun PlayerScreenRuntime.switchToLiveTvChannel(channel: LiveTvChannel) {
         streamSubtitle = null,
         sourceUrl = channel.streamUrl,
         sourceHeaders = channel.headers,
+        streamType = channel.streamType,
     )
     showLiveTvChannelsPanel = false
     controlsVisible = true

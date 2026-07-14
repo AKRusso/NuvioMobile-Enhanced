@@ -26,12 +26,13 @@ internal data class NuvioEnhancedSettingsUiState(
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroRatings: Boolean = true,
-    val showHeroOverview: Boolean = true,
+    val showHeroOverview: Boolean = false,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
+    val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -76,6 +77,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ReleaseRadarFilters("release_radar_filters"),
     DetailExperienceControls("detail_experience_controls"),
     PlayerStatusOverlay("player_status_overlay"),
+    StatusBarVisibility("status_bar_visibility"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
     PremiumLabs("premium_labs"),
@@ -103,12 +105,14 @@ private data class StoredNuvioEnhancedSettings(
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroRatings: Boolean = true,
-    val showHeroOverview: Boolean = true,
+    val showHeroOverview: Boolean = false,
+    val heroOverviewUserConfigured: Boolean = false,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
     val quietHomeModeEnabled: Boolean = false,
     val libraryHealthEnabled: Boolean = false,
+    val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -138,6 +142,13 @@ internal object NuvioEnhancedSettingsRepository {
         stored = if (payload.isNotEmpty()) {
             runCatching { json.decodeFromString<StoredNuvioEnhancedSettings>(payload) }
                 .getOrDefault(StoredNuvioEnhancedSettings())
+                .let { decoded ->
+                    if (decoded.heroOverviewUserConfigured) {
+                        decoded
+                    } else {
+                        decoded.copy(showHeroOverview = false)
+                    }
+                }
         } else {
             StoredNuvioEnhancedSettings()
         }
@@ -230,7 +241,10 @@ internal object NuvioEnhancedSettingsRepository {
     }
 
     fun setShowHeroOverview(enabled: Boolean) = update {
-        copy(showHeroOverview = enabled)
+        copy(
+            showHeroOverview = enabled,
+            heroOverviewUserConfigured = true,
+        )
     }
 
     fun setHeroRefreshHapticsEnabled(enabled: Boolean) = update {
@@ -255,6 +269,10 @@ internal object NuvioEnhancedSettingsRepository {
 
     fun setPlayerStatusOverlayEnabled(enabled: Boolean) = update {
         copy(playerStatusOverlayEnabled = enabled)
+    }
+
+    fun setStatusBarVisible(visible: Boolean) = update {
+        copy(statusBarVisible = visible)
     }
 
     fun setShowContinueWatchingReadyBadge(enabled: Boolean) = update {
@@ -328,6 +346,7 @@ internal object NuvioEnhancedSettingsRepository {
             releaseRadarDigestEnabled = stored.releaseRadarDigestEnabled,
             quietHomeModeEnabled = stored.quietHomeModeEnabled,
             libraryHealthEnabled = stored.libraryHealthEnabled,
+            statusBarVisible = stored.statusBarVisible,
             playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
             showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,

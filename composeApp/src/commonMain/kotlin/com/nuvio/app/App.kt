@@ -115,6 +115,7 @@ import com.nuvio.app.core.ui.NuvioContinueWatchingActionSheet
 import com.nuvio.app.core.ui.NuvioPosterActionSheet
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.PlatformBackHandler
+import com.nuvio.app.core.ui.AppSystemUiController
 import com.nuvio.app.core.ui.platformExitApp
 import com.nuvio.app.core.ui.configurePlatformImageLoader
 import com.nuvio.app.core.ui.NuvioToastHost
@@ -170,6 +171,8 @@ import com.nuvio.app.features.library.LibraryScreen
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.library.toMetaPreview
 import com.nuvio.app.features.livetv.LiveTvChannel
+import com.nuvio.app.features.livetv.LiveTvIncomingSource
+import com.nuvio.app.features.livetv.LiveTvIncomingSourceRepository
 import com.nuvio.app.features.livetv.LiveTvRepository
 import com.nuvio.app.features.livetv.LiveTvScreen
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationsRepository
@@ -447,14 +450,10 @@ fun App() {
     val customThemeSecondColor by remember {
         ThemeSettingsRepository.customThemeSecondColor
     }.collectAsStateWithLifecycle()
-    val themeAnimationStyle by remember {
-        ThemeSettingsRepository.themeAnimationStyle
-    }.collectAsStateWithLifecycle()
     NuvioTheme(
         appTheme = selectedTheme,
         customFirst = customThemeFirstColor,
         customSecond = customThemeSecondColor,
-        animationStyle = themeAnimationStyle,
         amoled = amoledEnabled,
     ) {
         LaunchedEffect(Unit) {
@@ -785,6 +784,9 @@ private fun MainAppContent(
             NuvioEnhancedSettingsRepository.ensureLoaded()
             NuvioEnhancedSettingsRepository.uiState
         }.collectAsStateWithLifecycle()
+        LaunchedEffect(nuvioEnhancedSettings.statusBarVisible) {
+            AppSystemUiController.setStatusBarVisible(nuvioEnhancedSettings.statusBarVisible)
+        }
         val liveTvEnabled = nuvioEnhancedSettings.liveTvEnabled
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
@@ -1362,6 +1364,115 @@ private fun MainAppContent(
             }
         }
 
+        suspend fun launchPlayer(launch: PlayerLaunch) {
+            if (playerSettingsUiState.externalPlayerEnabled && launch.torrentInfoHash == null) {
+                openExternalPlayback(launch)
+                return
+            }
+            val launchId = PlayerLaunchStore.put(launch)
+            navController.navigate(PlayerRoute(launchId = launchId))
+        }
+
+        suspend fun openLiveTvChannel(
+            channel: LiveTvChannel,
+            providerName: String = "Live TV",
+            recordRecent: Boolean = true,
+        ) {
+            if (recordRecent) {
+                LiveTvRepository.recordRecentChannel(channel)
+            }
+            launchPlayer(
+                PlayerLaunch(
+                    profileId = activePlaybackProfileId,
+                    title = channel.name,
+                    sourceUrl = channel.streamUrl,
+                    sourceHeaders = channel.headers,
+                    streamType = channel.streamType,
+                    logo = channel.logoUrl,
+                    streamTitle = channel.name,
+                    streamSubtitle = channel.group.takeIf { it.isNotBlank() },
+                    providerName = providerName,
+                    providerAddonId = "live-tv",
+                    contentType = "live-tv",
+                    videoId = channel.id,
+                    parentMetaId = channel.id.ifBlank { channel.streamUrl },
+                    parentMetaType = "live-tv",
+                ),
+            )
+        }
+
+        LaunchedEffect(activePlaybackProfileId, liveTvEnabled, playerSettingsUiState.externalPlayerEnabled, p2pSettingsUiState.p2pEnabled) {
+            LiveTvIncomingSourceRepository.requests.collectLatest { request ->
+                when (request) {
+                    is LiveTvIncomingSource.DirectStream -> {
+                        val channel = LiveTvChannel(
+                            id = "shared:${request.url}",
+                            name = request.title.ifBlank { "Shared stream" },
+                            streamUrl = request.url,
+                            group = "Shared",
+                            headers = request.headers,
+                        )
+                        openLiveTvChannel(channel, providerName = "Shared", recordRecent = false)
+                    }
+
+                    is LiveTvIncomingSource.SourceUrl -> {
+                        val result = LiveTvRepository.load(request.url)
+                        result.onSuccess { channels ->
+                            if (channels.size == 1) {
+                                openLiveTvChannel(channels.first(), providerName = "Shared")
+                            } else if (liveTvEnabled) {
+                                handleRootTabClick(AppScreenTab.LiveTv)
+                            } else {
+                                NuvioToastController.show("Live TV tab is disabled.")
+                            }
+                        }.onFailure { error ->
+                            NuvioToastController.show(error.message ?: "Unable to open shared playlist.")
+                        }
+                    }
+
+                    is LiveTvIncomingSource.PlaylistData -> {
+                        val result = LiveTvRepository.loadLocalPlaylist(request.fileName, request.data)
+                        result.onSuccess { channels ->
+                            if (channels.size == 1) {
+                                openLiveTvChannel(channels.first(), providerName = "Shared")
+                            } else if (liveTvEnabled) {
+                                handleRootTabClick(AppScreenTab.LiveTv)
+                            } else {
+                                NuvioToastController.show("Live TV tab is disabled.")
+                            }
+                        }.onFailure { error ->
+                            NuvioToastController.show(error.message ?: "Unable to open shared playlist.")
+                        }
+                    }
+
+                    is LiveTvIncomingSource.Magnet -> {
+                        if (!p2pSettingsUiState.p2pEnabled) {
+                            NuvioToastController.show("Enable P2P playback to open magnet links.")
+                            return@collectLatest
+                        }
+                        val title = "Magnet stream"
+                        launchPlayer(
+                            PlayerLaunch(
+                                profileId = activePlaybackProfileId,
+                                title = title,
+                                sourceUrl = "torrent://${request.infoHash}",
+                                streamTitle = title,
+                                streamSubtitle = request.infoHash,
+                                providerName = "Magnet",
+                                providerAddonId = "shared-magnet",
+                                contentType = "shared-stream",
+                                videoId = request.infoHash,
+                                parentMetaId = request.infoHash,
+                                parentMetaType = "shared-stream",
+                                torrentInfoHash = request.infoHash,
+                                torrentTrackers = request.trackers,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
         suspend fun launchCloudLibraryFile(
             item: CloudLibraryItem,
             file: CloudLibraryFile,
@@ -1844,24 +1955,9 @@ private fun MainAppContent(
                                             openPosterActions(PosterActionTarget(preview = meta))
                                         },
                                         onLiveTvChannelClick = { channel ->
-                                            LiveTvRepository.recordRecentChannel(channel)
-                                            val launchId = PlayerLaunchStore.put(
-                                                PlayerLaunch(
-                                                    profileId = activePlaybackProfileId,
-                                                    title = channel.name,
-                                                    sourceUrl = channel.streamUrl,
-                                                    sourceHeaders = channel.headers,
-                                                    logo = channel.logoUrl,
-                                                    streamTitle = channel.name,
-                                                    streamSubtitle = channel.group.takeIf { it.isNotBlank() },
-                                                    providerName = "M3U",
-                                                    providerAddonId = "live-tv",
-                                                    contentType = "live-tv",
-                                                    parentMetaId = channel.id,
-                                                    parentMetaType = "live-tv",
-                                                ),
-                                            )
-                                            navController.navigate(PlayerRoute(launchId = launchId))
+                                            coroutineScope.launch {
+                                                openLiveTvChannel(channel)
+                                            }
                                         },
                                         onLibraryPosterClick = { item ->
                                             navController.navigate(DetailRoute(type = item.type, id = item.id))
@@ -3122,6 +3218,11 @@ private fun MainAppContent(
                     )
                 } == true,
                 onDismiss = { selectedPosterActionTarget = null },
+                onOpenDetails = {
+                    selectedPosterActionTarget?.preview?.let { preview ->
+                        navController.navigate(DetailRoute(type = preview.type, id = preview.id))
+                    }
+                },
                 onToggleLibrary = {
                     selectedPosterActionTarget?.let { target ->
                         val preview = target.preview

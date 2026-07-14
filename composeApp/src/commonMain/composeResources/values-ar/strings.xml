@@ -94,6 +94,7 @@
     <string name="collections_editor_placeholder_backdrop">صورة الخلفية URL (اختيارية)</string>
     <string name="collections_editor_placeholder_folder">اسم المجلد</string>
     <string name="collections_editor_placeholder_gif">صورة GIF المتحركة URL (يتم تشغيلها فقط أثناء التركيز)</string>
+    <string name="collections_editor_placeholder_title_logo">رابط شعار العنوان (اختياري)</string>
     <string name="collections_editor_placeholder_name">المجموعة الاسم</string>
     <string name="collections_editor_save_changes">حفظ التغييرات</string>
     <string name="collections_editor_section_appearance">المظهر</string>
@@ -345,6 +346,8 @@
     <string name="live_tv_settings">إعدادات البث التلفزيوني المباشر</string>
     <string name="live_tv_source_m3u">M3U</string>
     <string name="live_tv_source_stalker">Stalker Portal</string>
+    <string name="live_tv_source_xtream">Xtream</string>
+    <string name="live_tv_provider_settings_title">إعدادات مزود البث المباشر</string>
     <string name="live_tv_all">الكل</string>
     <string name="live_tv_stalker_settings_title">IPTV المتقدم</string>
     <string name="live_tv_stalker_settings_description">قم بتوصيل موفري الخدمة الذين يستخدمون برنامج Stalker الوسيط. مطلوب البوابة URL وعنوان MAC.</string>
@@ -352,6 +355,10 @@
     <string name="live_tv_stalker_mac_hint">عنوان MAC، على سبيل المثال: 00:1A:79:12:34:56</string>
     <string name="live_tv_stalker_username_hint">اسم المستخدم (اختياري)</string>
     <string name="live_tv_stalker_password_hint">كلمة المرور (اختيارية)</string>
+    <string name="live_tv_xtream_settings_description">استخدم رابط الخادم واسم المستخدم وكلمة المرور عندما لا يوفر مزود IPTV رابط M3U.</string>
+    <string name="live_tv_xtream_server_hint">رابط الخادم</string>
+    <string name="live_tv_xtream_username_hint">اسم المستخدم</string>
+    <string name="live_tv_xtream_password_hint">كلمة المرور</string>
     <string name="live_tv_load">تحميل القنوات</string>
     <string name="live_tv_load_file">اختر ملف M3U</string>
     <string name="live_tv_add_source">تحرير المصدر</string>
@@ -2229,6 +2236,8 @@
     <string name="nuvio_enhanced_source_pinning_desc">اطلب التأكيد قبل تثبيت مصدر بث محدد في أعلى قائمة الاختيار.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">تراكب حالة المشغل</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">إظهار Wi-Fi/LTE والوقت والبطارية في تراكب علوي مضغوط بينما تكون عناصر التحكم في المشغل مرئية.</string>
+    <string name="nuvio_enhanced_status_bar_title">شريط الحالة</string>
+    <string name="nuvio_enhanced_status_bar_desc">يعرض شريط حالة Android في جميع أنحاء التطبيق. أوقفه للحصول على مظهر ملء شاشة أنظف.</string>
     <string name="nuvio_enhanced_hero_display_title">وضع العرض البطل</string>
     <string name="nuvio_enhanced_hero_display_desc">يُبقي الوضع السينمائي مهيمنًا على العمل الفني، والتوازن هو الإعداد الافتراضي المتميز، ويعرض Info Rich المزيد البيانات الوصفية.</string>
     <string name="nuvio_enhanced_hero_mode_info_rich">غنية بالمعلومات</string>

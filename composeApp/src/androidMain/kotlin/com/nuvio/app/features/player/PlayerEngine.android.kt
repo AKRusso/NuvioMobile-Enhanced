@@ -100,16 +100,18 @@ actual fun PlatformPlayerSurface(
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState.value
     }
+    val normalizedStreamType = normalizeStreamType(streamType)
+    val isDirectMatroska = normalizedStreamType.isMatroskaStreamType()
     val playerSourceKey = listOf(
         sourceUrl,
         sourceAudioUrl.orEmpty(),
         sanitizePlaybackHeaders(sourceHeaders),
         sanitizePlaybackResponseHeaders(sourceResponseHeaders),
-        normalizeStreamType(streamType).orEmpty(),
+        normalizedStreamType.orEmpty(),
         useYoutubeChunkedPlayback,
     )
     var activeEngine by remember(playerSourceKey, playerSettings.androidPlaybackEngine) {
-        mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine())
+        mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine(normalizedStreamType))
     }
 
     when (activeEngine) {
@@ -146,7 +148,7 @@ actual fun PlatformPlayerSurface(
             playWhenReady = playWhenReady,
             resizeMode = resizeMode,
             videoOutput = playerSettings.androidLibmpvVideoOutput,
-            hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled,
+            hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled && !isDirectMatroska,
             yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
             onControllerReady = onControllerReady,
             onSnapshot = onSnapshot,
@@ -160,12 +162,16 @@ private enum class ResolvedAndroidPlaybackEngine {
     Libmpv,
 }
 
-private fun AndroidPlaybackEngine.initialAndroidEngine(): ResolvedAndroidPlaybackEngine =
-    when (this) {
-        AndroidPlaybackEngine.Auto,
-        AndroidPlaybackEngine.ExoPlayer -> ResolvedAndroidPlaybackEngine.ExoPlayer
-        AndroidPlaybackEngine.Libmpv -> ResolvedAndroidPlaybackEngine.Libmpv
+private fun AndroidPlaybackEngine.initialAndroidEngine(streamType: String?): ResolvedAndroidPlaybackEngine =
+    when {
+        streamType.isMatroskaStreamType() -> ResolvedAndroidPlaybackEngine.Libmpv
+        this == AndroidPlaybackEngine.ExoPlayer -> ResolvedAndroidPlaybackEngine.ExoPlayer
+        this == AndroidPlaybackEngine.Libmpv -> ResolvedAndroidPlaybackEngine.Libmpv
+        else -> ResolvedAndroidPlaybackEngine.ExoPlayer
     }
+
+private fun String?.isMatroskaStreamType(): Boolean =
+    this == "matroska" || this == "mkv"
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable

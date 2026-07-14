@@ -64,7 +64,6 @@ import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.labelRes
 import com.nuvio.app.core.ui.ThemeColors
 import com.nuvio.app.core.ui.ThemeAccentColor
-import com.nuvio.app.core.ui.ThemeAnimationStyle
 import com.nuvio.app.core.ui.isEnhanced
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import kotlinx.coroutines.launch
@@ -90,7 +89,6 @@ import nuvio.composeapp.generated.resources.settings_appearance_section_display
 import nuvio.composeapp.generated.resources.settings_appearance_section_home
 import nuvio.composeapp.generated.resources.settings_appearance_section_theme
 import nuvio.composeapp.generated.resources.settings_appearance_theme_classic
-import nuvio.composeapp.generated.resources.settings_appearance_theme_animation_style
 import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_first
 import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_second
 import nuvio.composeapp.generated.resources.settings_appearance_theme_enhanced
@@ -126,7 +124,6 @@ internal fun LazyListScope.appearanceSettingsContent(
     item {
         val customFirst by remember { ThemeSettingsRepository.customThemeFirstColor }.collectAsState()
         val customSecond by remember { ThemeSettingsRepository.customThemeSecondColor }.collectAsState()
-        val animationStyle by remember { ThemeSettingsRepository.themeAnimationStyle }.collectAsState()
         SettingsSection(
             title = stringResource(Res.string.settings_appearance_section_theme),
             isTablet = isTablet,
@@ -181,14 +178,6 @@ internal fun LazyListScope.appearanceSettingsContent(
                         isTablet = isTablet,
                         spacing = themeSpacing,
                         onThemeSelected = onThemeSelected,
-                    )
-
-                    ThemeAnimationStyleSelector(
-                        selectedStyle = animationStyle,
-                        previewTheme = selectedTheme.takeIf { it.isEnhanced } ?: AppTheme.MESSENGER,
-                        customFirst = customFirst,
-                        customSecond = customSecond,
-                        onStyleSelected = ThemeSettingsRepository::setThemeAnimationStyle,
                     )
 
                     if (selectedTheme == AppTheme.CUSTOM) {
@@ -513,107 +502,6 @@ private fun ThemeChip(
                     },
                 ),
         )
-    }
-}
-
-@Composable
-private fun ThemeAnimationStyleSelector(
-    selectedStyle: ThemeAnimationStyle,
-    previewTheme: AppTheme,
-    customFirst: Color,
-    customSecond: Color,
-    onStyleSelected: (ThemeAnimationStyle) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_animation_style))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            ThemeAnimationStyle.entries.forEach { style ->
-                ThemeAnimationStyleChip(
-                    style = style,
-                    selected = style == selectedStyle,
-                    previewTheme = previewTheme,
-                    customFirst = customFirst,
-                    customSecond = customSecond,
-                    onClick = { onStyleSelected(style) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ThemeAnimationStyleChip(
-    style: ThemeAnimationStyle,
-    selected: Boolean,
-    previewTheme: AppTheme,
-    customFirst: Color,
-    customSecond: Color,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(999.dp)
-    val previewBrush = rememberAnimatedAccentBrush(
-        previewTheme = previewTheme,
-        customFirst = customFirst,
-        customSecond = customSecond,
-        animationStyle = style,
-    )
-    val selectedBrush = previewBrush.takeIf { selected }
-    val backgroundColor = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
-    }
-    Box(
-        modifier = Modifier
-            .clip(shape)
-            .background(backgroundColor, shape)
-            .then(
-                if (selectedBrush != null) {
-                    Modifier.border(width = 1.5.dp, brush = selectedBrush, shape = shape)
-                } else {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = if (selected) {
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.72f)
-                        } else {
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.50f)
-                        },
-                        shape = shape,
-                    )
-                },
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(width = 36.dp, height = 7.dp)
-                    .clip(shape)
-                    .then(
-                        if (previewBrush != null) {
-                            Modifier.background(previewBrush)
-                        } else {
-                            Modifier.background(MaterialTheme.colorScheme.primary)
-                        },
-                    ),
-            )
-            Text(
-                text = stringResource(style.labelRes),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
-                maxLines = 1,
-            )
-        }
     }
 }
 

@@ -51,6 +51,50 @@ internal fun MetaDetails.firstReleasedPlayableEpisode(todayIsoDate: String): Met
         video.isReleasedBy(todayIsoDate)
     }
 
+internal fun MetaDetails.randomReleasedPlayableEpisode(
+    todayIsoDate: String,
+    currentSeason: Int?,
+    currentEpisode: Int?,
+): MetaVideo? {
+    val releasedEpisodes = sortedPlayableEpisodes()
+        .filter { video ->
+            normalizeSeasonNumber(video.season) > 0 &&
+                video.isReleasedBy(todayIsoDate) &&
+                video.available
+        }
+    if (releasedEpisodes.isEmpty()) return null
+
+    val currentVideoId = buildPlaybackVideoId(
+        content = WatchingContentRef(type = type, id = id),
+        seasonNumber = currentSeason,
+        episodeNumber = currentEpisode,
+    )
+    val poolWithoutCurrent = releasedEpisodes.filterNot { episode ->
+        buildPlaybackVideoId(
+            content = WatchingContentRef(type = type, id = id),
+            seasonNumber = episode.season,
+            episodeNumber = episode.episode,
+            fallbackVideoId = episode.id,
+        ) == currentVideoId
+    }
+    val candidates = poolWithoutCurrent.ifEmpty { releasedEpisodes }
+    val seed = buildString {
+        append(id)
+        append('|')
+        append(todayIsoDate)
+        append('|')
+        append(currentSeason)
+        append('|')
+        append(currentEpisode)
+        append('|')
+        candidates.forEach { episode ->
+            append(episode.id)
+            append(',')
+        }
+    }.hashCode() and Int.MAX_VALUE
+    return candidates[seed % candidates.size]
+}
+
 internal fun MetaDetails.nextReleasedEpisodeAfter(
     completedEntry: WatchProgressEntry,
     todayIsoDate: String,

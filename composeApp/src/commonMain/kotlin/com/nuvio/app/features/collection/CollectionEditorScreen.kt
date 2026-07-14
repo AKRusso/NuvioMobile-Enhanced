@@ -664,6 +664,12 @@ private fun FolderEditorPage(
                                 onValueChange = { CollectionEditorRepository.updateFolderFocusGifUrl(it) },
                                 placeholder = stringResource(Res.string.collections_editor_placeholder_gif),
                             )
+
+                            NuvioInputField(
+                                value = folder.titleLogoUrl.orEmpty(),
+                                onValueChange = { CollectionEditorRepository.updateFolderTitleLogoUrl(it) },
+                                placeholder = stringResource(Res.string.collections_editor_placeholder_title_logo),
+                            )
                         }
                     }
 

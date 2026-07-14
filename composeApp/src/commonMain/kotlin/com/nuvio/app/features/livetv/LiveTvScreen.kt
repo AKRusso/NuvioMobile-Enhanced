@@ -76,6 +76,7 @@ import nuvio.composeapp.generated.resources.live_tv_recent_channel_title
 import nuvio.composeapp.generated.resources.live_tv_refresh
 import nuvio.composeapp.generated.resources.live_tv_search
 import nuvio.composeapp.generated.resources.live_tv_choose_category
+import nuvio.composeapp.generated.resources.live_tv_provider_settings_title
 import nuvio.composeapp.generated.resources.live_tv_source_hint
 import nuvio.composeapp.generated.resources.live_tv_source_title
 import nuvio.composeapp.generated.resources.live_tv_stalker_mac_hint
@@ -86,8 +87,13 @@ import nuvio.composeapp.generated.resources.live_tv_stalker_settings_title
 import nuvio.composeapp.generated.resources.live_tv_stalker_username_hint
 import nuvio.composeapp.generated.resources.live_tv_source_m3u
 import nuvio.composeapp.generated.resources.live_tv_source_stalker
+import nuvio.composeapp.generated.resources.live_tv_source_xtream
 import nuvio.composeapp.generated.resources.live_tv_settings
 import nuvio.composeapp.generated.resources.live_tv_title
+import nuvio.composeapp.generated.resources.live_tv_xtream_password_hint
+import nuvio.composeapp.generated.resources.live_tv_xtream_server_hint
+import nuvio.composeapp.generated.resources.live_tv_xtream_settings_description
+import nuvio.composeapp.generated.resources.live_tv_xtream_username_hint
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -110,6 +116,9 @@ fun LiveTvScreen(
     var stalkerMacAddress by rememberSaveable { mutableStateOf(uiState.stalkerSettings.macAddress) }
     var stalkerUsername by rememberSaveable { mutableStateOf(uiState.stalkerSettings.username) }
     var stalkerPassword by rememberSaveable { mutableStateOf(uiState.stalkerSettings.password) }
+    var xtreamServerUrl by rememberSaveable { mutableStateOf(uiState.xtreamSettings.serverUrl) }
+    var xtreamUsername by rememberSaveable { mutableStateOf(uiState.xtreamSettings.username) }
+    var xtreamPassword by rememberSaveable { mutableStateOf(uiState.xtreamSettings.password) }
     var fileImportError by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.sourceUrl) {
@@ -121,9 +130,16 @@ fun LiveTvScreen(
         if (stalkerUsername.isBlank()) stalkerUsername = uiState.stalkerSettings.username
         if (stalkerPassword.isBlank()) stalkerPassword = uiState.stalkerSettings.password
     }
+    LaunchedEffect(uiState.xtreamSettings) {
+        if (xtreamServerUrl.isBlank()) xtreamServerUrl = uiState.xtreamSettings.serverUrl
+        if (xtreamUsername.isBlank()) xtreamUsername = uiState.xtreamSettings.username
+        if (xtreamPassword.isBlank()) xtreamPassword = uiState.xtreamSettings.password
+    }
     LaunchedEffect(Unit) {
         if (uiState.channels.isEmpty() && !uiState.isLoading) {
             when {
+                uiState.sourceType == LiveTvSourceType.Xtream && uiState.xtreamSettings.isConfigured ->
+                    LiveTvRepository.loadXtream(uiState.xtreamSettings)
                 uiState.sourceType == LiveTvSourceType.Stalker && uiState.stalkerSettings.isConfigured ->
                     LiveTvRepository.loadStalker(uiState.stalkerSettings)
                 LiveTvStorage.loadLocalPlaylistData().orEmpty().isNotBlank() ->
@@ -167,7 +183,10 @@ fun LiveTvScreen(
     val loadSource: () -> Unit = {
         scope.launch {
             fileImportError = null
-            if (LiveTvRepository.load(sourceUrl).isSuccess) {
+            if (sourceUrl.trim().startsWith("magnet:", ignoreCase = true)) {
+                LiveTvIncomingSourceRepository.submitText(sourceUrl)
+                editingSource = false
+            } else if (LiveTvRepository.load(sourceUrl).isSuccess) {
                 editingSource = false
                 selectedGroup = ""
                 favoritesOnly = false
@@ -212,6 +231,22 @@ fun LiveTvScreen(
         }
         Unit
     }
+    val loadXtreamSource: () -> Unit = {
+        scope.launch {
+            val settings = LiveTvXtreamSettings(
+                serverUrl = xtreamServerUrl,
+                username = xtreamUsername,
+                password = xtreamPassword,
+            )
+            if (LiveTvRepository.loadXtream(settings).isSuccess) {
+                showingAdvancedSettings = false
+                editingSource = false
+                selectedGroup = ""
+                favoritesOnly = false
+            }
+        }
+        Unit
+    }
     val playChannel: (LiveTvChannel) -> Unit = { channel ->
         scope.launch {
             onChannelClick(LiveTvRepository.prepareForPlayback(channel))
@@ -225,7 +260,7 @@ fun LiveTvScreen(
         if (showingAdvancedSettings) {
             item {
                 NuvioScreenHeader(
-                    title = stringResource(Res.string.live_tv_stalker_settings_title),
+                    title = stringResource(Res.string.live_tv_provider_settings_title),
                     includeStatusBarPadding = false,
                     onBack = { showingAdvancedSettings = false },
                 )
@@ -244,6 +279,27 @@ fun LiveTvScreen(
                     onUsernameChange = { stalkerUsername = it },
                     onPasswordChange = { stalkerPassword = it },
                     onLoad = loadStalkerSource,
+                    onDisconnect = {
+                        LiveTvRepository.disconnect()
+                        editingSource = true
+                        showingAdvancedSettings = false
+                        favoritesOnly = false
+                        selectedGroup = ""
+                    },
+                )
+            }
+            item {
+                LiveTvXtreamSettingsCard(
+                    serverUrl = xtreamServerUrl,
+                    username = xtreamUsername,
+                    password = xtreamPassword,
+                    isLoading = uiState.isLoading,
+                    errorMessage = uiState.errorMessage,
+                    hasConnectedSource = uiState.sourceType == LiveTvSourceType.Xtream && uiState.channels.isNotEmpty(),
+                    onServerUrlChange = { xtreamServerUrl = it },
+                    onUsernameChange = { xtreamUsername = it },
+                    onPasswordChange = { xtreamPassword = it },
+                    onLoad = loadXtreamSource,
                     onDisconnect = {
                         LiveTvRepository.disconnect()
                         editingSource = true
@@ -272,12 +328,15 @@ fun LiveTvScreen(
                             contentDescription = stringResource(Res.string.live_tv_refresh),
                             onClick = {
                                 scope.launch {
-                                    if (uiState.sourceType == LiveTvSourceType.Stalker) {
-                                        LiveTvRepository.loadStalker(uiState.stalkerSettings)
-                                    } else if (LiveTvStorage.loadLocalPlaylistData().orEmpty().isNotBlank()) {
-                                        LiveTvRepository.loadStoredLocalPlaylist()
-                                    } else {
-                                        LiveTvRepository.load(uiState.sourceUrl)
+                                    when {
+                                        uiState.sourceType == LiveTvSourceType.Xtream ->
+                                            LiveTvRepository.loadXtream(uiState.xtreamSettings)
+                                        uiState.sourceType == LiveTvSourceType.Stalker ->
+                                            LiveTvRepository.loadStalker(uiState.stalkerSettings)
+                                        LiveTvStorage.loadLocalPlaylistData().orEmpty().isNotBlank() ->
+                                            LiveTvRepository.loadStoredLocalPlaylist()
+                                        else ->
+                                            LiveTvRepository.load(uiState.sourceUrl)
                                     }
                                 }
                             },
@@ -732,6 +791,122 @@ private fun LiveTvStalkerSettingsCard(
             NuvioPrimaryButton(
                 text = stringResource(Res.string.live_tv_load),
                 enabled = portalUrl.isNotBlank() && macAddress.isNotBlank() && !isLoading,
+                onClick = onLoad,
+            )
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .size(NuvioTokens.Icon.md)
+                        .align(Alignment.CenterHorizontally),
+                    color = tokens.colors.accent,
+                    strokeWidth = 2.dp,
+                )
+            }
+            if (hasConnectedSource) {
+                Text(
+                    text = stringResource(Res.string.live_tv_disconnect),
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .clickable(onClick = onDisconnect)
+                        .padding(8.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = tokens.colors.danger,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LiveTvXtreamSettingsCard(
+    serverUrl: String,
+    username: String,
+    password: String,
+    isLoading: Boolean,
+    errorMessage: String?,
+    hasConnectedSource: Boolean,
+    onServerUrlChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLoad: () -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = tokens.colors.surface,
+        shape = tokens.shapes.card,
+        border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.borderSubtle),
+    ) {
+        Column(
+            modifier = Modifier.padding(tokens.spacing.cardPadding),
+            verticalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s12),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(NuvioTokens.Space.s48)
+                        .clip(tokens.shapes.compactCard)
+                        .background(tokens.colors.overlaySelected),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Tv,
+                        contentDescription = null,
+                        tint = tokens.colors.accent,
+                    )
+                }
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(Res.string.live_tv_source_xtream),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tokens.colors.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = stringResource(Res.string.live_tv_xtream_settings_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = tokens.colors.textMuted,
+                    )
+                }
+            }
+
+            SourceTypePillRow(
+                activeLabel = stringResource(Res.string.live_tv_source_xtream),
+                inactiveLabel = stringResource(Res.string.live_tv_source_m3u),
+            )
+
+            NuvioInputField(
+                value = serverUrl,
+                onValueChange = onServerUrlChange,
+                placeholder = stringResource(Res.string.live_tv_xtream_server_hint),
+            )
+            NuvioInputField(
+                value = username,
+                onValueChange = onUsernameChange,
+                placeholder = stringResource(Res.string.live_tv_xtream_username_hint),
+            )
+            NuvioInputField(
+                value = password,
+                onValueChange = onPasswordChange,
+                placeholder = stringResource(Res.string.live_tv_xtream_password_hint),
+            )
+
+            errorMessage?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = tokens.colors.danger,
+                )
+            }
+            NuvioPrimaryButton(
+                text = stringResource(Res.string.live_tv_load),
+                enabled = serverUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank() && !isLoading,
                 onClick = onLoad,
             )
             if (isLoading) {

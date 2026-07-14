@@ -67,6 +67,7 @@ data class AppUpdate(
     val assetName: String,
     val assetUrl: String,
     val assetSizeBytes: Long?,
+    val buildCode: Int?,
 )
 
 data class AppUpdaterUiState(
@@ -156,14 +157,22 @@ internal object VersionUtils {
             ?.toIntOrNull()
     }
 
-    fun isRemoteNewer(remote: String?, local: String?, localBuildCode: Int? = null): Boolean {
+    fun firstBuildCode(vararg values: String?): Int? =
+        values.firstNotNullOfOrNull(::parseBuildCode)
+
+    fun isRemoteNewer(
+        remote: String?,
+        local: String?,
+        localBuildCode: Int? = null,
+        remoteBuildCode: Int? = null,
+    ): Boolean {
         val remoteParts = parseVersionParts(remote)
         val localParts = parseVersionParts(local)
-        val remoteBuildCode = parseBuildCode(remote)
+        val resolvedRemoteBuildCode = remoteBuildCode ?: parseBuildCode(remote)
 
         if (remoteParts == null || localParts == null) {
-            return if (remoteBuildCode != null && localBuildCode != null) {
-                remoteBuildCode > localBuildCode
+            return if (resolvedRemoteBuildCode != null && localBuildCode != null) {
+                resolvedRemoteBuildCode > localBuildCode
             } else {
                 false
             }
@@ -176,8 +185,8 @@ internal object VersionUtils {
             if (remoteValue != localValue) return remoteValue > localValue
         }
 
-        return if (remoteBuildCode != null && localBuildCode != null) {
-            remoteBuildCode > localBuildCode
+        return if (resolvedRemoteBuildCode != null && localBuildCode != null) {
+            resolvedRemoteBuildCode > localBuildCode
         } else {
             false
         }
@@ -200,7 +209,8 @@ private object AppUpdaterRepository {
         }
 
         val releases = appUpdaterJson.decodeFromString<List<GitHubReleaseDto>>(response.body)
-        val release = releases.firstOrNull { it.matchesRequestedChannel() && !it.draft && !it.prerelease }
+        val release = releases.firstOrNull { it.isInstallableRelease() && it.matchesRequestedChannel() }
+            ?: releases.firstOrNull { it.isInstallableRelease() }
             ?: throw NoChannelReleaseException()
 
         val tag = release.tagName?.takeIf { it.isNotBlank() }
@@ -218,8 +228,12 @@ private object AppUpdaterRepository {
             assetName = asset.name,
             assetUrl = asset.browserDownloadUrl,
             assetSizeBytes = asset.size,
+            buildCode = VersionUtils.firstBuildCode(asset.name, release.tagName, release.name, release.body),
         )
     }
+
+    private fun GitHubReleaseDto.isInstallableRelease(): Boolean =
+        !draft && !prerelease && chooseBestApkAsset(assets) != null
 
     private fun GitHubReleaseDto.matchesRequestedChannel(): Boolean {
         if (releaseChannelBranches.any { channel ->
@@ -238,11 +252,18 @@ private object AppUpdaterRepository {
 
     private fun chooseBestApkAsset(assets: List<GitHubAssetDto>): GitHubAssetDto? {
         val apkAssets = assets.filter { asset ->
-            asset.name.endsWith(".apk", ignoreCase = true) ||
-                asset.contentType == "application/vnd.android.package-archive"
+            val name = asset.name.lowercase()
+            (name.endsWith(".apk") || asset.contentType == "application/vnd.android.package-archive") &&
+                !name.contains("debug") &&
+                !name.contains("unsigned")
         }
         if (apkAssets.isEmpty()) return null
         if (apkAssets.size == 1) return apkAssets.first()
+
+        apkAssets.firstOrNull { asset ->
+            val name = asset.name.lowercase()
+            name.contains("full") && (name.contains("release") || name.contains("signed"))
+        }?.let { return it }
 
         val supportedAbis = AppUpdaterPlatform.getSupportedAbis()
         for (abi in supportedAbis) {
@@ -302,6 +323,7 @@ class AppUpdaterController internal constructor(
                     remote = update.tag,
                     local = AppVersionConfig.VERSION_NAME,
                     localBuildCode = AppVersionConfig.VERSION_CODE,
+                    remoteBuildCode = update.buildCode,
                 )
                 val ignored = ignoredTag != null && ignoredTag == update.tag
                 val shouldShowDialog = force || (remoteNewer && !ignored)

@@ -214,6 +214,13 @@ object CollectionEditorRepository {
         )
     }
 
+    fun updateFolderTitleLogoUrl(url: String) {
+        val folder = _uiState.value.editingFolder ?: return
+        _uiState.value = _uiState.value.copy(
+            editingFolder = folder.copy(titleLogoUrl = url.ifBlank { null }),
+        )
+    }
+
     fun updateFolderMobileFocusGifEnabled(enabled: Boolean) {
         val folder = _uiState.value.editingFolder ?: return
         _uiState.value = _uiState.value.copy(
