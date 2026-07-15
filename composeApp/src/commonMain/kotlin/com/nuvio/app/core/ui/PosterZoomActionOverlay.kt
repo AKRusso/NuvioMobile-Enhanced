@@ -214,7 +214,17 @@ fun NuvioPosterZoomActionOverlay(
             ?: 0.675f
         val aspect = anchorAspect.coerceIn(0.35f, 2.4f)
         val maxPosterWidth = if (aspect >= 1f) maxWidth * 0.8f else maxWidth * 0.6f
-        val posterHeight = min(maxPosterWidth / aspect, maxHeight * 0.44f)
+        val hasSubtitle = !subtitle.isNullOrBlank()
+        val hasSynopsis = !synopsis.isNullOrBlank()
+        val textReserve = NuvioTokens.Space.s32 +
+            (if (hasSubtitle) NuvioTokens.Space.s20 else NuvioTokens.Space.none) +
+            (if (hasSynopsis) 92.dp else NuvioTokens.Space.none)
+        val menuReserve = (frozenActions.size * 54).dp + NuvioTokens.Space.s40
+        val availablePosterHeight = (maxHeight - textReserve - menuReserve).coerceAtLeast(112.dp)
+        val posterHeight = min(
+            maxPosterWidth / aspect,
+            min(maxHeight * 0.40f, availablePosterHeight),
+        )
         val posterWidth = posterHeight * aspect
         val menuWidth = min(280.dp, maxWidth - NuvioTokens.Space.s48)
         val columnWidth = max(posterWidth, menuWidth)
