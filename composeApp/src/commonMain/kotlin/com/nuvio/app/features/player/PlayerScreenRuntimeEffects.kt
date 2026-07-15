@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import com.nuvio.app.core.ui.AppSystemUiController
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.p2p.P2pStreamRequest
@@ -341,6 +342,47 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
 
 @Composable
 private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
+    val statusBarVisiblePreference = nuvioEnhancedSettingsUiState.statusBarVisible
+    DisposableEffect(statusBarVisiblePreference) {
+        onDispose {
+            AppSystemUiController.setStatusBarVisible(statusBarVisiblePreference)
+        }
+    }
+
+    LaunchedEffect(
+        statusBarVisiblePreference,
+        controlsVisible,
+        playerControlsLocked,
+        playbackSnapshot.isPlaying,
+        playbackSnapshot.isLoading,
+        showParentalGuide,
+        errorMessage,
+    ) {
+        if (!statusBarVisiblePreference) {
+            AppSystemUiController.setStatusBarVisible(false)
+            return@LaunchedEffect
+        }
+
+        val isActivelyWatching = playbackSnapshot.isPlaying &&
+            !playbackSnapshot.isLoading &&
+            errorMessage == null &&
+            !showParentalGuide
+
+        if (!isActivelyWatching) {
+            AppSystemUiController.setStatusBarVisible(true)
+            return@LaunchedEffect
+        }
+
+        if (!controlsVisible || playerControlsLocked) {
+            AppSystemUiController.setStatusBarVisible(false)
+            return@LaunchedEffect
+        }
+
+        AppSystemUiController.setStatusBarVisible(true)
+        delay(2_000)
+        AppSystemUiController.setStatusBarVisible(false)
+    }
+
     LaunchedEffect(
         controlsVisible,
         isScrubbingTimeline,
