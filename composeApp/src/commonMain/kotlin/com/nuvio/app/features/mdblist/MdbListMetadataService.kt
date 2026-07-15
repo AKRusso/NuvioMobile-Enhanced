@@ -4,12 +4,15 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.features.addons.httpPostJson
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
+import com.nuvio.app.features.tmdb.TmdbService
+import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -38,6 +41,8 @@ object MdbListMetadataService {
     private val json = Json { ignoreUnknownKeys = true }
     private val ratingsCache = mutableMapOf<String, List<MetaExternalRating>>()
     private val imdbRegex = Regex("tt\\d+")
+    private val tmdbRegex = Regex("(?:tmdb[:/])?(\\d+)")
+    private const val TmdbToImdbTimeoutMs = 4_000L
 
     fun shouldFetchForMeta(
         meta: MetaDetails,
@@ -47,7 +52,10 @@ object MdbListMetadataService {
         if (!settings.enabled) return false
         if (settings.apiKey.trim().isBlank()) return false
         if (settings.enabledProvidersInPriorityOrder().isEmpty()) return false
-        return extractImdbId(meta.id) != null || extractImdbId(fallbackItemId) != null
+        if (extractImdbId(meta.id) != null || extractImdbId(fallbackItemId) != null) return true
+        if (extractTmdbId(meta.id) == null && extractTmdbId(fallbackItemId) == null) return false
+        TmdbSettingsRepository.ensureLoaded()
+        return TmdbSettingsRepository.snapshot().hasApiKey
     }
 
     suspend fun enrichMeta(
@@ -56,13 +64,12 @@ object MdbListMetadataService {
         settings: MdbListSettings,
     ): MetaDetails {
         if (!shouldFetchForMeta(meta, fallbackItemId, settings)) {
-            return meta.copy(externalRatings = emptyList())
+            return meta
         }
         val apiKey = settings.apiKey.trim()
 
-        val imdbId = extractImdbId(meta.id)
-            ?: extractImdbId(fallbackItemId)
-            ?: return meta.copy(externalRatings = emptyList())
+        val imdbId = resolveImdbId(meta = meta, fallbackItemId = fallbackItemId)
+            ?: return meta
         val mediaType = toMdbListMediaType(meta.type)
         val enabledProviders = settings.enabledProvidersInPriorityOrder()
 
@@ -73,7 +80,7 @@ object MdbListMetadataService {
             providers = enabledProviders,
         )
 
-        return meta.copy(externalRatings = ratings)
+        return meta.copy(externalRatings = mergeExternalRatings(meta.externalRatings, ratings))
     }
 
     fun clearCache() {
@@ -134,6 +141,51 @@ object MdbListMetadataService {
     private fun extractImdbId(value: String?): String? {
         if (value.isNullOrBlank()) return null
         return imdbRegex.find(value)?.value
+    }
+
+    private fun extractTmdbId(value: String?): Int? {
+        if (value.isNullOrBlank()) return null
+        val normalized = value
+            .removePrefix("tmdb:")
+            .removePrefix("movie:")
+            .removePrefix("series:")
+            .substringBefore(':')
+            .substringBefore('/')
+            .trim()
+        normalized.toIntOrNull()?.takeIf { it > 0 }?.let { return it }
+        return tmdbRegex.matchEntire(value.trim())
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
+            ?.takeIf { it > 0 }
+    }
+
+    private suspend fun resolveImdbId(meta: MetaDetails, fallbackItemId: String): String? {
+        extractImdbId(meta.id)?.let { return it }
+        extractImdbId(fallbackItemId)?.let { return it }
+
+        val tmdbId = extractTmdbId(meta.id) ?: extractTmdbId(fallbackItemId) ?: return null
+        TmdbSettingsRepository.ensureLoaded()
+        if (!TmdbSettingsRepository.snapshot().hasApiKey) return null
+
+        return withTimeoutOrNull(TmdbToImdbTimeoutMs) {
+            TmdbService.tmdbToImdb(tmdbId = tmdbId, mediaType = meta.type)
+        }?.takeIf { it.isNotBlank() }
+    }
+
+    private fun mergeExternalRatings(
+        current: List<MetaExternalRating>,
+        mdbListRatings: List<MetaExternalRating>,
+    ): List<MetaExternalRating> {
+        if (mdbListRatings.isEmpty()) return current
+        val bySource = linkedMapOf<String, MetaExternalRating>()
+        current.forEach { rating ->
+            bySource[rating.source.trim().lowercase()] = rating
+        }
+        mdbListRatings.forEach { rating ->
+            bySource[rating.source.trim().lowercase()] = rating
+        }
+        return bySource.values.toList()
     }
 
     private fun toMdbListMediaType(metaType: String): String {
