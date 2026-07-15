@@ -12,6 +12,7 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import io.ktor.http.encodeURLParameter
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -90,6 +91,15 @@ object TraktPublicListSourceResolver {
             nextSkip = if (page < pageCount && items.isNotEmpty()) page + 1 else null,
         )
     }
+
+    suspend fun resolveOrEmpty(source: CollectionSource, page: Int = 1): CatalogPage =
+        try {
+            resolve(source, page)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            log.w(error) { "Skipping Trakt collection source '${source.title}' after a runtime resolve failure." }
+            CatalogPage(items = emptyList(), rawItemCount = 0, nextSkip = null)
+        }
 
     suspend fun listImportMetadata(input: String): TraktPublicListImportMetadata = withContext(Dispatchers.Default) {
         val idPath = parseTraktListPath(input) ?: error(getString(Res.string.collections_trakt_invalid_list_id_or_url))

@@ -165,6 +165,7 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
         return
     }
     val currentPositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    rememberPlaybackSpeedForSourceReload()
     flushWatchProgress()
     stopActiveP2pStream()
     saveP2pStreamForReuse(
@@ -206,6 +207,7 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
         return
     }
     resetEpisodePanelAndNextEpisodeState()
+    rememberPlaybackSpeedForSourceReload()
     flushWatchProgress()
     stopActiveP2pStream()
     val epVideoId = episode.id
@@ -261,6 +263,7 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
         return
     }
     val currentPositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    rememberPlaybackSpeedForSourceReload()
     flushWatchProgress()
     stopActiveP2pStream()
     val currentVideoId = activeVideoId
@@ -309,6 +312,7 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(stream: StreamItem, episo
     if (openExternalSourceUrl(stream)) return
     val url = stream.playableDirectUrl ?: return
     resetEpisodePanelAndNextEpisodeState()
+    rememberPlaybackSpeedForSourceReload()
     flushWatchProgress()
     stopActiveP2pStream()
     val epVideoId = episode.id
@@ -327,6 +331,7 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(stream: StreamItem, episo
 internal fun PlayerScreenRuntime.switchToDownloadedEpisode(downloadItem: DownloadItem, episode: MetaVideo) {
     val localFileUri = DownloadsRepository.playableLocalFileUri(downloadItem) ?: return
     resetEpisodePanelAndNextEpisodeState()
+    rememberPlaybackSpeedForSourceReload()
     flushWatchProgress()
     stopActiveP2pStream()
 
@@ -451,6 +456,13 @@ internal fun PlayerScreenRuntime.openEpisodesPanel() {
 }
 
 private data class EpisodeResume(val positionMs: Long, val fraction: Float?)
+
+private fun PlayerScreenRuntime.rememberPlaybackSpeedForSourceReload() {
+    val stableSpeed = speedBoostRestoreSpeed ?: playbackSnapshot.playbackSpeed
+    pendingPlaybackSpeedRestore = stableSpeed.takeIf { kotlin.math.abs(it - 1f) > 0.01f }
+    speedBoostRestoreSpeed = null
+    isHoldToSpeedGestureActive = false
+}
 
 private fun PlayerScreenRuntime.resetEpisodePanelAndNextEpisodeState() {
     showNextEpisodeCard = false

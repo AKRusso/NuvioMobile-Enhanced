@@ -64,6 +64,7 @@ internal actual fun rememberPlayerDeviceStatus(): PlayerDeviceStatus {
 private fun readPlayerDeviceStatus(context: Context, batteryStatus: Intent?): PlayerDeviceStatus =
     PlayerDeviceStatus(
         timeLabel = DateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault()).format(Date()),
+        currentTimeMillis = System.currentTimeMillis(),
         batteryPercent = readBatteryPercent(context, batteryStatus),
         batteryCharging = isBatteryCharging(batteryStatus),
         networkType = readNetworkType(context),

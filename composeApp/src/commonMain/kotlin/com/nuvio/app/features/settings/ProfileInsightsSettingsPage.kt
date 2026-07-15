@@ -1326,14 +1326,18 @@ private fun buildProfileInsightsStats(
     } else {
         0.5f
     }
+    val recentActivityCount = profileRecentActivityCount(
+        watchedItems = watchedItems,
+        progressEntries = progressEntries,
+        recentCutoff = recentCutoff,
+    )
 
     return ProfileInsightsStats(
         continueCount = continueEntries.size,
         completedCount = completedContentItems.size,
         libraryCount = libraryItems.size,
         trackedDurationMs = progressEntries.sumOf(WatchProgressEntry::profileTrackedDurationMs),
-        recentActivityCount = watchedItems.count { it.markedAtEpochMs >= recentCutoff } +
-            progressEntries.count { it.lastUpdatedEpochMs >= recentCutoff },
+        recentActivityCount = recentActivityCount,
         upcomingCount = libraryItems.count { item ->
             item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true
         },
@@ -1359,8 +1363,7 @@ private fun buildProfileInsightsStats(
             libraryCount = libraryItems.size,
             continueCount = continueEntries.size,
             completedCount = completedContentItems.size,
-            recentActivityCount = watchedItems.count { it.markedAtEpochMs >= recentCutoff } +
-                progressEntries.count { it.lastUpdatedEpochMs >= recentCutoff },
+            recentActivityCount = recentActivityCount,
             upcomingCount = libraryItems.count { item ->
                 item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true
             },
@@ -1639,6 +1642,35 @@ private fun WatchProgressEntry.profileArtworkUrl(): String? =
     poster?.takeIf { it.isNotBlank() }
         ?: background?.takeIf { it.isNotBlank() }
         ?: episodeThumbnail?.takeIf { it.isNotBlank() }
+
+private fun profileRecentActivityCount(
+    watchedItems: List<WatchedItem>,
+    progressEntries: List<WatchProgressEntry>,
+    recentCutoff: Long,
+): Int = buildSet {
+    watchedItems
+        .asSequence()
+        .filter { item -> item.markedAtEpochMs >= recentCutoff }
+        .mapNotNull(WatchedItem::profileActivityKey)
+        .forEach(::add)
+    progressEntries
+        .asSequence()
+        .filter { entry -> entry.lastUpdatedEpochMs >= recentCutoff }
+        .mapNotNull(WatchProgressEntry::profileActivityKey)
+        .forEach(::add)
+}.size
+
+private fun WatchedItem.profileActivityKey(): String? {
+    val kind = type.profileCompletedContentKind() ?: return null
+    val contentId = id.trim().takeIf { it.isNotBlank() } ?: return null
+    return "$kind:$contentId:${season ?: -1}:${episode ?: -1}"
+}
+
+private fun WatchProgressEntry.profileActivityKey(): String? {
+    val kind = parentMetaType.profileCompletedContentKind() ?: return null
+    val contentId = parentMetaId.trim().takeIf { it.isNotBlank() } ?: return null
+    return "$kind:$contentId:${seasonNumber ?: -1}:${episodeNumber ?: -1}"
+}
 
 private fun List<LibraryItem>.profileTopGenre(): String? =
     asSequence()

@@ -17,6 +17,7 @@ import platform.Foundation.NSDateFormatterNoStyle
 import platform.Foundation.NSDateFormatterShortStyle
 import platform.Foundation.NSNotificationCenter
 import platform.Foundation.NSOperationQueue
+import platform.Foundation.timeIntervalSince1970
 import platform.Network.nw_interface_type_cellular
 import platform.Network.nw_interface_type_wifi
 import platform.Network.nw_path_get_status
@@ -135,6 +136,7 @@ private fun readPlayerDeviceStatus(fallbackBatteryPercent: Int?): PlayerDeviceSt
 
     return PlayerDeviceStatus(
         timeLabel = PlayerDeviceDateFormatter.formatter.stringFromDate(NSDate()),
+        currentTimeMillis = (NSDate().timeIntervalSince1970 * 1_000.0).toLong(),
         batteryPercent = ioPowerSourcePercent ?: uidDevicePercent ?: fallbackBatteryPercent,
         batteryCharging = when (NuvioIOPowerSourceBatteryCharging()) {
             0 -> false

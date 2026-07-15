@@ -131,6 +131,10 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 onControllerReady = { controller ->
                     playerController = controller
                     playerControllerSourceUrl = playerSurfaceSourceUrl
+                    pendingPlaybackSpeedRestore?.let { speed ->
+                        controller.setPlaybackSpeed(speed)
+                        pendingPlaybackSpeedRestore = null
+                    }
                 },
                 onSnapshot = { snapshot ->
                     playbackSnapshot = snapshot
@@ -454,6 +458,7 @@ private fun PlayerScreenRuntime.selectPlayerQuality(qualityId: String?) {
     }
 
     val resumePositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    rememberPlaybackSpeedForSourceReload()
     selectedPlayerQualityId = qualityId
     activePlaybackSourceUrl = playbackUrl
     activeInitialPositionMs = resumePositionMs
@@ -464,8 +469,18 @@ private fun PlayerScreenRuntime.selectPlayerQuality(qualityId: String?) {
     playerControllerSourceUrl = null
     playbackSnapshot = PlayerPlaybackSnapshot()
     initialLoadCompleted = false
+    trackPreferenceRestoreApplied = false
+    preferredAudioSelectionApplied = false
+    preferredSubtitleSelectionApplied = false
     showQualityPanel = false
     controlsVisible = true
+}
+
+private fun PlayerScreenRuntime.rememberPlaybackSpeedForSourceReload() {
+    val stableSpeed = speedBoostRestoreSpeed ?: playbackSnapshot.playbackSpeed
+    pendingPlaybackSpeedRestore = stableSpeed.takeIf { kotlin.math.abs(it - 1f) > 0.01f }
+    speedBoostRestoreSpeed = null
+    isHoldToSpeedGestureActive = false
 }
 
 @Composable

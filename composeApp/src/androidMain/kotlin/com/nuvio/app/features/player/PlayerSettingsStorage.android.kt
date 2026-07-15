@@ -40,6 +40,9 @@ actual object PlayerSettingsStorage {
     private const val subtitleOutlineWidthKey = "subtitle_outline_width"
     private const val subtitleBoldKey = "subtitle_bold"
     private const val subtitleFontSizeSpKey = "subtitle_font_size_sp"
+    private const val subtitleFontFamilyKey = "subtitle_font_family"
+    private const val subtitleCustomFontNameKey = "subtitle_custom_font_name"
+    private const val subtitleCustomFontPathKey = "subtitle_custom_font_path"
     private const val subtitleBottomOffsetKey = "subtitle_bottom_offset"
     private const val subtitleUseForcedSubtitlesKey = "subtitle_use_forced_subtitles"
     private const val subtitleShowOnlyPreferredLanguagesKey = "subtitle_show_only_preferred_languages"
@@ -109,6 +112,9 @@ actual object PlayerSettingsStorage {
         subtitleOutlineWidthKey,
         subtitleBoldKey,
         subtitleFontSizeSpKey,
+        subtitleFontFamilyKey,
+        subtitleCustomFontNameKey,
+        subtitleCustomFontPathKey,
         subtitleBottomOffsetKey,
         subtitleUseForcedSubtitlesKey,
         subtitleShowOnlyPreferredLanguagesKey,
@@ -475,6 +481,42 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putInt(ProfileScopedKey.of(subtitleFontSizeSpKey), fontSizeSp)
+            ?.apply()
+    }
+
+    actual fun loadSubtitleFontFamily(): String? =
+        preferences?.getString(ProfileScopedKey.of(subtitleFontFamilyKey), null)
+
+    actual fun saveSubtitleFontFamily(fontFamily: String) {
+        preferences
+            ?.edit()
+            ?.putString(ProfileScopedKey.of(subtitleFontFamilyKey), fontFamily)
+            ?.apply()
+    }
+
+    actual fun loadSubtitleCustomFontName(): String? =
+        preferences?.getString(ProfileScopedKey.of(subtitleCustomFontNameKey), null)
+
+    actual fun saveSubtitleCustomFontName(fontName: String?) {
+        preferences
+            ?.edit()
+            ?.apply {
+                val key = ProfileScopedKey.of(subtitleCustomFontNameKey)
+                if (fontName.isNullOrBlank()) remove(key) else putString(key, fontName)
+            }
+            ?.apply()
+    }
+
+    actual fun loadSubtitleCustomFontPath(): String? =
+        preferences?.getString(ProfileScopedKey.of(subtitleCustomFontPathKey), null)
+
+    actual fun saveSubtitleCustomFontPath(fontPath: String?) {
+        preferences
+            ?.edit()
+            ?.apply {
+                val key = ProfileScopedKey.of(subtitleCustomFontPathKey)
+                if (fontPath.isNullOrBlank()) remove(key) else putString(key, fontPath)
+            }
             ?.apply()
     }
 
@@ -1111,6 +1153,9 @@ actual object PlayerSettingsStorage {
         loadSubtitleOutlineWidth()?.let { put(subtitleOutlineWidthKey, encodeSyncInt(it)) }
         loadSubtitleBold()?.let { put(subtitleBoldKey, encodeSyncBoolean(it)) }
         loadSubtitleFontSizeSp()?.let { put(subtitleFontSizeSpKey, encodeSyncInt(it)) }
+        loadSubtitleFontFamily()?.let { put(subtitleFontFamilyKey, encodeSyncString(it)) }
+        loadSubtitleCustomFontName()?.let { put(subtitleCustomFontNameKey, encodeSyncString(it)) }
+        loadSubtitleCustomFontPath()?.let { put(subtitleCustomFontPathKey, encodeSyncString(it)) }
         loadSubtitleBottomOffset()?.let { put(subtitleBottomOffsetKey, encodeSyncInt(it)) }
         loadSubtitleUseForcedSubtitles()?.let { put(subtitleUseForcedSubtitlesKey, encodeSyncBoolean(it)) }
         loadSubtitleShowOnlyPreferredLanguages()?.let { put(subtitleShowOnlyPreferredLanguagesKey, encodeSyncBoolean(it)) }
@@ -1186,6 +1231,9 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncInt(subtitleOutlineWidthKey)?.let(::saveSubtitleOutlineWidth)
         payload.decodeSyncBoolean(subtitleBoldKey)?.let(::saveSubtitleBold)
         payload.decodeSyncInt(subtitleFontSizeSpKey)?.let(::saveSubtitleFontSizeSp)
+        payload.decodeSyncString(subtitleFontFamilyKey)?.let(::saveSubtitleFontFamily)
+        payload.decodeSyncString(subtitleCustomFontNameKey)?.let(::saveSubtitleCustomFontName)
+        payload.decodeSyncString(subtitleCustomFontPathKey)?.let(::saveSubtitleCustomFontPath)
         payload.decodeSyncInt(subtitleBottomOffsetKey)?.let(::saveSubtitleBottomOffset)
         payload.decodeSyncBoolean(subtitleUseForcedSubtitlesKey)?.let(::saveSubtitleUseForcedSubtitles)
         payload.decodeSyncBoolean(subtitleShowOnlyPreferredLanguagesKey)?.let(::saveSubtitleShowOnlyPreferredLanguages)

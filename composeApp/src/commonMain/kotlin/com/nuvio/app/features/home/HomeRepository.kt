@@ -445,8 +445,8 @@ object HomeRepository {
 
     private suspend fun CollectionSource.resolveCollectionHeroItems(addons: List<ManagedAddon>): List<MetaPreview> {
         val page = when {
-            isTmdb -> TmdbCollectionSourceResolver.resolve(source = this, page = 1)
-            isTrakt -> TraktPublicListSourceResolver.resolve(source = this, page = 1)
+            isTmdb -> TmdbCollectionSourceResolver.resolveOrEmpty(source = this, page = 1)
+            isTrakt -> TraktPublicListSourceResolver.resolveOrEmpty(source = this, page = 1)
             else -> {
                 val catalogSource = addonCatalogSource() ?: return emptyList()
                 val resolvedCatalog = addons.findCollectionCatalog(catalogSource) ?: return emptyList()

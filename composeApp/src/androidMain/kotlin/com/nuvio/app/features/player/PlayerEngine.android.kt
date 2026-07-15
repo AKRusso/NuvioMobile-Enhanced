@@ -73,6 +73,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -1183,6 +1184,8 @@ private class NuvioLibmpvView(
                 mpv.setPropertyString("sub-border-color", style.outlineColor.toMpvColor())
                 mpv.setPropertyString("sub-border-style", style.toMpvSubtitleBorderStyle())
                 mpv.setPropertyString("sub-bold", if (style.bold) "yes" else "no")
+                style.customFontDirectory()?.let { mpv.setPropertyString("sub-fonts-dir", it) }
+                mpv.setPropertyString("sub-font", style.toMpvSubtitleFont())
                 mpv.setPropertyInt("sub-font-size", style.toMpvSubtitleFontSize())
                 mpv.setPropertyInt("sub-outline-size", style.toMpvSubtitleOutlineSize())
                 mpv.setPropertyInt("sub-border-size", style.toMpvSubtitleOutlineSize())
@@ -1512,12 +1515,44 @@ private fun PlayerView.applySubtitleStyle(style: SubtitleStyleState) {
                 android.graphics.Color.TRANSPARENT,
                 if (style.outlineEnabled) CaptionStyleCompat.EDGE_TYPE_OUTLINE else CaptionStyleCompat.EDGE_TYPE_NONE,
                 style.outlineColor.toArgb(),
-                if (style.bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT,
+                style.toAndroidSubtitleTypeface(),
             )
         )
         setFixedTextSize(TypedValue.COMPLEX_UNIT_SP, style.fontSizeSp.toFloat())
     }
 }
+
+private fun SubtitleStyleState.toAndroidSubtitleTypeface(): Typeface {
+    val typefaceStyle = if (bold) Typeface.BOLD else Typeface.NORMAL
+    if (fontFamily == SubtitleFontFamily.Custom && !customFontPath.isNullOrBlank()) {
+        runCatching { Typeface.createFromFile(customFontPath) }
+            .getOrNull()
+            ?.let { return Typeface.create(it, typefaceStyle) }
+    }
+    return when (fontFamily) {
+        SubtitleFontFamily.System -> if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        SubtitleFontFamily.SansSerif -> Typeface.create(Typeface.SANS_SERIF, typefaceStyle)
+        SubtitleFontFamily.Serif -> Typeface.create(Typeface.SERIF, typefaceStyle)
+        SubtitleFontFamily.Monospace -> Typeface.create(Typeface.MONOSPACE, typefaceStyle)
+        SubtitleFontFamily.Rounded -> Typeface.create("sans-serif-rounded", typefaceStyle)
+        SubtitleFontFamily.Custom -> if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+    }
+}
+
+private fun SubtitleStyleState.toMpvSubtitleFont(): String =
+    when (fontFamily) {
+        SubtitleFontFamily.System -> "sans-serif"
+        SubtitleFontFamily.SansSerif -> "sans-serif"
+        SubtitleFontFamily.Serif -> "serif"
+        SubtitleFontFamily.Monospace -> "monospace"
+        SubtitleFontFamily.Rounded -> "sans-serif-rounded"
+        SubtitleFontFamily.Custom -> customFontName?.takeIf { it.isNotBlank() } ?: "sans-serif"
+    }
+
+private fun SubtitleStyleState.customFontDirectory(): String? =
+    customFontPath
+        ?.takeIf { fontFamily == SubtitleFontFamily.Custom && it.isNotBlank() }
+        ?.let { File(it).parentFile?.absolutePath }
 
 private fun ExoPlayer.extractAudioTracks(context: Context): List<AudioTrack> {
     val tracks = mutableListOf<AudioTrack>()

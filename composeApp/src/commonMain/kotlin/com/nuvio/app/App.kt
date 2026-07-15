@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -3248,9 +3249,17 @@ private fun MainAppContent(
                             ?: preview.type.replaceFirstChar { char ->
                                 if (char.isLowerCase()) char.titlecase() else char.toString()
                             },
+                        synopsis = preview.description?.trim()?.takeIf { it.isNotBlank() },
                         isWatched = isWatched,
                         anchor = selectedPosterAnchor,
                         actions = listOf(
+                            PosterZoomOverlayAction(
+                                icon = Icons.Default.Info,
+                                label = stringResource(Res.string.home_view_details),
+                                onSelected = {
+                                    navController.navigate(DetailRoute(type = preview.type, id = preview.id))
+                                },
+                            ),
                             PosterZoomOverlayAction(
                                 icon = if (isSaved) Icons.Default.DeleteOutline else Icons.Default.Add,
                                 label = if (isSaved) {

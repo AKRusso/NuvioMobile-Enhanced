@@ -46,6 +46,15 @@ enum class AddonSubtitleStartupMode {
     ALL_SUBTITLES,
 }
 
+enum class SubtitleFontFamily {
+    System,
+    SansSerif,
+    Serif,
+    Monospace,
+    Rounded,
+    Custom,
+}
+
 const val SUBTITLE_DELAY_MIN_MS = -600_000
 const val SUBTITLE_DELAY_MAX_MS = 600_000
 const val SUBTITLE_DELAY_STEP_MS = 100
@@ -58,6 +67,9 @@ data class SubtitleStyleState(
     val outlineWidth: Int = 2,
     val bold: Boolean = false,
     val fontSizeSp: Int = 18,
+    val fontFamily: SubtitleFontFamily = SubtitleFontFamily.System,
+    val customFontName: String? = null,
+    val customFontPath: String? = null,
     val bottomOffset: Int = 20,
     val useForcedSubtitles: Boolean = false,
     val showOnlyPreferredLanguages: Boolean = false,
@@ -66,6 +78,11 @@ data class SubtitleStyleState(
         val DEFAULT = SubtitleStyleState()
     }
 }
+
+data class SubtitleFontImportResult(
+    val displayName: String,
+    val path: String,
+)
 
 data class SubtitleSyncCue(
     val startTimeMs: Long,

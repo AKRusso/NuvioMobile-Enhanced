@@ -73,6 +73,8 @@ interface NuvioPlayerBridge {
         outlineSize: Float,
         bold: Boolean,
         fontSize: Float,
+        fontFamily: String,
+        fontDirectory: String?,
         subPos: Int,
     )
     fun getIsLoading(): Boolean

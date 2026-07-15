@@ -321,12 +321,12 @@ object FolderDetailRepository {
             runCatching {
                 val source = currentTab.source
                 when {
-                    source?.isTmdb == true -> TmdbCollectionSourceResolver.resolve(
+                    source?.isTmdb == true -> TmdbCollectionSourceResolver.resolveOrEmpty(
                         source = source,
                         page = if (reset) 1 else requestedSkip,
                     )
 
-                    source?.isTrakt == true -> TraktPublicListSourceResolver.resolve(
+                    source?.isTrakt == true -> TraktPublicListSourceResolver.resolveOrEmpty(
                         source = source,
                         page = if (reset) 1 else requestedSkip,
                     )

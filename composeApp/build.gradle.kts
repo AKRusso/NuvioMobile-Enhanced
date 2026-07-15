@@ -389,6 +389,10 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/iospowersource.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
                 }
+                create("iosappicon") {
+                    defFile(project.file("src/nativeInterop/cinterop/iosappicon.def"))
+                    compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
+                }
             }
 
             if (iosDistribution == "full") {

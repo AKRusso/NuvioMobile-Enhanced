@@ -23,6 +23,7 @@ import com.nuvio.app.features.p2p.P2pSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.plugins.PluginRepository
 import com.nuvio.app.features.search.SearchHistoryRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.streams.StreamBadgeSettingsRepository
 import com.nuvio.app.features.streams.StreamSourcePreferencesRepository
@@ -231,6 +232,9 @@ object ProfileRepository {
         }
         runProfileChangeStep("home_catalog_settings") {
             HomeCatalogSettingsRepository.onProfileChanged()
+        }
+        runProfileChangeStep("nuvio_enhanced_settings") {
+            NuvioEnhancedSettingsRepository.onProfileChanged()
         }
         runProfileChangeStep("home") {
             HomeRepository.clear()

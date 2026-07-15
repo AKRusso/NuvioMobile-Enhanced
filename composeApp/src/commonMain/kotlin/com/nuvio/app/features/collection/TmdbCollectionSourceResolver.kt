@@ -8,6 +8,7 @@ import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.buildTmdbUrl
 import com.nuvio.app.features.tmdb.normalizeTmdbLanguage
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -49,6 +50,15 @@ object TmdbCollectionSourceResolver {
             TmdbCollectionSourceType.DISCOVER -> resolveDiscover(source, apiKey, language, page)
         }
     }
+
+    suspend fun resolveOrEmpty(source: CollectionSource, page: Int = 1): CatalogPage =
+        try {
+            resolve(source, page)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            log.w(error) { "Skipping TMDB collection source '${source.title}' after a runtime resolve failure." }
+            emptyCatalogPage()
+        }
 
     suspend fun importMetadata(sourceType: TmdbCollectionSourceType, id: Int): TmdbSourceImportMetadata =
         withContext(Dispatchers.Default) {

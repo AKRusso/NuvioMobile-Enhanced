@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
@@ -128,6 +129,7 @@ fun NuvioPosterZoomActionOverlay(
     imageUrl: String?,
     title: String,
     subtitle: String?,
+    synopsis: String? = null,
     isWatched: Boolean = false,
     anchor: PosterZoomAnchor?,
     actions: List<PosterZoomOverlayAction>,
@@ -217,6 +219,22 @@ fun NuvioPosterZoomActionOverlay(
         val menuWidth = min(280.dp, maxWidth - NuvioTokens.Space.s48)
         val columnWidth = max(posterWidth, menuWidth)
 
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.18f
+                        scaleY = 1.18f
+                        alpha = scrim.value.coerceIn(0f, 1f)
+                    }
+                    .blur(34.dp),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -285,6 +303,29 @@ fun NuvioPosterZoomActionOverlay(
                         modifier = Modifier.padding(horizontal = NuvioTokens.Space.s12),
                     )
                 }
+                synopsis
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { overview ->
+                        Spacer(modifier = Modifier.height(NuvioTokens.Space.s10))
+                        Text(
+                            text = overview,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = tokens.colors.textSecondary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    color = tokens.colors.surfaceElevated.copy(alpha = 0.72f),
+                                    shape = RoundedCornerShape(NuvioTokens.Space.s16),
+                                )
+                                .padding(
+                                    horizontal = NuvioTokens.Space.s14,
+                                    vertical = NuvioTokens.Space.s10,
+                                ),
+                        )
+                    }
             }
 
             Spacer(modifier = Modifier.height(NuvioTokens.Space.s14))

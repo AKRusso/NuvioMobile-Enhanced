@@ -349,6 +349,10 @@
     <string name="compose_player_episode_title_format">S%1$dE%2$d • %3$s</string>
     <string name="compose_player_episodes">Episodios</string>
     <string name="compose_player_font_size">Tamaño de fuente</string>
+    <string name="compose_player_font_family">Fuente de subtítulos</string>
+    <string name="compose_player_font_custom">Personalizada</string>
+    <string name="compose_player_font_import">Importar fuente</string>
+    <string name="compose_player_font_clear_custom">Quitar personalizada</string>
     <string name="compose_player_font_size_value">%1$dsp</string>
     <string name="compose_player_lock_controls">Bloquear controles del reproductor</string>
     <string name="compose_player_loading_lines">Cargando líneas de subtítulos...</string>
@@ -984,6 +988,7 @@
     <string name="settings_playback_timeout_instant">Instantáneo</string>
     <string name="settings_playback_timeout_seconds">%1$ss</string>
     <string name="settings_playback_timeout_unlimited">Ilimitado</string>
+    <string name="player_status_time_left">Quedan %1$s</string>
     <string name="settings_playback_tunneled_playback">Reproducción tunneled</string>
     <string name="settings_playback_tunneled_playback_description">Activa la reproducción tunneled para una menor latencia en la sincronización de audio/video.</string>
     <string name="settings_tmdb_add_api_key_first">Añade tu propia clave API de TMDB abajo antes de activar el enriquecimiento.</string>
@@ -2016,6 +2021,14 @@
     <string name="nuvio_enhanced_player_status_overlay_desc">Muestra Wi‑Fi/LTE, hora y batería en una superposición superior compacta mientras los controles del reproductor están visibles.</string>
     <string name="nuvio_enhanced_status_bar_title">Barra de estado</string>
     <string name="nuvio_enhanced_status_bar_desc">Muestra la barra de estado de Android en toda la app. Desactívala para una apariencia de pantalla completa más limpia.</string>
+    <string name="nuvio_enhanced_app_icon_title">Icono de la app</string>
+    <string name="nuvio_enhanced_app_icon_desc">Elige un icono de inicio para este dispositivo. Android lo aplica al instante; iOS puede mostrar una confirmación del sistema.</string>
+    <string name="nuvio_enhanced_app_icon_default">Predeterminado</string>
+    <string name="nuvio_enhanced_app_icon_neon">Neón</string>
+    <string name="nuvio_enhanced_app_icon_gear">Engranaje</string>
+    <string name="nuvio_enhanced_app_icon_chrome">Cromo</string>
+    <string name="nuvio_enhanced_app_icon_aurora">Aurora</string>
+    <string name="nuvio_enhanced_app_icon_emerald">Esmeralda</string>
     <string name="nuvio_enhanced_hero_display_title">Modo de visualización del hero</string>
     <string name="nuvio_enhanced_hero_display_desc">Cinemático prioriza la imagen, Equilibrado es el valor premium predeterminado e Informativo muestra más metadatos.</string>
     <string name="nuvio_enhanced_hero_mode_cinematic">Cinemático</string>

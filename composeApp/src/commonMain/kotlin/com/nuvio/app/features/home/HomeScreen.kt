@@ -1347,7 +1347,7 @@ internal fun buildHomeNextUpSeedCandidates(
     val progressSeeds = progressEntries
         .asSequence()
         .filter { entry -> entry.parentMetaType.isSeriesTypeForContinueWatching() }
-        .filter { entry -> entry.seasonNumber != null && entry.episodeNumber != null && entry.seasonNumber != 0 }
+        .filter { entry -> entry.seasonNumber != null && entry.episodeNumber != null }
         .filter { entry -> !isMalformedNextUpSeedContentId(entry.parentMetaId) }
         .filter { entry ->
             if (isTraktProgressActive) {
@@ -1361,7 +1361,6 @@ internal fun buildHomeNextUpSeedCandidates(
         item.type.isSeriesTypeForContinueWatching() &&
             item.season != null &&
             item.episode != null &&
-            item.season != 0 &&
             !isMalformedNextUpSeedContentId(item.id)
     }
 
@@ -1371,7 +1370,6 @@ internal fun buildHomeNextUpSeedCandidates(
         preferFurthestEpisode = preferFurthestEpisode,
     ).mapNotNull { (content, completed) ->
         if (!content.type.isSeriesTypeForContinueWatching()) return@mapNotNull null
-        if (completed.seasonNumber == 0) return@mapNotNull null
         if (isMalformedNextUpSeedContentId(content.id)) return@mapNotNull null
         CompletedSeriesCandidate(
             content = content,

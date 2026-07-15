@@ -370,6 +370,10 @@
     <string name="compose_player_episode_title_format">S%1$dB%2$d • %3$s</string>
     <string name="compose_player_episodes">Bölümler</string>
     <string name="compose_player_font_size">Yazı boyutu</string>
+    <string name="compose_player_font_family">Altyazı fontu</string>
+    <string name="compose_player_font_custom">Özel</string>
+    <string name="compose_player_font_import">Font içe aktar</string>
+    <string name="compose_player_font_clear_custom">Özel fontu kaldır</string>
     <string name="compose_player_font_size_value">%1$dsp</string>
     <string name="compose_player_lock_controls">Oynatıcı kontrollerini kilitle</string>
     <string name="compose_player_no_audio_tracks_available">Kullanılabilir ses parçası yok</string>
@@ -990,6 +994,7 @@
     <string name="settings_playback_timeout_instant">Hemen</string>
     <string name="settings_playback_timeout_seconds">%1$ssn</string>
     <string name="settings_playback_timeout_unlimited">Sınırsız</string>
+    <string name="player_status_time_left">%1$s kaldı</string>
     <string name="settings_playback_tunneled_playback">Tunneled oynatma</string>
     <string name="settings_playback_tunneled_playback_description">Daha düşük gecikmeli ses/video senkronu için tunneled oynatmayı aç.</string>
     <string name="settings_tmdb_add_api_key_first">Zenginleştirmeyi açmadan önce aşağıya kendi TMDB API anahtarını ekle.</string>
@@ -1740,6 +1745,14 @@
     <string name="nuvio_enhanced_player_status_overlay_desc">Player kontrolleri görünürken üstte Wi-Fi/LTE, saat ve batarya bilgisini kompakt bir göstergeyle gösterir.</string>
     <string name="nuvio_enhanced_status_bar_title">Durum çubuğu</string>
     <string name="nuvio_enhanced_status_bar_desc">Android durum çubuğunu uygulama genelinde gösterir. Daha temiz tam ekran görünüm için kapatabilirsin.</string>
+    <string name="nuvio_enhanced_app_icon_title">Uygulama simgesi</string>
+    <string name="nuvio_enhanced_app_icon_desc">Bu cihaz için launcher simgesini seç. Android hemen uygular; iOS sistem onayı gösterebilir.</string>
+    <string name="nuvio_enhanced_app_icon_default">Varsayılan</string>
+    <string name="nuvio_enhanced_app_icon_neon">Neon</string>
+    <string name="nuvio_enhanced_app_icon_gear">Gear</string>
+    <string name="nuvio_enhanced_app_icon_chrome">Chrome</string>
+    <string name="nuvio_enhanced_app_icon_aurora">Aurora</string>
+    <string name="nuvio_enhanced_app_icon_emerald">Emerald</string>
     <string name="nuvio_enhanced_hero_display_title">Hero gösterim modu</string>
     <string name="nuvio_enhanced_hero_display_desc">Cinematic görseli öne çıkarır, Balanced premium varsayılandır, Info Rich daha fazla metadata gösterir.</string>
     <string name="nuvio_enhanced_hero_mode_cinematic">Cinematic</string>

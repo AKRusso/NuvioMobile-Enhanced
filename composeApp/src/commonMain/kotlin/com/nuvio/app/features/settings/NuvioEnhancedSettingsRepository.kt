@@ -35,6 +35,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
+    val selectedAppIconId: String = NuvioAppIconOption.Default.id,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -78,6 +79,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     DetailExperienceControls("detail_experience_controls"),
     PlayerStatusOverlay("player_status_overlay"),
     StatusBarVisibility("status_bar_visibility"),
+    AppIconPicker("app_icon_picker"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
     PremiumLabs("premium_labs"),
@@ -115,6 +117,7 @@ private data class StoredNuvioEnhancedSettings(
     val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
     val showContinueWatchingReadyBadge: Boolean = true,
+    val selectedAppIconId: String = NuvioAppIconOption.Default.id,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -158,7 +161,7 @@ internal object NuvioEnhancedSettingsRepository {
     fun onProfileChanged() {
         hasLoaded = false
         stored = StoredNuvioEnhancedSettings()
-        _uiState.value = NuvioEnhancedSettingsUiState()
+        ensureLoaded()
     }
 
     fun exportPayload(): String {
@@ -279,6 +282,13 @@ internal object NuvioEnhancedSettingsRepository {
         copy(showContinueWatchingReadyBadge = enabled)
     }
 
+    fun setSelectedAppIcon(option: NuvioAppIconOption) {
+        NuvioAppIconSwitcher.apply(option.id)
+        update {
+            copy(selectedAppIconId = option.id)
+        }
+    }
+
     fun setReleaseRadarLibraryOnly(enabled: Boolean) = update {
         copy(releaseRadarLibraryOnly = enabled)
     }
@@ -349,6 +359,7 @@ internal object NuvioEnhancedSettingsRepository {
             statusBarVisible = stored.statusBarVisible,
             playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
             showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
+            selectedAppIconId = stored.selectedAppIconId,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,
             releaseRadarWindowDays = stored.releaseRadarWindowDays.coerceIn(7, 45),
             releaseRadarContentFilter = stored.releaseRadarContentFilter,

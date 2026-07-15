@@ -269,6 +269,8 @@ actual fun PlatformPlayerSurface(
                     outlineSize = if (style.outlineEnabled) style.outlineWidth.toFloat() else 0f,
                     bold = style.bold,
                     fontSize = style.toMpvSubtitleFontSize(),
+                    fontFamily = style.toIosMpvSubtitleFont(),
+                    fontDirectory = style.customFontDirectory(),
                     subPos = style.toMpvSubtitlePosition(),
                 )
             }
@@ -442,6 +444,29 @@ private fun SubtitleStyleState.toMpvSubtitlePosition(): Int =
 
 private fun SubtitleStyleState.toMpvSubtitleFontSize(): Float =
     (fontSizeSp * 3f).coerceIn(24f, 96f)
+
+private fun SubtitleFontFamily.toIosMpvSubtitleFont(): String =
+    when (this) {
+        SubtitleFontFamily.System -> "Helvetica Neue"
+        SubtitleFontFamily.SansSerif -> "Helvetica Neue"
+        SubtitleFontFamily.Serif -> "Times New Roman"
+        SubtitleFontFamily.Monospace -> "Menlo"
+        SubtitleFontFamily.Rounded -> "Arial Rounded MT Bold"
+        SubtitleFontFamily.Custom -> "Helvetica Neue"
+    }
+
+private fun SubtitleStyleState.toIosMpvSubtitleFont(): String =
+    if (fontFamily == SubtitleFontFamily.Custom) {
+        customFontName?.takeIf { it.isNotBlank() } ?: "Helvetica Neue"
+    } else {
+        fontFamily.toIosMpvSubtitleFont()
+    }
+
+private fun SubtitleStyleState.customFontDirectory(): String? =
+    customFontPath
+        ?.takeIf { fontFamily == SubtitleFontFamily.Custom && it.isNotBlank() }
+        ?.substringBeforeLast('/', missingDelimiterValue = "")
+        ?.takeIf { it.isNotBlank() }
 
 private fun Int.toHexByte(): String {
     val digits = "0123456789ABCDEF"

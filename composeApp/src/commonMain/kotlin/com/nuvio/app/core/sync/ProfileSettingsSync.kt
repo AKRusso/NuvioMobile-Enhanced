@@ -301,7 +301,9 @@ object ProfileSettingsSync {
 
         EpisodeReleaseNotificationsRepository.applyFromSyncEnabled(blob.features.notificationsSettings.episodeReleaseAlertsEnabled)
 
-        NuvioEnhancedSettingsRepository.replacePayload(blob.features.nuvioEnhancedSettingsPayload)
+        blob.features.nuvioEnhancedSettingsPayload
+            .takeIf { it.isNotBlank() }
+            ?.let(NuvioEnhancedSettingsRepository::replacePayload)
     }
 
     private fun ensureRepositoriesLoaded() {

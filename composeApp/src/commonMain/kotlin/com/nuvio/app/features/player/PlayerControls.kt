@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forward10
@@ -203,6 +204,7 @@ internal fun PlayerControlsShell(
             if (showQuietDeviceStatusOverlay && deviceStatus != null) {
                 PlayerDeviceStatusOverlay(
                     status = deviceStatus,
+                    playbackSnapshot = playbackSnapshot,
                     metrics = metrics,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -256,12 +258,14 @@ internal fun PlayerControlsShell(
 @Composable
 private fun PlayerDeviceStatusOverlay(
     status: PlayerDeviceStatus,
+    playbackSnapshot: PlayerPlaybackSnapshot,
     metrics: PlayerLayoutMetrics,
     modifier: Modifier = Modifier,
 ) {
     val typeScale = MaterialTheme.nuvioTypeScale
+    val remainingLabel = playerFinishRemainingLabel(playbackSnapshot)
     Surface(
-        modifier = modifier.widthIn(min = 220.dp, max = 360.dp),
+        modifier = modifier.widthIn(min = 220.dp, max = 460.dp),
         shape = RoundedCornerShape(999.dp),
         color = Color.Black.copy(alpha = 0.34f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
@@ -303,7 +307,29 @@ private fun PlayerDeviceStatusOverlay(
                 charging = status.batteryCharging,
                 metrics = metrics,
             )
+            if (remainingLabel != null) {
+                PlayerDeviceStatusItem(
+                    icon = Icons.Rounded.AccessTime,
+                    text = stringResource(Res.string.player_status_time_left, remainingLabel),
+                    metrics = metrics,
+                )
+            }
         }
+    }
+}
+
+private fun playerFinishRemainingLabel(snapshot: PlayerPlaybackSnapshot): String? {
+    val durationMs = snapshot.durationMs.takeIf { it > 0L } ?: return null
+    val remainingMs = (durationMs - snapshot.positionMs).coerceAtLeast(0L)
+    if (remainingMs <= 0L) return null
+    val speed = snapshot.playbackSpeed.takeIf { it > 0.05f } ?: 1f
+    val adjustedMinutes = ((remainingMs / speed) / 60_000f).roundToLong().coerceAtLeast(1L)
+    val hours = adjustedMinutes / 60L
+    val minutes = adjustedMinutes % 60L
+    return when {
+        hours <= 0L -> "${minutes}m"
+        minutes <= 0L -> "${hours}h"
+        else -> "${hours}h ${minutes}m"
     }
 }
 

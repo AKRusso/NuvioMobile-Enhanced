@@ -148,6 +148,7 @@ private const val STREAMING_SHOWCASE_HERO_MIN_HEIGHT_DP = 420f
 private const val STREAMING_SHOWCASE_HERO_MAX_HEIGHT_DP = 620f
 private const val HERO_MDBLIST_ENRICH_TIMEOUT_MS = 5_000L
 private const val HERO_TMDB_OVERVIEW_TIMEOUT_MS = 4_000L
+private const val HERO_DETAIL_META_TIMEOUT_MS = 7_000L
 private const val HERO_REFRESH_SCALE_X_MULTIPLIER = 0.018f
 private const val HERO_REFRESH_SCALE_Y_MULTIPLIER = 0.056f
 private const val HERO_REFRESH_TRANSLATION_Y_PX = 5f
@@ -2506,10 +2507,13 @@ private suspend fun fetchHeroDetailMeta(
     onBaseMeta: (MetaDetails) -> Unit = {},
 ): MetaDetails? =
     runCatching {
-        val meta = MetaDetailsRepository.fetch(
-            type = item.type,
-            id = item.id,
-        ) ?: return@runCatching null
+        val meta = withTimeoutOrNull(HERO_DETAIL_META_TIMEOUT_MS) {
+            MetaDetailsRepository.fetch(
+                type = item.type,
+                id = item.id,
+            )
+        } ?: return@runCatching null
+        onBaseMeta(meta)
         val metaWithFallbacks = meta.withHeroMetadataFallback(item)
         onBaseMeta(metaWithFallbacks)
         MdbListSettingsRepository.ensureLoaded()

@@ -274,6 +274,11 @@ object PlayerSettingsRepository {
                 ?: SubtitleStyleState.DEFAULT.bold,
             fontSizeSp = PlayerSettingsStorage.loadSubtitleFontSizeSp()
                 ?: SubtitleStyleState.DEFAULT.fontSizeSp,
+            fontFamily = PlayerSettingsStorage.loadSubtitleFontFamily()
+                ?.let { runCatching { SubtitleFontFamily.valueOf(it) }.getOrNull() }
+                ?: SubtitleStyleState.DEFAULT.fontFamily,
+            customFontName = PlayerSettingsStorage.loadSubtitleCustomFontName(),
+            customFontPath = PlayerSettingsStorage.loadSubtitleCustomFontPath(),
             bottomOffset = PlayerSettingsStorage.loadSubtitleBottomOffset()
                 ?: SubtitleStyleState.DEFAULT.bottomOffset,
             useForcedSubtitles = PlayerSettingsStorage.loadSubtitleUseForcedSubtitles()
@@ -509,6 +514,9 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveSubtitleOutlineWidth(style.outlineWidth)
         PlayerSettingsStorage.saveSubtitleBold(style.bold)
         PlayerSettingsStorage.saveSubtitleFontSizeSp(style.fontSizeSp)
+        PlayerSettingsStorage.saveSubtitleFontFamily(style.fontFamily.name)
+        PlayerSettingsStorage.saveSubtitleCustomFontName(style.customFontName)
+        PlayerSettingsStorage.saveSubtitleCustomFontPath(style.customFontPath)
         PlayerSettingsStorage.saveSubtitleBottomOffset(style.bottomOffset)
         PlayerSettingsStorage.saveSubtitleUseForcedSubtitles(style.useForcedSubtitles)
         PlayerSettingsStorage.saveSubtitleShowOnlyPreferredLanguages(style.showOnlyPreferredLanguages)

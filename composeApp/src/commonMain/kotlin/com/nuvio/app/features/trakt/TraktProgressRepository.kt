@@ -936,7 +936,7 @@ object TraktProgressRepository {
         val pathId = resolveToTraktAcceptedId(headers = headers, contentId = contentId)
         val response = httpRequestRaw(
             method = "GET",
-            url = "$BASE_URL/shows/$pathId/progress/watched?hidden=false&specials=false&count_specials=false",
+            url = "$BASE_URL/shows/$pathId/progress/watched?hidden=false&specials=true&count_specials=false",
             headers = headers,
             body = "",
         )
@@ -948,7 +948,7 @@ object TraktProgressRepository {
 
         val completed = mutableListOf<WatchProgressEntry>()
         progress.seasons.orEmpty()
-            .filter { season -> (season.number ?: 0) > 0 }
+            .filter { season -> (season.number ?: 0) >= 0 }
             .forEach { season ->
                 val seasonNumber = season.number ?: return@forEach
                 season.episodes.orEmpty()
@@ -1426,7 +1426,7 @@ object TraktProgressRepository {
 
         val completedEpisode = item.seasons.orEmpty()
             .asSequence()
-            .filter { season -> (season.number ?: 0) > 0 }
+            .filter { season -> (season.number ?: 0) >= 0 }
             .flatMap { season ->
                 val seasonNumber = season.number ?: return@flatMap emptySequence()
                 season.episodes.orEmpty()

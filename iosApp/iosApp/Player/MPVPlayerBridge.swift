@@ -174,6 +174,8 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
         outlineSize: Float,
         bold: Bool,
         fontSize: Float,
+        fontFamily: String,
+        fontDirectory: String?,
         subPos: Int32
     ) {
         playerVC?.applySubtitleStyle(
@@ -183,6 +185,8 @@ final class MPVPlayerBridgeImpl: NSObject, NuvioPlayerBridge {
             outlineSize: outlineSize,
             bold: bold,
             fontSize: fontSize,
+            fontFamily: fontFamily,
+            fontDirectory: fontDirectory,
             subPos: Int(subPos)
         )
     }
@@ -1119,6 +1123,8 @@ final class MPVPlayerViewController: UIViewController {
         outlineSize: Float,
         bold: Bool,
         fontSize: Float,
+        fontFamily: String,
+        fontDirectory: String?,
         subPos: Int
     ) {
         guard mpv != nil else { return }
@@ -1129,6 +1135,10 @@ final class MPVPlayerViewController: UIViewController {
         checkError(mpv_set_property_string(mpv, "sub-outline-color", outlineColor))
         checkError(mpv_set_property_string(mpv, "sub-border-style", backgroundColor.hasPrefix("#00") ? "outline-and-shadow" : "opaque-box"))
         setStringProperty("sub-bold", bold ? "yes" : "no")
+        if let fontDirectory, !fontDirectory.isEmpty {
+            checkError(mpv_set_property_string(mpv, "sub-fonts-dir", fontDirectory))
+        }
+        checkError(mpv_set_property_string(mpv, "sub-font", fontFamily))
 
         var outline = Double(outlineSize)
         checkError(mpv_set_property(mpv, "sub-outline-size", MPV_FORMAT_DOUBLE, &outline))

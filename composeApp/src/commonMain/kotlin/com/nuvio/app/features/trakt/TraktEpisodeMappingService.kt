@@ -514,7 +514,7 @@ object TraktEpisodeMappingService {
 
         return seasons
             .asSequence()
-            .filter { (it.number ?: 0) > 0 } // Skip specials (season 0)
+            .filter { (it.number ?: 0) >= 0 }
             .sortedBy { it.number }
             .flatMap { seasonDto ->
                 seasonDto.episodes.orEmpty().asSequence().mapNotNull { episodeDto ->

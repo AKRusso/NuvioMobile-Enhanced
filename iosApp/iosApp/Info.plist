@@ -19,6 +19,47 @@
 			</array>
 		</dict>
 	</array>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundleAlternateIcons</key>
+		<dict>
+			<key>IconAurora</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconAurora</string>
+				</array>
+			</dict>
+			<key>IconChrome</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconChrome</string>
+				</array>
+			</dict>
+			<key>IconEmerald</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconEmerald</string>
+				</array>
+			</dict>
+			<key>IconGear</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconGear</string>
+				</array>
+			</dict>
+			<key>IconNeon</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconNeon</string>
+				</array>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

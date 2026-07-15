@@ -329,10 +329,13 @@ object WatchedRepository {
             when (event.operation.lowercase()) {
                 watchedDeltaOperationUpsert -> {
                     upsertCount += 1
+                    val current = itemsByKey[key]
                     itemsByKey[key] = WatchedItem(
                         id = event.contentId,
                         type = event.contentType,
-                        name = event.title,
+                        name = event.title.takeIf { it.isNotBlank() } ?: current?.name.orEmpty(),
+                        poster = current?.poster,
+                        releaseInfo = current?.releaseInfo,
                         season = event.season,
                         episode = event.episode,
                         markedAtEpochMs = normalizeWatchedMarkedAtEpochMs(event.watchedAt),
@@ -700,7 +703,10 @@ internal fun mergeWatchedItemsPreservingUnsynced(
         .map(WatchedItem::normalizedMarkedAt)
         .forEach { localItem ->
             val key = watchedItemKey(localItem.type, localItem.id, localItem.season, localItem.episode)
-            if (key in merged) return@forEach
+            merged[key]?.let { remoteItem ->
+                merged[key] = remoteItem.withWatchedMetadataFallback(localItem)
+                return@forEach
+            }
             if (shouldPreserveLocalWatchedItem(localItem, lastSuccessfulPushEpochMs, pullStartedEpochMs)) {
                 merged[key] = localItem
             }
@@ -708,6 +714,13 @@ internal fun mergeWatchedItemsPreservingUnsynced(
 
     return merged
 }
+
+private fun WatchedItem.withWatchedMetadataFallback(localItem: WatchedItem): WatchedItem =
+    copy(
+        name = name.trim().takeIf { it.isNotBlank() } ?: localItem.name,
+        poster = poster?.takeIf { it.isNotBlank() } ?: localItem.poster,
+        releaseInfo = releaseInfo?.takeIf { it.isNotBlank() } ?: localItem.releaseInfo,
+    )
 
 internal fun shouldPreserveLocalWatchedItem(
     localItem: WatchedItem,

@@ -95,7 +95,10 @@ import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.downloads.DownloadItem
+import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.home.buildHomeReleaseRadarItems
 import com.nuvio.app.features.home.homeRadarDetailsRequestKey
 import com.nuvio.app.features.home.libraryItemKeyForHomeRadar
@@ -142,6 +145,10 @@ fun LibraryScreen(
     val watchedUiState by remember {
         WatchedRepository.ensureLoaded()
         WatchedRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val downloadsUiState by remember {
+        DownloadsRepository.ensureLoaded()
+        DownloadsRepository.uiState
     }.collectAsStateWithLifecycle()
     val homeCatalogSettingsUiState by remember {
         HomeCatalogSettingsRepository.snapshot()
@@ -273,10 +280,24 @@ fun LibraryScreen(
     }
 
     val disintegration = remember { LibraryDisintegrationHolder() }
-    val librarySectionsDisplay = if (
-        sourceMode != LibraryViewMode.Cloud && uiState.isLoaded && uiState.sections.isNotEmpty()
+    val downloadedMoviesTitle = stringResource(Res.string.downloads_section_movies)
+    val downloadedShowsTitle = stringResource(Res.string.downloads_section_shows)
+    val librarySectionsWithDownloads = remember(
+        uiState.sections,
+        downloadsUiState.completedItems,
+        downloadedMoviesTitle,
+        downloadedShowsTitle,
     ) {
-        disintegration.sync(uiState.sections, LIBRARY_SECTION_PREVIEW_LIMIT)
+        uiState.sections.withDownloadedLibrarySections(
+            downloads = downloadsUiState.completedItems,
+            downloadedMoviesTitle = downloadedMoviesTitle,
+            downloadedShowsTitle = downloadedShowsTitle,
+        )
+    }
+    val librarySectionsDisplay = if (
+        sourceMode != LibraryViewMode.Cloud && uiState.isLoaded && librarySectionsWithDownloads.isNotEmpty()
+    ) {
+        disintegration.sync(librarySectionsWithDownloads, LIBRARY_SECTION_PREVIEW_LIMIT)
     } else {
         disintegration.reset()
         emptyList()
@@ -374,7 +395,7 @@ fun LibraryScreen(
                 )
             } else if (!showReleaseCalendar) {
                 when {
-                    !uiState.isLoaded || (uiState.isLoading && uiState.sections.isEmpty()) -> {
+                    !uiState.isLoaded || (uiState.isLoading && librarySectionsWithDownloads.isEmpty()) -> {
                         items(3) {
                             HomeSkeletonRow(
                                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -383,7 +404,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    !uiState.errorMessage.isNullOrBlank() && uiState.sections.isEmpty() -> {
+                    !uiState.errorMessage.isNullOrBlank() && librarySectionsWithDownloads.isEmpty() -> {
                         item {
                             if (networkStatusUiState.isOfflineLike) {
                                 NuvioNetworkOfflineCard(
@@ -407,7 +428,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    uiState.sections.isEmpty() -> {
+                    librarySectionsWithDownloads.isEmpty() -> {
                         item {
                             if (networkStatusUiState.isOfflineLike && isTraktSource) {
                                 NuvioNetworkOfflineCard(
@@ -2304,6 +2325,69 @@ private enum class LibraryViewMode {
     Cloud,
 }
 
+private fun List<LibrarySection>.withDownloadedLibrarySections(
+    downloads: List<DownloadItem>,
+    downloadedMoviesTitle: String,
+    downloadedShowsTitle: String,
+): List<LibrarySection> {
+    if (downloads.isEmpty()) return this
+
+    val completedByContent = LinkedHashMap<String, LibraryItem>()
+    downloads
+        .sortedByDescending { item -> item.updatedAtEpochMs }
+        .forEach { item ->
+            val libraryItem = item.toDownloadedLibraryItem()
+            val key = "${libraryItem.type}:${libraryItem.id}"
+            if (key !in completedByContent) {
+                completedByContent[key] = libraryItem
+            }
+        }
+
+    val downloadedMovies = completedByContent.values.filter { item -> item.type != "series" }
+    val downloadedShows = completedByContent.values.filter { item -> item.type == "series" }
+    if (downloadedMovies.isEmpty() && downloadedShows.isEmpty()) return this
+
+    return buildList(size + 2) {
+        addAll(this@withDownloadedLibrarySections)
+        if (downloadedMovies.isNotEmpty()) {
+            add(
+                LibrarySection(
+                    type = DOWNLOADED_MOVIES_SECTION_TYPE,
+                    displayTitle = downloadedMoviesTitle,
+                    items = downloadedMovies,
+                ),
+            )
+        }
+        if (downloadedShows.isNotEmpty()) {
+            add(
+                LibrarySection(
+                    type = DOWNLOADED_SHOWS_SECTION_TYPE,
+                    displayTitle = downloadedShowsTitle,
+                    items = downloadedShows,
+                ),
+            )
+        }
+    }
+}
+
+private fun DownloadItem.toDownloadedLibraryItem(): LibraryItem {
+    val type = parentMetaType
+        .trim()
+        .ifBlank { contentType.trim() }
+        .ifBlank { "movie" }
+    return LibraryItem(
+        id = parentMetaId.trim().ifBlank { id },
+        type = type,
+        name = title.trim().ifBlank { streamTitle },
+        poster = poster?.takeIf { it.isNotBlank() } ?: episodeThumbnail?.takeIf { it.isNotBlank() },
+        banner = background?.takeIf { it.isNotBlank() },
+        logo = logo?.takeIf { it.isNotBlank() },
+        releaseInfo = null,
+        posterShape = PosterShape.Poster,
+        savedAtEpochMs = updatedAtEpochMs.takeIf { it > 0L } ?: createdAtEpochMs,
+    )
+}
+
 private fun LazyListScope.librarySections(
     displaySections: List<LibraryDisplaySection>,
     watchedKeys: Set<String>,
@@ -2360,6 +2444,8 @@ private const val LIBRARY_HEALTH_SECTION_KEY = "library_health"
 private const val LIBRARY_RELEASE_RADAR_SECTION_KEY = "library_release_radar"
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4
+private const val DOWNLOADED_MOVIES_SECTION_TYPE = "downloads_movies"
+private const val DOWNLOADED_SHOWS_SECTION_TYPE = "downloads_shows"
 
 private data class LibraryDisplayEntry(
     val globalKey: String,

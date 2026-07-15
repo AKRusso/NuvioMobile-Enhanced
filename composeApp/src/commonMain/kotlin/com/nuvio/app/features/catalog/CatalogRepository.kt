@@ -240,8 +240,8 @@ private suspend fun fetchCollectionSourcePage(
         ?: error(getString(Res.string.catalog_load_failed))
 
     return when {
-        source.isTmdb -> TmdbCollectionSourceResolver.resolve(source = source, page = page)
-        source.isTrakt -> TraktPublicListSourceResolver.resolve(source = source, page = page)
+        source.isTmdb -> TmdbCollectionSourceResolver.resolveOrEmpty(source = source, page = page)
+        source.isTrakt -> TraktPublicListSourceResolver.resolveOrEmpty(source = source, page = page)
         else -> error(getString(Res.string.catalog_load_failed))
     }
 }

@@ -40,6 +40,7 @@ import com.nuvio.app.features.player.PlayerSettingsStorage
 import com.nuvio.app.features.player.PlayerTrackPreferenceStorage
 import com.nuvio.app.features.player.ExternalPlayerPlatform
 import com.nuvio.app.features.player.SubtitleFileCache
+import com.nuvio.app.features.player.SubtitleFontFileBridge
 import com.nuvio.app.features.player.PlayerPictureInPictureManager
 import com.nuvio.app.features.p2p.P2pSettingsStorage
 import com.nuvio.app.features.p2p.P2pStreamingEngine
@@ -51,6 +52,7 @@ import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.SentrySettingsStorage
 import com.nuvio.app.features.settings.ThemeSettingsStorage
+import com.nuvio.app.features.settings.NuvioAppIconSwitcher
 import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsStorage
 import com.nuvio.app.features.trakt.TraktAuthStorage
@@ -83,6 +85,7 @@ class MainActivity : AppCompatActivity() {
             ),
         )
         ThemeSettingsStorage.initialize(applicationContext)
+        NuvioAppIconSwitcher.initialize(applicationContext)
         NuvioEnhancedSettingsStorage.initialize(applicationContext)
         SentrySettingsStorage.initialize(applicationContext)
         SentryInitializer.start(application)
@@ -138,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.bindActivity(this)
         NuvioEnhancedBackupFileBridge.bindActivity(this)
+        SubtitleFontFileBridge.bindActivity(this)
         AppSystemUiController.bind(this)
         handleIncomingAppIntent(intent)
 
@@ -168,6 +172,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
         NuvioEnhancedBackupFileBridge.unbindActivity(this)
+        SubtitleFontFileBridge.unbindActivity(this)
         AppSystemUiController.unbind(this)
         super.onDestroy()
     }
@@ -175,6 +180,9 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Android platform APIs, still used for Storage Access Framework callbacks here.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (NuvioEnhancedBackupFileBridge.handleActivityResult(requestCode, resultCode, data)) {
+            return
+        }
+        if (SubtitleFontFileBridge.handleActivityResult(requestCode, resultCode, data)) {
             return
         }
         super.onActivityResult(requestCode, resultCode, data)

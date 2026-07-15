@@ -357,6 +357,45 @@ private fun NuvioEnhancedSettingsPageContent(
                         NuvioEnhancedSettingsRepository.setStatusBarVisible(it)
                     },
                 )
+                SettingsGroupDivider(isTablet = isTablet)
+                EnhancedChoiceRow(
+                    title = stringResource(Res.string.nuvio_enhanced_app_icon_title),
+                    description = stringResource(Res.string.nuvio_enhanced_app_icon_desc),
+                    selected = NuvioAppIconOption.entries.firstOrNull { it.id == settings.selectedAppIconId }
+                        ?: NuvioAppIconOption.Default,
+                    options = listOf(
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Default,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_default),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Neon,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_neon),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Gear,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_gear),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Chrome,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_chrome),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Aurora,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_aurora),
+                        ),
+                        EnhancedChoiceOption(
+                            NuvioAppIconOption.Emerald,
+                            stringResource(Res.string.nuvio_enhanced_app_icon_emerald),
+                        ),
+                    ),
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.AppIconPicker),
+                    onSelected = {
+                        markSeen(NuvioEnhancedFeature.AppIconPicker)
+                        NuvioEnhancedSettingsRepository.setSelectedAppIcon(it)
+                    },
+                )
                 if (!isIos) {
                     SettingsGroupDivider(isTablet = isTablet)
                     SettingsSwitchRow(

@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -224,6 +226,80 @@ private fun StyleControlsCard(
             )
         }
 
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.compose_player_font_family),
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SubtitleFontFamily.entries.forEach { family ->
+                    val label = if (family == SubtitleFontFamily.Custom) {
+                        style.customFontName?.takeIf { it.isNotBlank() }
+                            ?: stringResource(Res.string.compose_player_font_custom)
+                    } else {
+                        family.displayLabel()
+                    }
+                    SubtitleFontFamilyChip(
+                        label = label,
+                        selected = style.fontFamily == family,
+                        onClick = {
+                            if (family != SubtitleFontFamily.Custom || !style.customFontPath.isNullOrBlank()) {
+                                onStyleChanged(style.copy(fontFamily = family))
+                            }
+                        },
+                        isCompact = isCompact,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SubtitleFontActionChip(
+                    label = stringResource(Res.string.compose_player_font_import),
+                    onClick = {
+                        SubtitleFontFileBridge.importFont { result ->
+                            result.onSuccess { font ->
+                                onStyleChanged(
+                                    style.copy(
+                                        fontFamily = SubtitleFontFamily.Custom,
+                                        customFontName = font.displayName,
+                                        customFontPath = font.path,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                    isCompact = isCompact,
+                )
+                if (!style.customFontPath.isNullOrBlank()) {
+                    SubtitleFontActionChip(
+                        label = stringResource(Res.string.compose_player_font_clear_custom),
+                        onClick = {
+                            onStyleChanged(
+                                style.copy(
+                                    fontFamily = SubtitleFontFamily.System,
+                                    customFontName = null,
+                                    customFontPath = null,
+                                ),
+                            )
+                        },
+                        isCompact = isCompact,
+                    )
+                }
+            }
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -347,6 +423,76 @@ private fun StyleControlsCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SubtitleFontFamilyChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    isCompact: Boolean,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(999.dp)
+    Box(
+        modifier = Modifier
+            .clip(shape)
+            .background(
+                if (selected) colorScheme.primaryContainer
+                else colorScheme.surface.copy(alpha = 0.8f),
+            )
+            .border(
+                width = 1.dp,
+                color = if (selected) colorScheme.primary.copy(alpha = 0.65f)
+                else colorScheme.outlineVariant.copy(alpha = 0.75f),
+                shape = shape,
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (isCompact) 10.dp else 12.dp, vertical = if (isCompact) 7.dp else 8.dp),
+    ) {
+        Text(
+            text = label,
+            color = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+            fontSize = if (isCompact) 12.sp else 13.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun SubtitleFontFamily.displayLabel(): String =
+    when (this) {
+        SubtitleFontFamily.System -> "System"
+        SubtitleFontFamily.SansSerif -> "Sans"
+        SubtitleFontFamily.Serif -> "Serif"
+        SubtitleFontFamily.Monospace -> "Mono"
+        SubtitleFontFamily.Rounded -> "Rounded"
+        SubtitleFontFamily.Custom -> "Custom"
+    }
+
+@Composable
+private fun SubtitleFontActionChip(
+    label: String,
+    onClick: () -> Unit,
+    isCompact: Boolean,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(colorScheme.surface.copy(alpha = 0.82f))
+            .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = if (isCompact) 10.dp else 12.dp, vertical = if (isCompact) 7.dp else 8.dp),
+    ) {
+        Text(
+            text = label,
+            color = colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = if (isCompact) 12.sp else 13.sp,
+            maxLines = 1,
+        )
     }
 }
 

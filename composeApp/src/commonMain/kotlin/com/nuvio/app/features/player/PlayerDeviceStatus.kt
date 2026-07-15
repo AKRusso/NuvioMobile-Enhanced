@@ -11,6 +11,7 @@ internal enum class PlayerDeviceNetworkType {
 
 internal data class PlayerDeviceStatus(
     val timeLabel: String,
+    val currentTimeMillis: Long,
     val batteryPercent: Int?,
     val batteryCharging: Boolean,
     val networkType: PlayerDeviceNetworkType,
