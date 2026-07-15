@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 
 @Composable
@@ -51,74 +52,79 @@ fun NuvioMediaActionOverlay(
     )
     PlatformBackHandler(enabled = true, onBack = onDismissRequest)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black),
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = nuvioMediaActionOverlayDialogProperties(),
     ) {
-        if (artworkUrl != null) {
-            AsyncImage(
-                model = artworkUrl,
-                contentDescription = contentDescription,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = 1.12f
-                        scaleY = 1.12f
-                        alpha = scrimProgress
-                    }
-                    .blur(34.dp),
-                contentScale = ContentScale.Crop,
-            )
-        }
         Box(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.58f * scrimProgress)),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.18f * scrimProgress),
-                            Color.Black.copy(alpha = 0.22f * scrimProgress),
-                            Color.Black.copy(alpha = 0.74f * scrimProgress),
-                        ),
-                    ),
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(
-                    interactionSource = dismissInteraction,
-                    indication = null,
-                    onClick = onDismissRequest,
-                ),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
+                .background(Color.Black),
         ) {
+            if (artworkUrl != null) {
+                AsyncImage(
+                    model = artworkUrl,
+                    contentDescription = contentDescription,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            scaleX = 1.12f
+                            scaleY = 1.12f
+                            alpha = scrimProgress
+                        }
+                        .blur(34.dp),
+                    contentScale = ContentScale.Crop,
+                )
+            }
             Box(
                 modifier = Modifier
-                    .graphicsLayer {
-                        alpha = contentProgress
-                        scaleX = 0.985f + (0.015f * contentProgress)
-                        scaleY = 0.985f + (0.015f * contentProgress)
-                        translationY = (1f - contentProgress) * 18f
-                    }
-                    .clickable(
-                        interactionSource = contentInteraction,
-                        indication = null,
-                        onClick = {},
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.58f * scrimProgress)),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.18f * scrimProgress),
+                                Color.Black.copy(alpha = 0.22f * scrimProgress),
+                                Color.Black.copy(alpha = 0.74f * scrimProgress),
+                            ),
+                        ),
                     ),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = dismissInteraction,
+                        indication = null,
+                        onClick = onDismissRequest,
+                    )
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                content()
+                Box(
+                    modifier = Modifier
+                        .graphicsLayer {
+                            alpha = contentProgress
+                            scaleX = 0.985f + (0.015f * contentProgress)
+                            scaleY = 0.985f + (0.015f * contentProgress)
+                            translationY = (1f - contentProgress) * 18f
+                        }
+                        .clickable(
+                            interactionSource = contentInteraction,
+                            indication = null,
+                            onClick = {},
+                        ),
+                ) {
+                    content()
+                }
             }
         }
     }
