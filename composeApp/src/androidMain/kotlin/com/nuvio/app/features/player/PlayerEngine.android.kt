@@ -306,6 +306,7 @@ private fun ExoPlayerSurface(
         normalizedStreamType,
         useYoutubeChunkedPlayback,
         effectiveDecoderPriority,
+        playerSettings.androidMemorySafeBufferEnabled,
     ) {
         val renderersFactory = SubtitleOffsetRenderersFactory(
             context = context,
@@ -328,15 +329,7 @@ private fun ExoPlayerSurface(
             }
         }
 
-        val loadControl = DefaultLoadControl.Builder()
-            .setTargetBufferBytes(100 * 1024 * 1024)
-            .setBufferDurationsMs(
-                15_000,
-                70_000,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                5_000
-            )
-            .build()
+        val loadControl = buildAndroidLoadControl(playerSettings.androidMemorySafeBufferEnabled)
 
         val player = if (useLibass) {
             ExoPlayer.Builder(context)
@@ -1305,6 +1298,29 @@ private const val MPV_SUBTITLE_FONT_SIZE_SCALE = 55.0 / 18.0
 private const val MPV_SUBTITLE_FONT_SIZE_MIN = 36
 private const val MPV_SUBTITLE_FONT_SIZE_MAX = 122
 private const val MPV_SUBTITLE_OUTLINE_SIZE_SCALE = 1.5
+
+private fun buildAndroidLoadControl(memorySafeBufferEnabled: Boolean): DefaultLoadControl =
+    DefaultLoadControl.Builder().apply {
+        if (memorySafeBufferEnabled) {
+            setTargetBufferBytes(48 * 1024 * 1024)
+            setBufferDurationsMs(
+                10_000,
+                40_000,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                4_000
+            )
+            setBackBuffer(0, false)
+            setPrioritizeTimeOverSizeThresholds(false)
+        } else {
+            setTargetBufferBytes(100 * 1024 * 1024)
+            setBufferDurationsMs(
+                15_000,
+                70_000,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                5_000
+            )
+        }
+    }.build()
 
 private fun ExoPlayer.snapshot(): PlayerPlaybackSnapshot =
     PlayerPlaybackSnapshot(

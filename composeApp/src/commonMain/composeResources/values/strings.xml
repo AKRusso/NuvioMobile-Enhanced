@@ -1002,6 +1002,8 @@
     <string name="settings_playback_decoder_prefer_app">Prefer app decoders (FFmpeg)</string>
     <string name="settings_playback_decoder_prefer_device">Prefer device decoders</string>
     <string name="settings_playback_decoder_priority">Decoder Priority</string>
+    <string name="settings_playback_android_memory_safe_buffer">Memory-safe ExoPlayer buffer</string>
+    <string name="settings_playback_android_memory_safe_buffer_description">Reduces Android ExoPlayer buffer memory for devices with playback crashes or memory pressure. May rebuffer sooner on unstable networks.</string>
     <string name="settings_playback_dialog_close">Tap outside to close</string>
     <string name="settings_playback_dialog_save_close">Tap outside to save &amp; close</string>
     <string name="settings_playback_duration_day_one">%1$d day</string>
@@ -1617,6 +1619,7 @@
     <string name="addon_load_manifest_failed">Unable to load manifest</string>
     <string name="app_brand_name">Nuvio</string>
     <string name="auth_account_deletion_failed">Account deletion failed</string>
+    <string name="auth_invalid_credentials">Invalid email or password.</string>
     <string name="auth_sign_in_failed">Sign-in failed</string>
     <string name="auth_sign_out_failed">Sign-out failed</string>
     <string name="auth_sign_up_failed">Sign-up failed</string>
@@ -2257,6 +2260,7 @@
     <string name="nuvio_enhanced_section_backup_import">Backup &amp; Import</string>
     <string name="nuvio_enhanced_section_feedback">Feedback</string>
     <string name="nuvio_enhanced_section_discovery">Discovery</string>
+    <string name="nuvio_enhanced_section_diagnostics">Diagnostics</string>
     <string name="nuvio_enhanced_home_features_title">Enhanced intelligence features</string>
     <string name="nuvio_enhanced_home_features_desc">Master switch for fork-specific intelligence surfaces such as Profile Concierge and Smart Resume signals.</string>
     <string name="nuvio_enhanced_concierge_title">Nuvio Concierge</string>
@@ -2341,6 +2345,9 @@
     <string name="nuvio_enhanced_backup_copy_desc">Fallback option for sharing a backup through the clipboard.</string>
     <string name="nuvio_enhanced_backup_paste_title">Paste backup JSON</string>
     <string name="nuvio_enhanced_backup_paste_desc">Fallback option if a file picker is unavailable.</string>
+    <string name="nuvio_enhanced_copy_last_crash_title">Copy last crash report</string>
+    <string name="nuvio_enhanced_copy_last_crash_desc">Copy the latest local crash report so it can be shared with the developer.</string>
+    <string name="nuvio_enhanced_copy_last_crash_empty_desc">No local crash report has been saved on this device yet.</string>
     <string name="nuvio_enhanced_feedback_title">Nuvio Enhanced feedback</string>
     <string name="nuvio_enhanced_feedback_desc">Send bugs, ideas or user feedback directly to the Nuvio Enhanced maintainer.</string>
     <string name="nuvio_enhanced_intro_title">Nuvio Enhanced</string>
@@ -2361,6 +2368,7 @@
     <string name="nuvio_enhanced_toast_backup_export_failed">Backup export failed</string>
     <string name="nuvio_enhanced_toast_backup_import_failed">Backup import failed</string>
     <string name="nuvio_enhanced_toast_backup_copied">Backup copied to clipboard</string>
+    <string name="nuvio_enhanced_toast_crash_copied">Crash report copied to clipboard</string>
     <string name="nuvio_enhanced_toast_no_email_app">No email app available</string>
     <string name="theme_messenger">Messenger</string>
     <string name="theme_amethyst">Amethyst</string>

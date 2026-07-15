@@ -11,6 +11,7 @@ data class LocalCrashReport(
 expect object CrashDiagnostics {
     val reportsSupported: Boolean
     val pendingReport: StateFlow<LocalCrashReport?>
+    val lastReport: StateFlow<LocalCrashReport?>
 
     fun initialize(context: Any?)
     fun dismiss(reportId: String)

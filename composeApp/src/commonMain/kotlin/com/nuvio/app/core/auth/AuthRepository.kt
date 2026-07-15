@@ -115,8 +115,8 @@ object AuthRepository {
         }
         Unit
     }.onFailure { e ->
-        log.e(e) { "Email sign-up failed" }
-        _error.value = e.message ?: getString(Res.string.auth_sign_up_failed)
+        logAuthFailure("Email sign-up failed", e)
+        _error.value = readableAuthError(e, getString(Res.string.auth_sign_up_failed))
     }
 
     suspend fun signInWithEmail(email: String, password: String): Result<Unit> = runCatching {
@@ -126,8 +126,8 @@ object AuthRepository {
             this.password = password
         }
     }.onFailure { e ->
-        log.e(e) { "Email sign-in failed" }
-        _error.value = e.message ?: getString(Res.string.auth_sign_in_failed)
+        logAuthFailure("Email sign-in failed", e)
+        _error.value = readableAuthError(e, getString(Res.string.auth_sign_in_failed))
     }
 
     suspend fun signOut(): Result<Unit> = runCatching {
@@ -206,6 +206,39 @@ object AuthRepository {
             "foreign key" in message &&
                 ("auth.users" in message || "user_id" in message)
             )
+    }
+
+    private suspend fun readableAuthError(error: Throwable, fallback: String): String =
+        when {
+            isInvalidCredentialsError(error) -> getString(Res.string.auth_invalid_credentials)
+            else -> fallback
+        }
+
+    private fun isInvalidCredentialsError(error: Throwable): Boolean {
+        val restError = error.findCause<RestException>()
+        val message = buildString {
+            append(error.message.orEmpty())
+            if (restError != null) {
+                append(' ')
+                append(restError.error)
+                append(' ')
+                append(restError.description)
+            }
+        }.lowercase()
+
+        return "invalid_credentials" in message ||
+            "invalid login credentials" in message ||
+            "invalid credentials" in message
+    }
+
+    private fun logAuthFailure(message: String, error: Throwable) {
+        val restError = error.findCause<RestException>()
+        val summary = if (restError != null) {
+            "status=${restError.statusCode}, error=${restError.error}, description=${restError.description}"
+        } else {
+            error::class.simpleName ?: "unknown error"
+        }
+        log.w { "$message: $summary" }
     }
 
     private inline fun <reified T : Throwable> Throwable.findCause(): T? {

@@ -548,6 +548,18 @@ internal fun settingsSearchEntries(
         category = enhancedCategory,
         icon = Icons.Rounded.AutoAwesome,
     )
+    if (!isIos) {
+        addRow(
+            page = SettingsPage.NuvioEnhanced,
+            key = "memory-safe-buffer",
+            title = stringResource(Res.string.settings_playback_android_memory_safe_buffer),
+            description = stringResource(Res.string.settings_playback_android_memory_safe_buffer_description),
+            pageLabel = nuvioEnhancedPage,
+            section = stringResource(Res.string.nuvio_enhanced_section_app_experience),
+            category = enhancedCategory,
+            icon = Icons.Rounded.PlayArrow,
+        )
+    }
     addPage(
         page = SettingsPage.ContinueWatching,
         key = "continue-watching",

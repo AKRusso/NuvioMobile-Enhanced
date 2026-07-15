@@ -885,6 +885,8 @@
     <string name="settings_playback_decoder_prefer_app">Uygulamayı tercih et (FFmpeg)</string>
     <string name="settings_playback_decoder_prefer_device">Cihazı tercih et</string>
     <string name="settings_playback_decoder_priority">Çözücü önceliği</string>
+    <string name="settings_playback_android_memory_safe_buffer">Bellek dostu ExoPlayer buffer</string>
+    <string name="settings_playback_android_memory_safe_buffer_description">Oynatma crash'i veya bellek baskısı yaşayan Android cihazlarda ExoPlayer buffer belleğini azaltır. Dengesiz ağlarda daha erken yeniden buffer yapabilir.</string>
     <string name="settings_playback_dialog_close">Kapatmak için dışarı dokun</string>
     <string name="settings_playback_dialog_save_close">Kaydedip kapatmak için dışarı dokun</string>
     <string name="settings_playback_duration_day_one">%1$d gün</string>
@@ -1440,6 +1442,7 @@
     <string name="addon_load_manifest_failed">Manifest yüklenemedi</string>
     <string name="app_brand_name">Nuvio</string>
     <string name="auth_account_deletion_failed">Hesap silinemedi</string>
+    <string name="auth_invalid_credentials">E-posta veya şifre hatalı.</string>
     <string name="auth_sign_in_failed">Giriş yapılamadı</string>
     <string name="auth_sign_out_failed">Çıkış yapılamadı</string>
     <string name="auth_sign_up_failed">Kayıt olunamadı</string>
@@ -1710,6 +1713,7 @@
     <string name="nuvio_enhanced_section_backup_import">Backup &amp; Import</string>
     <string name="nuvio_enhanced_section_feedback">Geri Bildirim</string>
     <string name="nuvio_enhanced_section_discovery">Keşif</string>
+    <string name="nuvio_enhanced_section_diagnostics">Tanılama</string>
     <string name="nuvio_enhanced_home_features_title">Enhanced zeka özellikleri</string>
     <string name="nuvio_enhanced_home_features_desc">Profil Concierge, Smart Resume sinyalleri ve benzeri fork'a özel akıllı yüzeyler için ana kontrol.</string>
     <string name="nuvio_enhanced_concierge_title">Nuvio Concierge</string>
@@ -1794,6 +1798,9 @@
     <string name="nuvio_enhanced_backup_copy_desc">Backup'ı pano üzerinden paylaşmak için yedek seçenek.</string>
     <string name="nuvio_enhanced_backup_paste_title">Backup JSON yapıştır</string>
     <string name="nuvio_enhanced_backup_paste_desc">Dosya seçici kullanılamıyorsa yedek seçenek.</string>
+    <string name="nuvio_enhanced_copy_last_crash_title">Son crash raporunu kopyala</string>
+    <string name="nuvio_enhanced_copy_last_crash_desc">Geliştiriciyle paylaşmak için en son yerel crash raporunu panoya kopyalar.</string>
+    <string name="nuvio_enhanced_copy_last_crash_empty_desc">Bu cihazda henüz kaydedilmiş yerel crash raporu yok.</string>
     <string name="nuvio_enhanced_feedback_title">Nuvio Enhanced geri bildirimi</string>
     <string name="nuvio_enhanced_feedback_desc">Hata, fikir veya kullanıcı geri bildirimlerini Nuvio Enhanced geliştiricisine gönder.</string>
     <string name="nuvio_enhanced_intro_title">Nuvio Enhanced</string>
@@ -1814,6 +1821,7 @@
     <string name="nuvio_enhanced_toast_backup_export_failed">Backup dışa aktarılamadı</string>
     <string name="nuvio_enhanced_toast_backup_import_failed">Backup içe aktarılamadı</string>
     <string name="nuvio_enhanced_toast_backup_copied">Backup panoya kopyalandı</string>
+    <string name="nuvio_enhanced_toast_crash_copied">Crash raporu panoya kopyalandı</string>
     <string name="nuvio_enhanced_toast_no_email_app">E-posta uygulaması bulunamadı</string>
     <string name="plugins_section_quality_filtering">KALİTE FİLTRESİ</string>
     <string name="plugins_section_repository_control">REPO KONTROLÜ</string>

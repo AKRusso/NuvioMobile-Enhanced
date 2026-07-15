@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
+import com.nuvio.app.core.diagnostics.CrashDiagnostics
 import com.nuvio.app.core.network.DnsOverHttpsProvider
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.sync.ProfileSettingsSync
@@ -67,6 +68,9 @@ import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
+import com.nuvio.app.features.player.AndroidPlaybackEngine
+import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.isIos
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.*
 import nuvio.composeapp.generated.resources.settings_advanced_doh_description
@@ -113,6 +117,13 @@ private fun NuvioEnhancedSettingsPageContent(
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    val playerSettings by remember {
+        PlayerSettingsRepository.ensureLoaded()
+        PlayerSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val lastCrashReport by remember {
+        CrashDiagnostics.lastReport
+    }.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val uriHandler = LocalUriHandler.current
     var backupPayload by remember { mutableStateOf<String?>(null) }
@@ -125,6 +136,7 @@ private fun NuvioEnhancedSettingsPageContent(
     val backupExportFailedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_export_failed)
     val backupImportFailedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_import_failed)
     val backupCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_copied)
+    val crashCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_crash_copied)
     val noEmailAppMessage = stringResource(Res.string.nuvio_enhanced_toast_no_email_app)
     val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
@@ -345,6 +357,19 @@ private fun NuvioEnhancedSettingsPageContent(
                         NuvioEnhancedSettingsRepository.setStatusBarVisible(it)
                     },
                 )
+                if (!isIos) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_playback_android_memory_safe_buffer),
+                        description = stringResource(Res.string.settings_playback_android_memory_safe_buffer_description),
+                        checked = playerSettings.androidMemorySafeBufferEnabled,
+                        enabled = !playerSettings.externalPlayerEnabled &&
+                            playerSettings.androidPlaybackEngine != AndroidPlaybackEngine.Libmpv,
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.PlayerStatusOverlay),
+                        onCheckedChange = PlayerSettingsRepository::setAndroidMemorySafeBufferEnabled,
+                    )
+                }
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
                     title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
@@ -793,6 +818,34 @@ private fun NuvioEnhancedSettingsPageContent(
                 uriHandler.openUri(NuvioEnhancedDiscordUrl)
             },
         )
+
+        if (CrashDiagnostics.reportsSupported) {
+            SettingsSection(
+                title = stringResource(Res.string.nuvio_enhanced_section_diagnostics),
+                isTablet = isTablet,
+            ) {
+                SettingsGroup(isTablet = isTablet) {
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.nuvio_enhanced_copy_last_crash_title),
+                        description = stringResource(
+                            if (lastCrashReport == null) {
+                                Res.string.nuvio_enhanced_copy_last_crash_empty_desc
+                            } else {
+                                Res.string.nuvio_enhanced_copy_last_crash_desc
+                            },
+                        ),
+                        icon = Icons.Rounded.ContentCopy,
+                        enabled = lastCrashReport != null,
+                        isTablet = isTablet,
+                        onClick = {
+                            val report = lastCrashReport ?: return@SettingsNavigationRow
+                            clipboardManager.setText(AnnotatedString(report.details))
+                            NuvioToastController.show(crashCopiedMessage)
+                        },
+                    )
+                }
+            }
+        }
     }
 
     backupPayload?.let { payload ->

@@ -15,7 +15,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.collections_editor_tmdb_discover
-import nuvio.composeapp.generated.resources.collections_tmdb_api_key_required
 import nuvio.composeapp.generated.resources.collections_tmdb_collection_not_found
 import nuvio.composeapp.generated.resources.collections_tmdb_company_not_found
 import nuvio.composeapp.generated.resources.collections_tmdb_discover_no_data
@@ -36,7 +35,7 @@ object TmdbCollectionSourceResolver {
     suspend fun resolve(source: CollectionSource, page: Int = 1): CatalogPage = withContext(Dispatchers.Default) {
         val settings = TmdbSettingsRepository.snapshot()
         val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-            ?: error(getString(Res.string.collections_tmdb_api_key_required))
+            ?: return@withContext emptyCatalogPage()
         val language = normalizeTmdbLanguage(settings.language)
         val sourceType = source.tmdbType()
 
@@ -55,7 +54,7 @@ object TmdbCollectionSourceResolver {
         withContext(Dispatchers.Default) {
             val settings = TmdbSettingsRepository.snapshot()
             val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-                ?: error(getString(Res.string.collections_tmdb_api_key_required))
+                ?: return@withContext TmdbSourceImportMetadata()
             val language = normalizeTmdbLanguage(settings.language)
             when (sourceType) {
                 TmdbCollectionSourceType.LIST -> {
@@ -123,7 +122,7 @@ object TmdbCollectionSourceResolver {
         if (trimmed.isBlank()) return@withContext emptyList()
         val settings = TmdbSettingsRepository.snapshot()
         val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-            ?: error(getString(Res.string.collections_tmdb_api_key_required))
+            ?: return@withContext emptyList()
         fetch<TmdbCompanySearchResponse>(
             endpoint = "search/company",
             apiKey = apiKey,
@@ -136,7 +135,7 @@ object TmdbCollectionSourceResolver {
         if (trimmed.isBlank()) return@withContext emptyList()
         val settings = TmdbSettingsRepository.snapshot()
         val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-            ?: error(getString(Res.string.collections_tmdb_api_key_required))
+            ?: return@withContext emptyList()
         val language = normalizeTmdbLanguage(settings.language)
         fetch<TmdbCollectionSearchResponse>(
             endpoint = "search/collection",
@@ -150,7 +149,7 @@ object TmdbCollectionSourceResolver {
         if (trimmed.isBlank()) return@withContext emptyMap()
         val settings = TmdbSettingsRepository.snapshot()
         val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-            ?: error(getString(Res.string.collections_tmdb_api_key_required))
+            ?: return@withContext emptyMap()
         fetch<TmdbKeywordSearchResponse>(
             endpoint = "search/keyword",
             apiKey = apiKey,
@@ -166,7 +165,7 @@ object TmdbCollectionSourceResolver {
     suspend fun genres(mediaType: TmdbCollectionMediaType): Map<Int, String> = withContext(Dispatchers.Default) {
         val settings = TmdbSettingsRepository.snapshot()
         val apiKey = settings.apiKey.trim().takeIf { it.isNotBlank() }
-            ?: error(getString(Res.string.collections_tmdb_api_key_required))
+            ?: return@withContext emptyMap()
         val language = normalizeTmdbLanguage(settings.language)
         val endpoint = when (mediaType) {
             TmdbCollectionMediaType.MOVIE -> "genre/movie/list"
@@ -385,6 +384,9 @@ object TmdbCollectionSourceResolver {
             "" -> this
             else -> this
         }
+
+    private fun emptyCatalogPage(): CatalogPage =
+        CatalogPage(items = emptyList(), rawItemCount = 0, nextSkip = null)
 
     private fun TmdbListItem.toPreview(): MetaPreview? {
         val media = mediaType?.lowercase()

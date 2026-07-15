@@ -1932,4 +1932,30 @@
         <item quantity="one">%d titlu</item>
         <item quantity="other">%d titluri</item>
     </plurals>
+    <string name="compose_settings_page_ai_assistant">Asistent AI</string>
+    <string name="settings_integrations_ai_description">Discută despre filme și seriale cu modele rapide și gratuite Cerebras sau Groq</string>
+    <string name="ai_settings_section_general">ASISTENT</string>
+    <string name="ai_settings_section_access">ACCES FURNIZOR</string>
+    <string name="ai_settings_enable">Activează asistentul AI</string>
+    <string name="ai_settings_enable_description">Afișează butonul asistentului pe paginile de detalii pentru filme și seriale</string>
+    <string name="ai_settings_provider">Furnizor AI</string>
+    <string name="ai_settings_api_key">Cheie API</string>
+    <string name="ai_settings_api_key_help">Creează o cheie API gratuită, lipește-o mai jos și salvează. Cheia rămâne pe acest dispozitiv.</string>
+    <string name="ai_settings_model">Model</string>
+    <string name="ai_settings_model_help">Setările recomandate folosesc GPT-OSS 120B direct prin Cerebras sau Groq.</string>
+    <string name="ai_settings_fallback_help">Recomandat: configurează Cerebras și Groq. La erori temporare de încărcare sau cotă, asistentul încearcă automat celălalt furnizor.</string>
+    <string name="ai_settings_get_key">Obține cheie gratuită</string>
+    <string name="ai_settings_section_web_search">CĂUTARE WEB</string>
+    <string name="ai_settings_web_search">Căutare web automată</string>
+    <string name="ai_settings_web_search_description">Caută în surse de încredere întrebări specifice la care metadatele titlului nu pot răspunde.</string>
+    <string name="ai_settings_tavily_key">Cheie API Tavily</string>
+    <string name="ai_settings_tavily_description">Tavily oferă 1000 de credite gratuite de căutare lunar, fără card de credit. Sursele apar sub fiecare răspuns.</string>
+    <string name="ai_chat_title">Întreabă Nuvio</string>
+    <string name="ai_chat_disclaimer">Întreabă orice despre acest titlu. Spoilerele rămân ascunse dacă nu le ceri explicit.</string>
+    <string name="ai_chat_configure">Pentru a folosi asistentul, deschide Setări &gt; Integrări &gt; Asistent AI, alege un furnizor și introdu cheia API gratuită. Cerebras și Groq sunt recomandate.</string>
+    <string name="ai_chat_hint">Întreabă despre acest titlu…</string>
+    <string name="ai_chat_prompt_recommend">Merită văzut fără spoilere?</string>
+    <string name="ai_chat_prompt_explain">Ce ar trebui să știu înainte să mă uit?</string>
+    <string name="ai_chat_prompt_similar">Recomandă titluri similare</string>
+    <string name="ai_chat_error">Asistentul nu a putut răspunde. Verifică cheia și încearcă din nou.</string>
 </resources>

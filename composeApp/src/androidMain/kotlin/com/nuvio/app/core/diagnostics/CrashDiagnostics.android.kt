@@ -21,10 +21,15 @@ actual object CrashDiagnostics {
     private const val idKey = "id"
     private const val summaryKey = "summary"
     private const val detailsKey = "details"
+    private const val lastIdKey = "last_id"
+    private const val lastSummaryKey = "last_summary"
+    private const val lastDetailsKey = "last_details"
     private const val maxReportLength = 24_000
 
     private val _pendingReport = MutableStateFlow<LocalCrashReport?>(null)
     actual val pendingReport: StateFlow<LocalCrashReport?> = _pendingReport.asStateFlow()
+    private val _lastReport = MutableStateFlow<LocalCrashReport?>(null)
+    actual val lastReport: StateFlow<LocalCrashReport?> = _lastReport.asStateFlow()
 
     private var preferences: SharedPreferences? = null
     private var installed = false
@@ -34,6 +39,7 @@ actual object CrashDiagnostics {
         val appContext = (context as? Context)?.applicationContext ?: return
         preferences = appContext.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
         _pendingReport.value = loadPendingReport()
+        _lastReport.value = loadLastReport() ?: _pendingReport.value
         if (installed) return
         installed = true
         previousHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -65,6 +71,14 @@ actual object CrashDiagnostics {
         return LocalCrashReport(id = id, summary = summary, details = details)
     }
 
+    private fun loadLastReport(): LocalCrashReport? {
+        val prefs = preferences ?: return null
+        val id = prefs.getString(lastIdKey, null)?.takeIf(String::isNotBlank) ?: return null
+        val summary = prefs.getString(lastSummaryKey, null)?.takeIf(String::isNotBlank) ?: "Unknown crash"
+        val details = prefs.getString(lastDetailsKey, null)?.takeIf(String::isNotBlank) ?: return null
+        return LocalCrashReport(id = id, summary = summary, details = details)
+    }
+
     private fun saveCrashReport(context: Context, thread: Thread, throwable: Throwable) {
         val prefs = preferences ?: context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
         val timestamp = System.currentTimeMillis()
@@ -75,7 +89,13 @@ actual object CrashDiagnostics {
             .putString(idKey, id)
             .putString(summaryKey, summary)
             .putString(detailsKey, details)
+            .putString(lastIdKey, id)
+            .putString(lastSummaryKey, summary)
+            .putString(lastDetailsKey, details)
             .commit()
+        val report = LocalCrashReport(id = id, summary = summary, details = details)
+        _pendingReport.value = report
+        _lastReport.value = report
     }
 
     private fun buildReport(

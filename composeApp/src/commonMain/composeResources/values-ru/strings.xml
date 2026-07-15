@@ -1618,6 +1618,7 @@
     <string name="addon_load_manifest_failed">Не удалось загрузить манифест</string>
     <string name="app_brand_name">Nuvio</string>
     <string name="auth_account_deletion_failed">Удаление аккаунта не удалось</string>
+    <string name="auth_invalid_credentials">Неверный адрес электронной почты или пароль.</string>
     <string name="auth_sign_in_failed">Не удалось войти в систему</string>
     <string name="auth_sign_out_failed">Не удалось выйти из системы</string>
     <string name="auth_sign_up_failed">Регистрация не удалась</string>
@@ -2210,6 +2211,7 @@
     <string name="nuvio_enhanced_section_details_experience">Детали Опыт</string>
     <string name="nuvio_enhanced_section_backup_import">Резервное копирование и импорт</string>
     <string name="nuvio_enhanced_section_feedback">Обратная связь</string>
+    <string name="nuvio_enhanced_section_diagnostics">Диагностика</string>
     <string name="nuvio_enhanced_home_features_title">Расширенные интеллектуальные функции</string>
     <string name="nuvio_enhanced_home_features_desc">Главный переключатель для специальных интеллектуальных поверхностей, таких как сигналы Profile Concierge и Smart Resume.</string>
     <string name="nuvio_enhanced_hero_mode_cinematic">Кинематографический</string>
@@ -2297,6 +2299,9 @@
     <string name="nuvio_enhanced_backup_copy_desc">Резервный вариант для обмена резервной копией через буфер обмена.</string>
     <string name="nuvio_enhanced_backup_paste_title">Вставьте резервную копию JSON.</string>
     <string name="nuvio_enhanced_backup_paste_desc">Резервный вариант, если средство выбора файлов недоступно.</string>
+    <string name="nuvio_enhanced_copy_last_crash_title">Скопировать последний отчет о сбое</string>
+    <string name="nuvio_enhanced_copy_last_crash_desc">Скопируйте последний локальный отчет о сбое, чтобы отправить его разработчику.</string>
+    <string name="nuvio_enhanced_copy_last_crash_empty_desc">На этом устройстве пока нет сохраненного локального отчета о сбое.</string>
     <string name="nuvio_enhanced_feedback_title">Nuvio Расширенная обратная связь</string>
     <string name="nuvio_enhanced_feedback_desc">Отправляйте ошибки, идеи или отзывы пользователей непосредственно разработчику Nuvio Enhanced.</string>
     <string name="nuvio_enhanced_intro_desc">Здесь представлены функции только для форка, поэтому пользователи могут четко отделять официальные настройки от дополнений Nuvio.</string>
@@ -2313,6 +2318,7 @@
     <string name="nuvio_enhanced_toast_backup_export_failed">Не удалось экспортировать резервную копию</string>
     <string name="nuvio_enhanced_toast_backup_import_failed">Импорт резервной копии не удался</string>
     <string name="nuvio_enhanced_toast_backup_copied">Резервная копия скопирована в буфер обмена.</string>
+    <string name="nuvio_enhanced_toast_crash_copied">Отчет о сбое скопирован в буфер обмена</string>
     <string name="nuvio_enhanced_toast_no_email_app">Приложение электронной почты недоступно</string>
     <string name="theme_messenger">Messenger</string>
     <string name="theme_amethyst">Аметист</string>

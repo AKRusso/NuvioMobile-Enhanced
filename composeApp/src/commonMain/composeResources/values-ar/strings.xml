@@ -1618,6 +1618,7 @@
     <string name="addon_load_manifest_failed">غير قادر على تحميل البيان</string>
     <string name="app_brand_name">Nuvio</string>
     <string name="auth_account_deletion_failed">فشل حذف الحساب</string>
+    <string name="auth_invalid_credentials">البريد الإلكتروني أو كلمة المرور غير صحيحة.</string>
     <string name="auth_sign_in_failed">فشل تسجيل الدخول</string>
     <string name="auth_sign_out_failed">تسجيل الخروج فشل</string>
     <string name="auth_sign_up_failed">فشل التسجيل</string>
@@ -2210,6 +2211,7 @@
     <string name="nuvio_enhanced_section_details_experience">تفاصيل الخبرة</string>
     <string name="nuvio_enhanced_section_backup_import">النسخ الاحتياطي والاستيراد</string>
     <string name="nuvio_enhanced_section_feedback">تعليق</string>
+    <string name="nuvio_enhanced_section_diagnostics">التشخيص</string>
     <string name="nuvio_enhanced_home_features_title">ميزات الذكاء المحسنة</string>
     <string name="nuvio_enhanced_home_features_desc">مفتاح رئيسي للأسطح الذكية الخاصة بالشوكة مثل Profile Concierge وإشارات السيرة الذاتية الذكية.</string>
     <string name="nuvio_enhanced_hero_mode_cinematic">سينمائي</string>
@@ -2297,6 +2299,9 @@
     <string name="nuvio_enhanced_backup_copy_desc">خيار احتياطي لمشاركة نسخة احتياطية من خلال الحافظة.&lt;</string>
     <string name="nuvio_enhanced_backup_paste_title">الصق نسخة احتياطية JSON</string>
     <string name="nuvio_enhanced_backup_paste_desc">خيار احتياطي إذا منتقي الملفات غير متاح.</string>
+    <string name="nuvio_enhanced_copy_last_crash_title">نسخ آخر تقرير تعطل</string>
+    <string name="nuvio_enhanced_copy_last_crash_desc">انسخ أحدث تقرير تعطل محلي لمشاركته مع المطور.</string>
+    <string name="nuvio_enhanced_copy_last_crash_empty_desc">لم يتم حفظ أي تقرير تعطل محلي على هذا الجهاز بعد.</string>
     <string name="nuvio_enhanced_feedback_title">Nuvio تعليقات محسّنة</string>
     <string name="nuvio_enhanced_feedback_desc">أرسل الأخطاء أو الأفكار أو تعليقات المستخدمين مباشرة إلى مشرف Nuvio المحسّن.</string>
     <string name="nuvio_enhanced_intro_desc">توجد ميزات Fork فقط هنا حتى يتمكن المستخدمون من فصل الإعدادات الرسمية بوضوح عن إضافات Nuvio.</string>
@@ -2313,6 +2318,7 @@
     <string name="nuvio_enhanced_toast_backup_export_failed">فشل تصدير النسخة الاحتياطية</string>
     <string name="nuvio_enhanced_toast_backup_import_failed">فشل استيراد النسخة الاحتياطية</string>
     <string name="nuvio_enhanced_toast_backup_copied">تم نسخ النسخة الاحتياطية إلى الحافظة</string>
+    <string name="nuvio_enhanced_toast_crash_copied">تم نسخ تقرير التعطل إلى الحافظة</string>
     <string name="nuvio_enhanced_toast_no_email_app">لا يتوفر تطبيق بريد إلكتروني</string>
     <string name="theme_messenger">ماسنجر</string>
     <string name="theme_amethyst">جمشت</string>

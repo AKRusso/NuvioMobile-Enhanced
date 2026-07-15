@@ -22,16 +22,22 @@ actual object CrashDiagnostics {
 
     private val _pendingReport = MutableStateFlow<LocalCrashReport?>(null)
     actual val pendingReport: StateFlow<LocalCrashReport?> = _pendingReport.asStateFlow()
+    private val _lastReport = MutableStateFlow<LocalCrashReport?>(null)
+    actual val lastReport: StateFlow<LocalCrashReport?> = _lastReport.asStateFlow()
 
     private const val idKey = "nuvio_local_crash_diagnostics_id"
     private const val summaryKey = "nuvio_local_crash_diagnostics_summary"
     private const val detailsKey = "nuvio_local_crash_diagnostics_details"
+    private const val lastIdKey = "nuvio_local_crash_diagnostics_last_id"
+    private const val lastSummaryKey = "nuvio_local_crash_diagnostics_last_summary"
+    private const val lastDetailsKey = "nuvio_local_crash_diagnostics_last_details"
     private const val maxReportLength = 24_000
 
     private var installed = false
 
     actual fun initialize(context: Any?) {
         _pendingReport.value = loadPendingReport()
+        _lastReport.value = loadLastReport() ?: _pendingReport.value
         if (installed) return
         installed = true
         setUnhandledExceptionHook { throwable ->
@@ -57,6 +63,14 @@ actual object CrashDiagnostics {
         return LocalCrashReport(id = id, summary = summary, details = details)
     }
 
+    private fun loadLastReport(): LocalCrashReport? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val id = defaults.stringForKey(lastIdKey)?.takeIf(String::isNotBlank) ?: return null
+        val summary = defaults.stringForKey(lastSummaryKey)?.takeIf(String::isNotBlank) ?: "Unknown crash"
+        val details = defaults.stringForKey(lastDetailsKey)?.takeIf(String::isNotBlank) ?: return null
+        return LocalCrashReport(id = id, summary = summary, details = details)
+    }
+
     private fun saveCrashReport(throwable: Throwable) {
         val timestamp = (NSDate().timeIntervalSince1970 * 1000.0).toLong()
         val id = timestamp.toString()
@@ -66,7 +80,13 @@ actual object CrashDiagnostics {
         defaults.setObject(id, forKey = idKey)
         defaults.setObject(summary, forKey = summaryKey)
         defaults.setObject(details, forKey = detailsKey)
+        defaults.setObject(id, forKey = lastIdKey)
+        defaults.setObject(summary, forKey = lastSummaryKey)
+        defaults.setObject(details, forKey = lastDetailsKey)
         defaults.synchronize()
+        val report = LocalCrashReport(id = id, summary = summary, details = details)
+        _pendingReport.value = report
+        _lastReport.value = report
     }
 
     private fun buildReport(throwable: Throwable): String {

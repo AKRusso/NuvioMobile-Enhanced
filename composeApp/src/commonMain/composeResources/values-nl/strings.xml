@@ -1964,4 +1964,30 @@
         <item quantity="one">%d titel</item>
         <item quantity="other">%d titels</item>
     </plurals>
+    <string name="compose_settings_page_ai_assistant">AI-assistent</string>
+    <string name="settings_integrations_ai_description">Chat over films en series met snelle gratis Cerebras- of Groq-modellen</string>
+    <string name="ai_settings_section_general">ASSISTENT</string>
+    <string name="ai_settings_section_access">TOEGANG PROVIDER</string>
+    <string name="ai_settings_enable">AI-assistent inschakelen</string>
+    <string name="ai_settings_enable_description">Toon de assistentknop op detailpagina’s van films en series</string>
+    <string name="ai_settings_provider">AI-provider</string>
+    <string name="ai_settings_api_key">API-sleutel</string>
+    <string name="ai_settings_api_key_help">Maak een gratis API-sleutel, plak die hieronder en sla op. De sleutel blijft op dit apparaat.</string>
+    <string name="ai_settings_model">Model</string>
+    <string name="ai_settings_model_help">Aanbevolen standaardwaarden gebruiken GPT-OSS 120B rechtstreeks via Cerebras of Groq.</string>
+    <string name="ai_settings_fallback_help">Aanbevolen: configureer zowel Cerebras als Groq. Bij tijdelijke belasting of quotafouten probeert de assistent automatisch de andere provider.</string>
+    <string name="ai_settings_get_key">Gratis sleutel ophalen</string>
+    <string name="ai_settings_section_web_search">WEBZOEKEN</string>
+    <string name="ai_settings_web_search">Automatisch webzoeken</string>
+    <string name="ai_settings_web_search_description">Zoekt betrouwbare bronnen voor specifieke vragen die niet vanuit titelmetadata kunnen worden beantwoord.</string>
+    <string name="ai_settings_tavily_key">Tavily API-sleutel</string>
+    <string name="ai_settings_tavily_description">Tavily biedt 1000 gratis zoekcredits per maand zonder creditcard. Bronnen worden onder elk antwoord getoond.</string>
+    <string name="ai_chat_title">Vraag Nuvio</string>
+    <string name="ai_chat_disclaimer">Vraag alles over deze titel. Spoilers blijven verborgen tenzij je er expliciet om vraagt.</string>
+    <string name="ai_chat_configure">Open Instellingen &gt; Integraties &gt; AI-assistent, kies een provider en voer je gratis API-sleutel in. Cerebras en Groq worden aanbevolen.</string>
+    <string name="ai_chat_hint">Vraag over deze titel…</string>
+    <string name="ai_chat_prompt_recommend">Is het de moeite waard zonder spoilers?</string>
+    <string name="ai_chat_prompt_explain">Wat moet ik weten voordat ik kijk?</string>
+    <string name="ai_chat_prompt_similar">Beveel vergelijkbare titels aan</string>
+    <string name="ai_chat_error">De assistent kon niet antwoorden. Controleer de sleutel en probeer opnieuw.</string>
 </resources>
