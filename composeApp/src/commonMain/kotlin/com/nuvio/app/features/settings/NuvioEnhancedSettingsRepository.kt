@@ -282,11 +282,12 @@ internal object NuvioEnhancedSettingsRepository {
         copy(showContinueWatchingReadyBadge = enabled)
     }
 
-    fun setSelectedAppIcon(option: NuvioAppIconOption) {
-        NuvioAppIconSwitcher.apply(option.id)
+    fun setSelectedAppIcon(option: NuvioAppIconOption): Boolean {
+        val applied = NuvioAppIconSwitcher.apply(option.id)
         update {
             copy(selectedAppIconId = option.id)
         }
+        return applied
     }
 
     fun setReleaseRadarLibraryOnly(enabled: Boolean) = update {

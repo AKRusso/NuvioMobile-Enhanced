@@ -108,6 +108,34 @@
         </activity-alias>
 
         <activity-alias
+            android:name="com.nuvio.enhanced.IconEnhanced"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_alt_enhanced"
+            android:roundIcon="@mipmap/ic_launcher_alt_enhanced"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.enhanced.IconMonochrome"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_alt_monochrome"
+            android:roundIcon="@mipmap/ic_launcher_alt_monochrome"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
             android:name="com.nuvio.enhanced.IconNeon"
             android:enabled="false"
             android:exported="true"

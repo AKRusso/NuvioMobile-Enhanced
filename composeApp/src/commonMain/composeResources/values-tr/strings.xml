@@ -1746,8 +1746,10 @@
     <string name="nuvio_enhanced_status_bar_title">Durum çubuğu</string>
     <string name="nuvio_enhanced_status_bar_desc">Android durum çubuğunu uygulama genelinde gösterir. Daha temiz tam ekran görünüm için kapatabilirsin.</string>
     <string name="nuvio_enhanced_app_icon_title">Uygulama simgesi</string>
-    <string name="nuvio_enhanced_app_icon_desc">Bu cihaz için launcher simgesini seç. Android hemen uygular; iOS sistem onayı gösterebilir.</string>
+    <string name="nuvio_enhanced_app_icon_desc">Bu cihaz için launcher simgesini seç. Android uyguladıktan sonra launcher yenilensin diye uygulamayı kapatır; iOS sistem onayı gösterebilir.</string>
     <string name="nuvio_enhanced_app_icon_default">Varsayılan</string>
+    <string name="nuvio_enhanced_app_icon_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_app_icon_monochrome">Monokrom</string>
     <string name="nuvio_enhanced_app_icon_neon">Neon</string>
     <string name="nuvio_enhanced_app_icon_gear">Gear</string>
     <string name="nuvio_enhanced_app_icon_chrome">Chrome</string>

@@ -2248,8 +2248,10 @@
     <string name="nuvio_enhanced_status_bar_title">شريط الحالة</string>
     <string name="nuvio_enhanced_status_bar_desc">يعرض شريط حالة Android في جميع أنحاء التطبيق. أوقفه للحصول على مظهر ملء شاشة أنظف.</string>
     <string name="nuvio_enhanced_app_icon_title">أيقونة التطبيق</string>
-    <string name="nuvio_enhanced_app_icon_desc">اختر أيقونة المشغّل لهذا الجهاز. يطبقها Android فورًا، وقد يعرض iOS تأكيدًا من النظام.</string>
+    <string name="nuvio_enhanced_app_icon_desc">اختر أيقونة المشغّل لهذا الجهاز. يغلق Android التطبيق بعد تطبيقها كي يتحدث المشغّل، وقد يعرض iOS تأكيدًا من النظام.</string>
     <string name="nuvio_enhanced_app_icon_default">الافتراضية</string>
+    <string name="nuvio_enhanced_app_icon_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_app_icon_monochrome">أحادية اللون</string>
     <string name="nuvio_enhanced_app_icon_neon">نيون</string>
     <string name="nuvio_enhanced_app_icon_gear">ميكانيكية</string>
     <string name="nuvio_enhanced_app_icon_chrome">كروم</string>

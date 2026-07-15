@@ -23,6 +23,20 @@
 	<dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
+			<key>IconEnhanced</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconEnhanced</string>
+				</array>
+			</dict>
+			<key>IconMonochrome</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>IconMonochrome</string>
+				</array>
+			</dict>
 			<key>IconAurora</key>
 			<dict>
 				<key>CFBundleIconFiles</key>

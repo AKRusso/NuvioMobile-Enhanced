@@ -8,6 +8,8 @@ import platform.darwin.dispatch_get_main_queue
 
 internal actual object NuvioAppIconSwitcher {
     private val alternateIconNames = mapOf(
+        NuvioAppIconOption.Enhanced.id to "IconEnhanced",
+        NuvioAppIconOption.Monochrome.id to "IconMonochrome",
         NuvioAppIconOption.Neon.id to "IconNeon",
         NuvioAppIconOption.Gear.id to "IconGear",
         NuvioAppIconOption.Chrome.id to "IconChrome",
@@ -24,4 +26,6 @@ internal actual object NuvioAppIconSwitcher {
         }
         return true
     }
+
+    actual fun closeAfterApply() = Unit
 }

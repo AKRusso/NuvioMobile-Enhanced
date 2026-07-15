@@ -2248,8 +2248,10 @@
     <string name="nuvio_enhanced_status_bar_title">Строка состояния</string>
     <string name="nuvio_enhanced_status_bar_desc">Показывает строку состояния Android во всем приложении. Отключите для более чистого полноэкранного вида.</string>
     <string name="nuvio_enhanced_app_icon_title">Значок приложения</string>
-    <string name="nuvio_enhanced_app_icon_desc">Выберите значок запуска для этого устройства. На Android он применяется сразу; на iOS может появиться системное подтверждение.</string>
+    <string name="nuvio_enhanced_app_icon_desc">Выберите значок запуска для этого устройства. На Android приложение закроется после применения, чтобы лаунчер обновился; на iOS может появиться системное подтверждение.</string>
     <string name="nuvio_enhanced_app_icon_default">По умолчанию</string>
+    <string name="nuvio_enhanced_app_icon_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_app_icon_monochrome">Монохромный</string>
     <string name="nuvio_enhanced_app_icon_neon">Неон</string>
     <string name="nuvio_enhanced_app_icon_gear">Механика</string>
     <string name="nuvio_enhanced_app_icon_chrome">Хром</string>

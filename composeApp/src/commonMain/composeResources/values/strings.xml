@@ -2293,8 +2293,10 @@
     <string name="nuvio_enhanced_status_bar_title">Status bar</string>
     <string name="nuvio_enhanced_status_bar_desc">Show the Android status bar across the app. Turn this off for a cleaner fullscreen look.</string>
     <string name="nuvio_enhanced_app_icon_title">App icon</string>
-    <string name="nuvio_enhanced_app_icon_desc">Choose a launcher icon for this device. Android applies it immediately; iOS may show a system confirmation.</string>
+    <string name="nuvio_enhanced_app_icon_desc">Choose a launcher icon for this device. Android closes after applying so the launcher can refresh; iOS may show a system confirmation.</string>
     <string name="nuvio_enhanced_app_icon_default">Default</string>
+    <string name="nuvio_enhanced_app_icon_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_app_icon_monochrome">Monochrome</string>
     <string name="nuvio_enhanced_app_icon_neon">Neon</string>
     <string name="nuvio_enhanced_app_icon_gear">Gear</string>
     <string name="nuvio_enhanced_app_icon_chrome">Chrome</string>

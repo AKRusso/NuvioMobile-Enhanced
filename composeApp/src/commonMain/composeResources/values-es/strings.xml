@@ -2022,8 +2022,10 @@
     <string name="nuvio_enhanced_status_bar_title">Barra de estado</string>
     <string name="nuvio_enhanced_status_bar_desc">Muestra la barra de estado de Android en toda la app. Desactívala para una apariencia de pantalla completa más limpia.</string>
     <string name="nuvio_enhanced_app_icon_title">Icono de la app</string>
-    <string name="nuvio_enhanced_app_icon_desc">Elige un icono de inicio para este dispositivo. Android lo aplica al instante; iOS puede mostrar una confirmación del sistema.</string>
+    <string name="nuvio_enhanced_app_icon_desc">Elige un icono de inicio para este dispositivo. Android cierra la app tras aplicarlo para que el launcher se actualice; iOS puede mostrar una confirmación del sistema.</string>
     <string name="nuvio_enhanced_app_icon_default">Predeterminado</string>
+    <string name="nuvio_enhanced_app_icon_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_app_icon_monochrome">Monocromo</string>
     <string name="nuvio_enhanced_app_icon_neon">Neón</string>
     <string name="nuvio_enhanced_app_icon_gear">Engranaje</string>
     <string name="nuvio_enhanced_app_icon_chrome">Cromo</string>

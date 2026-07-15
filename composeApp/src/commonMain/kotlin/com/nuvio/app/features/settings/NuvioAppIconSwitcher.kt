@@ -5,6 +5,8 @@ internal data class NuvioAppIconOption(
 ) {
     companion object {
         val Default = NuvioAppIconOption("default")
+        val Enhanced = NuvioAppIconOption("enhanced")
+        val Monochrome = NuvioAppIconOption("monochrome")
         val Neon = NuvioAppIconOption("neon")
         val Gear = NuvioAppIconOption("gear")
         val Chrome = NuvioAppIconOption("chrome")
@@ -13,6 +15,8 @@ internal data class NuvioAppIconOption(
 
         val entries: List<NuvioAppIconOption> = listOf(
             Default,
+            Enhanced,
+            Monochrome,
             Neon,
             Gear,
             Chrome,
@@ -24,4 +28,5 @@ internal data class NuvioAppIconOption(
 
 internal expect object NuvioAppIconSwitcher {
     fun apply(iconId: String): Boolean
+    fun closeAfterApply()
 }
