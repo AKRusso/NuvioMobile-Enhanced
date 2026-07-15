@@ -68,6 +68,7 @@ import com.nuvio.app.features.home.buildHomeConciergeState
 import com.nuvio.app.features.home.buildHomeReleaseRadarItems
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.home.components.HomeConciergeSection
+import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.settings.filteredByNuvioEnhancedReleaseRadar
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
@@ -872,6 +873,30 @@ private fun ProfileInsightPosterTile(
     item: ProfileInsightPosterItem,
 ) {
     val tokens = MaterialTheme.nuvio
+    val initialImageUrl = remember(item.id, item.imageUrl) {
+        item.imageUrl?.trim()?.takeIf { it.isNotBlank() }
+    }
+    var resolvedImageUrl by remember(item.id, initialImageUrl) {
+        mutableStateOf(initialImageUrl)
+    }
+
+    LaunchedEffect(item.id, item.lookupType, item.lookupId, initialImageUrl) {
+        resolvedImageUrl = initialImageUrl
+        if (initialImageUrl != null) return@LaunchedEffect
+        val lookupType = item.lookupType?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val lookupId = item.lookupId?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val hydratedMeta = runCatching {
+            MetaDetailsRepository.fetch(type = lookupType, id = lookupId)
+        }.onFailure { error ->
+            profileInsightsLog.w(error) {
+                "Failed to hydrate profile poster for $lookupType/$lookupId"
+            }
+        }.getOrNull()
+
+        resolvedImageUrl = hydratedMeta?.poster?.trim()?.takeIf { it.isNotBlank() }
+            ?: hydratedMeta?.background?.trim()?.takeIf { it.isNotBlank() }
+    }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -884,10 +909,9 @@ private fun ProfileInsightPosterTile(
                 .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(15.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            val imageUrl = item.imageUrl?.trim()?.takeIf { it.isNotBlank() }
-            if (imageUrl != null) {
+            if (resolvedImageUrl != null) {
                 CollectionCardRemoteImage(
-                    imageUrl = imageUrl,
+                    imageUrl = resolvedImageUrl.orEmpty(),
                     contentDescription = item.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
@@ -1393,6 +1417,8 @@ private fun buildProfileInsightCollections(
                 title = entry.title.trim().takeIf { it.isNotBlank() } ?: entry.parentMetaId,
                 subtitle = entry.profileEpisodeLine(),
                 imageUrl = entry.poster ?: entry.episodeThumbnail ?: entry.background,
+                lookupType = entry.parentMetaType,
+                lookupId = entry.parentMetaId,
             )
         }
         .toList()
@@ -1411,6 +1437,8 @@ private fun buildProfileInsightCollections(
                 title = item.title,
                 subtitle = item.subtitle,
                 imageUrl = item.imageUrl,
+                lookupType = item.kind,
+                lookupId = item.id,
             )
         }
         .toList()
@@ -1425,6 +1453,8 @@ private fun buildProfileInsightCollections(
                 title = item.name.trim().takeIf { it.isNotBlank() } ?: item.id,
                 subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
                 imageUrl = item.poster ?: item.banner,
+                lookupType = item.type,
+                lookupId = item.id,
             )
         }
         .toList()
@@ -1440,6 +1470,8 @@ private fun buildProfileInsightCollections(
                 title = item.name.trim().takeIf { it.isNotBlank() } ?: item.id,
                 subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
                 imageUrl = item.poster ?: item.banner,
+                lookupType = item.type,
+                lookupId = item.id,
             )
         }
         .toList()
@@ -1846,6 +1878,8 @@ private data class ProfileInsightPosterItem(
     val title: String,
     val subtitle: String?,
     val imageUrl: String?,
+    val lookupType: String? = null,
+    val lookupId: String? = null,
 )
 
 private data class ProfileCompletedContentItem(
