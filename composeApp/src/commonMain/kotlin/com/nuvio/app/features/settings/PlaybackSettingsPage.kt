@@ -70,6 +70,8 @@ import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.STREAM_AUTO_PLAY_TIMEOUT_VALUES
 import com.nuvio.app.features.player.SubtitleBackgroundColorSwatches
 import com.nuvio.app.features.player.SubtitleColorSwatches
+import com.nuvio.app.features.player.SubtitleFontFamily
+import com.nuvio.app.features.player.SubtitleFontFileBridge
 import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.formatPlaybackSpeedLabel
 import com.nuvio.app.features.player.languageLabelForCode
@@ -250,6 +252,21 @@ private fun subtitleColorLabel(color: Color): String {
 }
 
 @Composable
+private fun subtitleFontFamilyLabel(
+    family: SubtitleFontFamily,
+    customFontName: String?,
+): String =
+    when (family) {
+        SubtitleFontFamily.System -> "System"
+        SubtitleFontFamily.SansSerif -> "Sans"
+        SubtitleFontFamily.Serif -> "Serif"
+        SubtitleFontFamily.Monospace -> "Mono"
+        SubtitleFontFamily.Rounded -> "Rounded"
+        SubtitleFontFamily.Custom -> customFontName?.takeIf { it.isNotBlank() }
+            ?: stringResource(Res.string.compose_player_font_custom)
+    }
+
+@Composable
 private fun PlaybackSettingsSection(
     isTablet: Boolean,
     showLoadingOverlay: Boolean,
@@ -280,6 +297,7 @@ private fun PlaybackSettingsSection(
     var showSubtitleTextColorDialog by remember { mutableStateOf(false) }
     var showSubtitleBackgroundColorDialog by remember { mutableStateOf(false) }
     var showSubtitleOutlineColorDialog by remember { mutableStateOf(false) }
+    var showSubtitleFontDialog by remember { mutableStateOf(false) }
     var showExternalPlayerDialog by remember { mutableStateOf(false) }
     var showExternalPlayerAppDialog by remember { mutableStateOf(false) }
     var showReuseCacheDurationDialog by remember { mutableStateOf(false) }
@@ -519,6 +537,14 @@ private fun PlaybackSettingsSection(
                     onValueChange = { value ->
                         PlayerSettingsRepository.setSubtitleStyle(subtitleStyle.copy(fontSizeSp = value))
                     },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsNavigationRow(
+                    title = stringResource(Res.string.compose_player_font_family),
+                    description = subtitleFontFamilyLabel(subtitleStyle.fontFamily, subtitleStyle.customFontName),
+                    enabled = subtitleRenderingEnabled,
+                    isTablet = isTablet,
+                    onClick = { showSubtitleFontDialog = true },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSliderRow(
@@ -1277,6 +1303,45 @@ private fun PlaybackSettingsSection(
                 showSubtitleOutlineColorDialog = false
             },
             onDismiss = { showSubtitleOutlineColorDialog = false },
+        )
+    }
+
+    if (showSubtitleFontDialog) {
+        SubtitleFontDialog(
+            selectedFamily = autoPlayPlayerSettings.subtitleStyle.fontFamily,
+            customFontName = autoPlayPlayerSettings.subtitleStyle.customFontName,
+            customFontPath = autoPlayPlayerSettings.subtitleStyle.customFontPath,
+            onFamilySelected = { family ->
+                if (family != SubtitleFontFamily.Custom || !autoPlayPlayerSettings.subtitleStyle.customFontPath.isNullOrBlank()) {
+                    PlayerSettingsRepository.setSubtitleStyle(autoPlayPlayerSettings.subtitleStyle.copy(fontFamily = family))
+                    showSubtitleFontDialog = false
+                }
+            },
+            onImportFont = {
+                SubtitleFontFileBridge.importFont { result ->
+                    result.onSuccess { font ->
+                        PlayerSettingsRepository.setSubtitleStyle(
+                            autoPlayPlayerSettings.subtitleStyle.copy(
+                                fontFamily = SubtitleFontFamily.Custom,
+                                customFontName = font.displayName,
+                                customFontPath = font.path,
+                            ),
+                        )
+                    }
+                    showSubtitleFontDialog = false
+                }
+            },
+            onClearCustomFont = {
+                PlayerSettingsRepository.setSubtitleStyle(
+                    autoPlayPlayerSettings.subtitleStyle.copy(
+                        fontFamily = SubtitleFontFamily.System,
+                        customFontName = null,
+                        customFontPath = null,
+                    ),
+                )
+                showSubtitleFontDialog = false
+            },
+            onDismiss = { showSubtitleFontDialog = false },
         )
     }
 
@@ -2507,6 +2572,117 @@ private fun AddonSubtitleStartupModeDialog(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun SubtitleFontDialog(
+    selectedFamily: SubtitleFontFamily,
+    customFontName: String?,
+    customFontPath: String?,
+    onFamilySelected: (SubtitleFontFamily) -> Unit,
+    onImportFont: () -> Unit,
+    onClearCustomFont: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.compose_player_font_family),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SubtitleFontFamily.entries.forEach { family ->
+                        val customUnavailable = family == SubtitleFontFamily.Custom && customFontPath.isNullOrBlank()
+                        val label = subtitleFontFamilyLabel(family, customFontName)
+                        SubtitleFontOptionRow(
+                            label = label,
+                            selected = selectedFamily == family,
+                            enabled = !customUnavailable,
+                            onClick = { onFamilySelected(family) },
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = onImportFont) {
+                        Text(stringResource(Res.string.compose_player_font_import))
+                    }
+                    if (!customFontPath.isNullOrBlank()) {
+                        TextButton(onClick = onClearCustomFont) {
+                            Text(stringResource(Res.string.compose_player_font_clear_custom))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubtitleFontOptionRow(
+    label: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.45f)
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        },
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+            Box(
+                modifier = Modifier.size(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                 }
             }
         }
