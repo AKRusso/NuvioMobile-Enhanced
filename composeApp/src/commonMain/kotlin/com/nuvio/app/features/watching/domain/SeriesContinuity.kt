@@ -66,7 +66,20 @@ fun nextReleasedEpisodeAfter(
         }
     }
 
-    if (watchedIndex < 0) return null
+    if (watchedIndex < 0) {
+        val seedIsSpecial = normalizeSeasonNumber(seasonNumber) == 0
+        if (!seedIsSpecial) return null
+        return sortedEpisodes
+            .asSequence()
+            .filter { episode -> normalizeSeasonNumber(episode.seasonNumber) > 0 }
+            .firstOrNull { episode ->
+                isReleasedBy(
+                    todayIsoDate = todayIsoDate,
+                    releasedDate = episode.releasedDate,
+                    available = episode.available,
+                ) || showUnairedNextUp
+            }
+    }
 
     val watchedEpisodeSeason = sortedEpisodes[watchedIndex].seasonNumber
     val candidates = sortedEpisodes
