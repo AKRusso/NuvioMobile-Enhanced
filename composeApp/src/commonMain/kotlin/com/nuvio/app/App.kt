@@ -3730,6 +3730,7 @@ private fun AppTabHost(
                         onSectionViewAllClick = onLibrarySectionViewAllClick,
                         onCloudFilePlay = onCloudFilePlay,
                         onConnectCloudClick = onConnectCloudClick,
+                        onDownloadsClick = onDownloadsSettingsClick,
                     )
                 }
 
