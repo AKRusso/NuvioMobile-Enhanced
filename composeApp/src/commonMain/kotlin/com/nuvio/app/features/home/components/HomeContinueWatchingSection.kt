@@ -293,6 +293,9 @@ private fun HomeContinueWatchingSectionContent(
 
     val disintegration = remember { ContinueWatchingDisintegrationHolder() }
     val displayEntries = disintegration.sync(items)
+    val rowResetKey = remember(items) {
+        items.joinToString(separator = "|") { item -> item.videoId }
+    }
 
     NuvioShelfSection(
         title = stringResource(Res.string.compose_settings_page_continue_watching),
@@ -304,6 +307,7 @@ private fun HomeContinueWatchingSectionContent(
         showHeaderAccent = !homeCatalogSettings.hideCatalogUnderline,
         key = { entry -> entry.videoId },
         animatePlacement = true,
+        rowResetKey = rowResetKey,
     ) { entry ->
         val item = entry.item
         val onClick = if (entry.exiting) null else onItemClick?.let { { it(item) } }
