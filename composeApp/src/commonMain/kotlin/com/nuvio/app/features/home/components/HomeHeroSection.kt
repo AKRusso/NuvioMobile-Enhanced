@@ -338,14 +338,18 @@ internal fun HomeHeroSection(
             suspend fun loadDetailMeta(item: MetaPreview) {
                 val key = item.stableKey()
                 if (detailLoadCompleted[key] == true) return
+                MetaDetailsRepository.peek(type = item.type, id = item.id)?.let { cachedMeta ->
+                    detailMetas[key] = cachedMeta
+                }
                 val meta = fetchHeroDetailMeta(item) { baseMeta ->
                     detailMetas[key] = baseMeta
-                    detailLoadCompleted[key] = true
                 }
                 if (meta != null) {
                     detailMetas[key] = meta
+                    detailLoadCompleted[key] = true
+                } else {
+                    detailLoadCompleted.remove(key)
                 }
-                detailLoadCompleted[key] = true
             }
 
             prioritizedItems.firstOrNull()?.let { item ->
@@ -1839,11 +1843,9 @@ private fun PosterArtHeroPage(
         else -> 50.sp
     }
     val logoHeight = if (layout.isTablet) 132.dp else 104.dp
-    val contentBottomPadding = if (showOverviewCue) {
-        if (layout.isTablet) 118.dp else 108.dp
-    } else {
-        if (layout.isTablet) 86.dp else 78.dp
-    }
+    val actionRailBottomPadding = if (showOverviewCue) 24.dp else 18.dp
+    val actionRailHeight = if (layout.isTablet) 76.dp else 68.dp
+    val contentBottomPadding = actionRailBottomPadding + actionRailHeight + if (layout.isTablet) 28.dp else 22.dp
 
     Box(
         modifier = Modifier
@@ -1999,7 +2001,7 @@ private fun PosterArtHeroPage(
             onSaveClick = { onSaveClick?.invoke(item) },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (showOverviewCue) 24.dp else 18.dp),
+                .padding(bottom = actionRailBottomPadding),
         )
     }
 }
