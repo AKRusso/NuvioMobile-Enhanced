@@ -1835,7 +1835,7 @@ private fun String.isIsoDateCandidate(): Boolean =
 private fun String.profileNormalizedType(): String? =
     when (trim().lowercase()) {
         "movie", "film" -> "movie"
-        "series", "show", "tv", "tvshow" -> "series"
+        "series", "show", "tv", "tvshow", "anime" -> "series"
         "" -> null
         else -> trim().lowercase()
     }
@@ -1844,7 +1844,7 @@ private fun String.profileCompletedContentKind(): String? =
     when (trim().lowercase()) {
         "live-tv", "livetv", "live_tv", "channel", "tv-channel", "tv_channel", "iptv", "m3u", "stalker" -> null
         "movie", "film" -> "movie"
-        "series", "show", "tv", "tvshow" -> "series"
+        "series", "show", "tv", "tvshow", "anime" -> "series"
         else -> null
     }
 
