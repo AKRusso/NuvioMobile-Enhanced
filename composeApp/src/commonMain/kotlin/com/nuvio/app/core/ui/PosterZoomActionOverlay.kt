@@ -127,6 +127,7 @@ private val PosterZoomMenuSpring = spring<Float>(
 @Composable
 fun NuvioPosterZoomActionOverlay(
     imageUrl: String?,
+    backgroundImageUrl: String? = imageUrl,
     title: String,
     subtitle: String?,
     synopsis: String? = null,
@@ -229,9 +230,11 @@ fun NuvioPosterZoomActionOverlay(
         val menuWidth = min(280.dp, maxWidth - NuvioTokens.Space.s48)
         val columnWidth = max(posterWidth, menuWidth)
 
-        if (!imageUrl.isNullOrBlank()) {
+        val backdropUrl = backgroundImageUrl?.takeIf { it.isNotBlank() }
+            ?: imageUrl?.takeIf { it.isNotBlank() }
+        if (backdropUrl != null) {
             AsyncImage(
-                model = imageUrl,
+                model = backdropUrl,
                 contentDescription = null,
                 modifier = Modifier
                     .fillMaxSize()

@@ -3232,6 +3232,28 @@ private fun MainAppContent(
             selectedPosterActionTarget?.let { posterActionTarget ->
                 key(posterActionTarget) {
                     val preview = posterActionTarget.preview
+                    val cachedDetails = remember(preview.type, preview.id) {
+                        MetaDetailsRepository.peek(preview.type, preview.id)
+                    }
+                    val overlayImageUrl = selectedPosterAnchor?.imageUrl?.takeIf { it.isNotBlank() }
+                        ?: cachedDetails?.poster?.takeIf { it.isNotBlank() }
+                        ?: preview.poster?.takeIf { it.isNotBlank() }
+                        ?: cachedDetails?.background?.takeIf { it.isNotBlank() }
+                        ?: preview.banner?.takeIf { it.isNotBlank() }
+                    val overlayBackgroundUrl = cachedDetails?.background?.takeIf { it.isNotBlank() }
+                        ?: preview.banner?.takeIf { it.isNotBlank() }
+                        ?: overlayImageUrl
+                    val overlaySubtitle = cachedDetails?.releaseInfo
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { formatReleaseDateForDisplay(it) }
+                        ?: preview.releaseInfo
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { formatReleaseDateForDisplay(it) }
+                        ?: preview.type.replaceFirstChar { char ->
+                            if (char.isLowerCase()) char.titlecase() else char.toString()
+                        }
+                    val overlaySynopsis = cachedDetails?.description?.trim()?.takeIf { it.isNotBlank() }
+                        ?: preview.description?.trim()?.takeIf { it.isNotBlank() }
                     val isSaved = LibraryRepository.isSaved(preview.id, preview.type)
                     val isWatched = WatchingState.isPosterWatched(
                         watchedKeys = watchedUiState.watchedKeys,
@@ -3241,15 +3263,11 @@ private fun MainAppContent(
                         (posterActionTarget.libraryItem != null || !isTraktLibrarySource)
 
                     NuvioPosterZoomActionOverlay(
-                        imageUrl = selectedPosterAnchor?.imageUrl ?: preview.poster,
+                        imageUrl = overlayImageUrl,
+                        backgroundImageUrl = overlayBackgroundUrl,
                         title = preview.name,
-                        subtitle = preview.releaseInfo
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { formatReleaseDateForDisplay(it) }
-                            ?: preview.type.replaceFirstChar { char ->
-                                if (char.isLowerCase()) char.titlecase() else char.toString()
-                            },
-                        synopsis = preview.description?.trim()?.takeIf { it.isNotBlank() },
+                        subtitle = overlaySubtitle,
+                        synopsis = overlaySynopsis,
                         isWatched = isWatched,
                         anchor = selectedPosterAnchor,
                         actions = listOf(
