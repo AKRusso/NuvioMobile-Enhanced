@@ -1843,9 +1843,18 @@ private fun PosterArtHeroPage(
         else -> 50.sp
     }
     val logoHeight = if (layout.isTablet) 132.dp else 104.dp
-    val actionRailBottomPadding = if (showOverviewCue) 24.dp else 18.dp
+    val actionRailBottomPadding = when {
+        showOverviewCue -> 24.dp
+        ratingItems.isEmpty() -> 26.dp
+        else -> 18.dp
+    }
     val actionRailHeight = if (layout.isTablet) 76.dp else 68.dp
-    val contentBottomPadding = actionRailBottomPadding + actionRailHeight + if (layout.isTablet) 28.dp else 22.dp
+    val actionRailClearance = when {
+        layout.isTablet -> 34.dp
+        ratingItems.isEmpty() -> 32.dp
+        else -> 22.dp
+    }
+    val contentBottomPadding = actionRailBottomPadding + actionRailHeight + actionRailClearance
 
     Box(
         modifier = Modifier
