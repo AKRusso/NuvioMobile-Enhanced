@@ -859,6 +859,8 @@ private fun EpisodeSynopsisPanel(
     modifier: Modifier = Modifier,
 ) {
     val summary = overview?.trim()?.takeIf { it.isNotBlank() } ?: return
+    var expanded by remember(summary) { mutableStateOf(false) }
+    val canExpand = summary.length > 180
     val shape = RoundedCornerShape(18.dp)
     Box(
         modifier = modifier
@@ -895,9 +897,24 @@ private fun EpisodeSynopsisPanel(
                     fontWeight = FontWeight.Medium,
                 ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.92f),
-                maxLines = 4,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (canExpand) {
+                Text(
+                    text = stringResource(if (expanded) Res.string.details_show_less else Res.string.details_show_more),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
     }
 }
