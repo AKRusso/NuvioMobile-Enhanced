@@ -82,6 +82,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         accumulatedSeekResetJob = null
         accumulatedSeekState = null
         speedBoostRestoreSpeed = null
+        trackPreferenceRestoreApplied = false
         preferredAudioSelectionApplied = false
         preferredSubtitleSelectionApplied = false
         showSourcesPanel = false

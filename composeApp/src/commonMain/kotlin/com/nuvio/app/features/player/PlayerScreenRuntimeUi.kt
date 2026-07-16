@@ -458,6 +458,9 @@ private fun PlayerScreenRuntime.selectPlayerQuality(qualityId: String?) {
     }
 
     val resumePositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    audioTracks.firstOrNull { it.index == selectedAudioIndex || it.isSelected }?.let { currentAudio ->
+        persistAudioPreference(currentAudio)
+    }
     rememberPlaybackSpeedForSourceReload()
     selectedPlayerQualityId = qualityId
     activePlaybackSourceUrl = playbackUrl
