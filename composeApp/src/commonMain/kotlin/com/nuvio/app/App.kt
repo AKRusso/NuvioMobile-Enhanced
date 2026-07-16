@@ -163,6 +163,7 @@ import com.nuvio.app.features.cloud.providerPosterUrl
 import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
 import com.nuvio.app.features.debrid.toastMessage
+import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsScreen
 import com.nuvio.app.features.details.MetaDetailsRepository
@@ -1388,6 +1389,43 @@ private fun MainAppContent(
             navController.navigate(PlayerRoute(launchId = launchId))
         }
 
+        suspend fun openDownloadedItem(item: DownloadItem) {
+            val sourceUrl = DownloadsRepository.playableLocalFileUri(item) ?: return
+            val resumeEntry = item.videoId
+                .takeIf { it.isNotBlank() }
+                ?.let(WatchProgressRepository::progressForVideo)
+                ?.takeIf { it.isResumable }
+
+            launchPlayer(
+                PlayerLaunch(
+                    profileId = activePlaybackProfileId,
+                    title = item.title,
+                    sourceUrl = sourceUrl,
+                    sourceHeaders = emptyMap(),
+                    sourceResponseHeaders = emptyMap(),
+                    externalSubtitles = emptyList(),
+                    streamType = null,
+                    logo = item.logo,
+                    poster = item.poster,
+                    background = item.background,
+                    seasonNumber = item.seasonNumber,
+                    episodeNumber = item.episodeNumber,
+                    episodeTitle = item.episodeTitle,
+                    episodeThumbnail = item.episodeThumbnail,
+                    streamTitle = item.streamTitle,
+                    streamSubtitle = item.streamSubtitle,
+                    providerName = item.providerName,
+                    providerAddonId = item.providerAddonId,
+                    contentType = item.contentType,
+                    videoId = item.videoId,
+                    parentMetaId = item.parentMetaId,
+                    parentMetaType = item.parentMetaType,
+                    initialPositionMs = resumeEntry?.lastPositionMs?.takeIf { it > 0L } ?: 0L,
+                    initialProgressFraction = resumeEntry?.progressFraction?.takeIf { it > 0f },
+                ),
+            )
+        }
+
         suspend fun openLiveTvChannel(
             channel: LiveTvChannel,
             providerName: String = "Live TV",
@@ -2025,6 +2063,9 @@ private fun MainAppContent(
                                         onMetaScreenSettingsClick = { navController.navigate(MetaScreenSettingsRoute) },
                                         onContinueWatchingSettingsClick = { navController.navigate(ContinueWatchingSettingsRoute) },
                                         onDownloadsSettingsClick = { navController.navigate(DownloadsSettingsRoute) },
+                                        onLibraryDownloadClick = { item ->
+                                            coroutineScope.launch { openDownloadedItem(item) }
+                                        },
                                         onAddonsSettingsClick = { navController.navigate(AddonsSettingsRoute) },
                                         onPluginsSettingsClick = {
                                             if (AppFeaturePolicy.pluginsEnabled) {
@@ -3682,6 +3723,7 @@ private fun AppTabHost(
     onLibrarySectionViewAllClick: ((LibrarySection) -> Unit)? = null,
     onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
     onConnectCloudClick: (() -> Unit)? = null,
+    onLibraryDownloadClick: ((DownloadItem) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
     onSwitchProfile: (() -> Unit)? = null,
@@ -3749,6 +3791,7 @@ private fun AppTabHost(
                         onCloudFilePlay = onCloudFilePlay,
                         onConnectCloudClick = onConnectCloudClick,
                         onDownloadsClick = onDownloadsSettingsClick,
+                        onOpenDownload = onLibraryDownloadClick,
                     )
                 }
 
