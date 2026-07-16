@@ -456,6 +456,7 @@ class AppUpdaterController internal constructor(
                 assetName = "Nuvio-debug-preview.apk",
                 assetUrl = "debug://update-preview",
                 assetSizeBytes = 185L * 1024L * 1024L,
+                buildCode = 999,
             ),
             isUpdateAvailable = true,
             showDialog = true,
