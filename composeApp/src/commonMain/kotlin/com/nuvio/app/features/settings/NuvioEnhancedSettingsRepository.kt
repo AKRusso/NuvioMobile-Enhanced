@@ -170,8 +170,11 @@ internal object NuvioEnhancedSettingsRepository {
     }
 
     fun replacePayload(payload: String) {
-        stored = runCatching { json.decodeFromString<StoredNuvioEnhancedSettings>(payload) }
-            .getOrDefault(StoredNuvioEnhancedSettings())
+        val decoded = payload
+            .takeIf { it.isNotBlank() }
+            ?.let { runCatching { json.decodeFromString<StoredNuvioEnhancedSettings>(it) }.getOrNull() }
+            ?: return
+        stored = decoded
         hasLoaded = true
         publish()
         persist()
