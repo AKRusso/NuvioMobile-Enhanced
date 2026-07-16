@@ -876,13 +876,16 @@ private fun ProfileInsightPosterTile(
     val initialImageUrl = remember(item.id, item.imageUrl) {
         item.imageUrl?.trim()?.takeIf { it.isNotBlank() }
     }
-    var resolvedImageUrl by remember(item.id, initialImageUrl) {
-        mutableStateOf(initialImageUrl)
+    val cachedImageUrl = remember(item.id, item.lookupType, item.lookupId, initialImageUrl) {
+        initialImageUrl ?: profileCachedArtworkUrl(item.lookupType, item.lookupId)
+    }
+    var resolvedImageUrl by remember(item.id, cachedImageUrl) {
+        mutableStateOf(cachedImageUrl)
     }
 
-    LaunchedEffect(item.id, item.lookupType, item.lookupId, initialImageUrl) {
-        resolvedImageUrl = initialImageUrl
-        if (initialImageUrl != null) return@LaunchedEffect
+    LaunchedEffect(item.id, item.lookupType, item.lookupId, cachedImageUrl) {
+        resolvedImageUrl = cachedImageUrl
+        if (cachedImageUrl != null) return@LaunchedEffect
         val lookupType = item.lookupType?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val lookupId = item.lookupId?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val hydratedMeta = runCatching {
@@ -1593,7 +1596,11 @@ private fun buildProfileCompletedContentItems(
                     ?: item.id,
                 subtitle = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() }
                     ?: libraryItem?.releaseInfo?.trim()?.takeIf { it.isNotBlank() },
-                imageUrl = item.poster ?: libraryItem?.poster ?: libraryItem?.banner ?: progressItem?.profileArtworkUrl(),
+                imageUrl = item.poster
+                    ?: libraryItem?.poster
+                    ?: libraryItem?.banner
+                    ?: progressItem?.profileArtworkUrl()
+                    ?: profileCachedArtworkUrl("movie", item.id),
                 markedAtEpochMs = item.markedAtEpochMs,
             )
         }
@@ -1631,7 +1638,8 @@ private fun buildProfileCompletedContentItems(
                     ?: libraryItem?.poster
                     ?: libraryItem?.banner
                     ?: progressItem?.profileArtworkUrl()
-                    ?: representative.poster,
+                    ?: representative.poster
+                    ?: profileCachedArtworkUrl("series", representative.id),
                 markedAtEpochMs = group.maxOf { item -> item.markedAtEpochMs },
             )
         }
@@ -1674,6 +1682,14 @@ private fun WatchProgressEntry.profileArtworkUrl(): String? =
     poster?.takeIf { it.isNotBlank() }
         ?: background?.takeIf { it.isNotBlank() }
         ?: episodeThumbnail?.takeIf { it.isNotBlank() }
+
+private fun profileCachedArtworkUrl(type: String?, id: String?): String? {
+    val cleanType = type?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val cleanId = id?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val cached = MetaDetailsRepository.peek(type = cleanType, id = cleanId) ?: return null
+    return cached.poster?.trim()?.takeIf { it.isNotBlank() }
+        ?: cached.background?.trim()?.takeIf { it.isNotBlank() }
+}
 
 private fun profileRecentActivityCount(
     watchedItems: List<WatchedItem>,
