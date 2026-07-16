@@ -988,6 +988,7 @@
     <string name="settings_playback_timeout_instant">Instantáneo</string>
     <string name="settings_playback_timeout_seconds">%1$ss</string>
     <string name="settings_playback_timeout_unlimited">Ilimitado</string>
+    <string name="player_status_ends_at">Termina a las %1$s • quedan %2$s</string>
     <string name="player_status_time_left">Quedan %1$s</string>
     <string name="settings_playback_tunneled_playback">Reproducción tunneled</string>
     <string name="settings_playback_tunneled_playback_description">Activa la reproducción tunneled para una menor latencia en la sincronización de audio/video.</string>

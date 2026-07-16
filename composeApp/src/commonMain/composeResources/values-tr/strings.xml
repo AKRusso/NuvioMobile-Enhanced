@@ -994,6 +994,7 @@
     <string name="settings_playback_timeout_instant">Hemen</string>
     <string name="settings_playback_timeout_seconds">%1$ssn</string>
     <string name="settings_playback_timeout_unlimited">Sınırsız</string>
+    <string name="player_status_ends_at">%1$s biter • %2$s kaldı</string>
     <string name="player_status_time_left">%1$s kaldı</string>
     <string name="settings_playback_tunneled_playback">Tunneled oynatma</string>
     <string name="settings_playback_tunneled_playback_description">Daha düşük gecikmeli ses/video senkronu için tunneled oynatmayı aç.</string>

@@ -1154,6 +1154,7 @@
     <string name="settings_playback_timeout_instant">Instant</string>
     <string name="settings_playback_timeout_seconds">%1$ss</string>
     <string name="settings_playback_timeout_unlimited">Unlimited</string>
+    <string name="player_status_ends_at">Ends %1$s • %2$s left</string>
     <string name="player_status_time_left">%1$s left</string>
     <string name="settings_playback_tunneled_playback">Tunneled Playback</string>
     <string name="settings_playback_tunneled_playback_description">Hardware-level audio/video sync. May improve playback on some Android TV devices</string>
