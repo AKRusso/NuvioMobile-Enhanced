@@ -69,6 +69,7 @@ import com.nuvio.app.features.home.buildHomeReleaseRadarItems
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.home.components.HomeConciergeSection
 import com.nuvio.app.features.details.MetaDetailsRepository
+import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.settings.filteredByNuvioEnhancedReleaseRadar
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
@@ -886,18 +887,7 @@ private fun ProfileInsightPosterTile(
     LaunchedEffect(item.id, item.lookupType, item.lookupId, cachedImageUrl) {
         resolvedImageUrl = cachedImageUrl
         if (cachedImageUrl != null) return@LaunchedEffect
-        val lookupType = item.lookupType?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val lookupId = item.lookupId?.trim()?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val hydratedMeta = runCatching {
-            MetaDetailsRepository.fetch(type = lookupType, id = lookupId)
-        }.onFailure { error ->
-            profileInsightsLog.w(error) {
-                "Failed to hydrate profile poster for $lookupType/$lookupId"
-            }
-        }.getOrNull()
-
-        resolvedImageUrl = hydratedMeta?.poster?.trim()?.takeIf { it.isNotBlank() }
-            ?: hydratedMeta?.background?.trim()?.takeIf { it.isNotBlank() }
+        resolvedImageUrl = profileFetchArtworkUrl(item.lookupType, item.lookupId)
     }
 
     Column(
@@ -1683,12 +1673,60 @@ private fun WatchProgressEntry.profileArtworkUrl(): String? =
         ?: background?.takeIf { it.isNotBlank() }
         ?: episodeThumbnail?.takeIf { it.isNotBlank() }
 
+private suspend fun profileFetchArtworkUrl(type: String?, id: String?): String? {
+    for ((lookupType, lookupId) in profileMetaLookupCandidates(type, id)) {
+        profileCachedArtworkUrl(lookupType, lookupId)?.let { return it }
+
+        val hydratedMeta = runCatching {
+            MetaDetailsRepository.fetch(type = lookupType, id = lookupId)
+        }.onFailure { error ->
+            profileInsightsLog.w(error) {
+                "Failed to hydrate profile poster for $lookupType/$lookupId"
+            }
+        }.getOrNull()
+
+        hydratedMeta.profileMetaArtworkUrl()?.let { return it }
+    }
+
+    return null
+}
+
 private fun profileCachedArtworkUrl(type: String?, id: String?): String? {
-    val cleanType = type?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val cleanId = id?.trim()?.takeIf { it.isNotBlank() } ?: return null
-    val cached = MetaDetailsRepository.peek(type = cleanType, id = cleanId) ?: return null
-    return cached.poster?.trim()?.takeIf { it.isNotBlank() }
-        ?: cached.background?.trim()?.takeIf { it.isNotBlank() }
+    for ((lookupType, lookupId) in profileMetaLookupCandidates(type, id)) {
+        MetaDetailsRepository.peek(type = lookupType, id = lookupId)
+            .profileMetaArtworkUrl()
+            ?.let { return it }
+    }
+
+    return null
+}
+
+private fun MetaDetails?.profileMetaArtworkUrl(): String? =
+    this?.poster?.trim()?.takeIf { it.isNotBlank() }
+        ?: this?.background?.trim()?.takeIf { it.isNotBlank() }
+
+private fun profileMetaLookupCandidates(type: String?, id: String?): List<Pair<String, String>> {
+    val cleanId = id?.trim()?.takeIf { it.isNotBlank() } ?: return emptyList()
+    val cleanType = type?.trim()?.takeIf { it.isNotBlank() } ?: return emptyList()
+    val normalizedKind = cleanType.profileCompletedContentKind()
+
+    val typeCandidates = buildList {
+        add(cleanType)
+        normalizedKind?.let(::add)
+        when (normalizedKind) {
+            "movie" -> add("film")
+            "series" -> {
+                add("tv")
+                add("show")
+                add("tvshow")
+            }
+        }
+    }
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
+        .distinctBy { it.lowercase() }
+
+    return typeCandidates.map { candidateType -> candidateType to cleanId }
 }
 
 private fun profileRecentActivityCount(
