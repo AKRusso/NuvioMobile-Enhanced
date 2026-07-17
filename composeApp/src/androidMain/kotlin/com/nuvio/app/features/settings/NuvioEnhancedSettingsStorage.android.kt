@@ -21,6 +21,6 @@ internal actual object NuvioEnhancedSettingsStorage {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(payloadKey), payload)
-            ?.apply()
+            ?.commit()
     }
 }

@@ -90,6 +90,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         showQualityPanel = false
         showLiveTvChannelsPanel = false
         episodeStreamsPanelState = EpisodeStreamsPanelState()
+        preloadedNextEpisodeVideoId = null
         PlayerStreamsRepository.clearEpisodeStreams()
         SubtitleRepository.clear()
         WatchProgressRepository.ensureLoaded()
@@ -574,6 +575,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             thresholdMinutesBeforeEnd = playerSettingsUiState.nextEpisodeThresholdMinutesBeforeEnd,
         )
         if (shouldShow && !showNextEpisodeCard) {
+            preloadNextEpisodeStreams()
             showNextEpisodeCard = true
             if (playerSettingsUiState.streamAutoPlayNextEpisodeEnabled && nextEpisodeInfo?.hasAired == true) {
                 playNextEpisode()
@@ -585,6 +587,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
 
     LaunchedEffect(playbackSnapshot.isEnded, nextEpisodeInfo) {
         if (playbackSnapshot.isEnded && nextEpisodeInfo != null && !showNextEpisodeCard) {
+            preloadNextEpisodeStreams()
             showNextEpisodeCard = true
             if (playerSettingsUiState.streamAutoPlayNextEpisodeEnabled && nextEpisodeInfo?.hasAired == true) {
                 playNextEpisode()
@@ -670,6 +673,8 @@ internal fun PlayerScreenRuntime.tryRefreshCredentialedSourceAfterError(message:
         PlayerStreamsRepository.loadSources(
             type = type,
             videoId = currentVideoId,
+            parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
             season = season,
             episode = episode,
             forceRefresh = true,
@@ -718,6 +723,7 @@ internal fun PlayerScreenRuntime.tryRefreshCredentialedSourceAfterError(message:
         activeSourceAudioUrl = null
         activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
         activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+        activeExternalSubtitles = stream.externalSubtitles
         activeStreamType = stream.streamType
         activeStreamTitle = stream.streamLabel
         activeStreamSubtitle = stream.streamSubtitle

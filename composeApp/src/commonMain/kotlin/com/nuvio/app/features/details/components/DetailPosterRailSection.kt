@@ -13,6 +13,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioShelfSection
+import com.nuvio.app.core.ui.NuvioViewAllPillSize
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.components.HomePosterCard
 import com.nuvio.app.features.home.stableKey
@@ -27,6 +28,7 @@ fun DetailPosterRailSection(
     showHeader: Boolean = true,
     headerHorizontalPadding: Dp = 0.dp,
     sourceLabel: String? = null,
+    onViewAllClick: (() -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
 ) {
@@ -39,6 +41,8 @@ fun DetailPosterRailSection(
             headerHorizontalPadding = headerHorizontalPadding,
             rowContentPadding = PaddingValues(horizontal = headerHorizontalPadding),
             showHeaderAccent = false,
+            onViewAllClick = onViewAllClick,
+            viewAllPillSize = NuvioViewAllPillSize.Compact,
             key = { item -> item.stableKey() },
         ) { item ->
             HomePosterCard(

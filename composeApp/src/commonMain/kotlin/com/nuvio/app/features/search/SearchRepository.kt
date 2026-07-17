@@ -116,6 +116,7 @@ object SearchRepository {
         _uiState.value = SearchUiState(isLoading = true)
 
         activeJob = scope.launch {
+            val peopleDeferred = async { tmdbPeopleSearch(normalizedQuery) }
             val resultChannel = Channel<IndexedSearchResult>(Channel.UNLIMITED)
             val jobs = requests.mapIndexed { index, request ->
                 launch {
@@ -182,12 +183,14 @@ object SearchRepository {
                 emptyList()
             }
             val finalSections = providerSections + fallbackSections
+            val people = peopleDeferred.await()
 
             _uiState.value = SearchUiState(
                 isLoading = false,
                 sections = finalSections,
+                people = people,
                 emptyStateReason = when {
-                    finalSections.isNotEmpty() -> null
+                    finalSections.isNotEmpty() || people.isNotEmpty() -> null
                     allFailed -> SearchEmptyStateReason.RequestFailed
                     else -> SearchEmptyStateReason.NoResults
                 },
@@ -262,11 +265,15 @@ object SearchRepository {
         activeJob?.cancel()
         _uiState.value = SearchUiState(isLoading = true)
         activeJob = scope.launch {
-            val section = tmdbSearchSection(query)
+            val sectionDeferred = async { tmdbSearchSection(query) }
+            val peopleDeferred = async { tmdbPeopleSearch(query) }
+            val section = sectionDeferred.await()
+            val people = peopleDeferred.await()
             _uiState.value = SearchUiState(
                 isLoading = false,
                 sections = section?.let(::listOf).orEmpty(),
-                emptyStateReason = if (section != null) null else fallbackReason,
+                people = people,
+                emptyStateReason = if (section != null || people.isNotEmpty()) null else fallbackReason,
             )
         }
     }
@@ -523,6 +530,13 @@ object SearchRepository {
             hasMore = false,
         )
     }
+
+    private suspend fun tmdbPeopleSearch(query: String) =
+        if (TmdbSettingsRepository.snapshot().enabled) {
+            TmdbService.searchPeople(query)
+        } else {
+            emptyList()
+        }
 
     private fun loadDiscoverFeed(reset: Boolean) {
         activeDiscoverJob?.cancel()

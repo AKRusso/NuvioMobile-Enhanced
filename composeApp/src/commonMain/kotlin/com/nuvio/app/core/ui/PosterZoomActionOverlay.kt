@@ -92,6 +92,7 @@ class PosterZoomOverlayAction(
     val icon: ImageVector,
     val label: String,
     val isDestructive: Boolean = false,
+    val disintegratesPreview: Boolean = isDestructive,
     val onSelected: () -> Unit,
 )
 
@@ -182,7 +183,7 @@ fun NuvioPosterZoomActionOverlay(
 
     fun select(action: PosterZoomOverlayAction) {
         if (phase != PosterZoomPhase.Open) return
-        if (action.isDestructive) {
+        if (action.disintegratesPreview) {
             phase = PosterZoomPhase.Disintegrating
             hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
             action.onSelected()

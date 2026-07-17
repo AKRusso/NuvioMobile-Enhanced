@@ -510,10 +510,19 @@
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Tráilers</string>
     <string name="downloads_empty_episodes">No hay episodios completados</string>
+    <string name="downloads_empty_message">Ten tus favoritos siempre cerca. Descarga películas y series para verlas donde quieras, incluso sin Wi-Fi.</string>
     <string name="downloads_empty_title">Aún no hay descargas</string>
+    <string name="downloads_delete_message">¿Eliminar "%1$s" de las descargas? Esto quitará el archivo guardado de este dispositivo.</string>
+    <string name="downloads_delete_title">¿Eliminar descarga?</string>
     <string name="downloads_episode_count">%1$d episodio(s) descargado(s)</string>
+    <string name="downloads_filter_all">Todo</string>
+    <string name="downloads_filter_empty">No hay descargas que coincidan con este filtro.</string>
+    <string name="downloads_find_something">Buscar algo</string>
     <string name="downloads_section_active">Activas</string>
+    <string name="downloads_section_all">Todas las descargas</string>
+    <string name="downloads_section_downloading">Descargando</string>
     <string name="downloads_section_movies">Películas</string>
+    <string name="downloads_settings_content_description">Ajustes de descarga</string>
     <string name="downloads_section_shows">Series</string>
     <string name="downloads_show_downloads">Mostrar descargas</string>
     <string name="downloads_status_completed">Completado • %1$s</string>
@@ -2110,4 +2119,8 @@
     <string name="nuvio_enhanced_toast_backup_copied">Copia guardada en el portapapeles</string>
     <string name="nuvio_enhanced_toast_crash_copied">Informe de crash copiado al portapapeles</string>
     <string name="nuvio_enhanced_toast_no_email_app">No hay app de correo disponible</string>
+    <string name="person_add_favorite">Añadir a actores favoritos</string>
+    <string name="person_remove_favorite">Quitar de actores favoritos</string>
+    <string name="profile_insights_favorite_people_title">Actores favoritos</string>
+    <string name="profile_insights_favorite_people_open">Ver perfil</string>
 </resources>

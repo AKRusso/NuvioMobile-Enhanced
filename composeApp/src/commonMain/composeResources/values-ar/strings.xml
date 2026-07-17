@@ -547,6 +547,8 @@
     <string name="cw_action_remove">يزيل</string>
     <string name="detail_btn_play">يلعب</string>
     <string name="downloads_section_active">نشيط</string>
+    <string name="downloads_section_all">كل التنزيلات</string>
+    <string name="downloads_section_downloading">جارٍ التنزيل</string>
     <string name="downloads_section_movies">أفلام</string>
     <string name="settings_licenses_attributions_tmdb_title">تستخدم قاعدة بيانات الأفلام (TMDB)</string>
     <string name="settings_licenses_attributions_tmdb_body">Nuvio TMDB API للبيانات التعريفية للأفلام والتلفزيون، والأعمال الفنية، والمقاطع الدعائية، والممثلين، وتفاصيل الإنتاج، والمجموعات، والتوصيات. يستخدم هذا المنتج TMDB API ولكن لم يتم اعتماده أو اعتماده بواسطة TMDB.</string>
@@ -584,10 +586,17 @@
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">المقطورات</string>
     <string name="downloads_empty_episodes">لا توجد حلقات مكتملة</string>
+    <string name="downloads_empty_message">احتفظ بمفضلاتك قريبة. نزّل الأفلام والمسلسلات وشاهدها في أي مكان، حتى من دون Wi-Fi.</string>
     <string name="downloads_empty_title">لم يتم التنزيل بعد</string>
+    <string name="downloads_delete_message">هل تريد حذف "%1$s" من التنزيلات؟ سيؤدي ذلك إلى إزالة الملف المحفوظ من هذا الجهاز.</string>
+    <string name="downloads_delete_title">حذف التنزيل؟</string>
     <string name="downloads_episode_count">%1$d تم تنزيله الحلقات</string>
+    <string name="downloads_filter_all">الكل</string>
+    <string name="downloads_filter_empty">لا توجد تنزيلات تطابق هذا الفلتر.</string>
+    <string name="downloads_find_something">ابحث عن شيء</string>
     <string name="downloads_open_directory">افتح مجلد التنزيلات</string>
     <string name="downloads_open_directory_failed">تعذر فتح مجلد التنزيلات</string>
+    <string name="downloads_settings_content_description">إعدادات التنزيل</string>
     <string name="downloads_section_shows">العروض</string>
     <string name="downloads_show_downloads">عرض التنزيلات</string>
     <string name="downloads_status_completed">اكتمل • %1$s</string>
@@ -2361,4 +2370,8 @@
     <string name="theme_color_yellow">أصفر</string>
     <string name="theme_color_red">أحمر</string>
     <string name="theme_color_white">أبيض</string>
+    <string name="person_add_favorite">إضافة إلى الممثلين المفضلين</string>
+    <string name="person_remove_favorite">إزالة من الممثلين المفضلين</string>
+    <string name="profile_insights_favorite_people_title">الممثلون المفضلون</string>
+    <string name="profile_insights_favorite_people_open">عرض الملف</string>
 </resources>

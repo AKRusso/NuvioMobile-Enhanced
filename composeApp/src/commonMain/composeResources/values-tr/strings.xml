@@ -429,6 +429,7 @@
     <string name="compose_search_empty_no_results_title">Sonuç bulunamadı</string>
     <string name="compose_search_empty_no_search_catalogs_message">Kurulu eklentilerin katalog araması sunmuyor.</string>
     <string name="compose_search_empty_no_search_catalogs_title">Aranabilir katalog yok</string>
+    <string name="compose_search_people_title">Oyuncular / Kişiler</string>
     <string name="compose_search_placeholder">Film, dizi ara...</string>
     <string name="compose_search_recent_searches">Son aramalar</string>
     <string name="compose_search_remove_recent_search">Son aramayı kaldır</string>
@@ -438,6 +439,7 @@
     <string name="compose_settings_category_general">Genel</string>
     <string name="compose_settings_page_account">Hesap</string>
     <string name="compose_settings_page_addons">Eklentiler</string>
+    <string name="compose_settings_page_cloudstream">CloudStream / CS3</string>
     <string name="compose_settings_page_appearance">Görünüm</string>
     <string name="compose_settings_page_content_discovery">İçerik &amp; Keşif</string>
     <string name="compose_settings_page_continue_watching">İzlemeye devam</string>
@@ -521,10 +523,19 @@
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Fragmanlar</string>
     <string name="downloads_empty_episodes">Tamamlanmış bölüm yok</string>
+    <string name="downloads_empty_message">Favorilerini yanında tut. Film ve dizileri indir, Wi-Fi olmasa bile istediğin yerde izle.</string>
     <string name="downloads_empty_title">Henüz indirme yok</string>
+    <string name="downloads_delete_message">"%1$s" indirilenlerden silinsin mi? Kaydedilen dosya bu cihazdan kaldırılacak.</string>
+    <string name="downloads_delete_title">İndirme silinsin mi?</string>
     <string name="downloads_episode_count">%1$d indirilmiş bölüm</string>
+    <string name="downloads_filter_all">Tümü</string>
+    <string name="downloads_filter_empty">Bu filtreyle eşleşen indirme yok.</string>
+    <string name="downloads_find_something">Bir şeyler bul</string>
     <string name="downloads_section_active">Aktif</string>
+    <string name="downloads_section_all">Tüm indirmeler</string>
+    <string name="downloads_section_downloading">İndiriliyor</string>
     <string name="downloads_section_movies">Filmler</string>
+    <string name="downloads_settings_content_description">İndirme ayarları</string>
     <string name="downloads_section_shows">Diziler</string>
     <string name="downloads_show_downloads">İndirilenleri göster</string>
     <string name="downloads_status_completed">Tamamlandı • %1$s</string>
@@ -699,6 +710,7 @@
     <string name="settings_content_discovery_section_sources">KAYNAKLAR</string>
     <string name="settings_content_discovery_addons_description">İçerik kaynaklarını kur, kaldır, yenile ve sırala.</string>
     <string name="settings_content_discovery_plugins_description">JavaScript scraper depoları kur ve sağlayıcıları içeriden test et.</string>
+    <string name="settings_content_discovery_cloudstream_description">CloudStream CS3 repolarını kur, provider ara ve CloudStream kaynaklarını yönet.</string>
     <string name="settings_content_discovery_homescreen_description">Ana sayfada hangi katalogların hangi sırayla görüneceğini kontrol et.</string>
     <string name="settings_content_discovery_meta_screen_description">Detay bölümlerini kapat ve öne çıkanların altındaki her şeyi yeniden sırala.</string>
     <string name="settings_content_discovery_collections_description">Ana sayfada gösterilen klasörlerle özel katalog grupları oluştur.</string>
@@ -964,6 +976,8 @@
     <string name="settings_playback_selected_count">%1$d seçili</string>
     <string name="settings_playback_show_loading_overlay">Yükleme ekranını göster</string>
     <string name="settings_playback_show_loading_overlay_description">Yayın başlarken açılış yükleme katmanını göster.</string>
+    <string name="settings_playback_remember_brightness">Parlaklığı hatırla</string>
+    <string name="settings_playback_remember_brightness_description">Her videoyu player içinde son ayarladığın parlaklık seviyesiyle başlat.</string>
     <string name="settings_playback_skip_intro_outro_recap">Intro/Outro/Özeti geç</string>
     <string name="settings_playback_skip_intro_outro_recap_description">Algılanan intro, outro ve özet kısımlarında geç butonunu göster.</string>
     <string name="settings_playback_source_scope">Kaynak kapsamı</string>
@@ -1467,7 +1481,11 @@
     <string name="downloads_live_downloading">%1$s indiriliyor • %2$s</string>
     <string name="downloads_live_downloading_with_total">%1$s indiriliyor • %2$s / %3$s</string>
     <string name="downloads_live_failed">İndirme olmadı</string>
+    <string name="downloads_live_multiple_active">%1$d aktif indirme • %2$s</string>
     <string name="downloads_live_paused">Duraklatıldı %1$s</string>
+    <string name="downloads_action_pause">Durdur</string>
+    <string name="downloads_action_resume">Devam et</string>
+    <string name="downloads_action_cancel_download">İptal et</string>
     <string name="library_remove_confirm">Kaldır</string>
     <string name="library_remove_from_list_message">%1$s, %2$s listesinden kaldırılsın mı?</string>
     <string name="library_remove_message">%1$s kitaplığından kaldırılsın mı?</string>
@@ -1872,4 +1890,8 @@
     <string name="theme_color_yellow">Sarı</string>
     <string name="theme_color_red">Kırmızı</string>
     <string name="theme_color_white">Beyaz</string>
+    <string name="person_add_favorite">Favori oyunculara ekle</string>
+    <string name="person_remove_favorite">Favori oyunculardan kaldır</string>
+    <string name="profile_insights_favorite_people_title">Favori Oyuncular</string>
+    <string name="profile_insights_favorite_people_open">Profili aç</string>
 </resources>

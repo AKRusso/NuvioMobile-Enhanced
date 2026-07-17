@@ -1,5 +1,7 @@
 package com.nuvio.app.features.downloads
 
+import com.nuvio.app.features.streams.StreamSubtitle
+
 internal data class DownloadPlatformRequest(
     val sourceUrl: String,
     val sourceHeaders: Map<String, String>,
@@ -23,6 +25,11 @@ internal expect object DownloadsPlatformDownloader {
     fun removePartialFile(destinationFileName: String): Boolean
 
     fun resolveLocalFileUri(localFileUri: String?, destinationFileName: String): String?
+
+    fun cacheSubtitleFiles(
+        subtitles: List<StreamSubtitle>,
+        companionBaseFileName: String,
+    ): List<StreamSubtitle>
 
     fun openDownloadsDirectory(): Boolean
 }

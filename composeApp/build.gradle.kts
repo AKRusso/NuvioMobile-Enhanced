@@ -117,6 +117,12 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
+        val introDbApiUrl = props.getProperty("INTRODB_API_URL")
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.replace("http://api.introdb.app", "https://api.introdb.app")
+            ?: "https://api.introdb.app"
+
         outDir.resolve("com/nuvio/app/features/player/skip").apply {
             mkdirs()
             resolve("IntroDbConfig.kt").writeText(
@@ -124,7 +130,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.player.skip
                 |
                 |object IntroDbConfig {
-                |    const val URL = "${props.getProperty("INTRODB_API_URL", "")}" 
+                |    const val URL = "$introDbApiUrl"
                 |}
                 """.trimMargin()
             )

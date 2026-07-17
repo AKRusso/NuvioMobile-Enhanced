@@ -18,12 +18,14 @@ class DownloadsNotificationActionReceiver : BroadcastReceiver() {
         when (action) {
             actionPause -> DownloadsRepository.pauseDownload(downloadId)
             actionResume -> DownloadsRepository.resumeDownload(downloadId)
+            actionCancel -> DownloadsRepository.cancelDownload(downloadId)
         }
     }
 
     companion object {
         const val actionPause = "com.nuvio.app.downloads.action.PAUSE"
         const val actionResume = "com.nuvio.app.downloads.action.RESUME"
+        const val actionCancel = "com.nuvio.app.downloads.action.CANCEL"
         const val extraDownloadId = "download_id"
     }
 }

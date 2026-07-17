@@ -75,6 +75,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 
 private const val TAG = "NuvioPlayer"
@@ -1022,18 +1023,34 @@ private class NuvioLibmpvView(
 
     private fun loadCurrentSource(playWhenReady: Boolean) {
         val sourceUrl = currentSourceUrl ?: return
+        val libmpvSourceUrl = sourceUrl.toLibmpvLoadPath()
         applyRequestHeaders(currentRequestHeaders)
         setPaused(!playWhenReady)
-        mpv.command("loadfile", sourceUrl, "replace")
+        mpv.command("loadfile", libmpvSourceUrl, "replace")
         currentSourceAudioUrl?.takeIf { it.isNotBlank() }?.let { sourceAudioUrl ->
-            mpv.command("audio-add", sourceAudioUrl, "auto")
+            mpv.command("audio-add", sourceAudioUrl.toLibmpvLoadPath(), "auto")
         }
         currentExternalSubtitles.forEachIndexed { index, subtitle ->
             val flag = if (index == 0) "auto" else "cached"
-            mpv.command("sub-add", subtitle.url, flag)
+            mpv.command("sub-add", subtitle.url.toLibmpvLoadPath(), flag)
         }
         setPaused(!playWhenReady)
     }
+
+    private fun String.toLibmpvLoadPath(): String {
+        val value = trim()
+        if (value.isBlank()) return value
+        return value.toExistingLocalFileOrNull()?.absolutePath ?: value
+    }
+
+    private fun String.toExistingLocalFileOrNull(): File? =
+        runCatching {
+            when {
+                startsWith("file:", ignoreCase = true) -> File(URI(this))
+                startsWith("/") -> File(this)
+                else -> null
+            }
+        }.getOrNull()?.takeIf { it.exists() && it.isFile }
 
     fun setPaused(paused: Boolean) {
         runCatching { mpv.setPropertyBoolean("pause", paused) }

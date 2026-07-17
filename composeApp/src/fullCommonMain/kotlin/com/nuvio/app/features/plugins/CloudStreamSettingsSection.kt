@@ -212,44 +212,48 @@ internal fun CloudStreamSettingsSection() {
         }
     }
 
-    state.repositories.forEach { repository ->
-        NuvioSurfaceCard {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(repository.manifest.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        repository.manifest.sourceUrl,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    repository.errorMessage?.let {
-                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-                IconButton(
-                    onClick = {
-                        repositoryUrl = repository.manifest.sourceUrl
-                        editingRepositoryUrl = repository.manifest.sourceUrl
-                    },
+    if (state.repositories.isNotEmpty()) {
+        NuvioSectionLabel(copy.repositoriesSectionTitle)
+        state.repositories.forEach { repository ->
+            NuvioSurfaceCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Rounded.Edit, contentDescription = copy.editRepositoryContentDescription)
-                }
-                IconButton(onClick = { CloudStreamRepository.refreshRepository(repository.manifest.sourceUrl) }) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = copy.refreshRepositoryContentDescription)
-                }
-                IconButton(onClick = { CloudStreamRepository.removeRepository(repository.manifest.sourceUrl) }) {
-                    Icon(Icons.Rounded.Delete, contentDescription = copy.removeRepositoryContentDescription)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(repository.manifest.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(
+                            repository.manifest.sourceUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        repository.errorMessage?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    IconButton(
+                        onClick = {
+                            repositoryUrl = repository.manifest.sourceUrl
+                            editingRepositoryUrl = repository.manifest.sourceUrl
+                        },
+                    ) {
+                        Icon(Icons.Rounded.Edit, contentDescription = copy.editRepositoryContentDescription)
+                    }
+                    IconButton(onClick = { CloudStreamRepository.refreshRepository(repository.manifest.sourceUrl) }) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = copy.refreshRepositoryContentDescription)
+                    }
+                    IconButton(onClick = { CloudStreamRepository.removeRepository(repository.manifest.sourceUrl) }) {
+                        Icon(Icons.Rounded.Delete, contentDescription = copy.removeRepositoryContentDescription)
+                    }
                 }
             }
         }
     }
 
     if (state.plugins.isNotEmpty()) {
+        NuvioSectionLabel(copy.providersSectionTitle)
         NuvioSurfaceCard {
             Text(copy.searchAndFilterTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(10.dp))
@@ -492,7 +496,11 @@ private class CloudStreamSettingsCopy private constructor(
     private val turkish: Boolean,
 ) {
     val sectionTitle: String =
-        if (turkish) "CloudStream repository ve eklentileri" else "CloudStream repositories and plugins"
+        if (turkish) "CloudStream / CS3" else "CloudStream / CS3"
+    val repositoriesSectionTitle: String =
+        if (turkish) "CS3 repositoryleri" else "CS3 repositories"
+    val providersSectionTitle: String =
+        if (turkish) "CS3 providerları" else "CS3 providers"
     val sectionDescription: String =
         if (turkish) {
             "Standart .cs3 paketleri indirilen üçüncü taraf kodudur. Android full sürümü bu paketleri CloudStream çalışma zamanı ile çalıştırabilir; iOS yalnızca uygulamaya derlenmiş uyumluluk adaptörlerini kullanabilir. Yalnızca güvendiğiniz depoları ve eklentileri kurun."

@@ -156,6 +156,8 @@ internal fun TabletPageHeader(
                 style = MaterialTheme.typography.headlineLarge,
                 color = tokens.colors.textPrimary,
                 fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

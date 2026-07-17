@@ -461,6 +461,7 @@
     <string name="compose_search_empty_no_results_title">No results found</string>
     <string name="compose_search_empty_no_search_catalogs_message">Your installed addons do not expose catalog search.</string>
     <string name="compose_search_empty_no_search_catalogs_title">No searchable catalogs</string>
+    <string name="compose_search_people_title">Actors / People</string>
     <string name="compose_search_placeholder">Search movies, shows...</string>
     <string name="compose_search_recent_searches">Recent Searches</string>
     <string name="compose_search_remove_recent_search">Remove recent search</string>
@@ -468,6 +469,7 @@
     <string name="compose_settings_category_general">General</string>
     <string name="compose_settings_page_account">Account</string>
     <string name="compose_settings_page_addons">Addons</string>
+    <string name="compose_settings_page_cloudstream">CloudStream / CS3</string>
     <string name="compose_settings_page_advanced">Advanced</string>
     <string name="compose_settings_page_appearance">Layout</string>
     <string name="compose_settings_page_content_discovery">Content &amp; Discovery</string>
@@ -586,12 +588,21 @@
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Trailers</string>
     <string name="downloads_empty_episodes">No completed episodes</string>
+    <string name="downloads_empty_message">Keep your favorites close. Download movies and shows to watch anywhere, even without Wi-Fi.</string>
     <string name="downloads_empty_title">No downloads yet</string>
+    <string name="downloads_delete_message">Delete "%1$s" from downloads? This removes the saved file from this device.</string>
+    <string name="downloads_delete_title">Delete download?</string>
     <string name="downloads_episode_count">%1$d downloaded episode(s)</string>
+    <string name="downloads_filter_all">All</string>
+    <string name="downloads_filter_empty">No downloads match this filter.</string>
+    <string name="downloads_find_something">Find Something</string>
     <string name="downloads_open_directory">Open downloads folder</string>
     <string name="downloads_open_directory_failed">Couldn&apos;t open downloads folder</string>
     <string name="downloads_section_active">Active</string>
+    <string name="downloads_section_all">All downloads</string>
+    <string name="downloads_section_downloading">Downloading</string>
     <string name="downloads_section_movies">Movies</string>
+    <string name="downloads_settings_content_description">Download settings</string>
     <string name="downloads_section_shows">Shows</string>
     <string name="downloads_show_downloads">Show Downloads</string>
     <string name="downloads_status_completed">Completed • %1$s</string>
@@ -770,6 +781,7 @@
     <string name="settings_content_discovery_addons_description">Install, remove, refresh, and sort your content sources.</string>
     <string name="settings_content_discovery_addons_description_appstore">Connect personal media sources and manage access to your own library.</string>
     <string name="settings_content_discovery_plugins_description">Install JavaScript scraper repositories and test providers internally.</string>
+    <string name="settings_content_discovery_cloudstream_description">Install CloudStream CS3 repositories, search providers, and manage CloudStream sources.</string>
     <string name="settings_content_discovery_homescreen_description">Adjust home layout, content visibility, and poster behavior</string>
     <string name="settings_content_discovery_meta_screen_description">Settings for the detail and episode screens.</string>
     <string name="settings_content_discovery_collections_description">Create custom catalog groupings with folders shown on Home.</string>
@@ -1034,6 +1046,8 @@
     <string name="settings_playback_hold_to_speed_description">Long-press anywhere on the player surface to temporarily boost playback speed.</string>
     <string name="settings_playback_touch_gestures">Touch Gestures</string>
     <string name="settings_playback_touch_gestures_description">Allow swipes and double-taps on the player surface to seek, adjust brightness, or adjust volume.</string>
+    <string name="settings_playback_remember_brightness">Remember Brightness</string>
+    <string name="settings_playback_remember_brightness_description">Start each video with the last brightness level you set in the player.</string>
     <string name="settings_playback_invalid_regex_pattern">Invalid regex pattern</string>
     <string name="settings_playback_last_link_cache_duration">Last Link Cache Duration</string>
     <string name="settings_playback_map_dv7_to_hevc">DV7 - HEVC Fallback</string>
@@ -1648,7 +1662,11 @@
     <string name="downloads_live_downloading">Downloading %1$s • %2$s</string>
     <string name="downloads_live_downloading_with_total">Downloading %1$s • %2$s / %3$s</string>
     <string name="downloads_live_failed">Download failed</string>
+    <string name="downloads_live_multiple_active">%1$d active downloads • %2$s</string>
     <string name="downloads_live_paused">Paused %1$s</string>
+    <string name="downloads_action_pause">Pause</string>
+    <string name="downloads_action_resume">Resume</string>
+    <string name="downloads_action_cancel_download">Cancel download</string>
     <string name="library_remove_confirm">Remove</string>
     <string name="library_remove_from_list_message">Remove %1$s from %2$s?</string>
     <string name="library_remove_message">Remove %1$s from your library?</string>
@@ -2414,4 +2432,8 @@
     <string name="theme_color_yellow">Yellow</string>
     <string name="theme_color_red">Red</string>
     <string name="theme_color_white">White</string>
+    <string name="person_add_favorite">Add to favorite actors</string>
+    <string name="person_remove_favorite">Remove from favorite actors</string>
+    <string name="profile_insights_favorite_people_title">Favorite Actors</string>
+    <string name="profile_insights_favorite_people_open">View profile</string>
 </resources>

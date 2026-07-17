@@ -23,12 +23,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -64,11 +69,16 @@ import coil3.request.ImageRequest
 import com.nuvio.app.core.i18n.localizedShortMonthName
 import com.nuvio.app.core.ui.landscapePosterHeightForWidth
 import com.nuvio.app.core.ui.landscapePosterWidth
+import com.nuvio.app.core.ui.PlatformBackHandler
+import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.details.components.DetailPosterRailSection
 import com.nuvio.app.features.home.MetaPreview
+import com.nuvio.app.features.home.components.HomePosterCard
+import com.nuvio.app.features.home.stableKey
 import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.watched.WatchedRepository
+import com.nuvio.app.features.watching.application.WatchingState
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
@@ -79,6 +89,11 @@ private sealed interface PersonDetailUiState {
     data class Success(val personDetail: PersonDetail) : PersonDetailUiState
     data class Error(val message: String) : PersonDetailUiState
 }
+
+private data class PersonCreditCollection(
+    val title: String,
+    val items: List<MetaPreview>,
+)
 
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -99,7 +114,15 @@ fun PersonDetailScreen(
         WatchedRepository.ensureLoaded()
         WatchedRepository.uiState
     }.collectAsStateWithLifecycle()
+    val favoritePeopleState by remember {
+        FavoritePeopleRepository.ensureLoaded()
+        FavoritePeopleRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val favoritePersonIds = remember(favoritePeopleState.people) {
+        favoritePeopleState.people.mapTo(mutableSetOf(), FavoritePerson::tmdbId)
+    }
     val resolvedAvatarTransitionKey = avatarTransitionKey ?: castAvatarSharedTransitionKey(personId)
+    var selectedCreditCollection by remember(personId) { mutableStateOf<PersonCreditCollection?>(null) }
 
     LaunchedEffect(personId) {
         uiState = PersonDetailUiState.Loading
@@ -112,6 +135,9 @@ fun PersonDetailScreen(
         } else {
             PersonDetailUiState.Error(getString(Res.string.person_load_failed, personName))
         }
+    }
+    PlatformBackHandler(enabled = selectedCreditCollection != null) {
+        selectedCreditCollection = null
     }
 
     Box(
@@ -138,6 +164,13 @@ fun PersonDetailScreen(
             is PersonDetailUiState.Success -> PersonDetailContent(
                 person = state.personDetail,
                 watchedKeys = watchedUiState.watchedKeys,
+                selectedCreditCollection = selectedCreditCollection,
+                onOpenCreditCollection = { collection -> selectedCreditCollection = collection },
+                onCloseCreditCollection = { selectedCreditCollection = null },
+                isFavorite = state.personDetail.tmdbId in favoritePersonIds,
+                onToggleFavorite = {
+                    FavoritePeopleRepository.toggle(state.personDetail)
+                },
                 onOpenMeta = onOpenMeta,
                 initialProfilePhoto = initialProfilePhoto,
                 avatarTransitionKey = resolvedAvatarTransitionKey,
@@ -147,18 +180,20 @@ fun PersonDetailScreen(
             }
 
         // Back button overlaid on top
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(start = 4.dp, top = 4.dp)
-                .align(Alignment.TopStart),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                contentDescription = stringResource(Res.string.action_back),
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
+        if (selectedCreditCollection == null) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(start = 4.dp, top = 4.dp)
+                    .align(Alignment.TopStart),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = stringResource(Res.string.action_back),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
         }
     }
 }
@@ -168,6 +203,11 @@ fun PersonDetailScreen(
 private fun PersonDetailContent(
     person: PersonDetail,
     watchedKeys: Set<String>,
+    selectedCreditCollection: PersonCreditCollection?,
+    onOpenCreditCollection: (PersonCreditCollection) -> Unit,
+    onCloseCreditCollection: () -> Unit,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onOpenMeta: (MetaPreview) -> Unit,
     initialProfilePhoto: String? = null,
     avatarTransitionKey: String,
@@ -190,10 +230,22 @@ private fun PersonDetailContent(
 
     val allCredits = remember(person.movieCredits, person.tvCredits) {
         (person.movieCredits + person.tvCredits)
-            .distinctBy { it.id }
+            .distinctBy { it.stableKey() }
     }
 
     val todayDate = remember { CurrentDateProvider.todayIsoDate() }
+
+    val movieCredits = remember(person.movieCredits) {
+        person.movieCredits
+            .distinctBy { it.stableKey() }
+            .sortedForPersonCreditRail()
+    }
+
+    val seriesCredits = remember(person.tvCredits) {
+        person.tvCredits
+            .distinctBy { it.stableKey() }
+            .sortedForPersonCreditRail()
+    }
 
     val popularCredits = remember(allCredits) {
         allCredits
@@ -272,9 +324,14 @@ private fun PersonDetailContent(
                         person = person,
                         popularCredits = popularCredits,
                         latestCredits = latestCredits,
+                        movieCredits = movieCredits,
+                        seriesCredits = seriesCredits,
                         upcomingCredits = upcomingCredits,
                         watchedKeys = watchedKeys,
                         onOpenMeta = onOpenMeta,
+                        onOpenCreditCollection = { title, items ->
+                            onOpenCreditCollection(PersonCreditCollection(title = title, items = items))
+                        },
                         fallbackProfilePhoto = initialProfilePhoto,
                         avatarTransitionKey = avatarTransitionKey,
                         sharedTransitionScope = sharedTransitionScope,
@@ -299,22 +356,60 @@ private fun PersonDetailContent(
 
                         if (popularCredits.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
+                            val sectionTitle = stringResource(Res.string.person_popular)
                             DetailPosterRailSection(
-                                title = stringResource(Res.string.person_popular),
+                                title = sectionTitle,
                                 items = popularCredits,
                                 watchedKeys = watchedKeys,
                                 headerHorizontalPadding = 20.dp,
+                                onViewAllClick = {
+                                    onOpenCreditCollection(PersonCreditCollection(title = sectionTitle, items = popularCredits))
+                                },
                                 onPosterClick = onOpenMeta,
                             )
                         }
 
                         if (latestCredits.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(24.dp))
+                            val sectionTitle = stringResource(Res.string.person_latest)
                             DetailPosterRailSection(
-                                title = stringResource(Res.string.person_latest),
+                                title = sectionTitle,
                                 items = latestCredits,
                                 watchedKeys = watchedKeys,
                                 headerHorizontalPadding = 20.dp,
+                                onViewAllClick = {
+                                    onOpenCreditCollection(PersonCreditCollection(title = sectionTitle, items = latestCredits))
+                                },
+                                onPosterClick = onOpenMeta,
+                            )
+                        }
+
+                        if (movieCredits.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            val sectionTitle = stringResource(Res.string.media_movies)
+                            DetailPosterRailSection(
+                                title = sectionTitle,
+                                items = movieCredits,
+                                watchedKeys = watchedKeys,
+                                headerHorizontalPadding = 20.dp,
+                                onViewAllClick = {
+                                    onOpenCreditCollection(PersonCreditCollection(title = sectionTitle, items = movieCredits))
+                                },
+                                onPosterClick = onOpenMeta,
+                            )
+                        }
+
+                        if (seriesCredits.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(24.dp))
+                            val sectionTitle = stringResource(Res.string.media_series)
+                            DetailPosterRailSection(
+                                title = sectionTitle,
+                                items = seriesCredits,
+                                watchedKeys = watchedKeys,
+                                headerHorizontalPadding = 20.dp,
+                                onViewAllClick = {
+                                    onOpenCreditCollection(PersonCreditCollection(title = sectionTitle, items = seriesCredits))
+                                },
                                 onPosterClick = onOpenMeta,
                             )
                         }
@@ -335,6 +430,130 @@ private fun PersonDetailContent(
                 }
             }
         }
+
+        if (selectedCreditCollection == null) {
+            PersonFavoriteButton(
+                isFavorite = isFavorite,
+                onClick = onToggleFavorite,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(end = 8.dp, top = 4.dp)
+                    .align(Alignment.TopEnd),
+            )
+        }
+
+        selectedCreditCollection?.let { collection ->
+            PersonCreditCollectionPage(
+                collection = collection,
+                watchedKeys = watchedKeys,
+                onBack = onCloseCreditCollection,
+                onPosterClick = { item ->
+                    onCloseCreditCollection()
+                    onOpenMeta(item)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PersonCreditCollectionPage(
+    collection: PersonCreditCollection,
+    watchedKeys: Set<String>,
+    onBack: () -> Unit,
+    onPosterClick: (MetaPreview) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(tokens.colors.background)
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(top = 8.dp),
+    ) {
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier.padding(start = 20.dp),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = stringResource(Res.string.action_back),
+                tint = tokens.colors.textPrimary,
+            )
+        }
+        Column(
+            modifier = Modifier.padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = collection.title,
+                style = MaterialTheme.typography.displayLarge,
+                color = tokens.colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(112.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            items(
+                items = collection.items,
+                key = { item -> item.stableKey() },
+            ) { item ->
+                Box(contentAlignment = Alignment.TopCenter) {
+                    HomePosterCard(
+                        item = item,
+                        isWatched = WatchingState.isPosterWatched(
+                            watchedKeys = watchedKeys,
+                            item = item,
+                        ),
+                        onClick = { onPosterClick(item) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonFavoriteButton(
+    isFavorite: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = CircleShape
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .size(48.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.76f))
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.22f), shape),
+    ) {
+        Icon(
+            imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            contentDescription = stringResource(
+                if (isFavorite) {
+                    Res.string.person_remove_favorite
+                } else {
+                    Res.string.person_add_favorite
+                },
+            ),
+            tint = if (isFavorite) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+        )
     }
 }
 
@@ -350,9 +569,12 @@ private fun WidePersonDetailContent(
     person: PersonDetail,
     popularCredits: List<MetaPreview>,
     latestCredits: List<MetaPreview>,
+    movieCredits: List<MetaPreview>,
+    seriesCredits: List<MetaPreview>,
     upcomingCredits: List<MetaPreview>,
     watchedKeys: Set<String>,
     onOpenMeta: (MetaPreview) -> Unit,
+    onOpenCreditCollection: (String, List<MetaPreview>) -> Unit,
     fallbackProfilePhoto: String?,
     avatarTransitionKey: String,
     sharedTransitionScope: SharedTransitionScope?,
@@ -390,21 +612,49 @@ private fun WidePersonDetailContent(
             verticalArrangement = Arrangement.spacedBy(34.dp),
         ) {
             if (popularCredits.isNotEmpty()) {
+                val sectionTitle = stringResource(Res.string.person_popular)
                 DetailPosterRailSection(
-                    title = stringResource(Res.string.person_popular),
+                    title = sectionTitle,
                     items = popularCredits,
                     watchedKeys = watchedKeys,
                     headerHorizontalPadding = 0.dp,
+                    onViewAllClick = { onOpenCreditCollection(sectionTitle, popularCredits) },
                     onPosterClick = onOpenMeta,
                 )
             }
 
             if (latestCredits.isNotEmpty()) {
+                val sectionTitle = stringResource(Res.string.person_latest)
                 DetailPosterRailSection(
-                    title = stringResource(Res.string.person_latest),
+                    title = sectionTitle,
                     items = latestCredits,
                     watchedKeys = watchedKeys,
                     headerHorizontalPadding = 0.dp,
+                    onViewAllClick = { onOpenCreditCollection(sectionTitle, latestCredits) },
+                    onPosterClick = onOpenMeta,
+                )
+            }
+
+            if (movieCredits.isNotEmpty()) {
+                val sectionTitle = stringResource(Res.string.media_movies)
+                DetailPosterRailSection(
+                    title = sectionTitle,
+                    items = movieCredits,
+                    watchedKeys = watchedKeys,
+                    headerHorizontalPadding = 0.dp,
+                    onViewAllClick = { onOpenCreditCollection(sectionTitle, movieCredits) },
+                    onPosterClick = onOpenMeta,
+                )
+            }
+
+            if (seriesCredits.isNotEmpty()) {
+                val sectionTitle = stringResource(Res.string.media_series)
+                DetailPosterRailSection(
+                    title = sectionTitle,
+                    items = seriesCredits,
+                    watchedKeys = watchedKeys,
+                    headerHorizontalPadding = 0.dp,
+                    onViewAllClick = { onOpenCreditCollection(sectionTitle, seriesCredits) },
                     onPosterClick = onOpenMeta,
                 )
             }
@@ -1180,6 +1430,13 @@ private fun String.initials(): String {
         .joinToString("")
         .ifBlank { firstOrNull()?.uppercase() ?: "?" }
 }
+
+private fun List<MetaPreview>.sortedForPersonCreditRail(): List<MetaPreview> =
+    sortedWith(
+        compareByDescending<MetaPreview> { it.rawReleaseDate.orEmpty() }
+            .thenByDescending { it.popularity ?: 0.0 }
+            .thenBy { it.name },
+    )
 
 private fun buildCreditSummary(credits: List<MetaPreview>): String {
     if (credits.isEmpty()) return ""

@@ -547,6 +547,8 @@
     <string name="cw_action_remove">Удалять</string>
     <string name="detail_btn_play">Играть</string>
     <string name="downloads_section_active">Активный</string>
+    <string name="downloads_section_all">Все загрузки</string>
+    <string name="downloads_section_downloading">Загружается</string>
     <string name="downloads_section_movies">Фильмы</string>
     <string name="settings_licenses_attributions_tmdb_title">База данных фильмов (TMDB)</string>
     <string name="settings_licenses_attributions_tmdb_body">Nuvio использует TMDB API для метаданных фильмов и телепередач, иллюстраций, трейлеров, актеров, деталей производства, коллекций и рекомендаций. В этом продукте используется TMDB API, но он не одобрен и не сертифицирован TMDB.</string>
@@ -584,10 +586,17 @@
     <string name="detail_trailer_category_count">%1$s (%2$d)</string>
     <string name="detail_trailers_title">Трейлеры</string>
     <string name="downloads_empty_episodes">Нет завершенных серий</string>
+    <string name="downloads_empty_message">Держите любимое рядом. Загружайте фильмы и сериалы, чтобы смотреть их где угодно, даже без Wi-Fi.</string>
     <string name="downloads_empty_title">Пока нет загрузок</string>
+    <string name="downloads_delete_message">Удалить «%1$s» из загрузок? Сохраненный файл будет удален с этого устройства.</string>
+    <string name="downloads_delete_title">Удалить загрузку?</string>
     <string name="downloads_episode_count">%1$d загружено серий</string>
+    <string name="downloads_filter_all">Все</string>
+    <string name="downloads_filter_empty">Нет загрузок, подходящих под этот фильтр.</string>
+    <string name="downloads_find_something">Найти что-нибудь</string>
     <string name="downloads_open_directory">Открыть папку загрузок</string>
     <string name="downloads_open_directory_failed">Не удалось открыть папку загрузок</string>
+    <string name="downloads_settings_content_description">Настройки загрузок</string>
     <string name="downloads_section_shows">Шоу</string>
     <string name="downloads_show_downloads">Показать загрузки</string>
     <string name="downloads_status_completed">Завершено • %1$s</string>
@@ -2361,4 +2370,8 @@
     <string name="theme_color_yellow">Желтый</string>
     <string name="theme_color_red">Красный</string>
     <string name="theme_color_white">Белый</string>
+    <string name="person_add_favorite">Добавить в любимые актеры</string>
+    <string name="person_remove_favorite">Удалить из любимых актеров</string>
+    <string name="profile_insights_favorite_people_title">Любимые актеры</string>
+    <string name="profile_insights_favorite_people_open">Открыть профиль</string>
 </resources>

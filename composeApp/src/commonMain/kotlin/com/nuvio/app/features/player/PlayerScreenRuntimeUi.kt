@@ -123,7 +123,7 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
                 sourceAudioUrl = activeSourceAudioUrl,
                 sourceHeaders = activeSourceHeaders,
                 sourceResponseHeaders = activeSourceResponseHeaders,
-                externalSubtitles = externalSubtitles,
+                externalSubtitles = activeExternalSubtitles,
                 streamType = activeStreamType,
                 modifier = Modifier.fillMaxSize(),
                 playWhenReady = shouldPlay,
@@ -582,6 +582,8 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
                 PlayerStreamsRepository.loadSources(
                     type = contentType ?: parentMetaType,
                     videoId = vid,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
                     season = activeSeasonNumber,
                     episode = activeEpisodeNumber,
                     forceRefresh = true,
@@ -615,6 +617,8 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             PlayerStreamsRepository.loadEpisodeStreams(
                 type = contentType ?: parentMetaType,
                 videoId = episode.id,
+                parentMetaId = parentMetaId,
+                parentMetaType = parentMetaType,
                 season = episode.season,
                 episode = episode.episode,
             )
@@ -632,6 +636,8 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
                 PlayerStreamsRepository.loadEpisodeStreams(
                     type = contentType ?: parentMetaType,
                     videoId = episode.id,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
                     season = episode.season,
                     episode = episode.episode,
                     forceRefresh = true,

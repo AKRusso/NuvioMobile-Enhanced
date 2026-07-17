@@ -25,12 +25,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CollectionsBookmark
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +74,8 @@ import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.home.components.HomeConciergeSection
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.FavoritePerson
+import com.nuvio.app.features.details.FavoritePeopleRepository
 import com.nuvio.app.features.settings.filteredByNuvioEnhancedReleaseRadar
 import com.nuvio.app.features.library.LibraryItem
 import com.nuvio.app.features.library.LibraryRepository
@@ -136,6 +142,8 @@ internal fun LazyListScope.profileInsightsContent(
     onEditProfile: (() -> Unit)?,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
+    onFavoritePeopleViewAllClick: (() -> Unit)? = null,
 ) {
     item {
         ProfileInsightsBody(
@@ -144,6 +152,20 @@ internal fun LazyListScope.profileInsightsContent(
             onEditProfile = onEditProfile,
             onPosterClick = onPosterClick,
             onContinueWatchingClick = onContinueWatchingClick,
+            onFavoritePersonClick = onFavoritePersonClick,
+            onFavoritePeopleViewAllClick = onFavoritePeopleViewAllClick,
+        )
+    }
+}
+
+internal fun LazyListScope.favoritePeopleContent(
+    isTablet: Boolean,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
+) {
+    item {
+        ProfileFavoritePeopleFullPage(
+            isTablet = isTablet,
+            onFavoritePersonClick = onFavoritePersonClick,
         )
     }
 }
@@ -155,6 +177,8 @@ private fun ProfileInsightsBody(
     onEditProfile: (() -> Unit)?,
     onPosterClick: ((MetaPreview) -> Unit)?,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)?,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)?,
+    onFavoritePeopleViewAllClick: (() -> Unit)?,
 ) {
     val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
     val avatars by AvatarRepository.avatars.collectAsStateWithLifecycle()
@@ -170,6 +194,10 @@ private fun ProfileInsightsBody(
     val libraryState by remember {
         LibraryRepository.ensureLoaded()
         LibraryRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val favoritePeopleState by remember {
+        FavoritePeopleRepository.ensureLoaded()
+        FavoritePeopleRepository.uiState
     }.collectAsStateWithLifecycle()
     val nuvioEnhancedSettings by remember {
         NuvioEnhancedSettingsRepository.ensureLoaded()
@@ -334,6 +362,29 @@ private fun ProfileInsightsBody(
             stats = stats,
             isTablet = isTablet,
         )
+        if (favoritePeopleState.people.isNotEmpty() && onFavoritePersonClick != null) {
+            SettingsSection(
+                title = stringResource(Res.string.profile_insights_favorite_people_title),
+                isTablet = isTablet,
+                actions = {
+                    if (
+                        favoritePeopleState.displayPeople.size > ProfileFavoritePeopleInlineLimit &&
+                        onFavoritePeopleViewAllClick != null
+                    ) {
+                        ProfileFavoritePeopleSeeAllButton(
+                            isTablet = isTablet,
+                            onClick = onFavoritePeopleViewAllClick,
+                        )
+                    }
+                },
+            ) {
+                ProfileFavoritePeopleRail(
+                    people = favoritePeopleState.displayPeople,
+                    isTablet = isTablet,
+                    onPersonClick = onFavoritePersonClick,
+                )
+            }
+        }
         SettingsSection(
             title = stringResource(Res.string.profile_insights_section_overview),
             isTablet = isTablet,
@@ -378,8 +429,312 @@ private fun ProfileInsightsBody(
             onDismiss = { selectedInsightCollection = null },
         )
     }
+
 }
 
+@Composable
+private fun ProfileFavoritePeopleFullPage(
+    isTablet: Boolean,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)?,
+) {
+    val favoritePeopleState by remember {
+        FavoritePeopleRepository.ensureLoaded()
+        FavoritePeopleRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val columns = if (isTablet) 5 else 3
+    val rows = remember(favoritePeopleState.people, favoritePeopleState.pinnedPersonIds, columns) {
+        favoritePeopleState.displayPeople.chunked(columns)
+    }
+    val pinnedIds = remember(favoritePeopleState.pinnedPersonIds) {
+        favoritePeopleState.pinnedPersonIds.toSet()
+    }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(if (isTablet) 24.dp else 20.dp),
+    ) {
+        rows.forEach { rowPeople ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                rowPeople.forEach { person ->
+                    ProfileFavoritePersonCompactItem(
+                        person = person,
+                        isTablet = isTablet,
+                        onClick = { onFavoritePersonClick?.invoke(person) },
+                        isPinned = person.tmdbId in pinnedIds,
+                        onTogglePinned = { FavoritePeopleRepository.togglePinned(person.tmdbId) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                repeat(columns - rowPeople.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileFavoritePeopleRail(
+    people: List<FavoritePerson>,
+    isTablet: Boolean,
+    onPersonClick: (FavoritePerson) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val shape = RoundedCornerShape(if (isTablet) 28.dp else 24.dp)
+    val visiblePeople = people.take(ProfileFavoritePeopleInlineLimit)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = tokens.colors.surfaceElevated.copy(alpha = 0.62f),
+        shape = shape,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.035f),
+                            tokens.colors.accent.copy(alpha = 0.045f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .padding(horizontal = if (isTablet) 20.dp else 14.dp, vertical = if (isTablet) 18.dp else 15.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(if (isTablet) 16.dp else 10.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                visiblePeople.forEach { person ->
+                    ProfileFavoritePersonCompactItem(
+                        person = person,
+                        isTablet = isTablet,
+                        onClick = { onPersonClick(person) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileFavoritePeopleSeeAllButton(
+    isTablet: Boolean,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Surface(
+        modifier = Modifier
+            .size(if (isTablet) 42.dp else 38.dp)
+            .clickable(onClick = onClick),
+        color = tokens.colors.surfaceElevated.copy(alpha = 0.88f),
+        shape = CircleShape,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+                modifier = Modifier.size(if (isTablet) 24.dp else 22.dp),
+                tint = tokens.colors.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileFavoritePersonCompactItem(
+    person: FavoritePerson,
+    isTablet: Boolean,
+    onClick: () -> Unit,
+    isPinned: Boolean = false,
+    onTogglePinned: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = MaterialTheme.nuvio
+    val avatarSize = if (isTablet) 82.dp else 70.dp
+    val heartSize = if (isTablet) 27.dp else 24.dp
+    val pinSize = if (isTablet) 27.dp else 24.dp
+
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(if (isTablet) 9.dp else 8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(avatarSize + 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(avatarSize)
+                    .clip(CircleShape)
+                    .background(tokens.colors.surfaceElevated)
+                    .border(1.dp, Color.White.copy(alpha = 0.13f), CircleShape),
+            ) {
+                if (!person.photo.isNullOrBlank()) {
+                    AsyncImage(
+                        model = person.photo,
+                        contentDescription = person.name,
+                        modifier = Modifier.matchParentSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.matchParentSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = person.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = tokens.colors.textSecondary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.20f),
+                                ),
+                            ),
+                        ),
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(heartSize),
+                color = tokens.colors.surface.copy(alpha = 0.90f),
+                shape = CircleShape,
+                border = BorderStroke(1.dp, tokens.colors.accent.copy(alpha = 0.48f)),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Rounded.Favorite,
+                        contentDescription = null,
+                        modifier = Modifier.size(if (isTablet) 15.dp else 13.dp),
+                        tint = tokens.colors.accent,
+                    )
+                }
+            }
+            if (onTogglePinned != null) {
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .size(pinSize)
+                        .clickable(onClick = onTogglePinned),
+                    color = tokens.colors.surface.copy(alpha = 0.92f),
+                    shape = CircleShape,
+                    border = BorderStroke(
+                        1.dp,
+                        if (isPinned) {
+                            tokens.colors.accent.copy(alpha = 0.62f)
+                        } else {
+                            Color.White.copy(alpha = 0.16f)
+                        },
+                    ),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isPinned) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(if (isTablet) 15.dp else 13.dp),
+                            tint = if (isPinned) tokens.colors.accent else tokens.colors.textSecondary,
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = person.name,
+            style = if (isTablet) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            color = tokens.colors.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+        )
+        person.knownFor?.takeIf { it.isNotBlank() }?.let { knownFor ->
+            Text(
+                text = knownFor,
+                style = MaterialTheme.typography.bodySmall,
+                color = tokens.colors.textSecondary,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileFavoritePeopleSheet(
+    people: List<FavoritePerson>,
+    isTablet: Boolean,
+    onDismiss: () -> Unit,
+    onPersonClick: (FavoritePerson) -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    NuvioModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTablet) 24.dp else 18.dp)
+                .padding(bottom = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.profile_insights_favorite_people_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = tokens.colors.textPrimary,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(if (isTablet) 112.dp else 86.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = if (isTablet) 600.dp else 460.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+            ) {
+                items(
+                    items = people,
+                    key = { person -> person.tmdbId },
+                ) { person ->
+                    Box(contentAlignment = Alignment.TopCenter) {
+                        ProfileFavoritePersonCompactItem(
+                            person = person,
+                            isTablet = isTablet,
+                            onClick = { onPersonClick(person) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 @Composable
 private fun ProfileManagementActions(
     isTablet: Boolean,
@@ -1353,7 +1708,10 @@ private fun buildProfileInsightsStats(
         continueCount = continueEntries.size,
         completedCount = completedContentItems.size,
         libraryCount = libraryItems.size,
-        trackedDurationMs = progressEntries.sumOf(WatchProgressEntry::profileTrackedDurationMs),
+        trackedDurationMs = profileTrackedDurationMs(
+            watchedItems = watchedItems,
+            progressEntries = progressEntries,
+        ),
         recentActivityCount = recentActivityCount,
         upcomingCount = libraryItems.count { item ->
             item.profileReleaseIsoDate()?.let { releaseDate -> releaseDate >= todayIsoDate } == true
@@ -1668,6 +2026,30 @@ private fun WatchProgressEntry.profileTrackedDurationMs(): Long {
     return (durationMs * (explicitPercent / 100f)).toLong().coerceIn(0L, durationMs)
 }
 
+private fun profileTrackedDurationMs(
+    watchedItems: List<WatchedItem>,
+    progressEntries: List<WatchProgressEntry>,
+): Long {
+    val progressDurationByKey = progressEntries
+        .asSequence()
+        .mapNotNull { entry ->
+            entry.profileTrackableActivityKey()?.let { key -> key to entry.profileTrackedDurationMs() }
+        }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, durations) -> durations.maxOrNull() ?: 0L }
+
+    val watchedDurationByKey = watchedItems
+        .asSequence()
+        .mapNotNull { item ->
+            item.profileTrackableActivityKey()?.let { key -> key to item.profileCachedWatchedDurationMs() }
+        }
+        .filter { (key, duration) -> duration > 0L && key !in progressDurationByKey }
+        .groupBy({ it.first }, { it.second })
+        .mapValues { (_, durations) -> durations.maxOrNull() ?: 0L }
+
+    return progressDurationByKey.values.sum() + watchedDurationByKey.values.sum()
+}
+
 private fun WatchProgressEntry.profileArtworkUrl(): String? =
     poster?.takeIf { it.isNotBlank() }
         ?: background?.takeIf { it.isNotBlank() }
@@ -1747,15 +2129,74 @@ private fun profileRecentActivityCount(
 }.size
 
 private fun WatchedItem.profileActivityKey(): String? {
+    if (!isProfileTrackableActivity()) return null
     val kind = type.profileCompletedContentKind() ?: return null
     val contentId = id.trim().takeIf { it.isNotBlank() } ?: return null
     return "$kind:$contentId:${season ?: -1}:${episode ?: -1}"
 }
 
 private fun WatchProgressEntry.profileActivityKey(): String? {
+    if (!isProfileTrackableActivity()) return null
     val kind = parentMetaType.profileCompletedContentKind() ?: return null
     val contentId = parentMetaId.trim().takeIf { it.isNotBlank() } ?: return null
     return "$kind:$contentId:${seasonNumber ?: -1}:${episodeNumber ?: -1}"
+}
+
+private fun WatchedItem.profileTrackableActivityKey(): String? = profileActivityKey()
+
+private fun WatchProgressEntry.profileTrackableActivityKey(): String? = profileActivityKey()
+
+private fun WatchedItem.isProfileTrackableActivity(): Boolean {
+    val kind = type.profileCompletedContentKind() ?: return false
+    return kind == "movie" || (kind == "series" && season != null && episode != null)
+}
+
+private fun WatchProgressEntry.isProfileTrackableActivity(): Boolean {
+    val kind = parentMetaType.profileCompletedContentKind() ?: return false
+    return kind == "movie" || (kind == "series" && seasonNumber != null && episodeNumber != null)
+}
+
+private fun WatchedItem.profileCachedWatchedDurationMs(): Long {
+    val kind = type.profileCompletedContentKind() ?: return 0L
+    val meta = profileCachedMeta(type, id) ?: return 0L
+    val minutes = when {
+        kind == "movie" && season == null && episode == null -> profileParseRuntimeMinutes(meta.runtime)
+        kind == "series" && season != null && episode != null -> meta.videos
+            .firstOrNull { video -> video.season == season && video.episode == episode }
+            ?.runtime
+            ?.takeIf { runtime -> runtime > 0 }
+        else -> null
+    } ?: return 0L
+    return minutes.toLong() * ProfileInsightsMinuteMs
+}
+
+private fun profileCachedMeta(type: String?, id: String?): MetaDetails? {
+    for ((lookupType, lookupId) in profileMetaLookupCandidates(type, id)) {
+        MetaDetailsRepository.peek(type = lookupType, id = lookupId)?.let { return it }
+    }
+    return null
+}
+
+private fun profileParseRuntimeMinutes(value: String?): Int? {
+    val runtime = value?.trim()?.takeIf { it.isNotBlank() } ?: return null
+
+    profileHourMinuteColonRegex.matchEntire(runtime)?.let { match ->
+        val hours = match.groupValues[1].toIntOrNull() ?: return null
+        val minutes = match.groupValues[2].toIntOrNull() ?: return null
+        return ((hours * 60) + minutes).coerceAtLeast(0)
+    }
+
+    val hoursToken = profileHourTokenRegex.find(runtime)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    val minutesToken = profileMinuteTokenRegex.find(runtime)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    if (hoursToken != null || minutesToken != null) {
+        return (((hoursToken ?: 0).coerceAtLeast(0) * 60) + (minutesToken ?: 0).coerceAtLeast(0))
+    }
+
+    return profileDigitsOnlyRegex.matchEntire(runtime)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?.toIntOrNull()
+        ?.coerceAtLeast(0)
 }
 
 private fun List<LibraryItem>.profileTopGenre(): String? =
@@ -1994,4 +2435,9 @@ private fun ProfileTasteDnaChip.localizedLabel(): String =
 
 private const val ProfileInsightsMinuteMs = 60_000L
 private const val ProfileInsightsRecentWindowMs = 7L * 24L * 60L * 60L * 1000L
+private const val ProfileFavoritePeopleInlineLimit = 3
+private val profileHourTokenRegex = Regex("""(?i)(\d+)\s*h(?:ours?)?""")
+private val profileMinuteTokenRegex = Regex("""(?i)(\d+)\s*m(?:in(?:ute)?s?)?""")
+private val profileHourMinuteColonRegex = Regex("""^\s*(\d+)\s*:\s*(\d{1,2})\s*$""")
+private val profileDigitsOnlyRegex = Regex("""^\s*(\d+)\s*$""")
 private const val ProfileConciergeContinueWatchingLimit = 36

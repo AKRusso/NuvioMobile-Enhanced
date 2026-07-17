@@ -53,7 +53,17 @@ actual fun ManagePlayerPictureInPicture(
 
 @Composable
 actual fun rememberPlayerGestureController(): PlayerGestureController? {
-    val controller = remember { IOSPlayerGestureController() }
+    PlayerSettingsRepository.ensureLoaded()
+    val playerSettings = PlayerSettingsRepository.uiState.value
+    val controller = remember(
+        playerSettings.rememberPlayerBrightnessEnabled,
+        playerSettings.rememberedPlayerBrightness,
+    ) {
+        IOSPlayerGestureController(
+            rememberBrightnessEnabled = playerSettings.rememberPlayerBrightnessEnabled,
+            rememberedBrightness = playerSettings.rememberedPlayerBrightness,
+        )
+    }
 
     DisposableEffect(controller) {
         onDispose {
@@ -64,7 +74,10 @@ actual fun rememberPlayerGestureController(): PlayerGestureController? {
     return controller
 }
 
-private class IOSPlayerGestureController : PlayerGestureController {
+private class IOSPlayerGestureController(
+    private val rememberBrightnessEnabled: Boolean,
+    rememberedBrightness: Float?,
+) : PlayerGestureController {
     private val volumeView = MPVolumeView().apply {
         hidden = true
         alpha = 0.01
@@ -72,12 +85,21 @@ private class IOSPlayerGestureController : PlayerGestureController {
     private val originalBrightness = UIScreen.mainScreen.brightness
     private var brightnessRestored = false
 
+    init {
+        if (rememberBrightnessEnabled && rememberedBrightness != null) {
+            UIScreen.mainScreen.brightness = rememberedBrightness.coerceIn(0.02f, 1f).toDouble()
+        }
+    }
+
     override fun currentBrightness(): Float =
         UIScreen.mainScreen.brightness.toFloat().coerceIn(0.02f, 1f)
 
     override fun setBrightness(level: Float): Float {
         val target = level.coerceIn(0.02f, 1f)
         UIScreen.mainScreen.brightness = target.toDouble()
+        if (rememberBrightnessEnabled) {
+            PlayerSettingsRepository.setRememberedPlayerBrightness(target)
+        }
         return target
     }
 

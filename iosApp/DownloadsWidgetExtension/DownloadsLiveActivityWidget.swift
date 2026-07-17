@@ -12,6 +12,9 @@ struct DownloadsLiveActivityAttributes: ActivityAttributes {
     let downloadId: String
     let title: String
     let subtitle: String
+    let providerName: String
+    let streamTitle: String
+    let artworkUrl: String?
 }
 
 @available(iOSApplicationExtension 16.1, *)
@@ -37,29 +40,32 @@ struct DownloadsLiveActivityWidget: Widget {
                         .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(context.attributes.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.86)
-                            .truncationMode(.tail)
-                        Text(context.attributes.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.82))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.9)
-                            .truncationMode(.tail)
-                        ProgressView(value: normalizedProgress(context.state.progressPercent))
-                            .progressViewStyle(.linear)
-                            .tint(appBlue)
-                        HStack {
-                            Text(context.state.transferredText)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.white.opacity(0.86))
-                            Spacer(minLength: 6)
-                            Label(statusLabel(context.state.status), systemImage: "arrow.down")
+                    HStack(alignment: .top, spacing: 10) {
+                        DownloadArtworkView(urlString: context.attributes.artworkUrl, compact: true)
+                        VStack(alignment: .leading, spacing: 7) {
+                            Text(context.attributes.title)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.86)
+                                .truncationMode(.tail)
+                            Text(metadataLine(context.attributes))
                                 .font(.caption)
-                                .foregroundStyle(.white.opacity(0.86))
+                                .foregroundStyle(.white.opacity(0.82))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.9)
+                                .truncationMode(.tail)
+                            ProgressView(value: normalizedProgress(context.state.progressPercent))
+                                .progressViewStyle(.linear)
+                                .tint(appBlue)
+                            HStack {
+                                Text(context.state.transferredText)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.white.opacity(0.86))
+                                Spacer(minLength: 6)
+                                Label(statusLabel(context.state.status), systemImage: "arrow.down")
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.86))
+                            }
                         }
                     }
                     .padding(.top, 4)
@@ -98,6 +104,14 @@ struct DownloadsLiveActivityWidget: Widget {
         }
     }
 
+    private func metadataLine(_ attributes: DownloadsLiveActivityAttributes) -> String {
+        [attributes.subtitle, attributes.providerName, attributes.streamTitle]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .prefix(3)
+            .joined(separator: " • ")
+    }
+
 }
 
 @available(iOSApplicationExtension 16.1, *)
@@ -113,13 +127,14 @@ private struct DownloadActivityLockScreenView: View {
             )
 
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    DownloadArtworkView(urlString: context.attributes.artworkUrl, compact: false)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(context.attributes.title)
                             .font(.headline.weight(.semibold))
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(context.attributes.subtitle)
+                        Text(metadataLine)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.82))
                             .lineLimit(2)
@@ -186,6 +201,61 @@ private struct DownloadActivityLockScreenView: View {
             accent.opacity(0.42),
             Color.black.opacity(0.97),
         ]
+    }
+
+    private var metadataLine: String {
+        [context.attributes.subtitle, context.attributes.providerName, context.attributes.streamTitle]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .prefix(3)
+            .joined(separator: " • ")
+    }
+}
+
+private struct DownloadArtworkView: View {
+    let urlString: String?
+    let compact: Bool
+
+    var body: some View {
+        let size = compact ? CGSize(width: 42, height: 58) : CGSize(width: 58, height: 82)
+        ZStack {
+            RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.22),
+                            Color.black.opacity(0.18),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+
+            if let urlString, let url = URL(string: urlString) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    default:
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(compact ? .title3 : .title)
+                            .foregroundStyle(.white.opacity(0.86))
+                    }
+                }
+            } else {
+                Image(systemName: "arrow.down.circle.fill")
+                    .font(compact ? .title3 : .title)
+                    .foregroundStyle(.white.opacity(0.86))
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: compact ? 10 : 14, style: .continuous)
+                .stroke(Color.white.opacity(0.16), lineWidth: 1)
+        )
     }
 }
 

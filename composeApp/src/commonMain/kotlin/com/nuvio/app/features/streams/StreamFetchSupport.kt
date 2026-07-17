@@ -14,6 +14,7 @@ import com.nuvio.app.features.cloudstream.CloudStreamPlaybackSource
 import com.nuvio.app.features.cloudstream.sha256Hex
 import com.nuvio.app.features.cloudstream.sortCloudStreamEpisodes
 import com.nuvio.app.features.cloudstream.toStreamItem
+import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.player.PlayerQualityResolver
 import com.nuvio.app.features.player.PlayerQualityVariant
 import com.nuvio.app.features.plugins.PluginRepositoryItem
@@ -350,6 +351,61 @@ internal fun List<AddonStreamGroup>.toEmptyStateReason(anyLoading: Boolean): Str
     } else {
         StreamsEmptyStateReason.NoStreamsFound
     }
+}
+
+internal fun buildCloudStreamSearchRequest(
+    type: String,
+    videoId: String,
+    parentMetaId: String?,
+    parentMetaType: String?,
+    season: Int?,
+    episode: Int?,
+    searchTitle: String?,
+): CloudStreamSearchRequest? {
+    val metaLookupType = parentMetaType?.takeIf { it.isNotBlank() } ?: type
+    val metaLookupId = parentMetaId?.takeIf { it.isNotBlank() } ?: videoId
+    val meta = MetaDetailsRepository.peek(metaLookupType, metaLookupId)
+    val title = searchTitle?.trim()?.takeIf { it.isNotBlank() }
+        ?: meta?.name?.trim()?.takeIf { it.isNotBlank() }
+        ?: return null
+    val aliases = (listOfNotNull(meta?.name, searchTitle) + meta?.aliases.orEmpty())
+        .cleanCloudStreamRequestAliases(primaryTitle = title)
+    val year = meta?.releaseInfo.cloudStreamReleaseYear()
+        ?: title.cloudStreamReleaseYear()
+    val episodeTitle = meta
+        ?.videos
+        ?.firstOrNull { video ->
+            (season == null || video.season == season) &&
+                (episode == null || video.episode == episode)
+        }
+        ?.title
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+    val externalId = sequenceOf(videoId, parentMetaId, metaLookupId)
+        .filterNotNull()
+        .map(String::trim)
+        .firstOrNull { id -> id.matches(Regex("^tt\\d{5,12}$", RegexOption.IGNORE_CASE)) }
+
+    return CloudStreamSearchRequest(
+        title = title,
+        aliases = aliases,
+        type = type,
+        year = year,
+        season = season,
+        episode = episode,
+        episodeTitle = episodeTitle,
+        externalId = externalId,
+        genres = meta?.genres.orEmpty(),
+    )
+}
+
+private fun List<String>.cleanCloudStreamRequestAliases(primaryTitle: String): List<String> {
+    val primary = primaryTitle.trim()
+    return mapNotNull { title ->
+        title.trim().takeIf(String::isNotBlank)
+    }
+        .filterNot { title -> primary.isNotBlank() && title.equals(primary, ignoreCase = true) }
+        .distinctBy { title -> title.lowercase() }
 }
 
 internal suspend fun <T> runCatchingUnlessCancelled(block: suspend () -> T): Result<T> =

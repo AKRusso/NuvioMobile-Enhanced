@@ -76,7 +76,10 @@ final class DownloadsLiveActivityManager {
         let attributes = DownloadsLiveActivityAttributes(
             downloadId: payload.id,
             title: payload.title,
-            subtitle: payload.subtitle
+            subtitle: payload.subtitle,
+            providerName: payload.providerName,
+            streamTitle: payload.streamTitle,
+            artworkUrl: payload.artworkUrl
         )
 
         _ = try? Activity<DownloadsLiveActivityAttributes>.request(
@@ -115,6 +118,9 @@ struct DownloadsLiveActivityAttributes: ActivityAttributes {
     let downloadId: String
     let title: String
     let subtitle: String
+    let providerName: String
+    let streamTitle: String
+    let artworkUrl: String?
 }
 #endif
 
@@ -122,6 +128,9 @@ private struct DownloadsLiveStatusPayload: Decodable {
     let id: String
     let title: String
     let subtitle: String
+    let providerName: String
+    let streamTitle: String
+    let artworkUrl: String?
     let status: String
     let downloadedBytes: Int64
     let totalBytes: Int64?

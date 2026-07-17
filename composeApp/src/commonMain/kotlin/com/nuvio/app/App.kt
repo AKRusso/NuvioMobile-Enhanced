@@ -38,6 +38,9 @@ import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -110,6 +113,7 @@ import com.nuvio.app.core.diagnostics.LocalCrashReport
 import com.nuvio.app.core.deeplink.AppDeepLink
 import com.nuvio.app.core.deeplink.AppDeepLinkRepository
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
+import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.sync.AppForegroundMonitor
@@ -164,19 +168,24 @@ import com.nuvio.app.features.debrid.DirectDebridPlayableResult
 import com.nuvio.app.features.debrid.DirectDebridPlaybackResolver
 import com.nuvio.app.features.debrid.toastMessage
 import com.nuvio.app.features.downloads.DownloadItem
+import com.nuvio.app.features.downloads.DownloadStatus
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsScreen
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaDetailsScreen
 import com.nuvio.app.features.details.MetaPerson
+import com.nuvio.app.features.details.FavoritePerson
 import com.nuvio.app.features.details.PersonDetailScreen
 import com.nuvio.app.features.details.TmdbEntityBrowseScreen
 import com.nuvio.app.features.tmdb.TmdbEntityKind
+import com.nuvio.app.features.tmdb.TmdbPersonSearchResult
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeScreen
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.features.library.LibraryItem
+import com.nuvio.app.features.library.LibraryDownloadActionCommand
+import com.nuvio.app.features.library.LibraryDownloadActionTarget
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.LibrarySection
 import com.nuvio.app.features.library.LibrarySourceMode
@@ -220,6 +229,7 @@ import com.nuvio.app.features.settings.HomescreenSettingsScreen
 import com.nuvio.app.features.settings.MetaScreenSettingsScreen
 import com.nuvio.app.features.settings.ContinueWatchingSettingsScreen
 import com.nuvio.app.features.settings.AddonsSettingsScreen
+import com.nuvio.app.features.settings.CloudStreamSettingsScreen
 import com.nuvio.app.features.settings.PluginsSettingsScreen
 import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
@@ -286,7 +296,7 @@ private const val NuvioDiscordInviteUrl = "https://discord.gg/at8xffxuRU"
 object TabsRoute
 
 @Serializable
-data class DetailRoute(val type: String, val id: String)
+data class DetailRoute(val type: String, val id: String, val offline: Boolean = false)
 
 @Serializable
 data class PersonDetailRoute(
@@ -331,6 +341,9 @@ object AddonsSettingsRoute
 
 @Serializable
 object PluginsSettingsRoute
+
+@Serializable
+object CloudStreamSettingsRoute
 
 @Serializable
 object AccountSettingsRoute
@@ -785,6 +798,7 @@ private fun MainAppContent(
         val homeScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val searchScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val libraryScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
+        val libraryDownloadActionCommands = remember { MutableSharedFlow<LibraryDownloadActionCommand>(extraBufferCapacity = 1) }
         val settingsRootActionRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         var nativeProfileSwitcherVisible by remember { mutableStateOf(false) }
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
@@ -806,6 +820,10 @@ private fun MainAppContent(
         var showExitConfirmation by rememberSaveable { mutableStateOf(false) }
         var selectedPosterActionTarget by remember { mutableStateOf<PosterActionTarget?>(null) }
         var selectedPosterAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
+        var selectedDownloadActionTarget by remember { mutableStateOf<LibraryDownloadActionTarget?>(null) }
+        var selectedDownloadActionAnchor by remember { mutableStateOf<PosterZoomAnchor?>(null) }
+        var confirmDownloadDeleteAfterOverlayDismissTarget by remember { mutableStateOf<LibraryDownloadActionTarget?>(null) }
+        var confirmDownloadDeleteTarget by remember { mutableStateOf<LibraryDownloadActionTarget?>(null) }
         val posterOverlayHazeState = rememberHazeState()
         var selectedContinueWatchingForActions by remember { mutableStateOf<ContinueWatchingItem?>(null) }
         var requestedSettingsPageName by rememberSaveable { mutableStateOf(initialSettingsPageName) }
@@ -839,6 +857,15 @@ private fun MainAppContent(
             coroutineScope.launch {
                 withFrameNanos { }
                 selectedPosterActionTarget = target
+            }
+        }
+        val openDownloadActions: (LibraryDownloadActionTarget, PosterZoomAnchor?) -> Unit = { target, anchor ->
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+            focusManager.clearFocus(force = true)
+            selectedDownloadActionAnchor = anchor
+            coroutineScope.launch {
+                withFrameNanos { }
+                selectedDownloadActionTarget = target
             }
         }
         val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
@@ -1404,7 +1431,7 @@ private fun MainAppContent(
                     sourceUrl = sourceUrl,
                     sourceHeaders = emptyMap(),
                     sourceResponseHeaders = emptyMap(),
-                    externalSubtitles = emptyList(),
+                    externalSubtitles = item.externalSubtitles,
                     streamType = null,
                     logo = item.logo,
                     poster = item.poster,
@@ -1612,7 +1639,7 @@ private fun MainAppContent(
                         sourceUrl = localSourceUrl,
                         sourceHeaders = emptyMap(),
                         sourceResponseHeaders = emptyMap(),
-                        externalSubtitles = emptyList(),
+                        externalSubtitles = downloadedItem.externalSubtitles,
                         logo = logo,
                         poster = poster,
                         background = background,
@@ -1900,6 +1927,8 @@ private fun MainAppContent(
                     .then(
                         if (selectedPosterActionTarget != null) {
                             Modifier.hazeSource(state = posterOverlayHazeState)
+                        } else if (selectedDownloadActionTarget != null) {
+                            Modifier.hazeSource(state = posterOverlayHazeState)
                         } else {
                             Modifier
                         },
@@ -2011,6 +2040,7 @@ private fun MainAppContent(
                                         homeScrollToTopRequests = homeScrollToTopRequests,
                                         searchScrollToTopRequests = searchScrollToTopRequests,
                                         libraryScrollToTopRequests = libraryScrollToTopRequests,
+                                        libraryDownloadActionCommands = libraryDownloadActionCommands,
                                         settingsRootActionRequests = settingsRootActionRequests,
                                         animateHomeCollectionGifs = tabsRouteActive,
                                         onCatalogClick = onCatalogClick,
@@ -2026,7 +2056,8 @@ private fun MainAppContent(
                                             }
                                         },
                                         onLibraryPosterClick = { item ->
-                                            navController.navigate(DetailRoute(type = item.type, id = item.id))
+                                            val offline = DownloadsRepository.findOfflineMetaDetails(item.type, item.id) != null
+                                            navController.navigate(DetailRoute(type = item.type, id = item.id, offline = offline))
                                         },
                                         onLibraryPosterLongClick = { item, section ->
                                             openPosterActions(
@@ -2062,6 +2093,24 @@ private fun MainAppContent(
                                         },
                                         onContinueWatchingClick = onContinueWatchingClick,
                                         onContinueWatchingLongPress = onContinueWatchingLongPress,
+                                        onSearchPersonClick = { person ->
+                                            navController.navigate(
+                                                PersonDetailRoute(
+                                                    personId = person.id,
+                                                    personName = person.name,
+                                                    personPhoto = person.photo,
+                                                ),
+                                            )
+                                        },
+                                        onFavoritePersonClick = { person ->
+                                            navController.navigate(
+                                                PersonDetailRoute(
+                                                    personId = person.tmdbId,
+                                                    personName = person.name,
+                                                    personPhoto = person.photo,
+                                                ),
+                                            )
+                                        },
                                         onSwitchProfile = onSwitchProfile,
                                         onEditProfile = onEditProfile,
                                         onHomescreenSettingsClick = { navController.navigate(HomescreenSettingsRoute) },
@@ -2071,10 +2120,18 @@ private fun MainAppContent(
                                         onLibraryDownloadClick = { item ->
                                             coroutineScope.launch { openDownloadedItem(item) }
                                         },
+                                        onLibraryDownloadLongClick = { target, anchor ->
+                                            openDownloadActions(target, anchor)
+                                        },
                                         onAddonsSettingsClick = { navController.navigate(AddonsSettingsRoute) },
                                         onPluginsSettingsClick = {
                                             if (AppFeaturePolicy.pluginsEnabled) {
                                                 navController.navigate(PluginsSettingsRoute)
+                                            }
+                                        },
+                                        onCloudStreamSettingsClick = {
+                                            if (AppFeaturePolicy.pluginsEnabled) {
+                                                navController.navigate(CloudStreamSettingsRoute)
                                             }
                                         },
                                         onAccountSettingsClick = { navController.navigate(AccountSettingsRoute) },
@@ -2155,6 +2212,7 @@ private fun MainAppContent(
                     MetaDetailsScreen(
                         type = route.type,
                         id = route.id,
+                        offlineMode = route.offline,
                         onBack = {
                             navController.popBackStack()
                         },
@@ -3159,7 +3217,7 @@ private fun MainAppContent(
                                 sourceUrl = sourceUrl,
                                 sourceHeaders = emptyMap(),
                                 sourceResponseHeaders = emptyMap(),
-                                externalSubtitles = emptyList(),
+                                externalSubtitles = item.externalSubtitles,
                                 streamType = null,
                                 logo = item.logo,
                                 poster = item.poster,
@@ -3204,6 +3262,15 @@ private fun MainAppContent(
                             backStackEntry = backStackEntry,
                         )
                         PluginsSettingsScreen(
+                            onBack = onBack,
+                        )
+                    }
+                    composable<CloudStreamSettingsRoute> { backStackEntry ->
+                        val onBack = rememberGuardedPopBackStack(
+                            navController = navController,
+                            backStackEntry = backStackEntry,
+                        )
+                        CloudStreamSettingsScreen(
                             onBack = onBack,
                         )
                     }
@@ -3414,6 +3481,155 @@ private fun MainAppContent(
                         },
                     )
                 }
+            }
+
+            selectedDownloadActionTarget?.let { target ->
+                key("download-${target.entryKey}") {
+                    val item = target.libraryItem
+                    val primaryDownload = target.primaryDownload
+                    val overlayImageUrl = selectedDownloadActionAnchor
+                        ?.imageUrl
+                        ?.takeIf { it.isNotBlank() }
+                        ?: item.poster?.takeIf { it.isNotBlank() }
+                        ?: primaryDownload.poster?.takeIf { it.isNotBlank() }
+                        ?: primaryDownload.episodeThumbnail?.takeIf { it.isNotBlank() }
+                        ?: item.banner?.takeIf { it.isNotBlank() }
+                        ?: primaryDownload.background?.takeIf { it.isNotBlank() }
+                    val overlayBackgroundUrl = item.banner?.takeIf { it.isNotBlank() }
+                        ?: primaryDownload.background?.takeIf { it.isNotBlank() }
+                        ?: item.poster?.takeIf { it.isNotBlank() }
+                        ?: primaryDownload.poster?.takeIf { it.isNotBlank() }
+                        ?: overlayImageUrl
+                    val isActiveDownload = primaryDownload.status != DownloadStatus.Completed
+                    val overlaySubtitle = if (isActiveDownload) {
+                        downloadActionOverlayStatus(primaryDownload)
+                    } else {
+                        item.releaseInfo
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { formatReleaseDateForDisplay(it) }
+                            ?: primaryDownload.detailsSnapshot
+                                ?.releaseInfo
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let { formatReleaseDateForDisplay(it) }
+                    }
+                    val overlaySynopsis = if (isActiveDownload) {
+                        downloadActionOverlayDetails(primaryDownload)
+                    } else {
+                        item.description?.trim()?.takeIf { it.isNotBlank() }
+                            ?: primaryDownload.detailsSnapshot?.description?.trim()?.takeIf { it.isNotBlank() }
+                            ?: primaryDownload.episodeOverview?.trim()?.takeIf { it.isNotBlank() }
+                    }
+                    val downloadActions = if (isActiveDownload) {
+                        buildList {
+                            when (primaryDownload.status) {
+                                DownloadStatus.Downloading -> add(
+                                    PosterZoomOverlayAction(
+                                        icon = Icons.Default.Pause,
+                                        label = stringResource(Res.string.downloads_action_pause),
+                                        onSelected = {
+                                            DownloadsRepository.pauseDownload(primaryDownload.id)
+                                        },
+                                    ),
+                                )
+                                DownloadStatus.Paused -> add(
+                                    PosterZoomOverlayAction(
+                                        icon = Icons.Default.PlayArrow,
+                                        label = stringResource(Res.string.downloads_action_resume),
+                                        onSelected = {
+                                            DownloadsRepository.resumeDownload(primaryDownload.id)
+                                        },
+                                    ),
+                                )
+                                DownloadStatus.Failed -> add(
+                                    PosterZoomOverlayAction(
+                                        icon = Icons.Default.Refresh,
+                                        label = stringResource(Res.string.action_retry),
+                                        onSelected = {
+                                            DownloadsRepository.retryDownload(primaryDownload.id)
+                                        },
+                                    ),
+                                )
+                                DownloadStatus.Completed -> Unit
+                            }
+                            add(
+                                PosterZoomOverlayAction(
+                                    icon = Icons.Default.DeleteOutline,
+                                    label = stringResource(Res.string.downloads_action_cancel_download),
+                                    isDestructive = true,
+                                    onSelected = {
+                                        DownloadsRepository.cancelDownload(primaryDownload.id)
+                                    },
+                                ),
+                            )
+                        }
+                    } else {
+                        listOf(
+                            PosterZoomOverlayAction(
+                                icon = Icons.Default.PlayArrow,
+                                label = stringResource(Res.string.action_play),
+                                onSelected = {
+                                    coroutineScope.launch {
+                                        openDownloadedItem(primaryDownload)
+                                    }
+                                },
+                            ),
+                            PosterZoomOverlayAction(
+                                icon = Icons.Default.Info,
+                                label = stringResource(Res.string.home_view_details),
+                                onSelected = {
+                                    navController.navigate(DetailRoute(type = item.type, id = item.id, offline = true))
+                                },
+                            ),
+                            PosterZoomOverlayAction(
+                                icon = Icons.Default.DeleteOutline,
+                                label = stringResource(Res.string.action_delete),
+                                isDestructive = true,
+                                disintegratesPreview = false,
+                                onSelected = {
+                                    confirmDownloadDeleteAfterOverlayDismissTarget = target
+                                },
+                            ),
+                        )
+                    }
+
+                    NuvioPosterZoomActionOverlay(
+                        imageUrl = overlayImageUrl,
+                        backgroundImageUrl = overlayBackgroundUrl,
+                        title = item.name,
+                        subtitle = overlaySubtitle,
+                        synopsis = overlaySynopsis,
+                        isWatched = false,
+                        anchor = selectedDownloadActionAnchor,
+                        actions = downloadActions,
+                        hazeState = posterOverlayHazeState,
+                        onDismissed = {
+                            val pendingDeleteTarget = confirmDownloadDeleteAfterOverlayDismissTarget
+                            selectedDownloadActionTarget = null
+                            selectedDownloadActionAnchor = null
+                            confirmDownloadDeleteAfterOverlayDismissTarget = null
+                            if (pendingDeleteTarget != null) {
+                                confirmDownloadDeleteTarget = pendingDeleteTarget
+                            }
+                        },
+                    )
+                }
+            }
+
+            confirmDownloadDeleteTarget?.let { target ->
+                NuvioStatusModal(
+                    title = stringResource(Res.string.downloads_delete_title),
+                    message = stringResource(Res.string.downloads_delete_message, target.libraryItem.name),
+                    isVisible = true,
+                    confirmText = stringResource(Res.string.action_delete),
+                    dismissText = stringResource(Res.string.action_cancel),
+                    onConfirm = {
+                        confirmDownloadDeleteTarget = null
+                        libraryDownloadActionCommands.tryEmit(LibraryDownloadActionCommand.Delete(target))
+                    },
+                    onDismiss = {
+                        confirmDownloadDeleteTarget = null
+                    },
+                )
             }
 
             NuvioContinueWatchingActionSheet(
@@ -3719,6 +3935,7 @@ private fun AppTabHost(
     homeScrollToTopRequests: Flow<Unit>,
     searchScrollToTopRequests: Flow<Unit>,
     libraryScrollToTopRequests: Flow<Unit>,
+    libraryDownloadActionCommands: Flow<LibraryDownloadActionCommand>,
     settingsRootActionRequests: Flow<Unit>,
     animateHomeCollectionGifs: Boolean = true,
     onCatalogClick: ((HomeCatalogSection) -> Unit)? = null,
@@ -3731,8 +3948,11 @@ private fun AppTabHost(
     onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
     onConnectCloudClick: (() -> Unit)? = null,
     onLibraryDownloadClick: ((DownloadItem) -> Unit)? = null,
+    onLibraryDownloadLongClick: ((LibraryDownloadActionTarget, PosterZoomAnchor?) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
+    onSearchPersonClick: ((TmdbPersonSearchResult) -> Unit)? = null,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
     onSwitchProfile: (() -> Unit)? = null,
     onEditProfile: (() -> Unit)? = null,
     onHomescreenSettingsClick: () -> Unit = {},
@@ -3741,6 +3961,7 @@ private fun AppTabHost(
     onDownloadsSettingsClick: () -> Unit = {},
     onAddonsSettingsClick: () -> Unit = {},
     onPluginsSettingsClick: () -> Unit = {},
+    onCloudStreamSettingsClick: () -> Unit = {},
     onAccountSettingsClick: () -> Unit = {},
     onSupportersContributorsSettingsClick: () -> Unit = {},
     onLicensesAttributionsSettingsClick: () -> Unit = {},
@@ -3777,6 +3998,7 @@ private fun AppTabHost(
                         modifier = Modifier.fillMaxSize(),
                         onPosterClick = onPosterClick,
                         onPosterLongClick = onPosterLongClick,
+                        onPersonClick = onSearchPersonClick,
                         searchFocusRequestCount = searchFocusRequestCount,
                         scrollToTopRequests = searchScrollToTopRequests,
                     )
@@ -3800,6 +4022,8 @@ private fun AppTabHost(
                         onConnectCloudClick = onConnectCloudClick,
                         onDownloadsClick = onDownloadsSettingsClick,
                         onOpenDownload = onLibraryDownloadClick,
+                        downloadActionCommands = libraryDownloadActionCommands,
+                        onDownloadLongClick = onLibraryDownloadLongClick,
                     )
                 }
 
@@ -3818,6 +4042,7 @@ private fun AppTabHost(
                         onDownloadsClick = onDownloadsSettingsClick,
                         onAddonsClick = onAddonsSettingsClick,
                         onPluginsClick = onPluginsSettingsClick,
+                        onCloudStreamClick = onCloudStreamSettingsClick,
                         onAccountClick = onAccountSettingsClick,
                         onSupportersContributorsClick = onSupportersContributorsSettingsClick,
                         onLicensesAttributionsClick = onLicensesAttributionsSettingsClick,
@@ -3826,6 +4051,7 @@ private fun AppTabHost(
                         onCollectionsClick = onCollectionsSettingsClick,
                         onPosterClick = onPosterClick,
                         onContinueWatchingItemClick = onContinueWatchingClick,
+                        onFavoritePersonClick = onFavoritePersonClick,
                     )
                 }
             }
@@ -4001,6 +4227,67 @@ private fun TabletTopPillItem(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun downloadActionOverlayStatus(item: DownloadItem): String {
+    val size = if (item.totalBytes != null && item.totalBytes > 0L) {
+        "${formatDownloadOverlayBytes(item.downloadedBytes)} / ${formatDownloadOverlayBytes(item.totalBytes)}"
+    } else {
+        formatDownloadOverlayBytes(item.downloadedBytes)
+    }
+
+    return when (item.status) {
+        DownloadStatus.Downloading -> stringResource(Res.string.downloads_status_downloading, size)
+        DownloadStatus.Paused -> stringResource(Res.string.downloads_status_paused, size)
+        DownloadStatus.Failed -> item.errorMessage ?: stringResource(Res.string.downloads_status_failed)
+        DownloadStatus.Completed -> stringResource(
+            Res.string.downloads_status_completed,
+            formatDownloadOverlayBytes(item.totalBytes ?: item.downloadedBytes),
+        )
+    }
+}
+
+@Composable
+private fun downloadActionOverlayDetails(item: DownloadItem): String {
+    val episodeCode = if (item.seasonNumber != null && item.episodeNumber != null) {
+        stringResource(
+            Res.string.compose_player_episode_code_full,
+            item.seasonNumber,
+            item.episodeNumber,
+        )
+    } else {
+        null
+    }
+    val byteLine = if (item.totalBytes != null && item.totalBytes > 0L) {
+        "${formatDownloadOverlayBytes(item.downloadedBytes)} / ${formatDownloadOverlayBytes(item.totalBytes)}"
+    } else {
+        formatDownloadOverlayBytes(item.downloadedBytes)
+    }
+
+    return listOfNotNull(
+        episodeCode,
+        item.providerName.trim().takeIf { it.isNotBlank() },
+        item.streamTitle.trim().takeIf { it.isNotBlank() },
+        item.streamSubtitle?.trim()?.takeIf { it.isNotBlank() },
+        byteLine.takeIf { it.isNotBlank() },
+    )
+        .distinct()
+        .joinToString(" • ")
+}
+
+private fun formatDownloadOverlayBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 ${localizedByteUnit("B")}"
+    val kib = 1024.0
+    val mib = kib * 1024.0
+    val gib = mib * 1024.0
+    val value = bytes.toDouble()
+    return when {
+        value >= gib -> "${((value / gib) * 10.0).toInt() / 10.0} ${localizedByteUnit("GB")}"
+        value >= mib -> "${((value / mib) * 10.0).toInt() / 10.0} ${localizedByteUnit("MB")}"
+        value >= kib -> "${((value / kib) * 10.0).toInt() / 10.0} ${localizedByteUnit("KB")}"
+        else -> "$bytes ${localizedByteUnit("B")}"
     }
 }
 

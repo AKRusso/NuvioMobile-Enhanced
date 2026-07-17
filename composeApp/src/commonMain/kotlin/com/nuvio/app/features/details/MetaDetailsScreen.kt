@@ -94,6 +94,7 @@ import com.nuvio.app.features.details.components.DetailTrailersSection
 import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.SeasonWatchedActionSheet
 import com.nuvio.app.features.details.components.TrailerPlayerPopup
+import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
@@ -136,6 +137,7 @@ private const val RANDOM_EPISODE_HISTORY_LIMIT = 8
 fun MetaDetailsScreen(
     type: String,
     id: String,
+    offlineMode: Boolean = false,
     onBack: () -> Unit,
     onPlay: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
     onPlayManually: ((type: String, videoId: String, parentMetaId: String, parentMetaType: String, title: String, logo: String?, poster: String?, background: String?, seasonNumber: Int?, episodeNumber: Int?, episodeTitle: String?, episodeThumbnail: String?, pauseDescription: String?, resumePositionMs: Long?) -> Unit)? = null,
@@ -149,8 +151,21 @@ fun MetaDetailsScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by MetaDetailsRepository.uiState.collectAsStateWithLifecycle()
-    val displayedMeta = uiState.meta?.takeIf { it.type == type && it.id == id }
-        ?: MetaDetailsRepository.peek(type, id)
+    val downloadsUiState by remember {
+        DownloadsRepository.ensureLoaded()
+        DownloadsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val downloadedMeta = remember(downloadsUiState.items, type, id) {
+        DownloadsRepository.findOfflineMetaDetails(type, id)
+    }
+    val offlineDetailsAvailable = offlineMode && downloadedMeta != null
+    val displayedMeta = if (offlineDetailsAvailable) {
+        downloadedMeta
+    } else {
+        uiState.meta?.takeIf { it.type == type && it.id == id }
+            ?: MetaDetailsRepository.peek(type, id)
+            ?: downloadedMeta
+    }
     val metaScreenSettingsUiState by remember {
         MetaScreenSettingsRepository.ensureLoaded()
         MetaScreenSettingsRepository.uiState
@@ -214,7 +229,8 @@ fun MetaDetailsScreen(
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
     var showAiAssistant by remember(type, id) { mutableStateOf(false) }
 
-    val shouldShowComments = commentsEnabled &&
+    val shouldShowComments = !offlineDetailsAvailable &&
+        commentsEnabled &&
         traktAuthUiState.mode == TraktConnectionMode.CONNECTED &&
         displayedMeta != null &&
         displayedMeta.type.lowercase().let { it == "movie" || it == "series" || it == "show" || it == "tv" }
@@ -252,8 +268,12 @@ fun MetaDetailsScreen(
         isCommentsLoading = false
     }
 
-    LaunchedEffect(displayedMeta?.id, displayedMeta?.videos, deferredMetaWorkAllowed) {
+    LaunchedEffect(displayedMeta?.id, displayedMeta?.videos, deferredMetaWorkAllowed, offlineDetailsAvailable) {
         val metaForRatings = displayedMeta
+        if (offlineDetailsAvailable) {
+            episodeImdbRatings = emptyMap()
+            return@LaunchedEffect
+        }
         if (!deferredMetaWorkAllowed) return@LaunchedEffect
         if (metaForRatings == null || !metaForRatings.isSeriesLikeForEpisodeRatings()) {
             episodeImdbRatings = emptyMap()
@@ -277,7 +297,11 @@ fun MetaDetailsScreen(
         )
     }
 
-    LaunchedEffect(type, id, displayedMeta, uiState.isLoading, autoLoadAttempted) {
+    LaunchedEffect(type, id, offlineDetailsAvailable, displayedMeta, uiState.isLoading, autoLoadAttempted) {
+        if (offlineDetailsAvailable) {
+            autoLoadAttempted = true
+            return@LaunchedEffect
+        }
         if (!autoLoadAttempted && displayedMeta == null && !uiState.isLoading) {
             autoLoadAttempted = true
             MetaDetailsRepository.load(type, id)
@@ -292,13 +316,16 @@ fun MetaDetailsScreen(
         tmdbSettingsUiState.enabled,
         tmdbSettingsUiState.useMoreLikeThis,
         tmdbSettingsUiState.language,
+        offlineDetailsAvailable,
     ) {
+        if (offlineDetailsAvailable) return@LaunchedEffect
         if (displayedMeta != null && !uiState.isLoading) {
             MetaDetailsRepository.load(type, id)
         }
     }
 
-    LaunchedEffect(networkStatusUiState.condition, displayedMeta, uiState.isLoading, type, id) {
+    LaunchedEffect(networkStatusUiState.condition, displayedMeta, uiState.isLoading, type, id, offlineDetailsAvailable) {
+        if (offlineDetailsAvailable) return@LaunchedEffect
         when (networkStatusUiState.condition) {
             NetworkCondition.NoInternet,
             NetworkCondition.ServersUnreachable,
@@ -369,6 +396,7 @@ fun MetaDetailsScreen(
 
             displayedMeta != null -> {
                 val meta = displayedMeta
+                val offlineDetailsMode = offlineMode && downloadedMeta != null && meta.id == downloadedMeta.id
                 val metaPreview = remember(meta) { meta.toMetaPreview() }
                 val todayIsoDate = CurrentDateProvider.todayIsoDate()
                 val isSaved = remember(
@@ -612,11 +640,11 @@ fun MetaDetailsScreen(
                 val hasCollectionSection = remember(meta) {
                     meta.collectionName != null && meta.collectionItems.isNotEmpty()
                 }
-                val hasMoreLikeThisSection = remember(meta) {
-                    meta.moreLikeThis.isNotEmpty()
+                val hasMoreLikeThisSection = remember(meta, offlineDetailsMode) {
+                    !offlineDetailsMode && meta.moreLikeThis.isNotEmpty()
                 }
-                val hasTrailersSection = remember(meta) {
-                    meta.trailers.isNotEmpty()
+                val hasTrailersSection = remember(meta, offlineDetailsMode) {
+                    !offlineDetailsMode && meta.trailers.isNotEmpty()
                 }
                 val uriHandler = LocalUriHandler.current
                 val inAppTrailerPlaybackEnabled = AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
@@ -627,12 +655,13 @@ fun MetaDetailsScreen(
                 var trailerErrorMessage by remember(meta.id) { mutableStateOf<String?>(null) }
                 var trailerRequestToken by remember(meta.id) { mutableIntStateOf(0) }
                 var isLeavingDetails by remember(meta.id) { mutableStateOf(false) }
-                val heroTrailerCandidate = remember(meta.trailers) {
-                    selectHeroTrailer(meta.trailers)
+                val heroTrailerCandidate = remember(meta.trailers, offlineDetailsMode) {
+                    if (offlineDetailsMode) null else selectHeroTrailer(meta.trailers)
                 }
                 val heroTrailerPlaybackEnabled = AppFeaturePolicy.heroTrailerPlaybackSupported &&
                     inAppTrailerPlaybackEnabled &&
-                    metaScreenSettingsUiState.heroTrailerPlayback
+                    metaScreenSettingsUiState.heroTrailerPlayback &&
+                    !offlineDetailsMode
                 var heroTrailerPlaybackSource by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf<TrailerPlaybackSource?>(null) }
                 var heroTrailerReady by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }
                 var heroTrailerFinished by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }

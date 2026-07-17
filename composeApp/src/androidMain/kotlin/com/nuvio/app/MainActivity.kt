@@ -32,6 +32,7 @@ import com.nuvio.app.features.library.LibraryStorage
 import com.nuvio.app.features.livetv.LiveTvIncomingSourceRepository
 import com.nuvio.app.features.livetv.LiveTvStorage
 import com.nuvio.app.features.details.MetaScreenSettingsStorage
+import com.nuvio.app.features.details.FavoritePeopleStorage
 import com.nuvio.app.features.home.HomeCatalogSettingsStorage
 import com.nuvio.app.features.mdblist.MdbListSettingsStorage
 import com.nuvio.app.features.notifications.EpisodeReleaseNotificationPlatform
@@ -54,6 +55,7 @@ import com.nuvio.app.features.settings.SentrySettingsStorage
 import com.nuvio.app.features.settings.ThemeSettingsStorage
 import com.nuvio.app.features.settings.NuvioAppIconSwitcher
 import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsStorage
 import com.nuvio.app.features.trakt.TraktAuthStorage
 import com.nuvio.app.features.trakt.TraktCommentsStorage
@@ -87,6 +89,8 @@ class MainActivity : AppCompatActivity() {
         ThemeSettingsStorage.initialize(applicationContext)
         NuvioAppIconSwitcher.initialize(applicationContext)
         NuvioEnhancedSettingsStorage.initialize(applicationContext)
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioAppIconSwitcher.apply(NuvioEnhancedSettingsRepository.uiState.value.selectedAppIconId)
         SentrySettingsStorage.initialize(applicationContext)
         SentryInitializer.start(application)
         super.onCreate(savedInstanceState)
@@ -98,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         AuthStorage.initialize(applicationContext)
         DnsOverHttpsSettingsStorage.initialize(applicationContext)
         LibraryStorage.initialize(applicationContext)
+        FavoritePeopleStorage.initialize(applicationContext)
         LiveTvStorage.initialize(applicationContext)
         WatchedStorage.initialize(applicationContext)
         MetaScreenSettingsStorage.initialize(applicationContext)
@@ -136,6 +141,7 @@ class MainActivity : AppCompatActivity() {
         DownloadsStorage.initialize(applicationContext)
         DownloadsPlatformDownloader.initialize(applicationContext)
         DownloadsLiveStatusPlatform.initialize(applicationContext)
+        DownloadsLiveStatusPlatform.bindActivity(this)
         AndroidAppUpdaterPlatform.initialize(applicationContext)
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
@@ -171,6 +177,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
+        DownloadsLiveStatusPlatform.unbindActivity(this)
         NuvioEnhancedBackupFileBridge.unbindActivity(this)
         SubtitleFontFileBridge.unbindActivity(this)
         AppSystemUiController.unbind(this)
@@ -194,6 +201,9 @@ class MainActivity : AppCompatActivity() {
         grantResults: IntArray,
     ) {
         if (EpisodeReleaseNotificationPlatform.handlePermissionRequestResult(requestCode, grantResults)) {
+            return
+        }
+        if (DownloadsLiveStatusPlatform.handlePermissionRequestResult(requestCode)) {
             return
         }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)

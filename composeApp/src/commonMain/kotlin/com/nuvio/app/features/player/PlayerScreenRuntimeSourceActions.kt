@@ -178,6 +178,7 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
     activeSourceAudioUrl = null
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
+    activeExternalSubtitles = stream.externalSubtitles
     activeStreamType = null
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
@@ -222,6 +223,7 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
     activeSourceAudioUrl = null
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
+    activeExternalSubtitles = stream.externalSubtitles
     activeStreamType = null
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
@@ -243,6 +245,8 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
                     PlayerStreamsRepository.loadSources(
                         type = contentType ?: parentMetaType,
                         videoId = vid,
+                        parentMetaId = parentMetaId,
+                        parentMetaType = parentMetaType,
                         season = activeSeasonNumber,
                         episode = activeEpisodeNumber,
                         forceRefresh = true,
@@ -274,6 +278,7 @@ internal fun PlayerScreenRuntime.switchToSource(stream: StreamItem) {
     activeSourceAudioUrl = null
     activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+    activeExternalSubtitles = stream.externalSubtitles
     activeStreamType = stream.streamType
     activeSourceIdentityKey = sourceIdentityKey
     activeStreamTitle = stream.streamLabel
@@ -298,6 +303,8 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(stream: StreamItem, episo
                 PlayerStreamsRepository.loadEpisodeStreams(
                     type = contentType ?: parentMetaType,
                     videoId = episode.id,
+                    parentMetaId = parentMetaId,
+                    parentMetaType = parentMetaType,
                     season = episode.season,
                     episode = episode.episode,
                     forceRefresh = true,
@@ -324,6 +331,7 @@ internal fun PlayerScreenRuntime.switchToEpisodeStream(stream: StreamItem, episo
     activeSourceAudioUrl = null
     activeSourceHeaders = sanitizePlaybackHeaders(stream.behaviorHints.proxyHeaders?.request)
     activeSourceResponseHeaders = sanitizePlaybackResponseHeaders(stream.behaviorHints.proxyHeaders?.response)
+    activeExternalSubtitles = stream.externalSubtitles
     activeStreamType = stream.streamType
     applyEpisodeStreamMetadata(stream, episode, resume)
 }
@@ -353,6 +361,7 @@ internal fun PlayerScreenRuntime.switchToDownloadedEpisode(downloadItem: Downloa
     activeSourceAudioUrl = null
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
+    activeExternalSubtitles = downloadItem.externalSubtitles
     activeStreamType = null
     activeSourceIdentityKey = null
     activeStreamTitle = downloadItem.streamTitle.ifBlank {
@@ -381,6 +390,8 @@ internal fun PlayerScreenRuntime.playNextEpisode() {
         parentMetaType = parentMetaType,
         contentType = contentType,
         settings = playerSettingsUiState,
+        currentProviderAddonId = activeProviderAddonId,
+        currentProviderName = activeProviderName,
         currentStreamBingeGroup = currentStreamBingeGroup,
         onDownloadedEpisodeSelected = { item, episode -> switchToDownloadedEpisode(item, episode) },
         onEpisodeStreamSelected = { stream, episode -> switchToEpisodeStream(stream, episode) },
@@ -398,6 +409,24 @@ internal fun PlayerScreenRuntime.playNextEpisode() {
     )?.let { job ->
         nextEpisodeAutoPlayJob = job
     }
+}
+
+internal fun PlayerScreenRuntime.preloadNextEpisodeStreams() {
+    val next = nextEpisodeInfo ?: return
+    if (!next.hasAired) return
+    if (preloadedNextEpisodeVideoId == next.videoId) return
+    if (showEpisodesPanel && episodeStreamsPanelState.selectedEpisode?.id != next.videoId) return
+
+    val nextVideo = playerMetaVideos.firstOrNull { video -> video.id == next.videoId } ?: return
+    preloadedNextEpisodeVideoId = next.videoId
+    PlayerStreamsRepository.loadEpisodeStreams(
+        type = contentType ?: parentMetaType,
+        videoId = nextVideo.id,
+        parentMetaId = parentMetaId,
+        parentMetaType = parentMetaType,
+        season = nextVideo.season,
+        episode = nextVideo.episode,
+    )
 }
 
 internal fun PlayerScreenRuntime.playRandomEpisodeFromPlayer() {
@@ -436,6 +465,8 @@ internal fun PlayerScreenRuntime.openSourcesPanel() {
     PlayerStreamsRepository.loadSources(
         type = contentType ?: parentMetaType,
         videoId = vid,
+        parentMetaId = parentMetaId,
+        parentMetaType = parentMetaType,
         season = activeSeasonNumber,
         episode = activeEpisodeNumber,
     )
@@ -501,6 +532,7 @@ private fun PlayerScreenRuntime.applyEpisodeStreamMetadata(
     activeSourceIdentityKey = stream.playerSourceIdentityKey()
     activeStreamTitle = stream.streamLabel
     activeStreamSubtitle = stream.streamSubtitle
+    activeExternalSubtitles = stream.externalSubtitles
     activeProviderName = stream.addonName
     activeProviderAddonId = stream.addonId
     currentStreamBingeGroup = stream.behaviorHints.bingeGroup

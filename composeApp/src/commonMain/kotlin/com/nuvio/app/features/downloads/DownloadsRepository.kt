@@ -1,5 +1,7 @@
 package com.nuvio.app.features.downloads
 
+import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.streams.StreamItem
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -113,6 +115,7 @@ object DownloadsRepository {
         episodeNumber: Int?,
         episodeTitle: String?,
         episodeThumbnail: String?,
+        episodeOverview: String? = null,
         stream: StreamItem,
     ): DownloadEnqueueResult {
         ensureLoaded()
@@ -154,6 +157,12 @@ object DownloadsRepository {
             sourceUrl = sourceUrl,
             nowEpochMs = now,
         )
+        val detailsSnapshot = snapshotCurrentDetails(
+            contentType = contentType,
+            parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
+            videoId = videoId,
+        )
 
         val item = DownloadItem(
             id = downloadId,
@@ -169,10 +178,13 @@ object DownloadsRepository {
             episodeNumber = episodeNumber,
             episodeTitle = episodeTitle,
             episodeThumbnail = episodeThumbnail,
+            episodeOverview = episodeOverview,
+            detailsSnapshot = detailsSnapshot,
             streamTitle = stream.streamLabel,
             streamSubtitle = stream.streamSubtitle,
             providerName = stream.addonName,
             providerAddonId = stream.addonId,
+            externalSubtitles = stream.externalSubtitles,
             sourceUrl = sourceUrl,
             sourceHeaders = sanitizeRequestHeaders(stream.behaviorHints.proxyHeaders?.request),
             sourceResponseHeaders = sanitizeResponseHeaders(stream.behaviorHints.proxyHeaders?.response),
@@ -249,9 +261,38 @@ object DownloadsRepository {
         activeHandles.remove(downloadId)?.cancel()
         DownloadsPlatformDownloader.removeFile(playableLocalFileUri(item) ?: item.localFileUri)
         DownloadsPlatformDownloader.removePartialFile(item.fileName)
+        item.externalSubtitles.forEach { subtitle ->
+            val subtitleUri = subtitle.url.takeIf { it.startsWith("file:", ignoreCase = true) }
+                ?: return@forEach
+            DownloadsPlatformDownloader.removeFile(subtitleUri)
+        }
 
         publish(_uiState.value.items.filterNot { it.id == downloadId })
         persist()
+    }
+
+    fun findOfflineMetaDetails(type: String, id: String): MetaDetails? {
+        ensureLoaded()
+        val normalizedType = type.trim().lowercase()
+        val normalizedId = id.trim()
+        if (normalizedId.isBlank()) return null
+
+        return _uiState.value.items
+            .asSequence()
+            .filter { item ->
+                item.parentMetaId.trim() == normalizedId ||
+                    item.videoId.trim() == normalizedId ||
+                    item.detailsSnapshot?.id?.trim() == normalizedId
+            }
+            .sortedByDescending { it.updatedAtEpochMs }
+            .firstNotNullOfOrNull { item ->
+                val offline = item.toOfflineMetaDetails() ?: return@firstNotNullOfOrNull null
+                val typeMatches = normalizedType.isBlank() ||
+                    offline.type.equals(type, ignoreCase = true) ||
+                    item.parentMetaType.equals(type, ignoreCase = true) ||
+                    item.contentType.equals(type, ignoreCase = true)
+                if (typeMatches) offline else null
+            }
     }
 
     private fun loadFromDisk() {
@@ -315,9 +356,14 @@ object DownloadsRepository {
             onSuccess = { localFileUri, totalBytes ->
                 activeHandles.remove(item.id)
                 mutateItem(item.id) { current ->
+                    val cachedSubtitles = DownloadsPlatformDownloader.cacheSubtitleFiles(
+                        subtitles = current.externalSubtitles,
+                        companionBaseFileName = current.fileName,
+                    )
                     current.copy(
                         status = DownloadStatus.Completed,
                         localFileUri = localFileUri,
+                        externalSubtitles = cachedSubtitles.ifEmpty { current.externalSubtitles },
                         downloadedBytes = if (totalBytes != null && totalBytes > 0L) {
                             totalBytes
                         } else {
@@ -383,6 +429,34 @@ object DownloadsRepository {
         runCatching {
             DownloadsLiveStatusPlatform.onItemsChanged(_uiState.value.items)
         }
+    }
+
+    private fun snapshotCurrentDetails(
+        contentType: String,
+        parentMetaId: String,
+        parentMetaType: String,
+        videoId: String,
+    ): DownloadDetailsSnapshot? {
+        val candidates = listOf(
+            parentMetaType to parentMetaId,
+            contentType to parentMetaId,
+            parentMetaType to videoId,
+            contentType to videoId,
+        )
+
+        return candidates
+            .asSequence()
+            .mapNotNull { (type, id) ->
+                val normalizedType = type.trim()
+                val normalizedId = id.trim()
+                if (normalizedType.isBlank() || normalizedId.isBlank()) {
+                    null
+                } else {
+                    MetaDetailsRepository.peek(normalizedType, normalizedId)
+                }
+            }
+            .firstOrNull()
+            ?.toDownloadDetailsSnapshot()
     }
 
     private fun persist() {

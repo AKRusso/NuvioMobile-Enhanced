@@ -1,5 +1,11 @@
 package com.nuvio.app.features.downloads
 
+import com.nuvio.app.features.details.MetaCompany
+import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.MetaExternalRating
+import com.nuvio.app.features.details.MetaPerson
+import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.streams.StreamSubtitle
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.Res
@@ -32,10 +38,13 @@ data class DownloadItem(
     val episodeNumber: Int? = null,
     val episodeTitle: String? = null,
     val episodeThumbnail: String? = null,
+    val episodeOverview: String? = null,
+    val detailsSnapshot: DownloadDetailsSnapshot? = null,
     val streamTitle: String,
     val streamSubtitle: String? = null,
     val providerName: String,
     val providerAddonId: String? = null,
+    val externalSubtitles: List<StreamSubtitle> = emptyList(),
     val sourceUrl: String,
     val sourceHeaders: Map<String, String> = emptyMap(),
     val sourceResponseHeaders: Map<String, String> = emptyMap(),
@@ -73,6 +82,72 @@ data class DownloadItem(
         }
 }
 
+@Serializable
+data class DownloadDetailsSnapshot(
+    val id: String,
+    val type: String,
+    val name: String,
+    val aliases: List<String> = emptyList(),
+    val poster: String? = null,
+    val background: String? = null,
+    val logo: String? = null,
+    val description: String? = null,
+    val releaseInfo: String? = null,
+    val lastAirDate: String? = null,
+    val status: String? = null,
+    val imdbRating: String? = null,
+    val ageRating: String? = null,
+    val runtime: String? = null,
+    val externalRatings: List<DownloadExternalRatingSnapshot> = emptyList(),
+    val genres: List<String> = emptyList(),
+    val director: List<String> = emptyList(),
+    val writer: List<String> = emptyList(),
+    val cast: List<DownloadPersonSnapshot> = emptyList(),
+    val productionCompanies: List<DownloadCompanySnapshot> = emptyList(),
+    val networks: List<DownloadCompanySnapshot> = emptyList(),
+    val country: String? = null,
+    val awards: String? = null,
+    val language: String? = null,
+    val website: String? = null,
+    val hasScheduledVideos: Boolean = false,
+    val videos: List<DownloadVideoSnapshot> = emptyList(),
+)
+
+@Serializable
+data class DownloadExternalRatingSnapshot(
+    val source: String,
+    val value: Double,
+)
+
+@Serializable
+data class DownloadPersonSnapshot(
+    val name: String,
+    val role: String? = null,
+    val photo: String? = null,
+    val tmdbId: Int? = null,
+)
+
+@Serializable
+data class DownloadCompanySnapshot(
+    val name: String,
+    val logo: String? = null,
+    val tmdbId: Int? = null,
+)
+
+@Serializable
+data class DownloadVideoSnapshot(
+    val id: String,
+    val title: String,
+    val released: String? = null,
+    val available: Boolean = true,
+    val thumbnail: String? = null,
+    val seasonPoster: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val overview: String? = null,
+    val runtime: Int? = null,
+)
+
 data class DownloadsUiState(
     val items: List<DownloadItem> = emptyList(),
 ) {
@@ -108,3 +183,144 @@ internal val downloadSeriesEpisodeComparator: Comparator<DownloadItem> =
         .thenBy { it.episodeTitle?.trim().orEmpty().lowercase() }
         .thenBy { it.title.trim().lowercase() }
         .thenBy { it.id }
+
+fun MetaDetails.toDownloadDetailsSnapshot(): DownloadDetailsSnapshot =
+    DownloadDetailsSnapshot(
+        id = id,
+        type = type,
+        name = name,
+        aliases = aliases,
+        poster = poster,
+        background = background,
+        logo = logo,
+        description = description,
+        releaseInfo = releaseInfo,
+        lastAirDate = lastAirDate,
+        status = status,
+        imdbRating = imdbRating,
+        ageRating = ageRating,
+        runtime = runtime,
+        externalRatings = externalRatings.map { it.toDownloadSnapshot() },
+        genres = genres,
+        director = director,
+        writer = writer,
+        cast = cast.map { it.toDownloadSnapshot() },
+        productionCompanies = productionCompanies.map { it.toDownloadSnapshot() },
+        networks = networks.map { it.toDownloadSnapshot() },
+        country = country,
+        awards = awards,
+        language = language,
+        website = website,
+        hasScheduledVideos = hasScheduledVideos,
+        videos = videos.map { it.toDownloadSnapshot() },
+    )
+
+fun DownloadItem.toOfflineMetaDetails(): MetaDetails? {
+    val snapshot = detailsSnapshot ?: return null
+    return snapshot.toMetaDetails(
+        fallbackItem = this,
+    )
+}
+
+private fun DownloadDetailsSnapshot.toMetaDetails(
+    fallbackItem: DownloadItem,
+): MetaDetails =
+    MetaDetails(
+        id = id.ifBlank { fallbackItem.parentMetaId },
+        type = type.ifBlank { fallbackItem.parentMetaType.ifBlank { fallbackItem.contentType } },
+        name = name.ifBlank { fallbackItem.title },
+        aliases = aliases,
+        poster = poster ?: fallbackItem.poster,
+        background = background ?: fallbackItem.background,
+        logo = logo ?: fallbackItem.logo,
+        description = description ?: fallbackItem.episodeOverview,
+        releaseInfo = releaseInfo,
+        lastAirDate = lastAirDate,
+        status = status,
+        imdbRating = imdbRating,
+        ageRating = ageRating,
+        runtime = runtime,
+        externalRatings = externalRatings.map { it.toMetaExternalRating() },
+        genres = genres,
+        director = director,
+        writer = writer,
+        cast = cast.map { it.toMetaPerson() },
+        productionCompanies = productionCompanies.map { it.toMetaCompany() },
+        networks = networks.map { it.toMetaCompany() },
+        country = country,
+        awards = awards,
+        language = language,
+        website = website,
+        hasScheduledVideos = hasScheduledVideos,
+        videos = videos.map { it.toMetaVideo() },
+    )
+
+private fun MetaExternalRating.toDownloadSnapshot(): DownloadExternalRatingSnapshot =
+    DownloadExternalRatingSnapshot(
+        source = source,
+        value = value,
+    )
+
+private fun DownloadExternalRatingSnapshot.toMetaExternalRating(): MetaExternalRating =
+    MetaExternalRating(
+        source = source,
+        value = value,
+    )
+
+private fun MetaPerson.toDownloadSnapshot(): DownloadPersonSnapshot =
+    DownloadPersonSnapshot(
+        name = name,
+        role = role,
+        photo = photo,
+        tmdbId = tmdbId,
+    )
+
+private fun DownloadPersonSnapshot.toMetaPerson(): MetaPerson =
+    MetaPerson(
+        name = name,
+        role = role,
+        photo = photo,
+        tmdbId = tmdbId,
+    )
+
+private fun MetaCompany.toDownloadSnapshot(): DownloadCompanySnapshot =
+    DownloadCompanySnapshot(
+        name = name,
+        logo = logo,
+        tmdbId = tmdbId,
+    )
+
+private fun DownloadCompanySnapshot.toMetaCompany(): MetaCompany =
+    MetaCompany(
+        name = name,
+        logo = logo,
+        tmdbId = tmdbId,
+    )
+
+private fun MetaVideo.toDownloadSnapshot(): DownloadVideoSnapshot =
+    DownloadVideoSnapshot(
+        id = id,
+        title = title,
+        released = released,
+        available = available,
+        thumbnail = thumbnail,
+        seasonPoster = seasonPoster,
+        season = season,
+        episode = episode,
+        overview = overview,
+        runtime = runtime,
+    )
+
+private fun DownloadVideoSnapshot.toMetaVideo(): MetaVideo =
+    MetaVideo(
+        id = id,
+        title = title,
+        released = released,
+        available = available,
+        thumbnail = thumbnail,
+        seasonPoster = seasonPoster,
+        season = season,
+        episode = episode,
+        overview = overview,
+        runtime = runtime,
+    )

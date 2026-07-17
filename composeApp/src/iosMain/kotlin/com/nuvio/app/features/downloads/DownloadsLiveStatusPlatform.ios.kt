@@ -35,6 +35,9 @@ internal actual object DownloadsLiveStatusPlatform {
                     id = item.id,
                     title = item.title,
                     subtitle = item.displaySubtitle,
+                    providerName = item.providerName,
+                    streamTitle = item.streamTitle,
+                    artworkUrl = item.iosArtworkUrl(),
                     status = item.status.name,
                     downloadedBytes = item.downloadedBytes,
                     totalBytes = item.totalBytes,
@@ -68,6 +71,16 @@ internal actual object DownloadsLiveStatusPlatform {
         DownloadStatus.Failed -> 2
         DownloadStatus.Completed -> 3
     }
+
+    private fun DownloadItem.iosArtworkUrl(): String? =
+        listOf(
+            episodeThumbnail,
+            poster,
+            background,
+            detailsSnapshot?.poster,
+            detailsSnapshot?.background,
+        )
+            .firstOrNull { it?.startsWith("http", ignoreCase = true) == true }
 }
 
 @Serializable
@@ -75,6 +88,9 @@ private data class DownloadsLiveStatusPayload(
     val id: String,
     val title: String,
     val subtitle: String,
+    val providerName: String,
+    val streamTitle: String,
+    val artworkUrl: String? = null,
     val status: String,
     val downloadedBytes: Long,
     val totalBytes: Long? = null,

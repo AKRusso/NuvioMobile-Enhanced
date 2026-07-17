@@ -82,11 +82,20 @@ actual fun rememberPlayerGestureController(): PlayerGestureController? {
     val context = LocalContext.current
     val activity = context.findActivity() ?: return null
     val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return null
+    PlayerSettingsRepository.ensureLoaded()
+    val playerSettings = PlayerSettingsRepository.uiState.value
 
-    val controller = remember(activity, audioManager) {
+    val controller = remember(
+        activity,
+        audioManager,
+        playerSettings.rememberPlayerBrightnessEnabled,
+        playerSettings.rememberedPlayerBrightness,
+    ) {
         AndroidPlayerGestureController(
             activity = activity,
             audioManager = audioManager,
+            rememberBrightnessEnabled = playerSettings.rememberPlayerBrightnessEnabled,
+            rememberedBrightness = playerSettings.rememberedPlayerBrightness,
         )
     }
 
@@ -115,9 +124,19 @@ private fun Activity.shouldForceLandscapePlayer(): Boolean {
 private class AndroidPlayerGestureController(
     private val activity: Activity,
     private val audioManager: AudioManager,
+    private val rememberBrightnessEnabled: Boolean,
+    rememberedBrightness: Float?,
 ) : PlayerGestureController {
     private val originalBrightness = activity.window.attributes.screenBrightness
     private var brightnessRestored = false
+
+    init {
+        if (rememberBrightnessEnabled && rememberedBrightness != null) {
+            val attributes = activity.window.attributes
+            attributes.screenBrightness = rememberedBrightness.coerceIn(0.02f, 1f)
+            activity.window.attributes = attributes
+        }
+    }
 
     override fun currentBrightness(): Float {
         val windowValue = activity.window.attributes.screenBrightness
@@ -133,6 +152,9 @@ private class AndroidPlayerGestureController(
         val attributes = activity.window.attributes
         attributes.screenBrightness = target
         activity.window.attributes = attributes
+        if (rememberBrightnessEnabled) {
+            PlayerSettingsRepository.setRememberedPlayerBrightness(target)
+        }
         return target
     }
 

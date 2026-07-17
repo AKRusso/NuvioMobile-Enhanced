@@ -3,6 +3,7 @@ package com.nuvio.app.features.downloads
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
+import com.nuvio.app.features.streams.StreamSubtitle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -189,6 +190,66 @@ internal actual object DownloadsPlatformDownloader {
         return localFile.takeIf { it.exists() }?.toURI()?.toString()
     }
 
+    actual fun cacheSubtitleFiles(
+        subtitles: List<StreamSubtitle>,
+        companionBaseFileName: String,
+    ): List<StreamSubtitle> {
+        if (subtitles.isEmpty()) return emptyList()
+        val context = appContext ?: return emptyList()
+        val subtitlesDir = File(File(context.filesDir, "downloads"), "subtitles").apply { mkdirs() }
+        val baseName = companionBaseFileName.substringBeforeLast('.')
+            .sanitizeFileName()
+            .ifBlank { "subtitle" }
+
+        return subtitles.mapIndexedNotNull { index, subtitle ->
+            val sourceUrl = subtitle.url.trim().takeIf { it.startsWith("http", ignoreCase = true) }
+                ?: return@mapIndexedNotNull subtitle
+            val extension = sourceUrl.subtitleFileExtension()
+            val language = subtitle.language.ifBlank { "und" }.sanitizeFileName()
+            val label = subtitle.name.orEmpty().sanitizeFileName().takeIf { it.isNotBlank() }
+            val destination = File(
+                subtitlesDir,
+                buildString {
+                    append(baseName.take(72))
+                    append('_')
+                    append(index + 1)
+                    append('_')
+                    append(language.take(16))
+                    if (label != null) {
+                        append('_')
+                        append(label.take(32))
+                    }
+                    append('.')
+                    append(extension)
+                },
+            )
+
+            val request = Request.Builder().url(sourceUrl).apply {
+                subtitle.headers.orEmpty().forEach { (key, value) ->
+                    val normalizedKey = key.trim()
+                    val normalizedValue = value.trim()
+                    if (normalizedKey.isNotBlank() && normalizedValue.isNotBlank()) {
+                        header(normalizedKey, normalizedValue)
+                    }
+                }
+            }.build()
+
+            runCatching {
+                downloadHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@runCatching null
+                    val body = response.body ?: return@runCatching null
+                    destination.outputStream().use { output ->
+                        body.byteStream().copyTo(output)
+                    }
+                }
+                subtitle.copy(
+                    url = destination.toURI().toString(),
+                    headers = null,
+                )
+            }.getOrNull()
+        }
+    }
+
     actual fun openDownloadsDirectory(): Boolean {
         val context = appContext ?: return false
         val downloadsDir = File(context.filesDir, "downloads").apply { mkdirs() }
@@ -243,6 +304,21 @@ private fun String.toLocalFileOrNull(): File? {
         }
     }.getOrNull()
 }
+
+private fun String.subtitleFileExtension(): String {
+    val path = substringBefore('?').substringBefore('#').trimEnd('/')
+    return when {
+        path.endsWith(".vtt", ignoreCase = true) -> "vtt"
+        path.endsWith(".ass", ignoreCase = true) -> "ass"
+        path.endsWith(".ssa", ignoreCase = true) -> "ssa"
+        path.endsWith(".ttml", ignoreCase = true) -> "ttml"
+        path.endsWith(".dfxp", ignoreCase = true) -> "dfxp"
+        else -> "srt"
+    }
+}
+
+private fun String.sanitizeFileName(): String =
+    trim().replace(Regex("[^A-Za-z0-9._ -]"), "_")
 
 private fun resolveTotalBytes(
     startingBytes: Long,

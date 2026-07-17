@@ -27,6 +27,8 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     parentMetaType: String,
     contentType: String?,
     settings: PlayerSettingsUiState,
+    currentProviderAddonId: String?,
+    currentProviderName: String?,
     currentStreamBingeGroup: String?,
     onDownloadedEpisodeSelected: (DownloadItem, MetaVideo) -> Unit,
     onEpisodeStreamSelected: (StreamItem, MetaVideo) -> Unit,
@@ -104,6 +106,8 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
         PlayerStreamsRepository.loadEpisodeStreams(
             type = type,
             videoId = nextVideo.id,
+            parentMetaId = parentMetaId,
+            parentMetaType = parentMetaType,
             season = nextVideo.season,
             episode = nextVideo.episode,
         )
@@ -153,6 +157,26 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                 activeResolverProviderId = debridSettings.activeResolverProviderId,
             )
 
+        fun StreamItem.matchesCurrentProvider(): Boolean {
+            if (!currentProviderAddonId.isNullOrBlank() && addonId == currentProviderAddonId) return true
+            return currentProviderName
+                ?.takeIf { it.isNotBlank() }
+                ?.let { addonName.equals(it, ignoreCase = true) } == true
+        }
+
+        fun tryCurrentProviderFirst(streams: List<StreamItem>): StreamItem? {
+            val providerStreams = streams.filter { stream -> stream.matchesCurrentProvider() }
+            if (providerStreams.isEmpty()) return null
+            val providerBingeStreams = if (!preferredBingeGroup.isNullOrBlank()) {
+                providerStreams.filter { stream -> stream.behaviorHints.bingeGroup == preferredBingeGroup }
+            } else {
+                emptyList()
+            }
+            return trySelectStream(providerBingeStreams.ifEmpty { providerStreams })
+                ?: providerBingeStreams.firstOrNull()
+                ?: providerStreams.firstOrNull()
+        }
+
         fun tryBingeGroupOnly(streams: List<StreamItem>): StreamItem? {
             if (preferredBingeGroup == null || !settings.streamAutoPlayPreferBingeGroup) return null
             return StreamAutoPlaySelector.selectAutoPlayStream(
@@ -181,13 +205,13 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                     // Already resolved.
                 } else if (timeoutElapsed) {
                     if (allStreams.isNotEmpty()) {
-                        val candidate = trySelectStream(allStreams)
+                        val candidate = tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams)
                         if (candidate != null) {
                             selectStream(candidate)
                         }
                     }
                 } else if (allStreams.isNotEmpty()) {
-                    val earlyMatch = tryBingeGroupOnly(allStreams)
+                    val earlyMatch = tryCurrentProviderFirst(allStreams) ?: tryBingeGroupOnly(allStreams)
                     if (earlyMatch != null) {
                         selectStream(earlyMatch)
                     }
@@ -195,7 +219,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
 
                 if (!autoSelectTriggered && !state.isAnyLoading) {
                     if (allStreams.isNotEmpty()) {
-                        val candidate = trySelectStream(allStreams)
+                        val candidate = tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams)
                         if (candidate != null) {
                             selectStream(candidate)
                         }
@@ -219,7 +243,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             if (!autoSelectTriggered) {
                 val allStreams = PlayerStreamsRepository.episodeStreamsState.value.groups.flatMap { it.streams }
                 if (allStreams.isNotEmpty()) {
-                    val candidate = trySelectStream(allStreams)
+                    val candidate = tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams)
                     if (candidate != null) {
                         selectStream(candidate)
                     }
@@ -236,7 +260,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                 if (completed == null && !autoSelectTriggered) {
                     val allStreams = PlayerStreamsRepository.episodeStreamsState.value.groups.flatMap { it.streams }
                     if (allStreams.isNotEmpty()) {
-                        selectedStream = trySelectStream(allStreams)
+                        selectedStream = tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams)
                     }
                     finishWithoutSelection()
                 }
@@ -246,7 +270,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             if (!autoSelectTriggered) {
                 val allStreams = PlayerStreamsRepository.episodeStreamsState.value.groups.flatMap { it.streams }
                 if (allStreams.isNotEmpty()) {
-                    trySelectStream(allStreams)?.let(::selectStream)
+                    (tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams))?.let(::selectStream)
                 }
             }
             val completed = withTimeoutOrNull(NEXT_EPISODE_HARD_TIMEOUT_MS) { autoSelectSettled.await() }
@@ -254,7 +278,7 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             if (completed == null && !autoSelectTriggered) {
                 val allStreams = PlayerStreamsRepository.episodeStreamsState.value.groups.flatMap { it.streams }
                 if (allStreams.isNotEmpty()) {
-                    selectedStream = trySelectStream(allStreams)
+                    selectedStream = tryCurrentProviderFirst(allStreams) ?: trySelectStream(allStreams)
                 }
                 finishWithoutSelection()
             }

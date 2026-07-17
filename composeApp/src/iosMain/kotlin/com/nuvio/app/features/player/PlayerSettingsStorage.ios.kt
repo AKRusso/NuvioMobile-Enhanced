@@ -22,6 +22,8 @@ actual object PlayerSettingsStorage {
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
+    private const val rememberPlayerBrightnessEnabledKey = "remember_player_brightness_enabled"
+    private const val rememberedPlayerBrightnessKey = "remembered_player_brightness"
     private const val volumeBoostPercentKey = "volume_boost_percent"
     private const val externalPlayerEnabledKey = "external_player_enabled"
     private const val externalPlayerForwardSubtitlesKey = "external_player_forward_subtitles"
@@ -95,6 +97,8 @@ actual object PlayerSettingsStorage {
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
         touchGesturesEnabledKey,
+        rememberPlayerBrightnessEnabledKey,
+        rememberedPlayerBrightnessKey,
         externalPlayerEnabledKey,
         externalPlayerForwardSubtitlesKey,
         externalPlayerSendSkipSegmentsKey,
@@ -237,6 +241,30 @@ actual object PlayerSettingsStorage {
 
     actual fun saveTouchGesturesEnabled(enabled: Boolean) {
         saveBoolean(touchGesturesEnabledKey, enabled)
+    }
+
+    actual fun loadRememberPlayerBrightnessEnabled(): Boolean? =
+        loadBoolean(rememberPlayerBrightnessEnabledKey)
+
+    actual fun saveRememberPlayerBrightnessEnabled(enabled: Boolean) {
+        saveBoolean(rememberPlayerBrightnessEnabledKey, enabled)
+    }
+
+    actual fun loadRememberedPlayerBrightness(): Float? {
+        val key = ProfileScopedKey.of(rememberedPlayerBrightnessKey)
+        val defaults = NSUserDefaults.standardUserDefaults
+        return if (defaults.objectForKey(key) != null) {
+            defaults.floatForKey(key).coerceIn(0.02f, 1f)
+        } else {
+            null
+        }
+    }
+
+    actual fun saveRememberedPlayerBrightness(level: Float) {
+        NSUserDefaults.standardUserDefaults.setFloat(
+            level.coerceIn(0.02f, 1f),
+            forKey = ProfileScopedKey.of(rememberedPlayerBrightnessKey),
+        )
     }
 
     actual fun loadVolumeBoostPercent(): Int? = loadInt(volumeBoostPercentKey)
@@ -719,12 +747,15 @@ actual object PlayerSettingsStorage {
 
     actual fun loadIntroDbApiKey(): String? {
         val defaults = NSUserDefaults.standardUserDefaults
-        val key = ProfileScopedKey.of(introDbApiKeyKey)
-        return defaults.stringForKey(key)
+        return defaults.stringForKey(introDbApiKeyKey)
+            ?.takeIf { it.isNotBlank() }
+            ?: defaults.stringForKey(ProfileScopedKey.of(introDbApiKeyKey))
     }
 
     actual fun saveIntroDbApiKey(apiKey: String) {
-        NSUserDefaults.standardUserDefaults.setObject(apiKey, forKey = ProfileScopedKey.of(introDbApiKeyKey))
+        val defaults = NSUserDefaults.standardUserDefaults
+        defaults.setObject(apiKey, forKey = introDbApiKeyKey)
+        defaults.setObject(apiKey, forKey = ProfileScopedKey.of(introDbApiKeyKey))
     }
 
     actual fun loadIntroSubmitEnabled(): Boolean? {
@@ -936,6 +967,8 @@ actual object PlayerSettingsStorage {
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
         loadTouchGesturesEnabled()?.let { put(touchGesturesEnabledKey, encodeSyncBoolean(it)) }
+        loadRememberPlayerBrightnessEnabled()?.let { put(rememberPlayerBrightnessEnabledKey, encodeSyncBoolean(it)) }
+        loadRememberedPlayerBrightness()?.let { put(rememberedPlayerBrightnessKey, encodeSyncFloat(it)) }
         loadExternalPlayerEnabled()?.let { put(externalPlayerEnabledKey, encodeSyncBoolean(it)) }
         loadExternalPlayerForwardSubtitles()?.let { put(externalPlayerForwardSubtitlesKey, encodeSyncBoolean(it)) }
         loadExternalPlayerId()?.let { put(externalPlayerIdKey, encodeSyncString(it)) }
@@ -1013,6 +1046,8 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)
         payload.decodeSyncBoolean(touchGesturesEnabledKey)?.let(::saveTouchGesturesEnabled)
+        payload.decodeSyncBoolean(rememberPlayerBrightnessEnabledKey)?.let(::saveRememberPlayerBrightnessEnabled)
+        payload.decodeSyncFloat(rememberedPlayerBrightnessKey)?.let(::saveRememberedPlayerBrightness)
         payload.decodeSyncBoolean(externalPlayerEnabledKey)?.let(::saveExternalPlayerEnabled)
         payload.decodeSyncBoolean(externalPlayerForwardSubtitlesKey)?.let(::saveExternalPlayerForwardSubtitles)
         payload.decodeSyncString(externalPlayerIdKey)?.let(::saveExternalPlayerId)

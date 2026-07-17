@@ -1,5 +1,6 @@
 package com.nuvio.app.features.downloads
 
+import com.nuvio.app.features.streams.StreamSubtitle
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.CPointer
 import kotlinx.cinterop.convert
@@ -175,6 +176,73 @@ internal actual object DownloadsPlatformDownloader {
             NSURL.fileURLWithPath(currentPath).absoluteString ?: "file://$currentPath"
         } else {
             null
+        }
+    }
+
+    actual fun cacheSubtitleFiles(
+        subtitles: List<StreamSubtitle>,
+        companionBaseFileName: String,
+    ): List<StreamSubtitle> {
+        if (subtitles.isEmpty()) return emptyList()
+        val subtitlesDirectory = "${downloadsDirectoryPath()}/subtitles"
+        NSFileManager.defaultManager.createDirectoryAtPath(
+            path = subtitlesDirectory,
+            withIntermediateDirectories = true,
+            attributes = null,
+            error = null,
+        )
+        val baseName = companionBaseFileName.substringBeforeLast('.')
+            .sanitizeFileName()
+            .ifBlank { "subtitle" }
+
+        return subtitles.mapIndexedNotNull { index, subtitle ->
+            val sourceUrl = subtitle.url.trim().takeIf { it.startsWith("http", ignoreCase = true) }
+                ?: return@mapIndexedNotNull subtitle
+            NSURL(string = sourceUrl) ?: return@mapIndexedNotNull null
+            val extension = sourceUrl.subtitleFileExtension()
+            val language = subtitle.language.ifBlank { "und" }.sanitizeFileName()
+            val label = subtitle.name.orEmpty().sanitizeFileName().takeIf { it.isNotBlank() }
+            val fileName = buildString {
+                append(baseName.take(72))
+                append('_')
+                append(index + 1)
+                append('_')
+                append(language.take(16))
+                if (label != null) {
+                    append('_')
+                    append(label.take(32))
+                }
+                append('.')
+                append(extension)
+            }
+            val path = "$subtitlesDirectory/$fileName"
+            removePathIfExists(path)
+            runCatching {
+                val handle = IosDownloadsTaskHandle(SupervisorJob())
+                val result = runBlocking {
+                    performDownloadRequest(
+                        request = DownloadPlatformRequest(
+                            sourceUrl = sourceUrl,
+                            sourceHeaders = subtitle.headers.orEmpty(),
+                            destinationFileName = fileName,
+                        ),
+                        rangeStart = null,
+                        resumeFromBytes = 0L,
+                        tempPath = path,
+                        handle = handle,
+                        onProgress = { _, _ -> },
+                    )
+                }
+                if (result.statusCode !in 200..299) {
+                    removePathIfExists(path)
+                    return@runCatching null
+                }
+                val localUri = NSURL.fileURLWithPath(path).absoluteString ?: "file://$path"
+                subtitle.copy(
+                    url = localUri,
+                    headers = null,
+                )
+            }.getOrNull()
         }
     }
 
@@ -480,6 +548,21 @@ private fun String.toLocalPath(): String? {
     }
     return value.takeIf { it.isNotBlank() }
 }
+
+private fun String.subtitleFileExtension(): String {
+    val path = substringBefore('?').substringBefore('#').trimEnd('/')
+    return when {
+        path.endsWith(".vtt", ignoreCase = true) -> "vtt"
+        path.endsWith(".ass", ignoreCase = true) -> "ass"
+        path.endsWith(".ssa", ignoreCase = true) -> "ssa"
+        path.endsWith(".ttml", ignoreCase = true) -> "ttml"
+        path.endsWith(".dfxp", ignoreCase = true) -> "dfxp"
+        else -> "srt"
+    }
+}
+
+private fun String.sanitizeFileName(): String =
+    trim().replace(Regex("[^A-Za-z0-9._ -]"), "_")
 
 private fun resolveTotalBytes(
     startingBytes: Long,

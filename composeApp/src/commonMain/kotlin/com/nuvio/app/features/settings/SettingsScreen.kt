@@ -57,6 +57,7 @@ import com.nuvio.app.features.ai.AiAssistantSettingsRepository
 import com.nuvio.app.features.ai.AiAssistantSettings
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.details.MetaScreenSettingsUiState
+import com.nuvio.app.features.details.FavoritePerson
 import com.nuvio.app.core.ui.PosterCardStyleRepository
 import com.nuvio.app.core.ui.PosterCardStyleUiState
 import com.nuvio.app.features.collection.CollectionRepository
@@ -116,6 +117,7 @@ fun SettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
+    onCloudStreamClick: () -> Unit = {},
     onDownloadsClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
@@ -126,6 +128,7 @@ fun SettingsScreen(
     onEditProfile: (() -> Unit)? = null,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxSize(),
@@ -340,6 +343,7 @@ fun SettingsScreen(
                 onCollectionsClick = onCollectionsClick,
                 onPosterClick = onPosterClick,
                 onContinueWatchingItemClick = onContinueWatchingItemClick,
+                onFavoritePersonClick = onFavoritePersonClick,
             )
         } else {
             MobileSettingsScreen(
@@ -399,6 +403,7 @@ fun SettingsScreen(
                 onContinueWatchingClick = onContinueWatchingClick,
                 onAddonsClick = onAddonsClick,
                 onPluginsClick = onPluginsClick,
+                onCloudStreamClick = onCloudStreamClick,
                 onDownloadsClick = onDownloadsClick,
                 onAccountClick = onAccountClick,
                 onSupportersContributorsClick = onSupportersContributorsClick,
@@ -408,6 +413,7 @@ fun SettingsScreen(
                 onCollectionsClick = onCollectionsClick,
                 onPosterClick = onPosterClick,
                 onContinueWatchingItemClick = onContinueWatchingItemClick,
+                onFavoritePersonClick = onFavoritePersonClick,
             )
         }
     }
@@ -471,6 +477,7 @@ private fun MobileSettingsScreen(
     onContinueWatchingClick: () -> Unit = {},
     onAddonsClick: () -> Unit = {},
     onPluginsClick: () -> Unit = {},
+    onCloudStreamClick: () -> Unit = {},
     onDownloadsClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onSupportersContributorsClick: () -> Unit = {},
@@ -480,6 +487,7 @@ private fun MobileSettingsScreen(
     onCollectionsClick: () -> Unit = {},
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
 ) {
     val saveableStateHolder = rememberSaveableStateHolder()
     saveableStateHolder.SaveableStateProvider(page.name) {
@@ -529,6 +537,11 @@ private fun MobileSettingsScreen(
                             onPluginsClick()
                         }
                     }
+                    SettingsPage.CloudStream -> {
+                        if (AppFeaturePolicy.pluginsEnabled) {
+                            onCloudStreamClick()
+                        }
+                    }
                     SettingsPage.Homescreen -> onHomescreenClick()
                     SettingsPage.MetaScreen -> onMetaScreenClick()
                     else -> onPageChange(target.page)
@@ -561,6 +574,11 @@ private fun MobileSettingsScreen(
                 val previousPage = page.previousPage()
                 NuvioScreenHeader(
                     title = stringResource(page.titleRes),
+                    titleStyle = if (page == SettingsPage.FavoriteActors) {
+                        MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
+                    } else {
+                        MaterialTheme.typography.displayLarge
+                    },
                     onBack = previousPage?.let { { onPageChange(it) } },
                 )
             }
@@ -610,6 +628,12 @@ private fun MobileSettingsScreen(
                     onEditProfile = onEditProfile,
                     onPosterClick = onPosterClick,
                     onContinueWatchingClick = onContinueWatchingItemClick,
+                    onFavoritePersonClick = onFavoritePersonClick,
+                    onFavoritePeopleViewAllClick = { onPageChange(SettingsPage.FavoriteActors) },
+                )
+                SettingsPage.FavoriteActors -> favoritePeopleContent(
+                    isTablet = false,
+                    onFavoritePersonClick = onFavoritePersonClick,
                 )
                 SettingsPage.SupportersContributors -> {
                     if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -693,11 +717,14 @@ private fun MobileSettingsScreen(
                 SettingsPage.ContentDiscovery -> contentDiscoveryContent(
                     isTablet = false,
                     showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
+                    showCloudStreamEntry = AppFeaturePolicy.pluginsEnabled,
                     onAddonsClick = onAddonsClick,
                     onPluginsClick = onPluginsClick,
+                    onCloudStreamClick = onCloudStreamClick,
                 )
                 SettingsPage.Addons -> addonsSettingsContent()
                 SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
+                SettingsPage.CloudStream -> if (AppFeaturePolicy.pluginsEnabled) cloudStreamSettingsContent() else addonsSettingsContent()
                 SettingsPage.Homescreen -> homescreenSettingsContent(
                     isTablet = false,
                     heroEnabled = homescreenHeroEnabled,
@@ -848,6 +875,7 @@ private fun TabletSettingsScreen(
     onCollectionsClick: () -> Unit = {},
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onContinueWatchingItemClick: ((ContinueWatchingItem) -> Unit)? = null,
+    onFavoritePersonClick: ((FavoritePerson) -> Unit)? = null,
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
     val activeCategory = SettingsCategory.valueOf(selectedCategory)
@@ -1043,6 +1071,12 @@ private fun TabletSettingsScreen(
                         onEditProfile = onEditProfile,
                         onPosterClick = onPosterClick,
                         onContinueWatchingClick = onContinueWatchingItemClick,
+                        onFavoritePersonClick = onFavoritePersonClick,
+                        onFavoritePeopleViewAllClick = { openInlinePage(SettingsPage.FavoriteActors) },
+                    )
+                    SettingsPage.FavoriteActors -> favoritePeopleContent(
+                        isTablet = true,
+                        onFavoritePersonClick = onFavoritePersonClick,
                     )
                     SettingsPage.SupportersContributors -> {
                         if (AppFeaturePolicy.supportersContributorsPageEnabled) {
@@ -1126,11 +1160,14 @@ private fun TabletSettingsScreen(
                     SettingsPage.ContentDiscovery -> contentDiscoveryContent(
                         isTablet = true,
                         showPluginsEntry = AppFeaturePolicy.pluginsEnabled,
+                        showCloudStreamEntry = AppFeaturePolicy.pluginsEnabled,
                         onAddonsClick = { openInlinePage(SettingsPage.Addons) },
                         onPluginsClick = { openInlinePage(SettingsPage.Plugins) },
+                        onCloudStreamClick = { openInlinePage(SettingsPage.CloudStream) },
                     )
                     SettingsPage.Addons -> addonsSettingsContent()
                     SettingsPage.Plugins -> if (AppFeaturePolicy.pluginsEnabled) pluginsSettingsContent() else addonsSettingsContent()
+                    SettingsPage.CloudStream -> if (AppFeaturePolicy.pluginsEnabled) cloudStreamSettingsContent() else addonsSettingsContent()
                     SettingsPage.Homescreen -> homescreenSettingsContent(
                         isTablet = true,
                         heroEnabled = homescreenHeroEnabled,

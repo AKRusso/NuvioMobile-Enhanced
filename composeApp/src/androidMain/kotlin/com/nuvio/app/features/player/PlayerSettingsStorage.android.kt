@@ -24,6 +24,8 @@ actual object PlayerSettingsStorage {
     private const val holdToSpeedEnabledKey = "hold_to_speed_enabled"
     private const val holdToSpeedValueKey = "hold_to_speed_value"
     private const val touchGesturesEnabledKey = "touch_gestures_enabled"
+    private const val rememberPlayerBrightnessEnabledKey = "remember_player_brightness_enabled"
+    private const val rememberedPlayerBrightnessKey = "remembered_player_brightness"
     private const val volumeBoostPercentKey = "volume_boost_percent"
     private const val externalPlayerEnabledKey = "external_player_enabled"
     private const val externalPlayerForwardSubtitlesKey = "external_player_forward_subtitles"
@@ -97,6 +99,8 @@ actual object PlayerSettingsStorage {
         holdToSpeedEnabledKey,
         holdToSpeedValueKey,
         touchGesturesEnabledKey,
+        rememberPlayerBrightnessEnabledKey,
+        rememberedPlayerBrightnessKey,
         externalPlayerEnabledKey,
         externalPlayerForwardSubtitlesKey,
         externalPlayerSendSkipSegmentsKey,
@@ -244,6 +248,40 @@ actual object PlayerSettingsStorage {
         preferences
             ?.edit()
             ?.putBoolean(ProfileScopedKey.of(touchGesturesEnabledKey), enabled)
+            ?.apply()
+    }
+
+    actual fun loadRememberPlayerBrightnessEnabled(): Boolean? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(rememberPlayerBrightnessEnabledKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getBoolean(key, true)
+            } else {
+                null
+            }
+        }
+
+    actual fun saveRememberPlayerBrightnessEnabled(enabled: Boolean) {
+        preferences
+            ?.edit()
+            ?.putBoolean(ProfileScopedKey.of(rememberPlayerBrightnessEnabledKey), enabled)
+            ?.apply()
+    }
+
+    actual fun loadRememberedPlayerBrightness(): Float? =
+        preferences?.let { sharedPreferences ->
+            val key = ProfileScopedKey.of(rememberedPlayerBrightnessKey)
+            if (sharedPreferences.contains(key)) {
+                sharedPreferences.getFloat(key, 0.5f).coerceIn(0.02f, 1f)
+            } else {
+                null
+            }
+        }
+
+    actual fun saveRememberedPlayerBrightness(level: Float) {
+        preferences
+            ?.edit()
+            ?.putFloat(ProfileScopedKey.of(rememberedPlayerBrightnessKey), level.coerceIn(0.02f, 1f))
             ?.apply()
     }
 
@@ -863,11 +901,16 @@ actual object PlayerSettingsStorage {
     }
 
     actual fun loadIntroDbApiKey(): String? =
-        preferences?.getString(ProfileScopedKey.of(introDbApiKeyKey), null)
+        preferences?.let { sharedPreferences ->
+            sharedPreferences.getString(introDbApiKeyKey, null)
+                ?.takeIf { it.isNotBlank() }
+                ?: sharedPreferences.getString(ProfileScopedKey.of(introDbApiKeyKey), null)
+        }
 
     actual fun saveIntroDbApiKey(apiKey: String) {
         preferences
             ?.edit()
+            ?.putString(introDbApiKeyKey, apiKey)
             ?.putString(ProfileScopedKey.of(introDbApiKeyKey), apiKey)
             ?.apply()
     }
@@ -1138,6 +1181,8 @@ actual object PlayerSettingsStorage {
         loadHoldToSpeedEnabled()?.let { put(holdToSpeedEnabledKey, encodeSyncBoolean(it)) }
         loadHoldToSpeedValue()?.let { put(holdToSpeedValueKey, encodeSyncFloat(it)) }
         loadTouchGesturesEnabled()?.let { put(touchGesturesEnabledKey, encodeSyncBoolean(it)) }
+        loadRememberPlayerBrightnessEnabled()?.let { put(rememberPlayerBrightnessEnabledKey, encodeSyncBoolean(it)) }
+        loadRememberedPlayerBrightness()?.let { put(rememberedPlayerBrightnessKey, encodeSyncFloat(it)) }
         loadExternalPlayerEnabled()?.let { put(externalPlayerEnabledKey, encodeSyncBoolean(it)) }
         loadExternalPlayerForwardSubtitles()?.let { put(externalPlayerForwardSubtitlesKey, encodeSyncBoolean(it)) }
         loadExternalPlayerSendSkipSegments()?.let { put(externalPlayerSendSkipSegmentsKey, encodeSyncBoolean(it)) }
@@ -1216,6 +1261,8 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncBoolean(holdToSpeedEnabledKey)?.let(::saveHoldToSpeedEnabled)
         payload.decodeSyncFloat(holdToSpeedValueKey)?.let(::saveHoldToSpeedValue)
         payload.decodeSyncBoolean(touchGesturesEnabledKey)?.let(::saveTouchGesturesEnabled)
+        payload.decodeSyncBoolean(rememberPlayerBrightnessEnabledKey)?.let(::saveRememberPlayerBrightnessEnabled)
+        payload.decodeSyncFloat(rememberedPlayerBrightnessKey)?.let(::saveRememberedPlayerBrightness)
         payload.decodeSyncBoolean(externalPlayerEnabledKey)?.let(::saveExternalPlayerEnabled)
         payload.decodeSyncBoolean(externalPlayerForwardSubtitlesKey)?.let(::saveExternalPlayerForwardSubtitles)
         payload.decodeSyncBoolean(externalPlayerSendSkipSegmentsKey)?.let(::saveExternalPlayerSendSkipSegments)

@@ -15,6 +15,7 @@ import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_category
 import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_ai_assistant
 import nuvio.composeapp.generated.resources.compose_settings_page_addons
+import nuvio.composeapp.generated.resources.compose_settings_page_cloudstream
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
 import nuvio.composeapp.generated.resources.compose_settings_page_appearance
 import nuvio.composeapp.generated.resources.compose_settings_page_content_discovery
@@ -35,6 +36,7 @@ import nuvio.composeapp.generated.resources.compose_settings_page_streams
 import nuvio.composeapp.generated.resources.compose_settings_page_supporters_contributors
 import nuvio.composeapp.generated.resources.compose_settings_page_tmdb_enrichment
 import nuvio.composeapp.generated.resources.compose_settings_page_trakt
+import nuvio.composeapp.generated.resources.profile_insights_favorite_people_title
 import nuvio.composeapp.generated.resources.settings_account
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import org.jetbrains.compose.resources.StringResource
@@ -69,6 +71,11 @@ internal enum class SettingsPage(
         titleRes = Res.string.compose_settings_page_profile,
         category = SettingsCategory.Account,
         parentPage = Root,
+    ),
+    FavoriteActors(
+        titleRes = Res.string.profile_insights_favorite_people_title,
+        category = SettingsCategory.Account,
+        parentPage = Profile,
     ),
     SupportersContributors(
         titleRes = Res.string.compose_settings_page_supporters_contributors,
@@ -132,6 +139,11 @@ internal enum class SettingsPage(
     ),
     Plugins(
         titleRes = Res.string.compose_settings_page_plugins,
+        category = SettingsCategory.General,
+        parentPage = ContentDiscovery,
+    ),
+    CloudStream(
+        titleRes = Res.string.compose_settings_page_cloudstream,
         category = SettingsCategory.General,
         parentPage = ContentDiscovery,
     ),

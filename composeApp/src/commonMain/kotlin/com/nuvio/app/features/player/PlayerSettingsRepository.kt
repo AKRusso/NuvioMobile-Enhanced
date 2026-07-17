@@ -37,6 +37,8 @@ data class PlayerSettingsUiState(
     val holdToSpeedEnabled: Boolean = true,
     val holdToSpeedValue: Float = 2f,
     val touchGesturesEnabled: Boolean = true,
+    val rememberPlayerBrightnessEnabled: Boolean = true,
+    val rememberedPlayerBrightness: Float? = null,
     val volumeBoostPercent: Int = 100,
     val externalPlayerEnabled: Boolean = false,
     val externalPlayerForwardSubtitles: Boolean = false,
@@ -104,6 +106,8 @@ object PlayerSettingsRepository {
     private var holdToSpeedEnabled = true
     private var holdToSpeedValue = 2f
     private var touchGesturesEnabled = true
+    private var rememberPlayerBrightnessEnabled = true
+    private var rememberedPlayerBrightness: Float? = null
     private var volumeBoostPercent = 100
     private var externalPlayerEnabled = false
     private var externalPlayerForwardSubtitles = false
@@ -176,6 +180,8 @@ object PlayerSettingsRepository {
         holdToSpeedEnabled = true
         holdToSpeedValue = 2f
         touchGesturesEnabled = true
+        rememberPlayerBrightnessEnabled = true
+        rememberedPlayerBrightness = null
         volumeBoostPercent = 100
         externalPlayerEnabled = false
         externalPlayerForwardSubtitles = false
@@ -243,6 +249,9 @@ object PlayerSettingsRepository {
         holdToSpeedEnabled = PlayerSettingsStorage.loadHoldToSpeedEnabled() ?: true
         holdToSpeedValue = PlayerSettingsStorage.loadHoldToSpeedValue() ?: 2f
         touchGesturesEnabled = PlayerSettingsStorage.loadTouchGesturesEnabled() ?: true
+        rememberPlayerBrightnessEnabled = PlayerSettingsStorage.loadRememberPlayerBrightnessEnabled() ?: true
+        rememberedPlayerBrightness = PlayerSettingsStorage.loadRememberedPlayerBrightness()
+            ?.coerceIn(0.02f, 1f)
         volumeBoostPercent = PlayerSettingsStorage.loadVolumeBoostPercent()?.coerceIn(100, 200) ?: 100
         externalPlayerEnabled = PlayerSettingsStorage.loadExternalPlayerEnabled() ?: false
         externalPlayerForwardSubtitles = PlayerSettingsStorage.loadExternalPlayerForwardSubtitles() ?: false
@@ -414,6 +423,26 @@ object PlayerSettingsRepository {
         touchGesturesEnabled = enabled
         publish()
         PlayerSettingsStorage.saveTouchGesturesEnabled(enabled)
+    }
+
+    fun setRememberPlayerBrightnessEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (rememberPlayerBrightnessEnabled == enabled) return
+        rememberPlayerBrightnessEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveRememberPlayerBrightnessEnabled(enabled)
+    }
+
+    fun setRememberedPlayerBrightness(level: Float) {
+        ensureLoaded()
+        if (!rememberPlayerBrightnessEnabled) return
+        val normalized = level.coerceIn(0.02f, 1f)
+        if (rememberedPlayerBrightness != null && abs(rememberedPlayerBrightness!! - normalized) < 0.005f) {
+            return
+        }
+        rememberedPlayerBrightness = normalized
+        publish()
+        PlayerSettingsStorage.saveRememberedPlayerBrightness(normalized)
     }
 
     fun setVolumeBoostPercent(percent: Int) {
@@ -937,6 +966,8 @@ object PlayerSettingsRepository {
             holdToSpeedEnabled = holdToSpeedEnabled,
             holdToSpeedValue = holdToSpeedValue,
             touchGesturesEnabled = touchGesturesEnabled,
+            rememberPlayerBrightnessEnabled = rememberPlayerBrightnessEnabled,
+            rememberedPlayerBrightness = rememberedPlayerBrightness,
             volumeBoostPercent = volumeBoostPercent,
             externalPlayerEnabled = externalPlayerEnabled,
             externalPlayerForwardSubtitles = externalPlayerForwardSubtitles,

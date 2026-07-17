@@ -16,6 +16,7 @@ import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.player.skip.NextEpisodeInfo
 import com.nuvio.app.features.player.skip.SkipInterval
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsUiState
+import com.nuvio.app.features.streams.StreamSubtitle
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.trakt.TraktScrobbleItem
 import com.nuvio.app.features.watched.WatchedUiState
@@ -58,7 +59,7 @@ internal class PlayerScreenRuntime(
     val torrentTrackers: List<String> get() = args.torrentTrackers
     val initialPositionMs: Long get() = args.initialPositionMs
     val initialProgressFraction: Float? get() = args.initialProgressFraction
-    val externalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> get() = args.externalSubtitles
+    val externalSubtitles: List<StreamSubtitle> get() = args.externalSubtitles
     val randomEpisodeMode: Boolean get() = args.randomEpisodeMode
     val isSeries: Boolean get() = parentMetaType == "series"
     val isLiveTv: Boolean get() = contentType == "live-tv"
@@ -106,6 +107,7 @@ internal class PlayerScreenRuntime(
     var activeSourceAudioUrl by mutableStateOf(sourceAudioUrl)
     var activeSourceHeaders by mutableStateOf(sanitizePlaybackHeaders(sourceHeaders))
     var activeSourceResponseHeaders by mutableStateOf(sanitizePlaybackResponseHeaders(sourceResponseHeaders))
+    var activeExternalSubtitles by mutableStateOf(externalSubtitles)
     var selectedPlayerQualityId by mutableStateOf<String?>(null)
     var activePlaybackSourceUrl by mutableStateOf<String?>(
         if (shouldResolveInitialPlayerQuality) null else sourceUrl,
@@ -195,6 +197,7 @@ internal class PlayerScreenRuntime(
     var nextEpisodeAutoPlaySourceName by mutableStateOf<String?>(null)
     var nextEpisodeAutoPlayCountdown by mutableStateOf<Int?>(null)
     var nextEpisodeAutoPlayJob by mutableStateOf<Job?>(null)
+    var preloadedNextEpisodeVideoId by mutableStateOf<String?>(null)
     var pendingP2pSwitch by mutableStateOf<PendingPlayerP2pSwitch?>(null)
     var credentialRefreshJob by mutableStateOf<Job?>(null)
     var credentialRefreshAttemptedSourceUrl by mutableStateOf<String?>(null)

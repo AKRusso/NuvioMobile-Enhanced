@@ -80,6 +80,37 @@ object TmdbService {
             .toList()
     }
 
+    suspend fun searchPeople(query: String, limit: Int = 12): List<TmdbPersonSearchResult> {
+        val apiKey = currentApiKey() ?: return emptyList()
+        val normalizedQuery = query.trim().takeIf { it.length >= 2 } ?: return emptyList()
+        val language = TmdbSettingsRepository.snapshot().language.takeIf { it.isNotBlank() } ?: "en"
+        val body = fetch<TmdbPersonSearchResponse>(
+            endpoint = "search/person",
+            apiKey = apiKey,
+            query = mapOf(
+                "query" to normalizedQuery,
+                "language" to language,
+                "include_adult" to "false",
+            ),
+        ) ?: return emptyList()
+
+        return body.results
+            .asSequence()
+            .mapNotNull { result ->
+                val mapped = result.toPersonSearchResult() ?: return@mapNotNull null
+                val score = personSearchScore(normalizedQuery, mapped.name)
+                if (score <= 0) return@mapNotNull null
+                scoredPerson(mapped, score)
+            }
+            .sortedWith(
+                compareByDescending<ScoredPerson> { it.score }
+                    .thenByDescending { it.person.popularity },
+            )
+            .map { it.person }
+            .take(limit)
+            .toList()
+    }
+
     private suspend fun imdbToTmdb(imdbId: String, mediaType: String, apiKey: String): String? {
         val normalizedType = normalizeMediaType(mediaType)
         val cacheKey = "$imdbId:$normalizedType"
@@ -161,7 +192,7 @@ internal fun buildTmdbUrl(
 private fun buildTmdbImageUrl(path: String?, size: String): String? {
     val clean = path?.trim()?.takeIf { it.isNotBlank() } ?: return null
     if (clean.startsWith("http://") || clean.startsWith("https://")) return clean
-    return "https://image.tmdb.org/t/p/$size${clean.removePrefix("/")}"
+    return "https://image.tmdb.org/t/p/$size/${clean.removePrefix("/")}"
 }
 
 @Serializable
@@ -233,4 +264,150 @@ private data class TmdbSearchResult(
             imdbRating = rating,
         )
     }
+}
+
+data class TmdbPersonSearchResult(
+    val id: Int,
+    val name: String,
+    val photo: String?,
+    val knownForDepartment: String?,
+    val knownFor: List<String>,
+    val popularity: Double,
+)
+
+private data class ScoredPerson(
+    val person: TmdbPersonSearchResult,
+    val score: Int,
+)
+
+private fun scoredPerson(
+    person: TmdbPersonSearchResult,
+    score: Int,
+): ScoredPerson = ScoredPerson(person = person, score = score)
+
+@Serializable
+private data class TmdbPersonSearchResponse(
+    val results: List<TmdbPersonSearchApiResult> = emptyList(),
+)
+
+@Serializable
+private data class TmdbPersonSearchApiResult(
+    val id: Int,
+    val name: String? = null,
+    @SerialName("profile_path") val profilePath: String? = null,
+    @SerialName("known_for_department") val knownForDepartment: String? = null,
+    @SerialName("known_for") val knownFor: List<TmdbPersonKnownForResult> = emptyList(),
+    val popularity: Double? = null,
+) {
+    fun toPersonSearchResult(): TmdbPersonSearchResult? {
+        val displayName = name?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return TmdbPersonSearchResult(
+            id = id,
+            name = displayName,
+            photo = buildTmdbImageUrl(profilePath, "w342"),
+            knownForDepartment = knownForDepartment?.trim()?.takeIf { it.isNotBlank() },
+            knownFor = knownFor
+                .mapNotNull { item ->
+                    item.title?.trim()?.takeIf { it.isNotBlank() }
+                        ?: item.name?.trim()?.takeIf { it.isNotBlank() }
+                }
+                .distinct()
+                .take(3),
+            popularity = popularity ?: 0.0,
+        )
+    }
+}
+
+@Serializable
+private data class TmdbPersonKnownForResult(
+    val title: String? = null,
+    val name: String? = null,
+)
+
+private fun personSearchScore(
+    query: String,
+    candidateName: String,
+): Int {
+    val normalizedQuery = query.searchComparable()
+    val normalizedName = candidateName.searchComparable()
+    if (normalizedQuery.isBlank() || normalizedName.isBlank()) return 0
+
+    if (normalizedName == normalizedQuery) return 10_000
+    if (normalizedName.startsWith(normalizedQuery)) return 9_300
+
+    val queryTokens = normalizedQuery.split(' ').filter(String::isNotBlank)
+    val nameTokens = normalizedName.split(' ').filter(String::isNotBlank)
+    if (queryTokens.isNotEmpty() && queryTokens.all { queryToken ->
+            nameTokens.any { nameToken -> nameToken.startsWith(queryToken) }
+        }
+    ) {
+        return 8_900
+    }
+
+    if (queryTokens.isNotEmpty() && queryTokens.all { token -> normalizedName.contains(token) }) {
+        return 8_200
+    }
+
+    val compactQuery = normalizedQuery.replace(" ", "")
+    val compactName = normalizedName.replace(" ", "")
+    if (compactName.startsWith(compactQuery)) return 8_000
+    val distance = levenshteinDistance(compactQuery, compactName)
+    val maxLength = maxOf(compactQuery.length, compactName.length).coerceAtLeast(1)
+    val tolerance = when {
+        compactQuery.length <= 4 -> 1
+        compactQuery.length <= 8 -> 2
+        else -> 3
+    }
+    return if (distance <= tolerance || distance.toDouble() / maxLength.toDouble() <= 0.28) {
+        7_400 - (distance * 140)
+    } else {
+        0
+    }
+}
+
+private fun String.searchComparable(): String =
+    lowercase()
+        .map { char ->
+            when (char) {
+                'ç' -> 'c'
+                'ğ' -> 'g'
+                'ı', 'i', 'İ' -> 'i'
+                'ö' -> 'o'
+                'ş' -> 's'
+                'ü' -> 'u'
+                else -> char
+            }
+        }
+        .joinToString("")
+        .map { char -> if (char.isLetterOrDigit()) char else ' ' }
+        .joinToString("")
+        .trim()
+        .replace(Regex("\\s+"), " ")
+
+private fun levenshteinDistance(
+    left: String,
+    right: String,
+): Int {
+    if (left == right) return 0
+    if (left.isEmpty()) return right.length
+    if (right.isEmpty()) return left.length
+
+    var previous = IntArray(right.length + 1) { it }
+    var current = IntArray(right.length + 1)
+
+    for (i in left.indices) {
+        current[0] = i + 1
+        for (j in right.indices) {
+            val cost = if (left[i] == right[j]) 0 else 1
+            current[j + 1] = minOf(
+                current[j] + 1,
+                previous[j + 1] + 1,
+                previous[j] + cost,
+            )
+        }
+        val swap = previous
+        previous = current
+        current = swap
+    }
+    return previous[right.length]
 }

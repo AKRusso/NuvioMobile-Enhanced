@@ -12,7 +12,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -34,13 +39,17 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.NuvioInputField
@@ -58,6 +67,7 @@ import com.nuvio.app.features.home.components.HomeCatalogRowSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.homeSectionHorizontalPaddingForWidth
 import com.nuvio.app.features.home.components.HomeSkeletonRow
+import com.nuvio.app.features.tmdb.TmdbPersonSearchResult
 import com.nuvio.app.features.watched.WatchedRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +87,7 @@ import nuvio.composeapp.generated.resources.compose_search_empty_no_results_mess
 import nuvio.composeapp.generated.resources.compose_search_empty_no_results_title
 import nuvio.composeapp.generated.resources.compose_search_empty_no_search_catalogs_message
 import nuvio.composeapp.generated.resources.compose_search_empty_no_search_catalogs_title
+import nuvio.composeapp.generated.resources.compose_search_people_title
 import nuvio.composeapp.generated.resources.compose_search_placeholder
 import nuvio.composeapp.generated.resources.compose_search_recent_searches
 import nuvio.composeapp.generated.resources.compose_search_remove_recent_search
@@ -87,6 +98,7 @@ fun SearchScreen(
     modifier: Modifier = Modifier,
     onPosterClick: ((MetaPreview) -> Unit)? = null,
     onPosterLongClick: ((MetaPreview) -> Unit)? = null,
+    onPersonClick: ((TmdbPersonSearchResult) -> Unit)? = null,
     searchFocusRequestCount: Int = 0,
     scrollToTopRequests: Flow<Unit> = emptyFlow(),
 ) {
@@ -189,11 +201,11 @@ fun SearchScreen(
             }
     }
 
-    LaunchedEffect(query, lastRequestedQuery, uiState.isLoading, uiState.sections) {
+    LaunchedEffect(query, lastRequestedQuery, uiState.isLoading, uiState.sections, uiState.people) {
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) return@LaunchedEffect
         if (lastRequestedQuery != normalizedQuery) return@LaunchedEffect
-        if (uiState.isLoading || uiState.sections.isEmpty()) return@LaunchedEffect
+        if (uiState.isLoading || (uiState.sections.isEmpty() && uiState.people.isEmpty())) return@LaunchedEffect
         SearchHistoryRepository.recordSearch(normalizedQuery)
     }
 
@@ -328,7 +340,7 @@ fun SearchScreen(
                         }
                     }
 
-                    uiState.isLoading && uiState.sections.isEmpty() -> {
+                    uiState.isLoading && uiState.sections.isEmpty() && uiState.people.isEmpty() -> {
                         items(2) {
                             HomeSkeletonRow(
                                 modifier = Modifier.padding(horizontal = homeSectionPadding),
@@ -337,7 +349,7 @@ fun SearchScreen(
                         }
                     }
 
-                    uiState.sections.isEmpty() -> {
+                    uiState.sections.isEmpty() && uiState.people.isEmpty() -> {
                         item {
                             SearchEmptyStateCard(
                                 reason = uiState.emptyStateReason,
@@ -372,6 +384,15 @@ fun SearchScreen(
                                 onPosterLongClick = onPosterLongClick,
                             )
                         }
+                        if (uiState.people.isNotEmpty()) {
+                            item(key = "search_people") {
+                                SearchPeopleSection(
+                                    people = uiState.people,
+                                    onPersonClick = onPersonClick,
+                                    modifier = Modifier.padding(bottom = 12.dp),
+                                )
+                            }
+                        }
                         if (uiState.isLoading) {
                             item(key = "search_loading_more") {
                                 HomeSkeletonRow(
@@ -395,6 +416,133 @@ private fun discoverColumnCountForWidth(screenWidth: Dp): Int =
         screenWidth >= 840.dp -> 4
         else -> 3
     }
+
+@Composable
+private fun SearchPeopleSection(
+    people: List<TmdbPersonSearchResult>,
+    onPersonClick: ((TmdbPersonSearchResult) -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.compose_search_people_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Box(
+                modifier = Modifier
+                    .width(94.dp)
+                    .height(5.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(999.dp),
+                    ),
+            )
+        }
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+        ) {
+            items(
+                items = people,
+                key = { person -> person.id },
+            ) { person ->
+                SearchPersonCard(
+                    person = person,
+                    onClick = if (onPersonClick == null) null else {
+                        { onPersonClick(person) }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchPersonCard(
+    person: TmdbPersonSearchResult,
+    onClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+            modifier = modifier
+            .width(116.dp)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(86.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.32f),
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!person.photo.isNullOrBlank()) {
+                AsyncImage(
+                    model = person.photo,
+                    contentDescription = person.name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(
+                    text = personInitials(person.name),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+        Text(
+            text = person.name,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = person.knownForDepartment ?: person.knownFor.firstOrNull() ?: "Acting",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+private fun personInitials(name: String): String =
+    name.split(' ')
+        .filter { it.isNotBlank() }
+        .take(2)
+        .joinToString("") { it.take(1).uppercase() }
+        .ifBlank { "?" }
 
 @Composable
 private fun SearchEmptyStateCard(

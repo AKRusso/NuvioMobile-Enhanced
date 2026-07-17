@@ -11,6 +11,7 @@ import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.downloads.DownloadsRepository
+import com.nuvio.app.features.details.FavoritePeopleRepository
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
@@ -197,6 +198,9 @@ object ProfileRepository {
         }
         runProfileChangeStep("library") {
             LibraryRepository.onProfileChanged(profileIndex)
+        }
+        runProfileChangeStep("favorite_people") {
+            FavoritePeopleRepository.onProfileChanged(profileIndex)
         }
         runProfileChangeStep("watch_progress") {
             WatchProgressRepository.onProfileChanged(profileIndex)
