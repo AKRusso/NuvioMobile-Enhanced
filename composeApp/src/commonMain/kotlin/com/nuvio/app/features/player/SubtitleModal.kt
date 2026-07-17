@@ -539,7 +539,6 @@ private fun SubtitleLanguageCategory(
     languageCode: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val background by animateColorAsState(
@@ -548,7 +547,8 @@ private fun SubtitleLanguageCategory(
     )
 
     Row(
-        modifier = modifier
+        modifier = Modifier
+            .widthIn(min = 72.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(background)
             .clickable(onClick = onClick)
@@ -561,7 +561,6 @@ private fun SubtitleLanguageCategory(
             color = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-            modifier = Modifier.weight(1f, fill = false),
         )
         if (selected) {
             Icon(
