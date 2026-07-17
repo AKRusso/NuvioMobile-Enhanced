@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,8 +112,8 @@ fun SubtitleModal(
             ) {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = if (maxWidth >= 600.dp) 720.dp else 420.dp)
-                        .fillMaxWidth(if (maxWidth >= 600.dp) 0.92f else 0.9f)
+                        .widthIn(max = 420.dp)
+                        .fillMaxWidth(0.9f)
                         .heightIn(max = maxH * 0.95f)
                         .clip(RoundedCornerShape(24.dp))
                         .background(colorScheme.surface)
@@ -260,7 +259,7 @@ private fun BuiltInSubtitleList(
                     else colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 )
                 .clickable { onTrackSelected(-1) }
-                .padding(vertical = 10.dp, horizontal = 12.dp),
+                .padding(vertical = 8.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -513,55 +512,25 @@ private fun <T> SubtitleLanguageBrowser(
 
     val activeGroup = groups.firstOrNull { it.key == activeGroupKey } ?: groups.first()
 
-    BoxWithConstraints {
-        if (groups.size == 1) {
-            content(activeGroup)
-            return@BoxWithConstraints
-        }
-
-        if (maxWidth >= 560.dp) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (groups.size > 1) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(
-                    modifier = Modifier.width(170.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    groups.forEach { group ->
-                        SubtitleLanguageCategory(
-                            languageCode = group.key,
-                            selected = group.key == activeGroup.key,
-                            onClick = { activeGroupKey = group.key },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                groups.forEach { group ->
+                    SubtitleLanguageCategory(
+                        languageCode = group.key,
+                        selected = group.key == activeGroup.key,
+                        onClick = { activeGroupKey = group.key },
+                    )
                 }
-
-                Box(modifier = Modifier.weight(1f)) {
-                    content(activeGroup)
-                }
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    groups.forEach { group ->
-                        SubtitleLanguageCategory(
-                            languageCode = group.key,
-                            selected = group.key == activeGroup.key,
-                            onClick = { activeGroupKey = group.key },
-                        )
-                    }
-                }
-
-                content(activeGroup)
             }
         }
+
+        content(activeGroup)
     }
 }
 
