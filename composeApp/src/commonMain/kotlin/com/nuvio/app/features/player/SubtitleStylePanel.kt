@@ -490,7 +490,7 @@ private fun AutoSyncControls(
     val sortedCues = state.cues.sortedBy { it.startTimeMs }
     val liveSubtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
     val visibleCues = subtitleSyncCueWindow(sortedCues, liveSubtitlePositionMs)
-    val currentCue = sortedCues.lastOrNull { cue -> cue.startTimeMs <= liveSubtitlePositionMs }
+    val currentCue = activeSubtitleSyncCue(sortedCues, liveSubtitlePositionMs)
     val suggestedCue = capturedPositionMs?.let { position ->
         sortedCues.minByOrNull { cue -> abs(cue.startTimeMs - position) }
     }
@@ -606,6 +606,24 @@ private fun AutoSyncControls(
             }
         }
     }
+}
+
+internal fun activeSubtitleSyncCue(
+    sortedCues: List<SubtitleSyncCue>,
+    positionMs: Long,
+): SubtitleSyncCue? {
+    for (index in sortedCues.indices.reversed()) {
+        val cue = sortedCues[index]
+        if (cue.startTimeMs > positionMs) continue
+
+        val nextStartTimeMs = sortedCues.getOrNull(index + 1)?.startTimeMs
+        val endTimeMs = cue.endTimeMs
+            ?.takeIf { it > cue.startTimeMs }
+            ?: nextStartTimeMs?.takeIf { it > cue.startTimeMs }
+            ?: (cue.startTimeMs + 10_000L)
+        if (positionMs < endTimeMs) return cue
+    }
+    return null
 }
 
 @Composable
