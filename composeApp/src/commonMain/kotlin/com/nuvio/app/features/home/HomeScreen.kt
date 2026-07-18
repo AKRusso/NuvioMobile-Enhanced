@@ -557,6 +557,15 @@ fun HomeScreen(
         HomeRepository.refresh(enabledAddons)
     }
 
+    LaunchedEffect(
+        tmdbSettingsUiState.enabled,
+        tmdbSettingsUiState.hasApiKey,
+        tmdbSettingsUiState.language,
+        tmdbSettingsUiState.useArtwork,
+    ) {
+        HomeRepository.applyCurrentSettings()
+    }
+
     LaunchedEffect(collections) {
         HomeCatalogSettingsRepository.syncCollections(collections)
     }

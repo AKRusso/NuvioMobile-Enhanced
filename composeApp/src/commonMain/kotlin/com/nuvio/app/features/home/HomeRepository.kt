@@ -14,6 +14,10 @@ import com.nuvio.app.features.collection.findCollectionCatalog
 import com.nuvio.app.features.cloudstream.CloudStreamPluginItem
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.toMetaPreview
+import com.nuvio.app.features.tmdb.TmdbMetadataService
+import com.nuvio.app.features.tmdb.TmdbSettings
+import com.nuvio.app.features.tmdb.TmdbSettingsRepository
+import com.nuvio.app.features.tmdb.normalizeTmdbLanguage
 import com.nuvio.app.features.trakt.TraktPublicListSourceResolver
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import kotlinx.coroutines.CancellationException
@@ -49,6 +53,9 @@ object HomeRepository {
     private var cachedSections: Map<String, HomeCatalogSection> = emptyMap()
     private var cachedCloudSections: List<HomeCatalogSection> = emptyList()
     private var cachedCollectionHeroItems: List<MetaPreview> = emptyList()
+    private val localizedHeroArtworkCache = mutableMapOf<String, MetaPreview>()
+    private var localizedHeroArtworkJob: Job? = null
+    private var localizedHeroArtworkRequestKey: String? = null
     private var collectionHeroJob: Job? = null
     private var collectionHeroRequestKey: String? = null
     private var lastPublishedCatalogHeroEmpty: Boolean = true
@@ -211,6 +218,10 @@ object HomeRepository {
         cachedSections = emptyMap()
         cachedCloudSections = emptyList()
         cachedCollectionHeroItems = emptyList()
+        localizedHeroArtworkCache.clear()
+        localizedHeroArtworkJob?.cancel()
+        localizedHeroArtworkJob = null
+        localizedHeroArtworkRequestKey = null
         collectionHeroJob?.cancel()
         collectionHeroJob = null
         collectionHeroRequestKey = null
@@ -267,7 +278,10 @@ object HomeRepository {
         }
         val heroItems = when {
             !snapshot.heroEnabled -> emptyList()
-            else -> resolvedHeroItems
+            else -> resolveLocalizedHeroArtwork(
+                items = resolvedHeroItems,
+                requestKey = requestKey,
+            )
         }
 
         _uiState.value = HomeUiState(
@@ -277,6 +291,86 @@ object HomeRepository {
             errorMessage = if (sections.isEmpty()) lastErrorMessage else null,
         )
     }
+
+    private fun resolveLocalizedHeroArtwork(
+        items: List<MetaPreview>,
+        requestKey: String?,
+    ): List<MetaPreview> {
+        if (items.isEmpty()) return emptyList()
+        val settings = TmdbSettingsRepository.snapshot()
+        if (!settings.shouldLocalizeHeroArtwork()) return items
+
+        val localizedItems = items.mapNotNull { item ->
+            localizedHeroArtworkCache[localizedHeroArtworkCacheKey(item, settings)]
+        }
+        val missingItems = items.filterNot { item ->
+            localizedHeroArtworkCache.containsKey(localizedHeroArtworkCacheKey(item, settings))
+        }
+        if (missingItems.isNotEmpty()) {
+            ensureLocalizedHeroArtwork(
+                items = items,
+                settings = settings,
+                requestKey = requestKey,
+            )
+        }
+        return localizedItems
+    }
+
+    private fun ensureLocalizedHeroArtwork(
+        items: List<MetaPreview>,
+        settings: TmdbSettings,
+        requestKey: String?,
+    ) {
+        val normalizedLanguage = normalizeTmdbLanguage(settings.language)
+        val nextRequestKey = buildString {
+            append(requestKey.orEmpty())
+            append("|tmdbHeroArtwork=")
+            append(normalizedLanguage)
+            append("|items=")
+            items.forEach { item ->
+                append(item.stableKey())
+                append(';')
+            }
+        }
+        if (localizedHeroArtworkRequestKey == nextRequestKey) return
+
+        localizedHeroArtworkJob?.cancel()
+        localizedHeroArtworkRequestKey = nextRequestKey
+        localizedHeroArtworkJob = scope.launch {
+            val results = items.map { item ->
+                async {
+                    val localized = try {
+                        withTimeoutOrNull(HOME_HERO_LOCALIZED_ARTWORK_TIMEOUT_MS) {
+                            TmdbMetadataService.localizePreviewArtwork(
+                                item = item,
+                                settings = settings,
+                            )
+                        }
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        null
+                    }
+                    localizedHeroArtworkCacheKey(item, settings) to (localized ?: item)
+                }
+            }.awaitAll()
+
+            if (localizedHeroArtworkRequestKey != nextRequestKey) return@launch
+            results.forEach { (cacheKey, item) ->
+                localizedHeroArtworkCache[cacheKey] = item
+            }
+            localizedHeroArtworkRequestKey = null
+            publishCurrentState(
+                isLoading = _uiState.value.isLoading,
+                requestKey = requestKey,
+            )
+        }
+    }
+
+    private fun TmdbSettings.shouldLocalizeHeroArtwork(): Boolean =
+        enabled && hasApiKey && useArtwork
+
+    private fun localizedHeroArtworkCacheKey(item: MetaPreview, settings: TmdbSettings): String =
+        "${item.stableKey()}:${normalizeTmdbLanguage(settings.language)}"
 
     private suspend fun HomeCatalogDefinition.toSection(): HomeCatalogSection {
         val page = fetchCatalogPage(
@@ -538,6 +632,7 @@ private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 5_000L
 private const val HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS = 15_000L
 private const val HOME_CATALOG_REQUEST_TIMEOUT_MS = 12_000L
 private const val HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS = 10_000L
+private const val HOME_HERO_LOCALIZED_ARTWORK_TIMEOUT_MS = 4_000L
 
 private fun prioritizeDefinitions(
     definitions: List<HomeCatalogDefinition>,

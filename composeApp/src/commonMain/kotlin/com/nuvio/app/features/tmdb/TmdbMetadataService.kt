@@ -36,6 +36,7 @@ object TmdbMetadataService {
     private val entityBrowseCache = mutableMapOf<String, TmdbEntityBrowseData>()
     private val entityHeaderCache = mutableMapOf<String, TmdbEntityHeader>()
     private val entityRailCache = mutableMapOf<String, List<MetaPreview>>()
+    private val previewArtworkCache = mutableMapOf<String, TmdbPreviewArtwork>()
 
     suspend fun fetchPersonDetail(
         personId: Int,
@@ -506,6 +507,84 @@ object TmdbMetadataService {
             "movie" -> listOf(TmdbEntityMediaType.MOVIE, TmdbEntityMediaType.TV)
             else -> listOf(TmdbEntityMediaType.TV, TmdbEntityMediaType.MOVIE)
         }
+    }
+
+    suspend fun localizePreviewArtwork(
+        item: MetaPreview,
+        settings: TmdbSettings,
+    ): MetaPreview? = withContext(Dispatchers.Default) {
+        if (!settings.enabled || !settings.hasApiKey || !settings.useArtwork) return@withContext null
+        val mediaType = normalizeMetaType(item.type)
+        val tmdbId = TmdbService.ensureTmdbId(item.id, mediaType) ?: return@withContext null
+        val normalizedLanguage = normalizeTmdbLanguage(settings.language)
+        val artwork = fetchPreviewArtwork(
+            tmdbId = tmdbId,
+            mediaType = mediaType,
+            language = normalizedLanguage,
+        ) ?: return@withContext null
+
+        item.copy(
+            name = artwork.localizedTitle ?: item.name,
+            poster = artwork.poster ?: item.poster,
+            banner = artwork.backdrop ?: item.banner,
+            logo = artwork.logo ?: item.logo,
+            description = artwork.description ?: item.description,
+            releaseInfo = artwork.releaseInfo ?: item.releaseInfo,
+        )
+    }
+
+    private suspend fun fetchPreviewArtwork(
+        tmdbId: String,
+        mediaType: String,
+        language: String,
+    ): TmdbPreviewArtwork? = withContext(Dispatchers.Default) {
+        val normalizedLanguage = normalizeTmdbLanguage(language)
+        val cacheKey = "$tmdbId:$mediaType:$normalizedLanguage:previewArtwork"
+        previewArtworkCache[cacheKey]?.let { return@withContext it }
+        val numericId = tmdbId.toIntOrNull() ?: return@withContext null
+        val includeImageLanguage = buildString {
+            append(normalizedLanguage.substringBefore("-"))
+            append(",")
+            append(normalizedLanguage)
+            append(",en,null")
+        }
+
+        val (details, images) = coroutineScope {
+            val detailsDeferred = async {
+                fetch<TmdbDetailsResponse>(
+                    endpoint = "$mediaType/$numericId",
+                    query = mapOf("language" to normalizedLanguage),
+                )
+            }
+            val imagesDeferred = async {
+                fetch<TmdbImagesResponse>(
+                    endpoint = "$mediaType/$numericId/images",
+                    query = mapOf("include_image_language" to includeImageLanguage),
+                )
+            }
+            detailsDeferred.await() to imagesDeferred.await()
+        }
+        val resolvedDetails = details ?: return@withContext null
+        val artwork = TmdbPreviewArtwork(
+            localizedTitle = listOf(resolvedDetails.title, resolvedDetails.name)
+                .firstNotNullOfOrNull { it?.trim()?.takeIf(String::isNotBlank) },
+            description = resolvedDetails.overview?.trim()?.takeIf(String::isNotBlank),
+            poster = buildImageUrl(
+                images?.posters.orEmpty().selectBestLocalizedImagePath(normalizedLanguage),
+                "w780",
+            ) ?: buildImageUrl(resolvedDetails.posterPath, "w500"),
+            backdrop = buildImageUrl(
+                images?.backdrops.orEmpty().selectBestTextlessImagePath(normalizedLanguage),
+                "w1280",
+            ) ?: buildImageUrl(resolvedDetails.backdropPath, "w1280"),
+            logo = buildImageUrl(
+                images?.logos.orEmpty().selectBestLocalizedImagePath(normalizedLanguage),
+                "w500",
+            ),
+            releaseInfo = resolvedDetails.releaseDate ?: resolvedDetails.firstAirDate,
+        )
+        previewArtworkCache[cacheKey] = artwork
+        artwork
     }
 
     private fun normalizeEntitySourceType(sourceType: String): String {
@@ -1216,6 +1295,15 @@ private data class EnrichmentPayload(
     val ageRating: String?,
     val moreLikeThis: List<MetaPreview>,
     val trailers: List<MetaTrailer>,
+)
+
+private data class TmdbPreviewArtwork(
+    val localizedTitle: String?,
+    val description: String?,
+    val poster: String?,
+    val backdrop: String?,
+    val logo: String?,
+    val releaseInfo: String?,
 )
 
 internal data class TmdbEpisodeEnrichment(
