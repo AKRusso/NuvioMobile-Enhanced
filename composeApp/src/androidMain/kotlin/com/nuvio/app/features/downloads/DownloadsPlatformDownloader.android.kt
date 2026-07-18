@@ -30,6 +30,10 @@ private val downloadHttpClient = OkHttpClient.Builder()
     .followSslRedirects(true)
     .build()
 
+private const val downloadBufferBytes = 256 * 1024
+private const val downloadProgressMinIntervalMs = 500L
+private const val downloadProgressMinBytes = 1024L * 1024L
+
 internal actual object DownloadsPlatformDownloader {
     private var appContext: Context? = null
 
@@ -119,18 +123,35 @@ internal actual object DownloadsPlatformDownloader {
                     )
                     var downloadedBytes = startingBytes
                     onProgress(downloadedBytes, totalBytes)
+                    var lastProgressBytes = downloadedBytes
+                    var lastProgressAtMs = System.currentTimeMillis()
+
+                    fun publishProgress(force: Boolean = false) {
+                        val now = System.currentTimeMillis()
+                        val progressedBytes = downloadedBytes - lastProgressBytes
+                        if (
+                            force ||
+                            progressedBytes >= downloadProgressMinBytes ||
+                            now - lastProgressAtMs >= downloadProgressMinIntervalMs
+                        ) {
+                            onProgress(downloadedBytes, totalBytes)
+                            lastProgressBytes = downloadedBytes
+                            lastProgressAtMs = now
+                        }
+                    }
 
                     body.byteStream().use { input ->
                         FileOutputStream(tempFile, appendToTemp).use { output ->
-                            val buffer = ByteArray(16 * 1024)
+                            val buffer = ByteArray(downloadBufferBytes)
                             while (true) {
                                 ensureActive()
                                 val read = input.read(buffer)
                                 if (read <= 0) break
                                 output.write(buffer, 0, read)
                                 downloadedBytes += read.toLong()
-                                onProgress(downloadedBytes, totalBytes)
+                                publishProgress()
                             }
+                            publishProgress(force = true)
                             output.flush()
                         }
                     }
