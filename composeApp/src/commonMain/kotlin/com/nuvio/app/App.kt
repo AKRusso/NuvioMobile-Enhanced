@@ -171,6 +171,7 @@ import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadStatus
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsScreen
+import com.nuvio.app.features.downloads.downloadProgressInfoLines
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaDetailsScreen
 import com.nuvio.app.features.details.MetaPerson
@@ -4260,18 +4261,12 @@ private fun downloadActionOverlayDetails(item: DownloadItem): String {
     } else {
         null
     }
-    val byteLine = if (item.totalBytes != null && item.totalBytes > 0L) {
-        "${formatDownloadOverlayBytes(item.downloadedBytes)} / ${formatDownloadOverlayBytes(item.totalBytes)}"
-    } else {
-        formatDownloadOverlayBytes(item.downloadedBytes)
-    }
-
     return listOfNotNull(
         episodeCode,
         item.providerName.trim().takeIf { it.isNotBlank() },
         item.streamTitle.trim().takeIf { it.isNotBlank() },
         item.streamSubtitle?.trim()?.takeIf { it.isNotBlank() },
-        byteLine.takeIf { it.isNotBlank() },
+        *item.downloadProgressInfoLines().toTypedArray(),
     )
         .distinct()
         .joinToString(" • ")

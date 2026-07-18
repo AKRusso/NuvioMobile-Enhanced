@@ -1,5 +1,6 @@
 package com.nuvio.app.features.downloads
 
+import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.features.details.MetaCompany
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
@@ -53,6 +54,7 @@ data class DownloadItem(
     val status: DownloadStatus,
     val downloadedBytes: Long = 0L,
     val totalBytes: Long? = null,
+    val downloadSpeedBytesPerSecond: Long = 0L,
     val errorMessage: String? = null,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long,
@@ -72,6 +74,16 @@ data class DownloadItem(
             return (downloadedBytes.toDouble() / total.toDouble())
                 .toFloat()
                 .coerceIn(0f, 1f)
+        }
+
+    val estimatedRemainingSeconds: Long?
+        get() {
+            if (status != DownloadStatus.Downloading) return null
+            val total = totalBytes?.takeIf { it > 0L } ?: return null
+            val speed = downloadSpeedBytesPerSecond.takeIf { it > 0L } ?: return null
+            val remainingBytes = (total - downloadedBytes).coerceAtLeast(0L)
+            if (remainingBytes <= 0L) return 0L
+            return (remainingBytes + speed - 1L) / speed
         }
 
     val logicalContentKey: String
@@ -183,6 +195,63 @@ internal val downloadSeriesEpisodeComparator: Comparator<DownloadItem> =
         .thenBy { it.episodeTitle?.trim().orEmpty().lowercase() }
         .thenBy { it.title.trim().lowercase() }
         .thenBy { it.id }
+
+internal fun DownloadItem.downloadSizeLabel(): String {
+    val downloaded = formatDownloadBytes(downloadedBytes)
+    val total = totalBytes?.takeIf { it > 0L }?.let(::formatDownloadBytes)
+    return if (total != null) "$downloaded / $total" else downloaded
+}
+
+internal fun DownloadItem.downloadSpeedLabel(): String? =
+    downloadSpeedBytesPerSecond
+        .takeIf { status == DownloadStatus.Downloading && it > 0L }
+        ?.let { "⚡ ${formatDownloadBytes(it)}/s" }
+
+internal fun DownloadItem.downloadEtaLabel(): String? =
+    estimatedRemainingSeconds
+        ?.let { "ETA ${formatDownloadDuration(it)}" }
+
+internal fun DownloadItem.downloadProgressInfoLines(): List<String> =
+    listOfNotNull(
+        downloadSpeedLabel(),
+        downloadEtaLabel(),
+        downloadSizeLabel().takeIf { it.isNotBlank() },
+    )
+
+internal fun formatDownloadBytes(bytes: Long): String {
+    if (bytes <= 0L) return "0 ${localizedByteUnit("B")}"
+    val kib = 1024.0
+    val mib = kib * 1024.0
+    val gib = mib * 1024.0
+    val value = bytes.toDouble()
+    return when {
+        value >= gib -> "${((value / gib) * 10.0).toInt() / 10.0} ${localizedByteUnit("GB")}"
+        value >= mib -> "${((value / mib) * 10.0).toInt() / 10.0} ${localizedByteUnit("MB")}"
+        value >= kib -> "${((value / kib) * 10.0).toInt() / 10.0} ${localizedByteUnit("KB")}"
+        else -> "$bytes ${localizedByteUnit("B")}"
+    }
+}
+
+private fun formatDownloadDuration(seconds: Long): String {
+    val safeSeconds = seconds.coerceAtLeast(0L)
+    if (safeSeconds < 60L) return "${safeSeconds}s"
+    val minutes = safeSeconds / 60L
+    val remainingSeconds = safeSeconds % 60L
+    if (minutes < 60L) {
+        return if (remainingSeconds > 0L && minutes < 10L) {
+            "${minutes}m ${remainingSeconds}s"
+        } else {
+            "${minutes}m"
+        }
+    }
+    val hours = minutes / 60L
+    val remainingMinutes = minutes % 60L
+    return if (remainingMinutes > 0L) {
+        "${hours}h ${remainingMinutes}m"
+    } else {
+        "${hours}h"
+    }
+}
 
 fun MetaDetails.toDownloadDetailsSnapshot(): DownloadDetailsSnapshot =
     DownloadDetailsSnapshot(

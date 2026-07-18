@@ -110,6 +110,7 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadItem
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsUiState
+import com.nuvio.app.features.downloads.downloadProgressInfoLines
 import com.nuvio.app.features.downloads.sortedForSeriesDownloads
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.PosterShape
@@ -1017,6 +1018,7 @@ private fun LibraryActiveDownloadCard(
         ?: item.background?.takeIf { it.isNotBlank() }
     val progress = item.progressFraction.coerceIn(0f, 1f)
     val progressPercent = (progress * 100f).toInt().coerceIn(0, 100)
+    val progressInfoLines = item.downloadProgressInfoLines()
 
     Column(
         modifier = modifier
@@ -1111,6 +1113,15 @@ private fun LibraryActiveDownloadCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                progressInfoLines.forEach { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.88f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
     }

@@ -41,6 +41,8 @@ internal actual object DownloadsLiveStatusPlatform {
                     status = item.status.name,
                     downloadedBytes = item.downloadedBytes,
                     totalBytes = item.totalBytes,
+                    downloadSpeedBytesPerSecond = item.downloadSpeedBytesPerSecond,
+                    estimatedRemainingSeconds = item.estimatedRemainingSeconds,
                     progressPercent = if (item.totalBytes != null && item.totalBytes > 0L) {
                         ((item.downloadedBytes.toDouble() / item.totalBytes.toDouble()) * 100.0)
                             .toInt()
@@ -94,5 +96,7 @@ private data class DownloadsLiveStatusPayload(
     val status: String,
     val downloadedBytes: Long,
     val totalBytes: Long? = null,
+    val downloadSpeedBytesPerSecond: Long = 0L,
+    val estimatedRemainingSeconds: Long? = null,
     val progressPercent: Int,
 )

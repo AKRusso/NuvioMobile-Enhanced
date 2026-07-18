@@ -219,6 +219,7 @@ object DownloadsRepository {
         mutateItem(downloadId) { current ->
             current.copy(
                 status = DownloadStatus.Paused,
+                downloadSpeedBytesPerSecond = 0L,
                 updatedAtEpochMs = DownloadsClock.nowEpochMs(),
                 errorMessage = null,
             )
@@ -242,6 +243,7 @@ object DownloadsRepository {
             status = DownloadStatus.Downloading,
             errorMessage = null,
             localFileUri = null,
+            downloadSpeedBytesPerSecond = 0L,
             updatedAtEpochMs = DownloadsClock.nowEpochMs(),
         )
 
@@ -310,6 +312,7 @@ object DownloadsRepository {
                 val statusNormalized = if (item.status == DownloadStatus.Downloading) {
                     item.copy(
                         status = DownloadStatus.Paused,
+                        downloadSpeedBytesPerSecond = 0L,
                         errorMessage = null,
                     )
                 } else {
@@ -344,10 +347,30 @@ object DownloadsRepository {
                     if (current.status != DownloadStatus.Downloading) {
                         current
                     } else {
+                        val now = DownloadsClock.nowEpochMs()
+                        val nextDownloadedBytes = downloadedBytes.coerceAtLeast(0L)
+                        val byteDelta = (nextDownloadedBytes - current.downloadedBytes).coerceAtLeast(0L)
+                        val elapsedMs = (now - current.updatedAtEpochMs).coerceAtLeast(0L)
+                        val instantSpeed = if (byteDelta > 0L && elapsedMs > 0L) {
+                            (byteDelta * 1_000L) / elapsedMs
+                        } else {
+                            null
+                        }
+                        val smoothedSpeed = when {
+                            instantSpeed == null -> current.downloadSpeedBytesPerSecond
+                            current.downloadSpeedBytesPerSecond > 0L ->
+                                (
+                                    current.downloadSpeedBytesPerSecond.toDouble() * 0.65 +
+                                        instantSpeed.toDouble() * 0.35
+                                    ).toLong()
+                            else -> instantSpeed
+                        }.coerceAtLeast(0L)
+
                         current.copy(
-                            downloadedBytes = downloadedBytes.coerceAtLeast(0L),
+                            downloadedBytes = nextDownloadedBytes,
                             totalBytes = totalBytes?.takeIf { it > 0L },
-                            updatedAtEpochMs = DownloadsClock.nowEpochMs(),
+                            downloadSpeedBytesPerSecond = smoothedSpeed,
+                            updatedAtEpochMs = now,
                             errorMessage = null,
                         )
                     }
@@ -370,6 +393,7 @@ object DownloadsRepository {
                             current.downloadedBytes
                         },
                         totalBytes = totalBytes?.takeIf { it > 0L } ?: current.totalBytes,
+                        downloadSpeedBytesPerSecond = 0L,
                         errorMessage = null,
                         updatedAtEpochMs = DownloadsClock.nowEpochMs(),
                     )
@@ -383,6 +407,7 @@ object DownloadsRepository {
                     } else {
                         current.copy(
                             status = DownloadStatus.Failed,
+                            downloadSpeedBytesPerSecond = 0L,
                             errorMessage = message.ifBlank { runBlocking { getString(Res.string.download_failed) } },
                             updatedAtEpochMs = DownloadsClock.nowEpochMs(),
                         )

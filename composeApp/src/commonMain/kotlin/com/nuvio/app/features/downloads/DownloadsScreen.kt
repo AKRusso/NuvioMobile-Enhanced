@@ -318,6 +318,7 @@ private fun DownloadRow(
         item = item,
         displayTitle = displayTitle,
     )
+    val progressInfoLines = item.downloadProgressInfoLines()
 
     Surface(
         modifier = Modifier
@@ -362,6 +363,19 @@ private fun DownloadRow(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (item.status == DownloadStatus.Downloading) {
+                        progressInfoLines
+                            .take(2)
+                            .forEach { line ->
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.9f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

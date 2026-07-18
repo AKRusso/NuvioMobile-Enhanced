@@ -360,11 +360,16 @@ internal actual object DownloadsLiveStatusPlatform {
             DownloadStatus.Downloading -> {
                 val downloaded = formatBytes(item.downloadedBytes)
                 val total = item.totalBytes?.let(::formatBytes)
-                if (total != null) {
+                val sizeText = if (total != null) {
                     runBlocking { getString(Res.string.downloads_live_downloading_with_total, detail, downloaded, total) }
                 } else {
                     runBlocking { getString(Res.string.downloads_live_downloading, detail, downloaded) }
                 }
+                listOfNotNull(
+                    sizeText,
+                    item.downloadSpeedLabel(),
+                    item.downloadEtaLabel(),
+                ).joinToString(" • ")
             }
 
             DownloadStatus.Paused -> runBlocking { getString(Res.string.downloads_live_paused, detail) }

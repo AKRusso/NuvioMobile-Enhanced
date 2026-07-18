@@ -92,10 +92,19 @@ final class DownloadsLiveActivityManager {
 
     private func transferredText(_ payload: DownloadsLiveStatusPayload) -> String {
         let downloaded = formatBytes(payload.downloadedBytes)
+        let sizeText: String
         if let total = payload.totalBytes {
-            return "\(downloaded) / \(formatBytes(total))"
+            sizeText = "\(downloaded) / \(formatBytes(total))"
+        } else {
+            sizeText = downloaded
         }
-        return downloaded
+        return [
+            sizeText,
+            speedText(payload.downloadSpeedBytesPerSecond),
+            etaText(payload.estimatedRemainingSeconds),
+        ]
+            .compactMap { $0 }
+            .joined(separator: " • ")
     }
 
     private func formatBytes(_ bytes: Int64) -> String {
@@ -103,6 +112,35 @@ final class DownloadsLiveActivityManager {
         formatter.allowedUnits = [.useKB, .useMB, .useGB]
         formatter.countStyle = .file
         return formatter.string(fromByteCount: bytes)
+    }
+
+    private func speedText(_ bytesPerSecond: Int64?) -> String? {
+        guard let bytesPerSecond, bytesPerSecond > 0 else { return nil }
+        return "⚡ \(formatBytes(bytesPerSecond))/s"
+    }
+
+    private func etaText(_ seconds: Int64?) -> String? {
+        guard let seconds else { return nil }
+        return "ETA \(formatDuration(seconds))"
+    }
+
+    private func formatDuration(_ seconds: Int64) -> String {
+        let safeSeconds = max(0, seconds)
+        if safeSeconds < 60 { return "\(safeSeconds)s" }
+        let minutes = safeSeconds / 60
+        let remainingSeconds = safeSeconds % 60
+        if minutes < 60 {
+            if remainingSeconds > 0 && minutes < 10 {
+                return "\(minutes)m \(remainingSeconds)s"
+            }
+            return "\(minutes)m"
+        }
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        if remainingMinutes > 0 {
+            return "\(hours)h \(remainingMinutes)m"
+        }
+        return "\(hours)h"
     }
 }
 
@@ -134,5 +172,7 @@ private struct DownloadsLiveStatusPayload: Decodable {
     let status: String
     let downloadedBytes: Int64
     let totalBytes: Int64?
+    let downloadSpeedBytesPerSecond: Int64?
+    let estimatedRemainingSeconds: Int64?
     let progressPercent: Int
 }
