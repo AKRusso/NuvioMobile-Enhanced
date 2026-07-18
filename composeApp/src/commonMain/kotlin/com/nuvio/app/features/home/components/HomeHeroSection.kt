@@ -279,7 +279,10 @@ internal fun HomeHeroSection(
         }
         val currentItem = items[displayPage]
         val currentItemKey = currentItem.stableKey()
-        val currentDetailMeta = detailMetas[currentItemKey]
+        val currentVisibleDetailMeta = remember(itemKeys, metadataRefreshKey, currentItemKey) {
+            detailMetas[currentItemKey]
+                ?: MetaDetailsRepository.peek(type = currentItem.type, id = currentItem.id)
+        }
         val currentArtworkSource = when (heroVisualStyle) {
             HomeHeroVisualStyle.StreamingShowcase,
             HomeHeroVisualStyle.PosterArt -> NuvioHeroArtworkSource.Backdrop
@@ -287,7 +290,7 @@ internal fun HomeHeroSection(
         }
         val currentArtworkUrl = currentItem.heroArtworkUrl(
             source = currentArtworkSource,
-            detailMeta = currentDetailMeta,
+            detailMeta = currentVisibleDetailMeta,
             allowPreviewFallback = true,
         )
         val heroRefreshProgress = homeHeroRefreshEase(refreshPullProgress)
@@ -396,7 +399,7 @@ internal fun HomeHeroSection(
                 when (heroVisualStyle) {
                     HomeHeroVisualStyle.PosterArt -> PosterArtHeroPage(
                             item = currentItem,
-                            detailMeta = detailMetas[currentItem.stableKey()],
+                            detailMeta = currentVisibleDetailMeta,
                             artworkUrl = currentArtworkUrl,
                             layout = layout,
                             motionPreviewEnabled = motionPreviewEnabled,
@@ -414,7 +417,7 @@ internal fun HomeHeroSection(
                         )
                     HomeHeroVisualStyle.StreamingShowcase -> StreamingShowcaseHeroPage(
                             item = currentItem,
-                            detailMeta = detailMetas[currentItem.stableKey()],
+                            detailMeta = currentVisibleDetailMeta,
                             artworkUrl = currentArtworkUrl,
                             layout = layout,
                             motionPreviewEnabled = motionPreviewEnabled,
@@ -514,7 +517,7 @@ internal fun HomeHeroSection(
                                 HeroContentBlock(
                                     item = currentItem,
                                     layout = layout,
-                                    detailMeta = detailMetas[currentItem.stableKey()],
+                                    detailMeta = currentVisibleDetailMeta,
                                     heroDisplayMode = heroDisplayMode,
                                     compactMetadata = compactMetadata,
                                     showRatings = showRatings,

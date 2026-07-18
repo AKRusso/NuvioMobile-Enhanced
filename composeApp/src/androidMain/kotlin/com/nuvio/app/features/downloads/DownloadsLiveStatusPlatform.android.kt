@@ -76,16 +76,23 @@ internal actual object DownloadsLiveStatusPlatform {
             .getStringSet(trackedDownloadIdsKey, emptySet())
             .orEmpty()
             .toMutableSet()
+        val foregroundDownloadIds = items
+            .filter { item -> item.status == DownloadStatus.Downloading }
+            .map { item -> item.id }
+            .toSet()
 
         val activeItems = items.filter { item ->
-            item.status == DownloadStatus.Downloading ||
-                item.status == DownloadStatus.Paused ||
+            item.status == DownloadStatus.Paused ||
                 item.status == DownloadStatus.Failed ||
                 (
                     item.status == DownloadStatus.Completed &&
                         lastRenderStateById[item.id]?.status != DownloadStatus.Completed &&
                         lastRenderStateById.containsKey(item.id)
-                    )
+                )
+        }
+        foregroundDownloadIds.forEach { downloadId ->
+            manager.cancel(notificationId(downloadId))
+            lastRenderStateById.remove(downloadId)
         }
 
         val trackedNow = mutableSetOf<String>()
@@ -533,6 +540,9 @@ internal actual object DownloadsLiveStatusPlatform {
         } else {
             DownloadsForegroundService.stop(context)
             foregroundServiceRequested = false
+            runCatching {
+                NotificationManagerCompat.from(context).cancel(foregroundNotificationId)
+            }
         }
     }
 

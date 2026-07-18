@@ -163,6 +163,7 @@ fun NuvioScreenHeader(
             verticalAlignment = Alignment.Bottom,
         ) {
             Row(
+                modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
             ) {
@@ -177,6 +178,7 @@ fun NuvioScreenHeader(
                 }
                 AnimatedContent(
                     targetState = title,
+                    modifier = Modifier.weight(1f, fill = false),
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
                     label = "screen_header_title",
                 ) { currentTitle ->
@@ -184,7 +186,7 @@ fun NuvioScreenHeader(
                         text = currentTitle,
                         style = titleStyle,
                         color = tokens.colors.textPrimary,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
