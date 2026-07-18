@@ -369,7 +369,6 @@ private class IosDownloadDelegate(
             fileError = IllegalStateException(runBlocking { getString(Res.string.downloads_error_write_partial_file_failed) })
             return
         }
-        fflush(file)
 
         bytesWrittenForResponse += bytesToWrite
         reportProgress(
