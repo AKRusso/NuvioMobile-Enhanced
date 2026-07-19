@@ -64,6 +64,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         playbackSnapshot = PlayerPlaybackSnapshot()
         isScrubbingTimeline = false
         scrubbingPositionMs = null
+        seekPreview = null
         liveGestureFeedback = null
         renderedGestureFeedback = null
         lockedOverlayVisible = false

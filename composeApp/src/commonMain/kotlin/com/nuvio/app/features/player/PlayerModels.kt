@@ -1,6 +1,7 @@
 package com.nuvio.app.features.player
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.serialization.Serializable
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.player_ios_hardware_decoder_off
@@ -226,6 +227,12 @@ data class PlayerPlaybackSnapshot(
     val playbackSpeed: Float = 1f,
     val videoWidth: Int? = null,
     val videoHeight: Int? = null,
+)
+
+/** A decoded video frame shown while the user drags the playback timeline. */
+data class PlayerSeekPreview(
+    val positionMs: Long,
+    val image: ImageBitmap,
 )
 
 data class PlayerNowPlayingInfo(

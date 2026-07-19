@@ -8,6 +8,9 @@ interface PlayerEngineController {
     fun pause()
     fun seekTo(positionMs: Long)
     fun seekBy(offsetMs: Long)
+    fun requestSeekPreviewFrame(positionMs: Long, onResult: (PlayerSeekPreview?) -> Unit) {
+        onResult(null)
+    }
     fun retry()
     fun setPlaybackSpeed(speed: Float)
     fun setMuted(muted: Boolean) {}

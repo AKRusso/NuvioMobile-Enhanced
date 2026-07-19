@@ -61,6 +61,7 @@ internal fun PlayerScreenRuntime.lockPlayerControls() {
     pausedOverlayVisible = false
     isScrubbingTimeline = false
     scrubbingPositionMs = null
+    seekPreview = null
     gestureMessageJob?.cancel()
     gestureFeedback = null
     liveGestureFeedback = null

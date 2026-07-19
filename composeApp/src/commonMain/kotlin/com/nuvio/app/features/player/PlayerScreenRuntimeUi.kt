@@ -214,6 +214,9 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             episodeTitle = activeEpisodeTitle,
             playbackSnapshot = playbackSnapshot,
             displayedPositionMs = displayedPositionMs,
+            seekPreview = seekPreview,
+            seekPreviewPositionMs = scrubbingPositionMs,
+            showSeekPreview = nuvioEnhancedSettingsUiState.seekPreviewEnabled && isScrubbingTimeline,
             metrics = metrics,
             resizeMode = resizeMode,
             isLocked = playerControlsLocked,
@@ -316,10 +319,22 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             onScrubChange = { positionMs ->
                 isScrubbingTimeline = true
                 scrubbingPositionMs = positionMs
+                if (nuvioEnhancedSettingsUiState.seekPreviewEnabled) {
+                    val displayedPreview = seekPreview
+                    if (displayedPreview == null || kotlin.math.abs(displayedPreview.positionMs - positionMs) > 1_500L) {
+                        seekPreview = null
+                    }
+                    playerController?.requestSeekPreviewFrame(positionMs) { preview ->
+                        if (isScrubbingTimeline && scrubbingPositionMs == positionMs) {
+                            seekPreview = preview
+                        }
+                    }
+                }
             },
             onScrubFinished = { positionMs ->
                 isScrubbingTimeline = false
                 scrubbingPositionMs = null
+                seekPreview = null
                 playerController?.seekTo(positionMs)
                 scheduleProgressSyncAfterSeek()
             },

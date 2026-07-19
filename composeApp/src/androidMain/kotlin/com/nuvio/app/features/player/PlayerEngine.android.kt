@@ -227,6 +227,10 @@ private fun ExoPlayerSurface(
     )
     var subtitleDelayMs by remember(playerSourceKey) { mutableStateOf(0) }
     var selectedExternalSubtitleMimeType by remember(playerSourceKey) { mutableStateOf<String?>(null) }
+    val seekPreviewExtractor = remember(playerSourceKey) {
+        AndroidSeekPreviewFrameExtractor(sourceUrl, sanitizedSourceHeaders)
+    }
+    var seekPreviewJob by remember(playerSourceKey) { mutableStateOf<Job?>(null) }
     val latestSubtitleDelayMs = rememberUpdatedState(subtitleDelayMs)
     val latestExternalSubtitleMimeType = rememberUpdatedState(selectedExternalSubtitleMimeType)
     var decoderPriorityOverride by remember(playerSourceKey) { mutableStateOf<Int?>(null) }
@@ -511,6 +515,7 @@ private fun ExoPlayerSurface(
             exoPlayer.removeListener(listener)
             playerViewRef?.keepScreenOn = false
             subtitleSelectionJob?.cancel()
+            seekPreviewJob?.cancel()
         }
     }
 
@@ -561,6 +566,22 @@ private fun ExoPlayerSurface(
 
                 override fun seekBy(offsetMs: Long) {
                     exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
+                }
+
+                override fun requestSeekPreviewFrame(
+                    positionMs: Long,
+                    onResult: (PlayerSeekPreview?) -> Unit,
+                ) {
+                    seekPreviewJob?.cancel()
+                    seekPreviewJob = coroutineScope.launch {
+                        delay(90L)
+                        val preview = withContext(Dispatchers.IO) {
+                            seekPreviewExtractor.extract(positionMs)
+                        }
+                        if (isActive) {
+                            onResult(preview)
+                        }
+                    }
                 }
 
                 override fun retry() {
@@ -769,6 +790,10 @@ private fun LibmpvPlayerSurface(
     val sanitizedSourceHeaders = remember(sourceHeaders) {
         sanitizePlaybackHeaders(sourceHeaders)
     }
+    val seekPreviewExtractor = remember(sourceUrl, sanitizedSourceHeaders) {
+        AndroidSeekPreviewFrameExtractor(sourceUrl, sanitizedSourceHeaders)
+    }
+    var seekPreviewJob by remember(sourceUrl, sanitizedSourceHeaders) { mutableStateOf<Job?>(null) }
     var playerViewRef by remember { mutableStateOf<NuvioLibmpvView?>(null) }
 
     DisposableEffect(lifecycleOwner) {
@@ -791,6 +816,7 @@ private fun LibmpvPlayerSurface(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            seekPreviewJob?.cancel()
         }
     }
 
@@ -892,7 +918,26 @@ private fun LibmpvPlayerSurface(
 
     LaunchedEffect(playerViewRef, sourceUrl, sourceAudioUrl, sanitizedSourceHeaders, externalSubtitles) {
         val view = playerViewRef ?: return@LaunchedEffect
-        onControllerReady(view.controller(context))
+        val delegate = view.controller(context)
+        onControllerReady(
+            object : PlayerEngineController by delegate {
+                override fun requestSeekPreviewFrame(
+                    positionMs: Long,
+                    onResult: (PlayerSeekPreview?) -> Unit,
+                ) {
+                    seekPreviewJob?.cancel()
+                    seekPreviewJob = coroutineScope.launch {
+                        delay(90L)
+                        val preview = withContext(Dispatchers.IO) {
+                            seekPreviewExtractor.extract(positionMs)
+                        }
+                        if (isActive) {
+                            onResult(preview)
+                        }
+                    }
+                }
+            },
+        )
     }
 
     LaunchedEffect(playerViewRef) {

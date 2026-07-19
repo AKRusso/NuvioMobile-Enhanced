@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -57,6 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -87,6 +91,9 @@ internal fun PlayerControlsShell(
     episodeTitle: String?,
     playbackSnapshot: PlayerPlaybackSnapshot,
     displayedPositionMs: Long,
+    seekPreview: PlayerSeekPreview?,
+    seekPreviewPositionMs: Long?,
+    showSeekPreview: Boolean,
     metrics: PlayerLayoutMetrics,
     resizeMode: PlayerResizeMode,
     isLocked: Boolean,
@@ -230,6 +237,9 @@ internal fun PlayerControlsShell(
                 ProgressControls(
                     playbackSnapshot = playbackSnapshot,
                     displayedPositionMs = displayedPositionMs,
+                    seekPreview = seekPreview,
+                    seekPreviewPositionMs = seekPreviewPositionMs,
+                    showSeekPreview = showSeekPreview,
                     metrics = metrics,
                     resizeMode = resizeMode,
                     onScrubChange = onScrubChange,
@@ -763,6 +773,9 @@ private fun PlayPauseControlButton(
 private fun ProgressControls(
     playbackSnapshot: PlayerPlaybackSnapshot,
     displayedPositionMs: Long,
+    seekPreview: PlayerSeekPreview?,
+    seekPreviewPositionMs: Long?,
+    showSeekPreview: Boolean,
     metrics: PlayerLayoutMetrics,
     resizeMode: PlayerResizeMode,
     onScrubChange: (Long) -> Unit,
@@ -785,22 +798,40 @@ private fun ProgressControls(
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
 
     Column(modifier = modifier) {
-        Box(
+        val previewPositionMs = seekPreviewPositionMs?.coerceIn(0L, durationMs)
+        val previewVisible = showSeekPreview && previewPositionMs != null
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(metrics.sliderTouchHeight)
-                .graphicsLayer(scaleY = metrics.sliderScaleY)
-                .tapToSeekOnTimeline(
-                    durationMs = playbackSnapshot.durationMs,
-                    onSeek = { positionMs ->
-                        val targetPositionMs = positionMs.coerceIn(0L, durationMs)
-                        onScrubChange(targetPositionMs)
-                        onScrubFinished(targetPositionMs)
-                    },
-                ),
+                .height(if (previewVisible) 116.dp else metrics.sliderTouchHeight),
         ) {
+            if (previewVisible) {
+                val previewWidth = 168.dp
+                val fraction = previewPositionMs.toFloat() / durationMs.toFloat()
+                val maxOffset = (maxWidth - previewWidth).coerceAtLeast(0.dp)
+                val previewOffset = (maxWidth * fraction - previewWidth / 2).coerceIn(0.dp, maxOffset)
+                SeekPreviewCard(
+                    preview = seekPreview,
+                    positionMs = previewPositionMs,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(start = previewOffset),
+                )
+            }
             Slider(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(metrics.sliderTouchHeight)
+                    .graphicsLayer(scaleY = metrics.sliderScaleY)
+                    .tapToSeekOnTimeline(
+                        durationMs = playbackSnapshot.durationMs,
+                        onSeek = { positionMs ->
+                            val targetPositionMs = positionMs.coerceIn(0L, durationMs)
+                            onScrubChange(targetPositionMs)
+                            onScrubFinished(targetPositionMs)
+                        },
+                    ),
                 value = displayedPositionMs.coerceIn(0L, durationMs).toFloat(),
                 onValueChange = { value -> onScrubChange(value.toLong()) },
                 onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
@@ -895,6 +926,53 @@ private fun ProgressControls(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SeekPreviewCard(
+    preview: PlayerSeekPreview?,
+    positionMs: Long,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .width(168.dp)
+            .height(96.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Black.copy(alpha = 0.9f),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.26f)),
+        shadowElevation = 8.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            if (preview != null) {
+                Image(
+                    bitmap = preview.image,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                NuvioLoadingIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = formatPlaybackTime(positionMs),
+                    style = MaterialTheme.nuvioTypeScale.labelSm.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color.White,
+                )
             }
         }
     }
