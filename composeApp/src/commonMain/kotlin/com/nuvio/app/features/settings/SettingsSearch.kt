@@ -531,6 +531,16 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.NuvioEnhanced,
+        key = "content-warnings",
+        title = stringResource(Res.string.settings_playback_parental_guide),
+        description = stringResource(Res.string.settings_playback_parental_guide_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_app_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
         key = "enhanced-ready-badge",
         title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
         description = stringResource(Res.string.settings_continue_watching_ready_badge_description),

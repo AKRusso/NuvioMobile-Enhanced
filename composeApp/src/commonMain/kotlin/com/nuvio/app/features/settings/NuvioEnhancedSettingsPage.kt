@@ -326,6 +326,18 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_parental_guide),
+                    description = stringResource(Res.string.settings_playback_parental_guide_description),
+                    checked = playerSettings.showParentalGuide,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.ContentWarnings),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.ContentWarnings)
+                        PlayerSettingsRepository.setShowParentalGuide(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_source_pinning_title),
                     description = stringResource(Res.string.nuvio_enhanced_source_pinning_desc),
                     checked = settings.streamSourcePinningEnabled,

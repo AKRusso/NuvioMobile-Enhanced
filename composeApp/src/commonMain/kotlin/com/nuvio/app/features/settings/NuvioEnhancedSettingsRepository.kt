@@ -88,6 +88,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     QuietHomeMode("quiet_home_mode"),
     LibraryHealth("library_health"),
     StreamSourcePinning("stream_source_pinning"),
+    ContentWarnings("content_warnings"),
 }
 
 @Serializable
