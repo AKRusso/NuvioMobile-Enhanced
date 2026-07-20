@@ -11,6 +11,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,8 +35,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -254,7 +259,7 @@ private fun BuiltInSubtitleList(
                     else colorScheme.surfaceVariant.copy(alpha = 0.6f)
                 )
                 .clickable { onTrackSelected(-1) }
-                .padding(vertical = 10.dp, horizontal = 12.dp),
+                .padding(vertical = 8.dp, horizontal = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -274,34 +279,11 @@ private fun BuiltInSubtitleList(
             }
         }
 
-        tracks.forEach { track ->
-            val isSelected = track.index == selectedIndex
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    .clickable { onTrackSelected(track.index) }
-                    .padding(vertical = 10.dp, horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = localizedTrackDisplayName(track.label, track.language, track.index),
-                    color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
-                    fontSize = 15.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                )
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = colorScheme.primary,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
-        }
+        BuiltInSubtitleLanguageGroups(
+            tracks = tracks,
+            selectedIndex = selectedIndex,
+            onTrackSelected = onTrackSelected,
+        )
     }
 }
 
@@ -361,50 +343,232 @@ private fun AddonSubtitleList(
         return
     }
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        addons.forEach { sub ->
-            val isSelected = sub.id == selectedId
+    AddonSubtitleLanguageGroups(
+        addons = addons,
+        selectedId = selectedId,
+        onSubtitleSelected = onSubtitleSelected,
+    )
+}
+
+@Composable
+private fun BuiltInSubtitleLanguageGroups(
+    tracks: List<SubtitleTrack>,
+    selectedIndex: Int,
+    onTrackSelected: (Int) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val groups = remember(tracks) {
+        tracks
+            .groupBy { it.subtitleLanguageGroupKey() }
+            .map { (key, groupedTracks) -> SubtitleLanguageGroup(key, groupedTracks) }
+            .sortedBy { it.key }
+    }
+    val selectedGroupKey = tracks
+        .firstOrNull { it.index == selectedIndex }
+        ?.subtitleLanguageGroupKey()
+
+    SubtitleLanguageBrowser(
+        groups = groups,
+        selectedGroupKey = selectedGroupKey,
+    ) { selectedGroup ->
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            selectedGroup.items.forEach { track ->
+                val isSelected = track.index == selectedIndex
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .clickable { onTrackSelected(track.index) }
+                        .padding(vertical = 10.dp, horizontal = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = localizedTrackDisplayName(track.label, track.language, track.index),
+                        color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+                        fontSize = 15.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddonSubtitleLanguageGroups(
+    addons: List<AddonSubtitle>,
+    selectedId: String?,
+    onSubtitleSelected: (AddonSubtitle) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val groups = remember(addons) {
+        addons
+            .groupBy { it.subtitleLanguageGroupKey() }
+            .map { (key, groupedSubtitles) -> SubtitleLanguageGroup(key, groupedSubtitles) }
+            .sortedBy { it.key }
+    }
+    val selectedGroupKey = addons
+        .firstOrNull { it.id == selectedId }
+        ?.subtitleLanguageGroupKey()
+
+    SubtitleLanguageBrowser(
+        groups = groups,
+        selectedGroupKey = selectedGroupKey,
+    ) { selectedGroup ->
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            selectedGroup.items.forEach { sub ->
+                val isSelected = sub.id == selectedId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .clickable { onSubtitleSelected(sub) }
+                        .padding(vertical = 5.dp, horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = 5.dp),
+                    ) {
+                        Text(
+                            text = sub.display,
+                            color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        sub.addonName
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { addonName ->
+                                Text(
+                                    text = addonName,
+                                    color = if (isSelected) colorScheme.onPrimaryContainer.copy(alpha = 0.72f) else colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(bottom = 3.dp),
+                                )
+                            }
+                    }
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier
+                                .size(18.dp)
+                                .padding(end = 2.dp),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class SubtitleLanguageGroup<T>(
+    val key: String,
+    val items: List<T>,
+)
+
+private fun SubtitleTrack.subtitleLanguageGroupKey(): String =
+    normalizeLanguageCode(language ?: label) ?: "unknown"
+
+private fun AddonSubtitle.subtitleLanguageGroupKey(): String =
+    normalizeLanguageCode(language) ?: "unknown"
+
+@Composable
+private fun <T> SubtitleLanguageBrowser(
+    groups: List<SubtitleLanguageGroup<T>>,
+    selectedGroupKey: String?,
+    content: @Composable (SubtitleLanguageGroup<T>) -> Unit,
+) {
+    if (groups.isEmpty()) return
+
+    var activeGroupKey by rememberSaveable { mutableStateOf(selectedGroupKey ?: groups.first().key) }
+    val groupKeys = groups.map { it.key }
+
+    LaunchedEffect(selectedGroupKey) {
+        if (selectedGroupKey != null && selectedGroupKey in groupKeys) {
+            activeGroupKey = selectedGroupKey
+        }
+    }
+    LaunchedEffect(groupKeys) {
+        if (activeGroupKey !in groupKeys) {
+            activeGroupKey = groupKeys.first()
+        }
+    }
+
+    val activeGroup = groups.firstOrNull { it.key == activeGroupKey } ?: groups.first()
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (groups.size > 1) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
-                    .clickable { onSubtitleSelected(sub) }
-                    .padding(vertical = 5.dp, horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 5.dp),
-                ) {
-                    Text(
-                        text = sub.display,
-                        color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = languageLabelForCode(sub.language),
-                        color = if (isSelected) colorScheme.onPrimaryContainer.copy(alpha = 0.72f) else colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(bottom = 3.dp),
-                    )
-                }
-                if (isSelected) {
-                    Icon(
-                        imageVector = Icons.Rounded.Check,
-                        contentDescription = null,
-                        tint = colorScheme.primary,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .padding(end = 2.dp),
+                groups.forEach { group ->
+                    SubtitleLanguageCategory(
+                        languageCode = group.key,
+                        selected = group.key == activeGroup.key,
+                        onClick = { activeGroupKey = group.key },
                     )
                 }
             }
+        }
+
+        content(activeGroup)
+    }
+}
+
+@Composable
+private fun SubtitleLanguageCategory(
+    languageCode: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val background by animateColorAsState(
+        targetValue = if (selected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        animationSpec = tween(180),
+    )
+
+    Row(
+        modifier = Modifier
+            .widthIn(min = 72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = languageLabelForCode(languageCode),
+            color = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+            fontSize = 14.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+        )
+        if (selected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = colorScheme.primary,
+                modifier = Modifier.size(16.dp),
+            )
         }
     }
 }
