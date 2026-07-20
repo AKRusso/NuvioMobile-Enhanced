@@ -44,6 +44,7 @@ object StreamsRepository {
 
     private var activeJob: Job? = null
     private var activeRequestKey: String? = null
+    private var activeContentRequestKey: String? = null
 
     fun requestToken(
         type: String,
@@ -144,9 +145,11 @@ object StreamsRepository {
             manualSelection = manualSelection,
         )
         val pluginQualityKey = pluginUiState.excludedQualities.sorted().joinToString(",")
-        val requestKey = "$requestToken::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
+        val contentRequestKey = "$type::$videoId::$season::$episode" +
+            "::pluginsGrouped=${pluginUiState.groupStreamsByRepository}" +
             "::pluginQuality=$pluginQualityKey::cloudstream=$cloudStreamRegistryRevision" +
             "::cloudTarget=${cloudStreamSearchRequest?.cacheKey.orEmpty()}"
+        val requestKey = "$contentRequestKey::manualSelection=$manualSelection"
         val currentState = _uiState.value
         if (
             !forceRefresh &&
@@ -156,8 +159,29 @@ object StreamsRepository {
             log.d { "Skipping stream reload for unchanged request type=$type id=$videoId" }
             return
         }
+        if (
+            !forceRefresh &&
+            manualSelection &&
+            activeContentRequestKey == contentRequestKey &&
+            (currentState.groups.isNotEmpty() || currentState.emptyStateReason != null || currentState.isAnyLoading)
+        ) {
+            log.d { "Reusing prefetched streams for manual picker type=$type id=$videoId" }
+            activeRequestKey = requestKey
+            _uiState.update {
+                it.copy(
+                    requestToken = requestToken,
+                    autoPlayStream = null,
+                    autoPlayCandidates = emptyList(),
+                    isDirectAutoPlayFlow = false,
+                    showDirectAutoPlayOverlay = false,
+                    overlayMessage = null,
+                )
+            }
+            return
+        }
 
         activeRequestKey = requestKey
+        activeContentRequestKey = contentRequestKey
         activeJob?.cancel()
         _uiState.value = StreamsUiState(requestToken = requestToken)
 
@@ -995,6 +1019,7 @@ object StreamsRepository {
         activeJob?.cancel()
         activeJob = null
         activeRequestKey = null
+        activeContentRequestKey = null
         _uiState.value = StreamsUiState()
     }
 
@@ -1012,6 +1037,6 @@ object StreamsRepository {
 // Provider count must not be capped: a repository can contain many narrowly scoped
 // providers, and an alphabetical cap silently skipped otherwise valid sources.
 // Keep network and DEX work bounded with a semaphore instead.
-private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 12
-private const val STREAM_PROVIDER_TIMEOUT_MS = 25_000L
-private const val STREAM_TOTAL_TIMEOUT_MS = 35_000L
+private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 18
+private const val STREAM_PROVIDER_TIMEOUT_MS = 30_000L
+private const val STREAM_TOTAL_TIMEOUT_MS = 45_000L
