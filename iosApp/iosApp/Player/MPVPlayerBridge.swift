@@ -1010,8 +1010,14 @@ final class MPVPlayerViewController: UIViewController {
 
     func setVolumeBoost(_ multiplier: Float) {
         guard mpv != nil else { return }
-        var volume = Double(max(0, min(2, multiplier)) * 100)
+        let boost = max(1.0, min(2.0, Double(multiplier)))
+        var volume = 100.0
         mpv_set_property(mpv, "volume", MPV_FORMAT_DOUBLE, &volume)
+        if boost <= 1.001 {
+            checkError(mpv_set_property_string(mpv, "af", ""))
+        } else {
+            checkError(mpv_set_property_string(mpv, "af", "lavfi=[volume=\(String(format: "%.2f", boost))]"))
+        }
     }
 
     func setEmbeddedPreviewMode(_ enabled: Bool) {

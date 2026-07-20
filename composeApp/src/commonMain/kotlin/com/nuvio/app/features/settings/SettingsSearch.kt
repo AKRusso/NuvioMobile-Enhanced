@@ -541,6 +541,16 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.NuvioEnhanced,
+        key = "background-stream-prefetch",
+        title = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_title),
+        description = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_app_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
         key = "enhanced-ready-badge",
         title = stringResource(Res.string.settings_continue_watching_ready_badge_title),
         description = stringResource(Res.string.settings_continue_watching_ready_badge_description),

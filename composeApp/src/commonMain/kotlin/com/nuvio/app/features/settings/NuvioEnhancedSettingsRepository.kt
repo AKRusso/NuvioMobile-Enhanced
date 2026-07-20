@@ -18,6 +18,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
     val streamSourcePinningEnabled: Boolean = false,
+    val backgroundStreamPrefetchEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -88,6 +89,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     QuietHomeMode("quiet_home_mode"),
     LibraryHealth("library_health"),
     StreamSourcePinning("stream_source_pinning"),
+    BackgroundStreamPrefetch("background_stream_prefetch"),
     ContentWarnings("content_warnings"),
 }
 
@@ -100,6 +102,7 @@ private data class StoredNuvioEnhancedSettings(
     val profileStatsEnabled: Boolean = true,
     val liveTvEnabled: Boolean = true,
     val streamSourcePinningEnabled: Boolean = false,
+    val backgroundStreamPrefetchEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -207,6 +210,10 @@ internal object NuvioEnhancedSettingsRepository {
 
     fun setStreamSourcePinningEnabled(enabled: Boolean) = update {
         copy(streamSourcePinningEnabled = enabled)
+    }
+
+    fun setBackgroundStreamPrefetchEnabled(enabled: Boolean) = update {
+        copy(backgroundStreamPrefetchEnabled = enabled)
     }
 
     fun setHeroDisplayMode(mode: NuvioHeroDisplayMode) = update {
@@ -347,6 +354,7 @@ internal object NuvioEnhancedSettingsRepository {
             profileStatsEnabled = stored.profileStatsEnabled,
             liveTvEnabled = stored.liveTvEnabled,
             streamSourcePinningEnabled = stored.streamSourcePinningEnabled,
+            backgroundStreamPrefetchEnabled = stored.backgroundStreamPrefetchEnabled,
             heroDisplayMode = stored.heroDisplayMode,
             heroArtworkSource = stored.heroArtworkSource,
             posterArtHeroEnabled = stored.posterArtHeroEnabled,

@@ -11,6 +11,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -191,6 +193,7 @@ fun DetailMetaInfo(
         if (!meta.description.isNullOrBlank()) {
             var expanded by remember { mutableStateOf(false) }
             var canExpand by remember(meta.description) { mutableStateOf(false) }
+            val overviewScrollState = rememberScrollState()
             Column(
                 modifier = Modifier.animateContentSize(),
             ) {
@@ -205,6 +208,13 @@ fun DetailMetaInfo(
                         if (!expanded) {
                             canExpand = result.hasVisualOverflow
                         }
+                    },
+                    modifier = if (expanded) {
+                        Modifier
+                            .heightIn(max = 220.dp)
+                            .verticalScroll(overviewScrollState)
+                    } else {
+                        Modifier
                     },
                 )
                 if (canExpand) {

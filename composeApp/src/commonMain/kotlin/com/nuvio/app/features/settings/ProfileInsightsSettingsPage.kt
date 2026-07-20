@@ -2256,13 +2256,42 @@ private fun LibraryItem.profileReleaseIsoDate(): String? =
 
 private fun String?.profileExtractIsoDate(): String? {
     val value = this?.trim().orEmpty()
-    if (value.length < 10) return null
+    if (value.isBlank()) return null
 
-    for (start in 0..(value.length - 10)) {
-        val candidate = value.substring(start, start + 10)
-        if (candidate.isIsoDateCandidate()) return candidate
+    if (value.length >= 10) {
+        for (start in 0..(value.length - 10)) {
+            val candidate = value.substring(start, start + 10)
+            if (candidate.isIsoDateCandidate()) return candidate
+        }
     }
-    return null
+
+    val normalized = value
+        .replace(',', ' ')
+        .replace('.', ' ')
+        .replace('/', ' ')
+        .replace('-', ' ')
+        .replace(Regex("\\s+"), " ")
+        .trim()
+    val tokens = normalized.split(' ').filter(String::isNotBlank)
+    val yearIndex = tokens.indexOfFirst { token ->
+        token.length == 4 && token.all(Char::isDigit) && token.toIntOrNull() in 1000..9999
+    }
+    if (yearIndex < 0) return null
+
+    val year = tokens[yearIndex].toInt()
+    val monthBefore = tokens.getOrNull(yearIndex - 1)?.profileMonthNumber()
+    val monthAfter = tokens.getOrNull(yearIndex + 1)?.profileMonthNumber()
+    val month = monthBefore ?: monthAfter ?: 12
+    val dayBefore = tokens.getOrNull(yearIndex - 1)?.toIntOrNull()?.takeIf { it in 1..31 }
+    val dayAfterOne = tokens.getOrNull(yearIndex + 1)?.toIntOrNull()?.takeIf { it in 1..31 }
+    val dayAfterTwo = tokens.getOrNull(yearIndex + 2)?.toIntOrNull()?.takeIf { it in 1..31 }
+    val day = when {
+        monthBefore != null -> dayBefore ?: 1
+        monthAfter != null -> dayAfterTwo ?: 1
+        else -> dayAfterOne ?: 31
+    }.coerceAtMost(profileDaysInMonth(year, month))
+
+    return "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
 }
 
 private fun String.isIsoDateCandidate(): Boolean =
@@ -2272,6 +2301,31 @@ private fun String.isIsoDateCandidate(): Boolean =
         take(4).all(Char::isDigit) &&
         substring(5, 7).all(Char::isDigit) &&
         substring(8, 10).all(Char::isDigit)
+
+private fun String.profileMonthNumber(): Int? =
+    when (trim().lowercase().take(3)) {
+        "jan", "oca" -> 1
+        "feb", "şub", "sub" -> 2
+        "mar" -> 3
+        "apr", "nis" -> 4
+        "may", "mai" -> 5
+        "jun", "haz" -> 6
+        "jul", "tem" -> 7
+        "aug", "ağu", "agu" -> 8
+        "sep", "eyl" -> 9
+        "oct", "eki" -> 10
+        "nov", "kas" -> 11
+        "dec", "ara" -> 12
+        else -> null
+    }
+
+private fun profileDaysInMonth(year: Int, month: Int): Int =
+    when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
+        else -> 31
+    }
 
 private fun String.profileNormalizedType(): String? =
     when (trim().lowercase()) {

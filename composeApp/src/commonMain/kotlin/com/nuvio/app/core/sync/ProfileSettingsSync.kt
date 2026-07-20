@@ -4,6 +4,8 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.SupabaseProvider
+import com.nuvio.app.features.ai.AiAssistantSettingsRepository
+import com.nuvio.app.features.ai.AiProvider
 import com.nuvio.app.features.collection.CollectionMobileSettingsRepository
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
 import com.nuvio.app.features.debrid.DebridSettingsRepository
@@ -214,6 +216,7 @@ object ProfileSettingsSync {
             TraktCommentsSettings.enabled.map { "trakt_comments" },
             EpisodeReleaseNotificationsRepository.uiState.map { "episode_release_alerts" },
             NuvioEnhancedSettingsRepository.uiState.map { "nuvio_enhanced" },
+            AiAssistantSettingsRepository.uiState.map { "ai_assistant" },
         )
 
         observeJob = scope.launch {
@@ -265,6 +268,7 @@ object ProfileSettingsSync {
                     episodeReleaseAlertsEnabled = EpisodeReleaseNotificationsRepository.uiState.value.isEnabled,
                 ),
                 nuvioEnhancedSettingsPayload = NuvioEnhancedSettingsRepository.exportPayload(),
+                aiAssistantSettings = exportAiAssistantSettingsPayload(),
             ),
         )
     }
@@ -312,6 +316,8 @@ object ProfileSettingsSync {
         blob.features.nuvioEnhancedSettingsPayload
             .takeIf { it.isNotBlank() }
             ?.let(NuvioEnhancedSettingsRepository::replacePayload)
+
+        applyAiAssistantSettingsPayload(blob.features.aiAssistantSettings)
     }
 
     private fun ensureRepositoriesLoaded() {
@@ -329,6 +335,7 @@ object ProfileSettingsSync {
         TraktCommentsSettings.ensureLoaded()
         EpisodeReleaseNotificationsRepository.ensureLoaded()
         NuvioEnhancedSettingsRepository.ensureLoaded()
+        AiAssistantSettingsRepository.ensureLoaded()
     }
 
     private fun buildSignature(blob: MobileProfileSettingsBlob): String =
@@ -357,7 +364,44 @@ object ProfileSettingsSync {
         "trakt_comments=${TraktCommentsSettings.enabled.value}",
         "episode_release_alerts=${EpisodeReleaseNotificationsRepository.uiState.value.isEnabled}",
         "nuvio_enhanced=${NuvioEnhancedSettingsRepository.uiState.value}",
+        "ai_assistant=${AiAssistantSettingsRepository.uiState.value}",
     ).joinToString(separator = "||")
+
+    private fun exportAiAssistantSettingsPayload(): JsonObject {
+        val settings = AiAssistantSettingsRepository.uiState.value
+        return buildJsonObject {
+            put("enabled", encodeSyncBoolean(settings.enabled))
+            put("web_search_enabled", encodeSyncBoolean(settings.webSearchEnabled))
+            put("provider", encodeSyncString(settings.provider.name))
+            put("tavily_api_key", encodeSyncString(settings.tavilyApiKey))
+            put("cerebras_api_key", encodeSyncString(settings.cerebrasApiKey))
+            put("groq_api_key", encodeSyncString(settings.groqApiKey))
+            put("gemini_api_key", encodeSyncString(settings.geminiApiKey))
+            put("openrouter_api_key", encodeSyncString(settings.openRouterApiKey))
+            put("cerebras_model", encodeSyncString(settings.cerebrasModel))
+            put("groq_model", encodeSyncString(settings.groqModel))
+            put("gemini_model", encodeSyncString(settings.geminiModel))
+            put("openrouter_model", encodeSyncString(settings.openRouterModel))
+        }
+    }
+
+    private fun applyAiAssistantSettingsPayload(payload: JsonObject) {
+        if (payload.isEmpty()) return
+        payload.decodeSyncBoolean("enabled")?.let(AiAssistantSettingsRepository::setEnabled)
+        payload.decodeSyncBoolean("web_search_enabled")?.let(AiAssistantSettingsRepository::setWebSearchEnabled)
+        payload.decodeSyncString("provider")
+            ?.let { value -> runCatching { AiProvider.valueOf(value) }.getOrNull() }
+            ?.let(AiAssistantSettingsRepository::setProvider)
+        payload.decodeSyncString("tavily_api_key")?.let(AiAssistantSettingsRepository::setTavilyApiKey)
+        payload.decodeSyncString("cerebras_api_key")?.let(AiAssistantSettingsRepository::setCerebrasApiKey)
+        payload.decodeSyncString("groq_api_key")?.let(AiAssistantSettingsRepository::setGroqApiKey)
+        payload.decodeSyncString("gemini_api_key")?.let(AiAssistantSettingsRepository::setGeminiApiKey)
+        payload.decodeSyncString("openrouter_api_key")?.let(AiAssistantSettingsRepository::setOpenRouterApiKey)
+        payload.decodeSyncString("cerebras_model")?.let(AiAssistantSettingsRepository::setCerebrasModel)
+        payload.decodeSyncString("groq_model")?.let(AiAssistantSettingsRepository::setGroqModel)
+        payload.decodeSyncString("gemini_model")?.let(AiAssistantSettingsRepository::setGeminiModel)
+        payload.decodeSyncString("openrouter_model")?.let(AiAssistantSettingsRepository::setOpenRouterModel)
+    }
 }
 
 @Serializable
@@ -382,6 +426,7 @@ private data class MobileProfileSettingsFeatures(
     @SerialName("trakt_comments_settings") val traktCommentsSettings: JsonObject = JsonObject(emptyMap()),
     @SerialName("notifications_settings") val notificationsSettings: NotificationsSettingsPayload = NotificationsSettingsPayload(),
     @SerialName("nuvio_enhanced_settings_payload") val nuvioEnhancedSettingsPayload: String = "",
+    @SerialName("ai_assistant_settings") val aiAssistantSettings: JsonObject = JsonObject(emptyMap()),
 )
 
 @Serializable

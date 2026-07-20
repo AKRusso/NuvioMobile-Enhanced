@@ -1770,6 +1770,8 @@
     <string name="nuvio_enhanced_live_tv_desc">Özellik verisini kaldırmadan ana navigasyonda Canlı TV'yi göster veya gizle.</string>
     <string name="nuvio_enhanced_source_pinning_title">Sabitlenmiş yayın kaynakları</string>
     <string name="nuvio_enhanced_source_pinning_desc">Seçilen yayın kaynağını listenin en üstüne sabitlemeden önce onay ister.</string>
+    <string name="nuvio_enhanced_background_stream_prefetch_title">Arka planda yayın hazırlama</string>
+    <string name="nuvio_enhanced_background_stream_prefetch_desc">Detay sayfası açılınca yayınları önceden aramaya başlar; Play’e basınca hazırlanmış sonuçlar kullanılabilir.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">Player durum göstergesi</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">Player kontrolleri görünürken üstte Wi-Fi/LTE, saat ve batarya bilgisini kompakt bir göstergeyle gösterir.</string>
     <string name="nuvio_enhanced_status_bar_title">Durum çubuğu</string>

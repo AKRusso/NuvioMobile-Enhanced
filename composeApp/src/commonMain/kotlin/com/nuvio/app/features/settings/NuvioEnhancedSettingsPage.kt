@@ -350,6 +350,18 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_title),
+                    description = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_desc),
+                    checked = settings.backgroundStreamPrefetchEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.BackgroundStreamPrefetch),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.BackgroundStreamPrefetch)
+                        NuvioEnhancedSettingsRepository.setBackgroundStreamPrefetchEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_player_status_overlay_title),
                     description = stringResource(Res.string.nuvio_enhanced_player_status_overlay_desc),
                     checked = settings.playerStatusOverlayEnabled,

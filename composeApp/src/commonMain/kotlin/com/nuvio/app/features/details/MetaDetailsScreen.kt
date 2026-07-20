@@ -99,7 +99,9 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
+import com.nuvio.app.features.streams.StreamsRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.trakt.TraktAuthRepository
@@ -202,6 +204,10 @@ fun MetaDetailsScreen(
     val playerSettingsUiState by remember {
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val nuvioEnhancedSettings by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var autoLoadAttempted by remember(type, id) { mutableStateOf(false) }
@@ -509,6 +515,36 @@ fun MetaDetailsScreen(
                 val seriesStreamVideoId = remember(seriesAction, seriesActionVideo) {
                     val action = seriesAction ?: return@remember null
                     seriesActionVideo?.id?.takeIf { it.isNotBlank() } ?: action.videoId
+                }
+                LaunchedEffect(
+                    nuvioEnhancedSettings.backgroundStreamPrefetchEnabled,
+                    offlineDetailsMode,
+                    meta.id,
+                    meta.type,
+                    meta.name,
+                    seriesStreamVideoId,
+                    seriesAction?.seasonNumber,
+                    seriesAction?.episodeNumber,
+                    seriesAction?.episodeTitle,
+                ) {
+                    if (!nuvioEnhancedSettings.backgroundStreamPrefetchEnabled) return@LaunchedEffect
+                    if (offlineDetailsMode) return@LaunchedEffect
+                    val hasEpisodesForPrefetch = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
+                    val targetVideoId = if (hasEpisodesForPrefetch && seriesAction != null) {
+                        seriesStreamVideoId ?: seriesAction.videoId
+                    } else {
+                        meta.id
+                    }.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+                    StreamsRepository.load(
+                        type = meta.type,
+                        videoId = targetVideoId,
+                        parentMetaId = meta.id,
+                        parentMetaType = meta.type,
+                        season = seriesAction?.seasonNumber.takeIf { hasEpisodesForPrefetch },
+                        episode = seriesAction?.episodeNumber.takeIf { hasEpisodesForPrefetch },
+                        manualSelection = false,
+                        searchTitle = if (hasEpisodesForPrefetch) seriesAction?.episodeTitle ?: meta.name else meta.name,
+                    )
                 }
                 val showRandomEpisodeButton = metaScreenSettingsUiState.randomEpisodeButton &&
                     meta.isSeriesLikeForEpisodeRatings()

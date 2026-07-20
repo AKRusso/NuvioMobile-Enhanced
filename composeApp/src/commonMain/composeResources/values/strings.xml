@@ -2360,6 +2360,8 @@
     <string name="nuvio_enhanced_live_tv_desc">Show or hide Live TV in the main navigation without removing the feature data.</string>
     <string name="nuvio_enhanced_source_pinning_title">Pinned stream sources</string>
     <string name="nuvio_enhanced_source_pinning_desc">Ask before pinning a selected stream source to the top of the picker.</string>
+    <string name="nuvio_enhanced_background_stream_prefetch_title">Background stream prefetch</string>
+    <string name="nuvio_enhanced_background_stream_prefetch_desc">Start fetching streams when a details page opens so Play can use already prepared results.</string>
     <string name="nuvio_enhanced_player_status_overlay_title">Player status overlay</string>
     <string name="nuvio_enhanced_player_status_overlay_desc">Show Wi-Fi/LTE, time, and battery in a compact top overlay while player controls are visible.</string>
     <string name="nuvio_enhanced_status_bar_title">Status bar</string>

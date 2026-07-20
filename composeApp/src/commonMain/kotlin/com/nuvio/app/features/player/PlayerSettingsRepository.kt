@@ -84,7 +84,7 @@ data class PlayerSettingsUiState(
     val iosToneMappingMode: IosToneMappingMode = IosToneMappingMode.Auto,
     val iosTargetPrimaries: IosTargetPrimaries = IosTargetPrimaries.Auto,
     val iosTargetTransfer: IosTargetTransfer = IosTargetTransfer.Auto,
-    val iosHardwareDecoderMode: IosHardwareDecoderMode = IosHardwareDecoderMode.Off,
+    val iosHardwareDecoderMode: IosHardwareDecoderMode = IosHardwareDecoderMode.Auto,
     val iosAudioOutputMode: IosAudioOutputMode = IosAudioOutputMode.Auto,
     val iosExtendedDynamicRangeEnabled: Boolean = false,
     val iosTargetColorspaceHintEnabled: Boolean = false,
@@ -154,7 +154,7 @@ object PlayerSettingsRepository {
     private var iosToneMappingMode = IosToneMappingMode.Auto
     private var iosTargetPrimaries = IosTargetPrimaries.Auto
     private var iosTargetTransfer = IosTargetTransfer.Auto
-    private var iosHardwareDecoderMode = IosHardwareDecoderMode.Off
+    private var iosHardwareDecoderMode = IosHardwareDecoderMode.Auto
     private var iosAudioOutputMode = IosAudioOutputMode.Auto
     private var iosExtendedDynamicRangeEnabled = false
     private var iosTargetColorspaceHintEnabled = false
@@ -229,7 +229,7 @@ object PlayerSettingsRepository {
         iosToneMappingMode = IosToneMappingMode.Auto
         iosTargetPrimaries = IosTargetPrimaries.Auto
         iosTargetTransfer = IosTargetTransfer.Auto
-        iosHardwareDecoderMode = IosHardwareDecoderMode.Off
+        iosHardwareDecoderMode = IosHardwareDecoderMode.Auto
         iosAudioOutputMode = IosAudioOutputMode.Auto
         iosExtendedDynamicRangeEnabled = false
         iosTargetColorspaceHintEnabled = false
@@ -374,7 +374,7 @@ object PlayerSettingsRepository {
             ?: IosTargetTransfer.Auto
         iosHardwareDecoderMode = PlayerSettingsStorage.loadIosHardwareDecoderMode()
             ?.let { runCatching { IosHardwareDecoderMode.valueOf(it) }.getOrNull() }
-            ?: IosHardwareDecoderMode.Off
+            ?: IosHardwareDecoderMode.Auto
         iosAudioOutputMode = IosAudioOutputMode.fromStoredName(PlayerSettingsStorage.loadIosAudioOutputMode())
         iosExtendedDynamicRangeEnabled = PlayerSettingsStorage.loadIosExtendedDynamicRangeEnabled() ?: false
         iosTargetColorspaceHintEnabled = PlayerSettingsStorage.loadIosTargetColorspaceHintEnabled() ?: false
@@ -829,7 +829,7 @@ object PlayerSettingsRepository {
                 iosExtendedDynamicRangeEnabled = false
                 iosTargetColorspaceHintEnabled = false
                 iosHdrComputePeakEnabled = false
-                iosHardwareDecoderMode = IosHardwareDecoderMode.Off
+                iosHardwareDecoderMode = IosHardwareDecoderMode.Auto
                 iosToneMappingMode = IosToneMappingMode.Auto
                 iosTargetPrimaries = IosTargetPrimaries.Auto
                 iosTargetTransfer = IosTargetTransfer.Auto

@@ -58,10 +58,7 @@ actual fun rememberIsInPictureInPicture(): Boolean = false
 actual fun rememberPlayerGestureController(): PlayerGestureController? {
     PlayerSettingsRepository.ensureLoaded()
     val playerSettings = PlayerSettingsRepository.uiState.value
-    val controller = remember(
-        playerSettings.rememberPlayerBrightnessEnabled,
-        playerSettings.rememberedPlayerBrightness,
-    ) {
+    val controller = remember {
         IOSPlayerGestureController(
             rememberBrightnessEnabled = playerSettings.rememberPlayerBrightnessEnabled,
             rememberedBrightness = playerSettings.rememberedPlayerBrightness,

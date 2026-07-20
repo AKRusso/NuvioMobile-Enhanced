@@ -113,8 +113,6 @@ actual fun rememberPlayerGestureController(): PlayerGestureController? {
     val controller = remember(
         activity,
         audioManager,
-        playerSettings.rememberPlayerBrightnessEnabled,
-        playerSettings.rememberedPlayerBrightness,
     ) {
         AndroidPlayerGestureController(
             activity = activity,

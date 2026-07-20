@@ -3,6 +3,7 @@ package com.nuvio.app.features.player
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.media.audiofx.LoudnessEnhancer
 import android.text.SpannableString
 import android.net.Uri
 import android.util.Log
@@ -372,9 +373,33 @@ private fun ExoPlayerSurface(
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var currentSubtitleStyle by remember { mutableStateOf(SubtitleStyleState.DEFAULT) }
     var subtitleSelectionJob by remember { mutableStateOf<Job?>(null) }
+    var loudnessEnhancer by remember(exoPlayer) { mutableStateOf<LoudnessEnhancer?>(null) }
 
     fun syncPlayerViewKeepScreenOn() {
         playerViewRef?.keepScreenOn = exoPlayer.shouldKeepPlayerScreenOn()
+    }
+
+    fun applyExoVolumeBoost(multiplier: Float) {
+        val boost = multiplier.coerceIn(1f, 2f)
+        val targetGainMb = ((boost - 1f) * 1200f).toInt().coerceIn(0, 1200)
+        val sessionId = exoPlayer.audioSessionId
+        if (targetGainMb <= 0 || sessionId == C.AUDIO_SESSION_ID_UNSET) {
+            loudnessEnhancer?.enabled = false
+            exoPlayer.volume = 1f
+            return
+        }
+        val enhancer = loudnessEnhancer ?: runCatching {
+            LoudnessEnhancer(sessionId).also { loudnessEnhancer = it }
+        }.getOrNull()
+        enhancer?.let {
+            runCatching {
+                it.setTargetGain(targetGainMb)
+                it.enabled = true
+            }.onFailure { error ->
+                Log.w(TAG, "Failed to apply LoudnessEnhancer volume boost", error)
+            }
+        }
+        exoPlayer.volume = 1f
     }
 
     fun preserveAudioSelectionForReload(reason: String) {
@@ -409,6 +434,10 @@ private fun ExoPlayerSurface(
         }
 
         val listener = object : Player.Listener {
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                applyExoVolumeBoost(playerSettings.volumeBoostPercent / 100f)
+            }
+
             override fun onPlayerError(error: PlaybackException) {
                 syncPlayerViewKeepScreenOn()
 
@@ -510,6 +539,8 @@ private fun ExoPlayerSurface(
         onDispose {
             PlayerPictureInPictureManager.registerPausePlaybackCallback(null)
             exoPlayer.removeListener(listener)
+            loudnessEnhancer?.release()
+            loudnessEnhancer = null
             playerViewRef?.keepScreenOn = false
             subtitleSelectionJob?.cancel()
         }
@@ -574,7 +605,7 @@ private fun ExoPlayerSurface(
                 }
 
                 override fun setVolumeBoost(multiplier: Float) {
-                    exoPlayer.volume = multiplier.coerceIn(0f, 2f)
+                    applyExoVolumeBoost(multiplier)
                 }
 
                 override fun getAudioTracks(): List<AudioTrack> =
@@ -1135,7 +1166,14 @@ private class NuvioLibmpvView(
             }
 
             override fun setVolumeBoost(multiplier: Float) {
-                mpv.setPropertyDouble("volume", (multiplier.coerceIn(0f, 2f) * 100f).toDouble())
+                val boost = multiplier.coerceIn(1f, 2f)
+                mpv.setPropertyDouble("volume", 100.0)
+                if (boost <= 1.001f) {
+                    mpv.setPropertyString("af", "")
+                } else {
+                    val gain = (boost * 100f).toInt().toFloat() / 100f
+                    mpv.setPropertyString("af", "lavfi=[volume=$gain]")
+                }
             }
 
             override fun getAudioTracks(): List<AudioTrack> =
