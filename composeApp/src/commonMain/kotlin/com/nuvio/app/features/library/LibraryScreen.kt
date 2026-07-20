@@ -135,6 +135,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -200,6 +204,13 @@ fun LibraryScreen(
     var releaseCalendarLoading by remember { mutableStateOf(false) }
     var releaseCalendarLoadedKey by remember { mutableStateOf<String?>(null) }
     val releaseRadarDetailsRequestKey = remember(uiState.items) { uiState.items.homeRadarDetailsRequestKey() }
+    val releaseSupportProfileId = ProfileRepository.activeProfileId
+    val releaseSupportCacheKey = remember(releaseCalendarItemsKey, releaseRadarDetailsRequestKey) {
+        libraryReleaseSupportCacheKey(
+            calendarItemsKey = releaseCalendarItemsKey,
+            radarDetailsRequestKey = releaseRadarDetailsRequestKey,
+        )
+    }
     var releaseRadarDetailsByKey by remember { mutableStateOf<Map<String, MetaDetails>>(emptyMap()) }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -265,38 +276,100 @@ fun LibraryScreen(
         }
     }
 
-    LaunchedEffect(releaseCalendarItemsKey, releaseCalendarFallbackEvents) {
-        releaseCalendarEvents = releaseCalendarFallbackEvents
+    LaunchedEffect(releaseSupportProfileId, releaseSupportCacheKey, releaseCalendarFallbackEvents) {
+        val cachedDetails = loadLibraryReleaseSupportCache(
+            profileId = releaseSupportProfileId,
+            cacheKey = releaseSupportCacheKey,
+        )?.detailsByKey.orEmpty()
+        releaseCalendarEvents = if (cachedDetails.isNotEmpty()) {
+            buildLibraryReleaseCalendarEventsFromDetails(uiState.items, cachedDetails)
+        } else {
+            releaseCalendarFallbackEvents
+        }
         releaseCalendarLoading = false
         releaseCalendarLoadedKey = null
     }
 
-    LaunchedEffect(showReleaseCalendar, releaseCalendarItemsKey) {
+    LaunchedEffect(showReleaseCalendar, releaseSupportProfileId, releaseSupportCacheKey) {
         if (!showReleaseCalendar) return@LaunchedEffect
         val itemsSnapshot = uiState.items
-        if (releaseCalendarLoadedKey == releaseCalendarItemsKey) return@LaunchedEffect
-        releaseCalendarEvents = releaseCalendarFallbackEvents
+        if (releaseCalendarLoadedKey == releaseSupportCacheKey) return@LaunchedEffect
+        val cachedPayload = loadLibraryReleaseSupportCache(
+            profileId = releaseSupportProfileId,
+            cacheKey = releaseSupportCacheKey,
+        )
+        val cachedDetails = cachedPayload?.detailsByKey.orEmpty()
+        if (cachedDetails.isNotEmpty()) {
+            releaseCalendarEvents = buildLibraryReleaseCalendarEventsFromDetails(
+                items = itemsSnapshot,
+                detailsByKey = cachedDetails,
+            )
+        } else {
+            releaseCalendarEvents = releaseCalendarFallbackEvents
+        }
         if (itemsSnapshot.isEmpty()) {
-            releaseCalendarLoadedKey = releaseCalendarItemsKey
+            releaseCalendarLoadedKey = releaseSupportCacheKey
             return@LaunchedEffect
         }
-        releaseCalendarLoading = true
+        if (cachedPayload?.isFresh() == true) {
+            releaseCalendarLoadedKey = releaseSupportCacheKey
+            releaseCalendarLoading = false
+            return@LaunchedEffect
+        }
+        releaseCalendarLoading = cachedPayload == null
         try {
-            releaseCalendarEvents = buildLibraryReleaseCalendarEvents(itemsSnapshot)
-            releaseCalendarLoadedKey = releaseCalendarItemsKey
+            val resolvedDetails = resolveLibraryReleaseRadarDetails(itemsSnapshot)
+            val nextDetails = if (cachedDetails.isNotEmpty()) {
+                cachedDetails + resolvedDetails
+            } else {
+                resolvedDetails
+            }
+            if (nextDetails.isNotEmpty()) {
+                saveLibraryReleaseSupportCache(
+                    profileId = releaseSupportProfileId,
+                    cacheKey = releaseSupportCacheKey,
+                    detailsByKey = nextDetails,
+                )
+            }
+            releaseCalendarEvents = buildLibraryReleaseCalendarEventsFromDetails(itemsSnapshot, nextDetails)
+            releaseCalendarLoadedKey = releaseSupportCacheKey
         } finally {
             releaseCalendarLoading = false
         }
     }
 
-    LaunchedEffect(sourceMode, releaseRadarDetailsRequestKey) {
+    LaunchedEffect(sourceMode, releaseSupportProfileId, releaseSupportCacheKey) {
         if (sourceMode == LibraryViewMode.Cloud || releaseRadarDetailsRequestKey.isBlank()) {
             releaseRadarDetailsByKey = emptyMap()
             return@LaunchedEffect
         }
         val itemsSnapshot = uiState.items
-        releaseRadarDetailsByKey = withContext(Dispatchers.Default) {
+        val cachedPayload = loadLibraryReleaseSupportCache(
+            profileId = releaseSupportProfileId,
+            cacheKey = releaseSupportCacheKey,
+        )
+        val cachedDetails = cachedPayload?.detailsByKey.orEmpty()
+        if (cachedDetails.isNotEmpty()) {
+            releaseRadarDetailsByKey = cachedDetails
+            if (cachedPayload?.isFresh() == true) {
+                return@LaunchedEffect
+            }
+        }
+        val resolvedDetails = withContext(Dispatchers.Default) {
             resolveLibraryReleaseRadarDetails(itemsSnapshot)
+        }
+        val nextDetails = if (cachedDetails.isNotEmpty()) {
+            cachedDetails + resolvedDetails
+        } else {
+            resolvedDetails
+        }
+        if (nextDetails.isNotEmpty()) {
+            releaseRadarDetailsByKey = nextDetails
+            saveLibraryReleaseSupportCache(
+                profileId = releaseSupportProfileId,
+                cacheKey = releaseSupportCacheKey,
+                detailsByKey = nextDetails,
+            )
         }
     }
 
@@ -2644,9 +2717,26 @@ private fun libraryCalendarItemsCacheKey(items: List<LibraryItem>): String =
         "${item.type}:${item.id}:${item.releaseInfo.orEmpty()}"
     }
 
+private fun libraryReleaseSupportCacheKey(
+    calendarItemsKey: String,
+    radarDetailsRequestKey: String,
+): String = "release_support_v2:${calendarItemsKey.hashCode()}:${radarDetailsRequestKey.hashCode()}"
+
 private suspend fun buildLibraryReleaseCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> {
+    val resolvedDetails = resolveLibraryReleaseRadarDetails(items)
+    return buildLibraryReleaseCalendarEventsFromDetails(items, resolvedDetails)
+}
+
+private fun buildLibraryReleaseCalendarEventsFromDetails(
+    items: List<LibraryItem>,
+    detailsByKey: Map<String, MetaDetails>,
+): List<LibraryCalendarEvent> {
     val fallbackEvents = buildLibraryReleaseCalendarFallbackEvents(items)
-    val episodeEvents = buildLibraryEpisodeCalendarEvents(items)
+    val libraryItemsByRadarKey = items.associateBy(::libraryItemKeyForHomeRadar)
+    val episodeEvents = detailsByKey.flatMap { (radarKey, details) ->
+        val item = libraryItemsByRadarKey[radarKey] ?: return@flatMap emptyList()
+        details.videos.mapNotNull { video -> video.toLibraryCalendarEvent(item) }
+    }
     val seriesWithEpisodeEvents = episodeEvents.map { it.item.id to it.item.type.lowercase() }.toSet()
     return (episodeEvents + fallbackEvents.filterNot { event ->
         event.item.isLibrarySeries() && (event.item.id to event.item.type.lowercase()) in seriesWithEpisodeEvents
@@ -2694,6 +2784,39 @@ private suspend fun resolveLibraryReleaseRadarDetails(items: List<LibraryItem>):
         resolvedDetails.toMap()
     }
 
+private fun loadLibraryReleaseSupportCache(
+    profileId: Int,
+    cacheKey: String,
+): LibraryReleaseSupportCachePayload? =
+    LibraryStorage.loadReleaseSupportPayload(profileId, cacheKey)
+        ?.let { payload ->
+            runCatching {
+                libraryReleaseSupportJson.decodeFromString<StoredLibraryReleaseSupportPayload>(payload)
+            }.getOrNull()
+        }
+        ?.toCachePayload()
+
+private fun saveLibraryReleaseSupportCache(
+    profileId: Int,
+    cacheKey: String,
+    detailsByKey: Map<String, MetaDetails>,
+) {
+    if (detailsByKey.isEmpty()) return
+    val payload = StoredLibraryReleaseSupportPayload(
+        fetchedAtEpochMs = LibraryClock.nowEpochMs(),
+        details = detailsByKey.map { (key, details) ->
+            StoredLibraryReleaseSupportDetail.from(key, details)
+        },
+    )
+    runCatching {
+        LibraryStorage.saveReleaseSupportPayload(
+            profileId = profileId,
+            cacheKey = cacheKey,
+            payload = libraryReleaseSupportJson.encodeToString(payload),
+        )
+    }
+}
+
 private suspend fun buildLibraryEpisodeCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> =
     coroutineScope {
         val events = mutableListOf<LibraryCalendarEvent>()
@@ -2734,6 +2857,121 @@ private fun MetaVideo.toLibraryCalendarEvent(item: LibraryItem): LibraryCalendar
         imageUrl = thumbnail ?: item.banner ?: item.poster,
         sortTitle = "${item.name} ${season ?: 0} ${episode ?: 0} $title",
     )
+}
+
+private data class LibraryReleaseSupportCachePayload(
+    val fetchedAtEpochMs: Long,
+    val detailsByKey: Map<String, MetaDetails>,
+) {
+    fun isFresh(nowEpochMs: Long = LibraryClock.nowEpochMs()): Boolean =
+        fetchedAtEpochMs > 0L &&
+            nowEpochMs - fetchedAtEpochMs <= LIBRARY_RELEASE_SUPPORT_CACHE_TTL_MS &&
+            detailsByKey.isNotEmpty()
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportPayload(
+    val fetchedAtEpochMs: Long,
+    val details: List<StoredLibraryReleaseSupportDetail> = emptyList(),
+) {
+    fun toCachePayload(): LibraryReleaseSupportCachePayload =
+        LibraryReleaseSupportCachePayload(
+            fetchedAtEpochMs = fetchedAtEpochMs,
+            detailsByKey = details.mapNotNull { detail ->
+                val key = detail.key.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                key to detail.toMetaDetails()
+            }.toMap(),
+        )
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportDetail(
+    val key: String,
+    val id: String,
+    val type: String,
+    val name: String,
+    val poster: String? = null,
+    val background: String? = null,
+    val logo: String? = null,
+    val description: String? = null,
+    val releaseInfo: String? = null,
+    val imdbRating: String? = null,
+    val genres: List<String> = emptyList(),
+    val videos: List<StoredLibraryReleaseSupportVideo> = emptyList(),
+) {
+    fun toMetaDetails(): MetaDetails =
+        MetaDetails(
+            id = id,
+            type = type,
+            name = name,
+            poster = poster,
+            background = background,
+            logo = logo,
+            description = description,
+            releaseInfo = releaseInfo,
+            imdbRating = imdbRating,
+            genres = genres,
+            videos = videos.map(StoredLibraryReleaseSupportVideo::toMetaVideo),
+        )
+
+    companion object {
+        fun from(key: String, details: MetaDetails): StoredLibraryReleaseSupportDetail =
+            StoredLibraryReleaseSupportDetail(
+                key = key,
+                id = details.id,
+                type = details.type,
+                name = details.name,
+                poster = details.poster,
+                background = details.background,
+                logo = details.logo,
+                description = details.description,
+                releaseInfo = details.releaseInfo,
+                imdbRating = details.imdbRating,
+                genres = details.genres,
+                videos = details.videos.map(StoredLibraryReleaseSupportVideo::from),
+            )
+    }
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportVideo(
+    val id: String,
+    val title: String,
+    val released: String? = null,
+    val thumbnail: String? = null,
+    val seasonPoster: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val overview: String? = null,
+    val runtime: Int? = null,
+) {
+    fun toMetaVideo(): MetaVideo =
+        MetaVideo(
+            id = id,
+            title = title,
+            released = released,
+            thumbnail = thumbnail,
+            seasonPoster = seasonPoster,
+            season = season,
+            episode = episode,
+            overview = overview,
+            runtime = runtime,
+        )
+
+    companion object {
+        fun from(video: MetaVideo): StoredLibraryReleaseSupportVideo =
+            StoredLibraryReleaseSupportVideo(
+                id = video.id,
+                title = video.title,
+                released = video.released,
+                thumbnail = video.thumbnail,
+                seasonPoster = video.seasonPoster,
+                season = video.season,
+                episode = video.episode,
+                overview = video.overview,
+                runtime = video.runtime,
+            )
+    }
 }
 
 private fun LibraryItem.isLibrarySeries(): Boolean =
@@ -3118,7 +3356,12 @@ private const val LIBRARY_HEALTH_SECTION_KEY = "library_health"
 private const val LIBRARY_RELEASE_RADAR_SECTION_KEY = "library_release_radar"
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
 private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4
+private const val LIBRARY_RELEASE_SUPPORT_CACHE_TTL_MS = 6L * 60L * 60L * 1_000L
 private const val LIBRARY_DOWNLOADS_PREVIEW_LIMIT = 18
+private val libraryReleaseSupportJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = false
+}
 
 private data class LibraryDisplayEntry(
     val globalKey: String,
