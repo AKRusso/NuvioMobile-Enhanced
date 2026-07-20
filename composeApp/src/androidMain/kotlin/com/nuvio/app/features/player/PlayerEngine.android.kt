@@ -11,6 +11,7 @@ import android.util.TypedValue
 import android.graphics.Typeface
 import android.os.Build
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.SurfaceHolder
 import android.util.AttributeSet
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -996,6 +997,10 @@ private class NuvioLibmpvView(
     private var currentExternalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> = emptyList()
     private var lastKnownDurationMs: Long = 0L
     private var lastKnownPositionMs: Long = 0L
+    private var surfaceReady: Boolean = false
+    private var lastSurfaceWidth: Int = 0
+    private var lastSurfaceHeight: Int = 0
+    private var pendingLoadPlayWhenReady: Boolean? = null
 
     override fun initOptions() {
         setVo(videoOutput.mpvValue)
@@ -1043,6 +1048,23 @@ private class NuvioLibmpvView(
         props.forEach { (name, format) -> mpv.observeProperty(name, format) }
     }
 
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        super.surfaceChanged(holder, format, width, height)
+        updateSurfaceSize(width, height)
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+        surfaceReady = false
+        lastSurfaceWidth = 0
+        lastSurfaceHeight = 0
+        super.surfaceDestroyed(holder)
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight)
+        updateSurfaceSize(width, height)
+    }
+
     fun loadSource(
         sourceUrl: String,
         sourceAudioUrl: String?,
@@ -1066,16 +1088,27 @@ private class NuvioLibmpvView(
         } else {
             applyRequestHeaders(requestHeaders)
             setPaused(!playWhenReady)
+            if (pendingLoadPlayWhenReady != null) {
+                pendingLoadPlayWhenReady = playWhenReady
+            }
         }
     }
 
     private fun loadCurrentSource(playWhenReady: Boolean) {
         val sourceUrl = currentSourceUrl ?: return
+        if (!surfaceReady) {
+            pendingLoadPlayWhenReady = playWhenReady
+            applyRequestHeaders(currentRequestHeaders)
+            setPaused(!playWhenReady)
+            return
+        }
         val libmpvSourceUrl = sourceUrl.toLibmpvLoadPath()
         applyRequestHeaders(currentRequestHeaders)
+        syncMpvSurfaceSize()
         setPaused(!playWhenReady)
         mpv.setOptionString("start", "0").logIfMpvError("start")
         mpv.command("loadfile", libmpvSourceUrl, "replace")
+        pendingLoadPlayWhenReady = null
         currentSourceAudioUrl?.takeIf { it.isNotBlank() }?.let { sourceAudioUrl ->
             mpv.command("audio-add", sourceAudioUrl.toLibmpvLoadPath(), "auto")
         }
@@ -1084,6 +1117,28 @@ private class NuvioLibmpvView(
             mpv.command("sub-add", subtitle.url.toLibmpvLoadPath(), flag)
         }
         setPaused(!playWhenReady)
+    }
+
+    private fun updateSurfaceSize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        surfaceReady = true
+        val changed = width != lastSurfaceWidth || height != lastSurfaceHeight
+        lastSurfaceWidth = width
+        lastSurfaceHeight = height
+        syncMpvSurfaceSize()
+        if (changed) {
+            requestLayout()
+            invalidate()
+            post { syncMpvSurfaceSize() }
+            postDelayed({ syncMpvSurfaceSize() }, LibmpvSurfaceResizeSettleDelayMs)
+        }
+        pendingLoadPlayWhenReady?.let(::loadCurrentSource)
+    }
+
+    private fun syncMpvSurfaceSize() {
+        val width = lastSurfaceWidth.takeIf { it > 0 } ?: width.takeIf { it > 0 } ?: return
+        val height = lastSurfaceHeight.takeIf { it > 0 } ?: height.takeIf { it > 0 } ?: return
+        mpv.setPropertyString("android-surface-size", "${width}x$height")
     }
 
     private fun String.toLibmpvLoadPath(): String {
@@ -1421,6 +1476,7 @@ private const val MPV_SUBTITLE_FONT_SIZE_SCALE = 55.0 / 18.0
 private const val MPV_SUBTITLE_FONT_SIZE_MIN = 36
 private const val MPV_SUBTITLE_FONT_SIZE_MAX = 122
 private const val MPV_SUBTITLE_OUTLINE_SIZE_SCALE = 1.5
+private const val LibmpvSurfaceResizeSettleDelayMs = 80L
 
 private fun buildAndroidLoadControl(memorySafeBufferEnabled: Boolean): DefaultLoadControl =
     DefaultLoadControl.Builder().apply {
