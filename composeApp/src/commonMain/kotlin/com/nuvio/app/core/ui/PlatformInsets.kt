@@ -12,6 +12,8 @@ internal expect val nuvioPlatformExtraBottomPadding: Dp
 internal expect val nuvioBottomNavigationExtraVerticalPadding: Dp
 @Composable
 internal expect fun nuvioBottomNavigationBarInsets(): WindowInsets
+@Composable
+internal expect fun platformPhysicalTopInset(): Dp
 
 internal val LocalNuvioBottomNavigationOverlayPadding = staticCompositionLocalOf { 0.dp }
 

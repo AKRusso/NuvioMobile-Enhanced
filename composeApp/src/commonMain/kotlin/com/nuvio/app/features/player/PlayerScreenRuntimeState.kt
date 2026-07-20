@@ -78,7 +78,7 @@ internal class PlayerScreenRuntime(
     var metaScreenSettingsUiState: MetaScreenSettingsUiState = MetaScreenSettingsUiState()
     var watchedUiState: WatchedUiState = WatchedUiState()
     var watchProgressUiState: WatchProgressUiState = WatchProgressUiState()
-    var sourceStreamsState: StreamsUiState = StreamsUiState()
+    var sourceStreamsState by mutableStateOf(StreamsUiState())
     var episodeStreamsRepoState: StreamsUiState = StreamsUiState()
     var metaUiState: MetaDetailsUiState = MetaDetailsUiState()
     var addonsUiState: AddonsUiState = AddonsUiState()

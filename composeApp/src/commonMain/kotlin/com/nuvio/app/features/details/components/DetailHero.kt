@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,13 +42,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.graphicsLayer
 import coil3.compose.AsyncImage
+import com.nuvio.app.core.ui.heroStretchHeight
+import com.nuvio.app.core.ui.heroStretchZoom
 import com.nuvio.app.features.details.MetaDetails
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -56,7 +59,9 @@ import org.jetbrains.compose.resources.stringResource
 fun DetailHero(
     meta: MetaDetails,
     isTablet: Boolean = false,
-    scrollOffsetProvider: () -> Float = { 0f },
+    scrollOffset: () -> Int = { 0 },
+    scrollOffsetProvider: (() -> Float)? = null,
+    stretchPx: () -> Float = { 0f },
     contentMaxWidth: Dp = 560.dp,
     onHeightChanged: (Int) -> Unit = {},
     heroTrailerSourceUrl: String? = null,
@@ -72,6 +77,7 @@ fun DetailHero(
     onHeroTrailerError: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val resolvedScrollOffset = scrollOffsetProvider ?: { scrollOffset().toFloat() }
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
     ) {
@@ -91,11 +97,13 @@ fun DetailHero(
         }
         val logoUrl = meta.logo?.takeIf { it.isNotBlank() }
 
+        val heroBaseHeightPx = with(LocalDensity.current) { heroHeight.roundToPx() }
+        LaunchedEffect(heroBaseHeightPx) { onHeightChanged(heroBaseHeightPx) }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(heroHeight)
-                .onSizeChanged { onHeightChanged(it.height) }
+                .heroStretchHeight(heroHeight, stretchPx)
                 .graphicsLayer {
                     clip = true
                 },
@@ -111,9 +119,12 @@ fun DetailHero(
                         model = imageUrl,
                         contentDescription = meta.name,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(heroHeight)
+                            .heroStretchZoom(stretchPx)
                             .graphicsLayer {
-                                translationY = scrollOffsetProvider() * 0.5f
+                                translationY = resolvedScrollOffset() * 0.5f
                                 scaleX = 1.08f
                                 scaleY = 1.08f
                         },
@@ -140,10 +151,13 @@ fun DetailHero(
                         playWhenReady = heroTrailerPlayWhenReady,
                         muted = heroTrailerMuted,
                         modifier = Modifier
-                            .fillMaxSize()
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .height(heroHeight)
+                            .heroStretchZoom(stretchPx)
                             .graphicsLayer {
                                 alpha = trailerAlpha
-                                translationY = scrollOffsetProvider() * 0.5f
+                                translationY = resolvedScrollOffset() * 0.5f
                                 scaleX = 1.08f
                                 scaleY = 1.08f
                             },

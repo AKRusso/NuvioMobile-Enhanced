@@ -89,6 +89,14 @@ object ProfileSettingsSync {
         observeLocalChangesAndPush()
     }
 
+    fun clearAccountState() {
+        observeJob?.cancel()
+        observeJob = null
+        skipNextPushSignature = null
+        isApplyingRemoteBlob = false
+        isServerSyncInFlight = false
+    }
+
     suspend fun pull(profileId: Int): Boolean {
         ensureRepositoriesLoaded()
         return syncMutex.withLock {

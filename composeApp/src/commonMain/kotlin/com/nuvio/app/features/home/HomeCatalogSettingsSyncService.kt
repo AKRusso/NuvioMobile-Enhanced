@@ -41,6 +41,7 @@ data class SyncCatalogItem(
 @Serializable
 data class SyncHomeCatalogPayload(
     @SerialName("hero_auto_scroll_enabled") val heroAutoScrollEnabled: Boolean = true,
+    @SerialName("show_catalog_type") val showCatalogType: Boolean = true,
     @SerialName("hide_unreleased_content") val hideUnreleasedContent: Boolean = false,
     @SerialName("hide_catalog_underline") val hideCatalogUnderline: Boolean = false,
     val items: List<SyncCatalogItem> = emptyList(),
@@ -77,6 +78,7 @@ object HomeCatalogSettingsSyncService {
 
     private const val PUSH_DEBOUNCE_MS = 1500L
     private const val HERO_AUTO_SCROLL_KEY = "hero_auto_scroll_enabled"
+    private const val SHOW_CATALOG_TYPE_KEY = "show_catalog_type"
     private const val HIDE_UNRELEASED_CONTENT_KEY = "hide_unreleased_content"
     private const val HIDE_CATALOG_UNDERLINE_KEY = "hide_catalog_underline"
 

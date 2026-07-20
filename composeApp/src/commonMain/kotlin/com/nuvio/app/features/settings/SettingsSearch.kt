@@ -833,9 +833,27 @@ internal fun settingsSearchEntries(
         )
     }
 
+    val cardDepthSection = stringResource(Res.string.settings_card_depth_title)
+    listOf(
+        PlaybackSearchRow("card-depth-effect", cardDepthSection, stringResource(Res.string.settings_card_depth_description)),
+        PlaybackSearchRow("card-depth-edge", stringResource(Res.string.settings_card_depth_edge)),
+        PlaybackSearchRow("card-depth-sheen", stringResource(Res.string.settings_card_depth_sheen)),
+    ).forEach { row ->
+        addRow(
+            page = SettingsPage.PosterCustomization,
+            key = "poster-${row.key}",
+            title = row.title,
+            description = row.description,
+            pageLabel = posterStylePage,
+            section = cardDepthSection,
+            icon = Icons.Rounded.Tune,
+        )
+    }
+
     val homeLayoutSection = stringResource(Res.string.settings_homescreen_section_hero)
     listOf(
         PlaybackSearchRow("home-hero", stringResource(Res.string.settings_homescreen_show_hero), stringResource(Res.string.settings_homescreen_show_hero_description)),
+        PlaybackSearchRow("home-catalog-type", stringResource(Res.string.layout_catalog_type), stringResource(Res.string.layout_catalog_type_sub)),
         PlaybackSearchRow("home-hide-unreleased", stringResource(Res.string.layout_hide_unreleased), stringResource(Res.string.layout_hide_unreleased_sub)),
         PlaybackSearchRow("home-hide-catalog-underline", stringResource(Res.string.settings_homescreen_hide_catalog_underline), stringResource(Res.string.settings_homescreen_hide_catalog_underline_description)),
         PlaybackSearchRow("home-hero-sources", stringResource(Res.string.settings_homescreen_section_hero_sources)),

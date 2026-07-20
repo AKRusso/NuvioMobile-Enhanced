@@ -18,6 +18,7 @@ object TmdbSettingsRepository {
     private var useArtwork = true
     private var useBasicInfo = true
     private var useDetails = true
+    private var useReleaseDates = false
     private var useCredits = true
     private var useProductions = true
     private var useNetworks = true
@@ -99,6 +100,13 @@ object TmdbSettingsRepository {
         persist = TmdbSettingsStorage::saveUseDetails,
     )
 
+    fun setUseReleaseDates(value: Boolean) = setBoolean(
+        current = useReleaseDates,
+        next = value,
+        update = { useReleaseDates = it },
+        persist = TmdbSettingsStorage::saveUseReleaseDates,
+    )
+
     fun setUseCredits(value: Boolean) = setBoolean(
         current = useCredits,
         next = value,
@@ -173,6 +181,7 @@ object TmdbSettingsRepository {
         useArtwork = TmdbSettingsStorage.loadUseArtwork() ?: true
         useBasicInfo = TmdbSettingsStorage.loadUseBasicInfo() ?: true
         useDetails = TmdbSettingsStorage.loadUseDetails() ?: true
+        useReleaseDates = TmdbSettingsStorage.loadUseReleaseDates() ?: false
         useCredits = TmdbSettingsStorage.loadUseCredits() ?: true
         useProductions = TmdbSettingsStorage.loadUseProductions() ?: true
         useNetworks = TmdbSettingsStorage.loadUseNetworks() ?: true
@@ -192,6 +201,7 @@ object TmdbSettingsRepository {
             useArtwork = useArtwork,
             useBasicInfo = useBasicInfo,
             useDetails = useDetails,
+            useReleaseDates = useReleaseDates,
             useCredits = useCredits,
             useProductions = useProductions,
             useNetworks = useNetworks,
