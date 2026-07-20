@@ -19,6 +19,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
@@ -541,6 +543,16 @@ object TmdbMetadataService {
         val normalizedLanguage = normalizeTmdbLanguage(language)
         val cacheKey = "$tmdbId:$mediaType:$normalizedLanguage:previewArtwork"
         previewArtworkCache[cacheKey]?.let { return@withContext it }
+        TmdbPreviewArtworkStorage.load(cacheKey)
+            ?.let { cachedPayload ->
+                runCatching {
+                    json.decodeFromString<TmdbPreviewArtwork>(cachedPayload)
+                }.getOrNull()
+            }
+            ?.let { cachedArtwork ->
+                previewArtworkCache[cacheKey] = cachedArtwork
+                return@withContext cachedArtwork
+            }
         val numericId = tmdbId.toIntOrNull() ?: return@withContext null
         val includeImageLanguage = buildString {
             append(normalizedLanguage.substringBefore("-"))
@@ -584,6 +596,12 @@ object TmdbMetadataService {
             releaseInfo = resolvedDetails.releaseDate ?: resolvedDetails.firstAirDate,
         )
         previewArtworkCache[cacheKey] = artwork
+        runCatching {
+            TmdbPreviewArtworkStorage.save(
+                cacheKey = cacheKey,
+                payload = json.encodeToString(artwork),
+            )
+        }
         artwork
     }
 
@@ -1304,6 +1322,7 @@ private data class EnrichmentPayload(
     val trailers: List<MetaTrailer>,
 )
 
+@Serializable
 private data class TmdbPreviewArtwork(
     val localizedTitle: String?,
     val description: String?,

@@ -337,26 +337,44 @@ object HomeRepository {
         localizedHeroArtworkJob?.cancel()
         localizedHeroArtworkRequestKey = nextRequestKey
         localizedHeroArtworkJob = scope.launch {
-            val results = items.map { item ->
-                async {
-                    val localized = try {
-                        withTimeoutOrNull(HOME_HERO_LOCALIZED_ARTWORK_TIMEOUT_MS) {
-                            TmdbMetadataService.localizePreviewArtwork(
-                                item = item,
-                                settings = settings,
-                            )
-                        }
-                    } catch (error: Throwable) {
-                        if (error is CancellationException) throw error
-                        null
+            val distinctItems = items.distinctBy(MetaPreview::stableKey)
+            distinctItems
+                .chunked(HOME_HERO_LOCALIZED_ARTWORK_BATCH_SIZE)
+                .forEachIndexed { batchIndex, batch ->
+                    if (localizedHeroArtworkRequestKey != nextRequestKey) return@launch
+                    val timeoutMs = if (batchIndex == 0) {
+                        HOME_HERO_INITIAL_LOCALIZED_ARTWORK_TIMEOUT_MS
+                    } else {
+                        HOME_HERO_LOCALIZED_ARTWORK_TIMEOUT_MS
                     }
-                    localizedHeroArtworkCacheKey(item, settings) to (localized ?: item)
-                }
-            }.awaitAll()
+                    val results = batch.map { item ->
+                        async {
+                            val localized = try {
+                                withTimeoutOrNull(timeoutMs) {
+                                    TmdbMetadataService.localizePreviewArtwork(
+                                        item = item,
+                                        settings = settings,
+                                    )
+                                }
+                            } catch (error: Throwable) {
+                                if (error is CancellationException) throw error
+                                null
+                            }
+                            localizedHeroArtworkCacheKey(item, settings) to (localized ?: item)
+                        }
+                    }.awaitAll()
 
-            if (localizedHeroArtworkRequestKey != nextRequestKey) return@launch
-            results.forEach { (cacheKey, item) ->
-                localizedHeroArtworkCache[cacheKey] = item
+                    if (localizedHeroArtworkRequestKey != nextRequestKey) return@launch
+                    results.forEach { (cacheKey, item) ->
+                        localizedHeroArtworkCache[cacheKey] = item
+                    }
+                    publishCurrentState(
+                        isLoading = _uiState.value.isLoading,
+                        requestKey = requestKey,
+                    )
+                }
+            if (localizedHeroArtworkRequestKey != nextRequestKey) {
+                return@launch
             }
             localizedHeroArtworkRequestKey = null
             publishCurrentState(
@@ -632,6 +650,8 @@ private const val HOME_CLOUDSTREAM_PROVIDER_TIMEOUT_MS = 5_000L
 private const val HOME_CLOUDSTREAM_TOTAL_PREVIEW_TIMEOUT_MS = 15_000L
 private const val HOME_CATALOG_REQUEST_TIMEOUT_MS = 12_000L
 private const val HOME_COLLECTION_HERO_SOURCE_TIMEOUT_MS = 10_000L
+private const val HOME_HERO_LOCALIZED_ARTWORK_BATCH_SIZE = 3
+private const val HOME_HERO_INITIAL_LOCALIZED_ARTWORK_TIMEOUT_MS = 1_500L
 private const val HOME_HERO_LOCALIZED_ARTWORK_TIMEOUT_MS = 4_000L
 
 private fun prioritizeDefinitions(

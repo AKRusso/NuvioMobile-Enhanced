@@ -119,7 +119,7 @@ private fun List<StreamItem>.stablePlayerKeys(): List<String> {
             stream.name,
             stream.title,
         ).joinToString(separator = ":").ifBlank { "stream-$index" }
-        val count = seen.getOrDefault(base, 0)
+        val count = seen[base] ?: 0
         seen[base] = count + 1
         if (count == 0) base else "$base#$count"
     }
