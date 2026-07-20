@@ -16,6 +16,7 @@ internal expect fun nuvioBottomNavigationBarInsets(): WindowInsets
 internal expect fun platformPhysicalTopInset(): Dp
 
 internal val LocalNuvioBottomNavigationOverlayPadding = staticCompositionLocalOf { 0.dp }
+val LocalNuvioNavBarScrollState = staticCompositionLocalOf<NuvioNavBarScrollState?> { null }
 
 @Composable
 internal fun nuvioSafeBottomPadding(extra: Dp = 0.dp): Dp {
