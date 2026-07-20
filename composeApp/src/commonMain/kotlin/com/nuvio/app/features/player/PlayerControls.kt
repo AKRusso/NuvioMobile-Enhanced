@@ -779,7 +779,8 @@ private fun ProgressControls(
     onEpisodesClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
+    val seekableDurationMs = playbackSnapshot.durationMs.takeIf { it > 0L }
+    val durationMs = seekableDurationMs ?: 1L
     val aspectRatioPainter = appIconPainter(AppIconResource.PlayerAspectRatio)
     val subtitlesPainter = appIconPainter(AppIconResource.PlayerSubtitles)
     val audioPainter = appIconPainter(AppIconResource.PlayerAudioFilled)
@@ -791,7 +792,7 @@ private fun ProgressControls(
                 .height(metrics.sliderTouchHeight)
                 .graphicsLayer(scaleY = metrics.sliderScaleY)
                 .tapToSeekOnTimeline(
-                    durationMs = playbackSnapshot.durationMs,
+                    durationMs = seekableDurationMs ?: 0L,
                     onSeek = { positionMs ->
                         val targetPositionMs = positionMs.coerceIn(0L, durationMs)
                         onScrubChange(targetPositionMs)
@@ -805,6 +806,7 @@ private fun ProgressControls(
                 onValueChange = { value -> onScrubChange(value.toLong()) },
                 onValueChangeFinished = { onScrubFinished(displayedPositionMs.coerceIn(0L, durationMs)) },
                 valueRange = 0f..durationMs.toFloat(),
+                enabled = seekableDurationMs != null,
             )
         }
         Row(
@@ -816,7 +818,7 @@ private fun ProgressControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize)
-            TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
+            TimePill(text = formatPlaybackTime(seekableDurationMs ?: 0L), fontSize = metrics.timeSize)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -942,7 +944,8 @@ internal fun LockedPlayerOverlay(
     onUnlock: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val durationMs = playbackSnapshot.durationMs.coerceAtLeast(1L)
+    val seekableDurationMs = playbackSnapshot.durationMs.takeIf { it > 0L }
+    val durationMs = seekableDurationMs ?: 1L
     val sliderColors = SliderDefaults.colors(
         thumbColor = Color.White,
         activeTrackColor = Color.White,
@@ -1026,7 +1029,7 @@ internal fun LockedPlayerOverlay(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TimePill(text = formatPlaybackTime(displayedPositionMs), fontSize = metrics.timeSize)
-                TimePill(text = formatPlaybackTime(durationMs), fontSize = metrics.timeSize)
+                TimePill(text = formatPlaybackTime(seekableDurationMs ?: 0L), fontSize = metrics.timeSize)
             }
         }
     }

@@ -78,6 +78,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
+import java.util.Locale
 
 private const val TAG = "NuvioPlayer"
 
@@ -856,7 +857,14 @@ private fun LibmpvPlayerSurface(
             }
             override fun eventProperty(property: String, value: String) = Unit
             override fun eventProperty(property: String, value: Double) {
-                if (property == "duration" || property == "time-pos" || property == "speed") {
+                if (
+                    property == "duration" ||
+                    property == "duration/full" ||
+                    property == "time-pos" ||
+                    property == "playback-time" ||
+                    property == "percent-pos" ||
+                    property == "speed"
+                ) {
                     dispatchSnapshot()
                 }
             }
@@ -986,6 +994,8 @@ private class NuvioLibmpvView(
     private var currentSourceAudioUrl: String? = null
     private var currentRequestHeaders: Map<String, String> = emptyMap()
     private var currentExternalSubtitles: List<com.nuvio.app.features.streams.StreamSubtitle> = emptyList()
+    private var lastKnownDurationMs: Long = 0L
+    private var lastKnownPositionMs: Long = 0L
 
     override fun initOptions() {
         setVo(videoOutput.mpvValue)
@@ -1003,6 +1013,8 @@ private class NuvioLibmpvView(
         mpv.setPropertyBoolean("keep-open", true)
         mpv.setPropertyBoolean("input-default-bindings", true)
         mpv.setPropertyBoolean("audio-fallback-to-null", true)
+        mpv.setOptionString("resume-playback", "no").logIfMpvError("resume-playback")
+        mpv.setOptionString("save-position-on-quit", "no").logIfMpvError("save-position-on-quit")
     }
 
     override fun postInitOptions() = Unit
@@ -1016,7 +1028,10 @@ private class NuvioLibmpvView(
             "seeking" to MPV.mpvFormat.MPV_FORMAT_FLAG,
             "cache-buffering-state" to MPV.mpvFormat.MPV_FORMAT_INT64,
             "duration" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
+            "duration/full" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "time-pos" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
+            "playback-time" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
+            "percent-pos" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "demuxer-cache-time" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "speed" to MPV.mpvFormat.MPV_FORMAT_DOUBLE,
             "video-params/w" to MPV.mpvFormat.MPV_FORMAT_INT64,
@@ -1045,6 +1060,8 @@ private class NuvioLibmpvView(
         currentRequestHeaders = requestHeaders
         currentExternalSubtitles = externalSubtitles
         if (!sameSource) {
+            lastKnownDurationMs = 0L
+            lastKnownPositionMs = 0L
             loadCurrentSource(playWhenReady = playWhenReady)
         } else {
             applyRequestHeaders(requestHeaders)
@@ -1057,6 +1074,7 @@ private class NuvioLibmpvView(
         val libmpvSourceUrl = sourceUrl.toLibmpvLoadPath()
         applyRequestHeaders(currentRequestHeaders)
         setPaused(!playWhenReady)
+        mpv.setOptionString("start", "0").logIfMpvError("start")
         mpv.command("loadfile", libmpvSourceUrl, "replace")
         currentSourceAudioUrl?.takeIf { it.isNotBlank() }?.let { sourceAudioUrl ->
             mpv.command("audio-add", sourceAudioUrl.toLibmpvLoadPath(), "auto")
@@ -1094,9 +1112,22 @@ private class NuvioLibmpvView(
         val ended = mpv.getPropertyBoolean("eof-reached") ?: false
         val seeking = mpv.getPropertyBoolean("seeking") ?: false
         val cacheBufferingState = mpv.getPropertyInt("cache-buffering-state")
-        val durationMs = mpv.getPropertyDouble("duration").toMillis()
-        val positionMs = mpv.getPropertyDouble("time-pos").toMillis()
-        val cachePositionMs = mpv.getPropertyDouble("demuxer-cache-time").toMillis()
+        val rawDurationMs = maxOf(
+            mpv.getPropertyDouble("duration/full").toMillis(),
+            mpv.getPropertyDouble("duration").toMillis(),
+        )
+        val percentPositionMs = mpv.getPropertyDouble("percent-pos")
+            ?.takeIf { it.isFinite() && it > 0.0 && rawDurationMs > 0L }
+            ?.let { percent -> (rawDurationMs * (percent / 100.0)).toLong() }
+            ?: 0L
+        val rawPositionMs = maxOf(
+            mpv.getPropertyDouble("time-pos").toMillis(),
+            mpv.getPropertyDouble("playback-time").toMillis(),
+            percentPositionMs,
+        )
+        val durationMs = stableDurationMs(rawDurationMs, rawPositionMs)
+        val positionMs = stablePositionMs(rawPositionMs, durationMs)
+        val cachePositionMs = positionMs + mpv.getPropertyDouble("demuxer-cache-time").toMillis()
         val isCacheBuffering = cacheBufferingState != null && cacheBufferingState in 0 until 100
         val isLoading = pausedForCache ||
             (!paused && !ended && (seeking || isCacheBuffering || (idle && durationMs <= 0L)))
@@ -1111,6 +1142,36 @@ private class NuvioLibmpvView(
             videoWidth = mpvVideoDimension("w"),
             videoHeight = mpvVideoDimension("h"),
         )
+    }
+
+    private fun stableDurationMs(candidateDurationMs: Long, candidatePositionMs: Long): Long {
+        val duration = candidateDurationMs.coerceAtLeast(0L)
+        val position = candidatePositionMs.coerceAtLeast(0L)
+        val stable = when {
+            duration <= 0L -> lastKnownDurationMs
+            lastKnownDurationMs > 0L &&
+                duration < (lastKnownDurationMs * 0.75).toLong() &&
+                position <= lastKnownDurationMs + 1_000L -> lastKnownDurationMs
+            duration + 1_000L < position -> maxOf(lastKnownDurationMs, position)
+            else -> duration
+        }
+        if (stable > 0L) {
+            lastKnownDurationMs = stable
+        }
+        return stable
+    }
+
+    private fun stablePositionMs(candidatePositionMs: Long, durationMs: Long): Long {
+        val position = candidatePositionMs.coerceAtLeast(0L)
+        val stable = when {
+            durationMs > 0L -> position.coerceIn(0L, durationMs)
+            position > 0L -> position
+            else -> lastKnownPositionMs
+        }
+        if (stable > 0L || durationMs > 0L) {
+            lastKnownPositionMs = stable
+        }
+        return stable
     }
 
     private fun mpvVideoDimension(axis: String): Int? =
@@ -1146,7 +1207,11 @@ private class NuvioLibmpvView(
             override fun pause() = setPaused(true)
 
             override fun seekTo(positionMs: Long) {
-                mpv.command("seek", (positionMs.coerceAtLeast(0L) / 1000.0).toString(), "absolute")
+                val targetMs = positionMs.coerceAtLeast(0L)
+                    .let { ms -> if (lastKnownDurationMs > 0L) ms.coerceAtMost(lastKnownDurationMs) else ms }
+                lastKnownPositionMs = targetMs
+                val seconds = targetMs / 1000.0
+                mpv.command("seek", String.format(Locale.US, "%.3f", seconds), "absolute+exact")
             }
 
             override fun seekBy(offsetMs: Long) {
