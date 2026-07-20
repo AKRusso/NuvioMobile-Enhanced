@@ -11,11 +11,17 @@ import com.nuvio.app.features.details.MoreLikeThisSource
 import com.nuvio.app.features.details.PersonDetail
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
+import com.nuvio.app.features.watchprogress.WatchProgressClock
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,9 +34,13 @@ import org.jetbrains.compose.resources.getString
 object TmdbMetadataService {
     private val log = Logger.withTag("TmdbMetadata")
     private val json = Json { ignoreUnknownKeys = true }
+    private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val enrichmentCache = mutableMapOf<String, TmdbEnrichment>()
     private val episodeCache = mutableMapOf<String, Map<Pair<Int, Int>, TmdbEpisodeEnrichment>>()
+    private val seasonEpisodeCache = mutableMapOf<String, TmdbCachedSeasonEpisodeEnrichment>()
+    private val seasonEpisodeRefreshInFlight = mutableSetOf<String>()
+    private val seasonEpisodeRefreshMutex = Mutex()
     private val moreLikeThisCache = mutableMapOf<String, List<MetaPreview>>()
     private val collectionCache = mutableMapOf<String, Pair<String?, List<MetaPreview>>>()
     private val trailerCache = mutableMapOf<String, List<MetaTrailer>>()
@@ -643,6 +653,7 @@ object TmdbMetadataService {
                     fetchEpisodeEnrichment(
                         tmdbId = tmdbId,
                         seasonNumbers = seasons,
+                        prioritySeasonNumbers = meta.prioritizedEpisodeSeasonNumbers(seasons),
                         language = settings.language,
                     )
                 }
@@ -1002,6 +1013,7 @@ object TmdbMetadataService {
     private suspend fun fetchEpisodeEnrichment(
         tmdbId: String,
         seasonNumbers: List<Int>,
+        prioritySeasonNumbers: List<Int>,
         language: String,
     ): Map<Pair<Int, Int>, TmdbEpisodeEnrichment> = withContext(Dispatchers.Default) {
         val normalizedLanguage = normalizeTmdbLanguage(language)
@@ -1012,37 +1024,164 @@ object TmdbMetadataService {
         val cacheKey = "$numericId:${normalizedSeasons.joinToString(",")}:$normalizedLanguage"
         episodeCache[cacheKey]?.let { return@withContext it }
 
-        val pairs = coroutineScope {
-            normalizedSeasons.map { season ->
-                async {
-                    val details = fetch<TmdbSeasonDetailsResponse>(
-                        endpoint = "tv/$numericId/season/$season",
-                        query = mapOf("language" to normalizedLanguage),
-                    ) ?: return@async emptyMap()
+        val now = WatchProgressClock.nowEpochMs()
+        val merged = linkedMapOf<Pair<Int, Int>, TmdbEpisodeEnrichment>()
+        val missingSeasons = mutableListOf<Int>()
+        val staleSeasons = mutableListOf<Int>()
 
-                    details.episodes
-                        .mapNotNull { episode ->
-                            val episodeNumber = episode.episodeNumber ?: return@mapNotNull null
-                            (season to episodeNumber) to TmdbEpisodeEnrichment(
-                                title = episode.name?.trim()?.takeIf(String::isNotBlank),
-                                overview = episode.overview?.trim()?.takeIf(String::isNotBlank),
-                                thumbnail = buildImageUrl(episode.stillPath, "w500"),
-                                seasonPoster = buildImageUrl(details.posterPath, "w500"),
-                                airDate = episode.airDate?.trim()?.takeIf(String::isNotBlank),
-                                runtimeMinutes = episode.runtime,
-                            )
-                        }
-                        .toMap()
+        normalizedSeasons.forEach { season ->
+            val seasonCacheKey = seasonEpisodeCacheKey(numericId, season, normalizedLanguage)
+            val cached = loadCachedSeasonEpisodeEnrichment(seasonCacheKey)
+            if (cached == null) {
+                missingSeasons += season
+            } else {
+                merged.putAll(cached.episodes)
+                if (!cached.isFresh(now)) {
+                    staleSeasons += season
                 }
-            }.awaitAll()
+            }
         }
 
-        val merged = pairs.fold(emptyMap<Pair<Int, Int>, TmdbEpisodeEnrichment>()) { acc, value -> acc + value }
+        val prioritySeasons = prioritySeasonNumbers
+            .filter(normalizedSeasons::contains)
+            .distinct()
+            .ifEmpty { normalizedSeasons.filter { it > 0 }.take(1).ifEmpty { normalizedSeasons.take(1) } }
+            .take(TMDB_EPISODE_SYNC_SEASON_LIMIT)
+
+        val syncMissingSeasons = missingSeasons.filter(prioritySeasons::contains)
+        if (syncMissingSeasons.isNotEmpty()) {
+            val syncResults = coroutineScope {
+                syncMissingSeasons.map { season ->
+                    async {
+                        fetchSeasonEpisodeEnrichment(
+                            numericId = numericId,
+                            season = season,
+                            normalizedLanguage = normalizedLanguage,
+                        )
+                    }
+                }.awaitAll()
+            }
+            syncResults.forEach { cached ->
+                if (cached != null) {
+                    merged.putAll(cached.episodes)
+                }
+            }
+        }
+
+        val backgroundSeasons = (missingSeasons + staleSeasons)
+            .distinct()
+            .filterNot(syncMissingSeasons::contains)
+            .take(TMDB_EPISODE_BACKGROUND_SEASON_LIMIT)
+        if (backgroundSeasons.isNotEmpty()) {
+            warmSeasonEpisodeEnrichmentInBackground(
+                numericId = numericId,
+                seasons = backgroundSeasons,
+                normalizedLanguage = normalizedLanguage,
+            )
+        }
+
         if (merged.isNotEmpty()) {
             episodeCache[cacheKey] = merged
         }
         merged
     }
+
+    private fun loadCachedSeasonEpisodeEnrichment(cacheKey: String): TmdbCachedSeasonEpisodeEnrichment? {
+        seasonEpisodeCache[cacheKey]?.let { return it }
+        return TmdbEpisodeEnrichmentStorage.load(cacheKey)
+            ?.let { payload ->
+                runCatching {
+                    json.decodeFromString<TmdbSeasonEpisodeEnrichmentPayload>(payload)
+                }.getOrNull()
+            }
+            ?.toCacheEntry()
+            ?.also { seasonEpisodeCache[cacheKey] = it }
+    }
+
+    private suspend fun fetchSeasonEpisodeEnrichment(
+        numericId: Int,
+        season: Int,
+        normalizedLanguage: String,
+    ): TmdbCachedSeasonEpisodeEnrichment? {
+        val details = fetch<TmdbSeasonDetailsResponse>(
+            endpoint = "tv/$numericId/season/$season",
+            query = mapOf("language" to normalizedLanguage),
+        ) ?: return null
+
+        val episodes = details.episodes
+            .mapNotNull { episode ->
+                val episodeNumber = episode.episodeNumber ?: return@mapNotNull null
+                (season to episodeNumber) to TmdbEpisodeEnrichment(
+                    title = episode.name?.trim()?.takeIf(String::isNotBlank),
+                    overview = episode.overview?.trim()?.takeIf(String::isNotBlank),
+                    thumbnail = buildImageUrl(episode.stillPath, "w500"),
+                    seasonPoster = buildImageUrl(details.posterPath, "w500"),
+                    airDate = episode.airDate?.trim()?.takeIf(String::isNotBlank),
+                    runtimeMinutes = episode.runtime,
+                )
+            }
+            .toMap()
+        if (episodes.isEmpty()) return null
+
+        val cacheKey = seasonEpisodeCacheKey(numericId, season, normalizedLanguage)
+        val cached = TmdbCachedSeasonEpisodeEnrichment(
+            fetchedAtEpochMs = WatchProgressClock.nowEpochMs(),
+            episodes = episodes,
+        )
+        seasonEpisodeCache[cacheKey] = cached
+        runCatching {
+            TmdbEpisodeEnrichmentStorage.save(
+                cacheKey = cacheKey,
+                payload = json.encodeToString(cached.toPayload()),
+            )
+        }
+        return cached
+    }
+
+    private fun warmSeasonEpisodeEnrichmentInBackground(
+        numericId: Int,
+        seasons: List<Int>,
+        normalizedLanguage: String,
+    ) {
+        backgroundScope.launch {
+            val selectedSeasons = seasons.filter { season ->
+                val cacheKey = seasonEpisodeCacheKey(numericId, season, normalizedLanguage)
+                seasonEpisodeRefreshMutex.withLock {
+                    seasonEpisodeRefreshInFlight.add(cacheKey)
+                }
+            }
+            if (selectedSeasons.isEmpty()) return@launch
+
+            selectedSeasons
+                .chunked(TMDB_EPISODE_BACKGROUND_BATCH_SIZE)
+                .forEach { batch ->
+                    coroutineScope {
+                        batch.map { season ->
+                            async {
+                                try {
+                                    fetchSeasonEpisodeEnrichment(
+                                        numericId = numericId,
+                                        season = season,
+                                        normalizedLanguage = normalizedLanguage,
+                                    )
+                                } finally {
+                                    val cacheKey = seasonEpisodeCacheKey(numericId, season, normalizedLanguage)
+                                    seasonEpisodeRefreshMutex.withLock {
+                                        seasonEpisodeRefreshInFlight.remove(cacheKey)
+                                    }
+                                }
+                            }
+                        }.awaitAll()
+                    }
+                }
+        }
+    }
+
+    private fun seasonEpisodeCacheKey(
+        numericId: Int,
+        season: Int,
+        normalizedLanguage: String,
+    ): String = "$numericId:$season:$normalizedLanguage:seasonEpisodes:v1"
 
     private suspend inline fun <reified T> fetch(
         endpoint: String,
@@ -1332,6 +1471,50 @@ private data class TmdbPreviewArtwork(
     val releaseInfo: String?,
 )
 
+private data class TmdbCachedSeasonEpisodeEnrichment(
+    val fetchedAtEpochMs: Long,
+    val episodes: Map<Pair<Int, Int>, TmdbEpisodeEnrichment>,
+) {
+    fun isFresh(nowEpochMs: Long): Boolean =
+        fetchedAtEpochMs > 0L && nowEpochMs - fetchedAtEpochMs <= TMDB_EPISODE_ENRICHMENT_TTL_MS
+
+    fun toPayload(): TmdbSeasonEpisodeEnrichmentPayload =
+        TmdbSeasonEpisodeEnrichmentPayload(
+            fetchedAtEpochMs = fetchedAtEpochMs,
+            episodes = episodes.map { (key, enrichment) ->
+                TmdbSeasonEpisodeEnrichmentEntry(
+                    season = key.first,
+                    episode = key.second,
+                    enrichment = enrichment,
+                )
+            },
+        )
+}
+
+@Serializable
+private data class TmdbSeasonEpisodeEnrichmentPayload(
+    val fetchedAtEpochMs: Long,
+    val episodes: List<TmdbSeasonEpisodeEnrichmentEntry> = emptyList(),
+) {
+    fun toCacheEntry(): TmdbCachedSeasonEpisodeEnrichment =
+        TmdbCachedSeasonEpisodeEnrichment(
+            fetchedAtEpochMs = fetchedAtEpochMs,
+            episodes = episodes.mapNotNull { entry ->
+                val season = entry.season ?: return@mapNotNull null
+                val episode = entry.episode ?: return@mapNotNull null
+                (season to episode) to entry.enrichment
+            }.toMap(),
+        )
+}
+
+@Serializable
+private data class TmdbSeasonEpisodeEnrichmentEntry(
+    val season: Int? = null,
+    val episode: Int? = null,
+    val enrichment: TmdbEpisodeEnrichment,
+)
+
+@Serializable
 internal data class TmdbEpisodeEnrichment(
     val title: String?,
     val overview: String?,
@@ -1340,6 +1523,21 @@ internal data class TmdbEpisodeEnrichment(
     val airDate: String?,
     val runtimeMinutes: Int?,
 )
+
+private fun MetaDetails.prioritizedEpisodeSeasonNumbers(seasonNumbers: List<Int>): List<Int> {
+    val availableSeasons = seasonNumbers.distinct().sorted()
+    if (availableSeasons.isEmpty()) return emptyList()
+
+    val defaultSeason = defaultVideoId
+        ?.let { defaultId -> videos.firstOrNull { it.id == defaultId }?.season }
+        ?.takeIf(availableSeasons::contains)
+
+    val firstMainSeason = availableSeasons.firstOrNull { it > 0 }
+    val firstSeason = availableSeasons.firstOrNull()
+
+    return listOfNotNull(defaultSeason, firstMainSeason, firstSeason)
+        .distinct()
+}
 
 private fun normalizeMetaType(type: String): String =
     when (type.trim().lowercase()) {
@@ -1521,6 +1719,11 @@ private val defaultLanguageRegions = mapOf(
     "pt" to "PT",
     "es" to "ES",
 )
+
+private const val TMDB_EPISODE_ENRICHMENT_TTL_MS = 24L * 60L * 60L * 1_000L
+private const val TMDB_EPISODE_SYNC_SEASON_LIMIT = 2
+private const val TMDB_EPISODE_BACKGROUND_SEASON_LIMIT = 8
+private const val TMDB_EPISODE_BACKGROUND_BATCH_SIZE = 2
 
 private fun Double.formatRating(): String =
     if (this == 0.0) {
