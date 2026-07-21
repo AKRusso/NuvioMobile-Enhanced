@@ -88,8 +88,10 @@ import nuvio.composeapp.generated.resources.settings_appearance_liquid_glass_des
 import nuvio.composeapp.generated.resources.settings_appearance_nav_bar_style
 import nuvio.composeapp.generated.resources.settings_appearance_nav_bar_style_sheet_title
 import nuvio.composeapp.generated.resources.settings_appearance_poster_customization_description
+import nuvio.composeapp.generated.resources.settings_appearance_section_detail_page
 import nuvio.composeapp.generated.resources.settings_appearance_section_display
 import nuvio.composeapp.generated.resources.settings_appearance_section_home
+import nuvio.composeapp.generated.resources.settings_appearance_section_streams
 import nuvio.composeapp.generated.resources.settings_appearance_section_theme
 import nuvio.composeapp.generated.resources.settings_appearance_theme_classic
 import nuvio.composeapp.generated.resources.settings_appearance_theme_custom_first
@@ -316,7 +318,7 @@ internal fun LazyListScope.appearanceSettingsContent(
     }
     item {
         SettingsSection(
-            title = stringResource(Res.string.compose_settings_page_streams),
+            title = stringResource(Res.string.settings_appearance_section_streams),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
@@ -331,7 +333,7 @@ internal fun LazyListScope.appearanceSettingsContent(
     }
     item {
         SettingsSection(
-            title = stringResource(Res.string.compose_settings_page_meta_screen),
+            title = stringResource(Res.string.settings_appearance_section_detail_page),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {

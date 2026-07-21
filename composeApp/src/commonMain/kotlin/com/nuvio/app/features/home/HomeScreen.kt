@@ -1607,6 +1607,7 @@ internal fun buildHomeContinueWatchingItems(
     return when (sortMode) {
         ContinueWatchingSortMode.DEFAULT -> deduplicated.map(HomeContinueWatchingCandidate::item)
         ContinueWatchingSortMode.STREAMING_STYLE -> applyStreamingStyleSort(deduplicated, todayIsoDate)
+        ContinueWatchingSortMode.SPLIT_UPCOMING -> applyStreamingStyleSort(deduplicated, todayIsoDate)
     }
 }
 

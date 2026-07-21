@@ -62,8 +62,11 @@
 -dontwarn javax.script.**
 -dontwarn jdk.dynalink.**
 
-# TorrServer based P2P streaming.
+# P2P runtime and Nuvio Engine JNI bridge. Native libraries are not processed
+# by R8, but their Kotlin/JNI wrapper classes and method names must stay stable.
 -keep class com.nuvio.app.features.p2p.** { *; }
+-keep class com.nuvio.engine.** { *; }
+-keep interface com.nuvio.engine.** { *; }
 
 -keep class androidx.work.impl.WorkDatabase_Impl { *; }
 

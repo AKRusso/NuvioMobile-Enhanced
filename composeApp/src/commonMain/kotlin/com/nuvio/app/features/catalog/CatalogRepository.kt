@@ -6,6 +6,7 @@ import com.nuvio.app.features.collection.catalogRouteKey
 import com.nuvio.app.features.cloudstream.CloudStreamRepository
 import com.nuvio.app.features.cloudstream.toMetaPreview
 import com.nuvio.app.features.library.LibraryRepository
+import com.nuvio.app.features.library.sortLibraryItems
 import com.nuvio.app.features.library.toMetaPreview
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.filterReleasedItems
@@ -90,10 +91,16 @@ object CatalogRepository {
             runCatching {
                 val target = request.target as CatalogTarget.Library
                 LibraryRepository.ensureLoaded()
-                LibraryRepository.uiState.value.sections
+                val libraryState = LibraryRepository.uiState.value
+                val items = libraryState.sections
                     .firstOrNull { it.type == target.sectionType }
                     ?.items
                     .orEmpty()
+                sortLibraryItems(
+                    items = items,
+                    selected = target.sortOption,
+                    sourceMode = libraryState.sourceMode,
+                )
                     .map { it.toMetaPreview() }
                     .let(::dedupeCatalogItems)
             }.fold(

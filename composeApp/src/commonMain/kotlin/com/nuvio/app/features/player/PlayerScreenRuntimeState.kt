@@ -73,8 +73,8 @@ internal class PlayerScreenRuntime(
 
     var playerSettingsUiState: PlayerSettingsUiState = PlayerSettingsUiState()
     var nuvioEnhancedSettingsUiState: NuvioEnhancedSettingsUiState = NuvioEnhancedSettingsUiState()
-    var p2pSettingsUiState: P2pSettingsUiState = P2pSettingsUiState()
-    var p2pStreamingState: P2pStreamingState = P2pStreamingState.Idle
+    var p2pSettingsUiState by mutableStateOf(P2pSettingsUiState())
+    var p2pStreamingState by mutableStateOf<P2pStreamingState>(P2pStreamingState.Idle)
     var metaScreenSettingsUiState: MetaScreenSettingsUiState = MetaScreenSettingsUiState()
     var watchedUiState: WatchedUiState = WatchedUiState()
     var watchProgressUiState: WatchProgressUiState = WatchProgressUiState()

@@ -256,6 +256,7 @@ val iosDistributionSourceDir = if (iosDistribution == "full") {
     "src/iosAppStore/kotlin"
 }
 val iosFrameworkBundleId = "com.nuvio.media"
+val nuvioEngineAppleFramework = rootProject.file("../nuvio-engine/platform/apple/NuvioEngine.xcframework")
 val fullCommonSourceDir = project.file("src/fullCommonMain/kotlin")
 val generatedRuntimeConfigDir = layout.buildDirectory.dir("generated/runtime-config/kotlin")
 val requestedGradleTasks = gradle.startParameter.taskNames.map { taskName ->
@@ -386,6 +387,12 @@ kotlin {
     )
 
     iosTargets.forEach { iosTarget ->
+        val nuvioEngineSlice = if (iosTarget.name == "iosArm64") {
+            "ios-arm64"
+        } else {
+            "ios-arm64_x86_64-simulator"
+        }
+        val nuvioEngineSliceDirectory = nuvioEngineAppleFramework.resolve(nuvioEngineSlice)
         iosTarget.compilations.getByName("main") {
             cinterops {
                 create("commoncrypto") {
@@ -399,6 +406,13 @@ kotlin {
                 create("iosappicon") {
                     defFile(project.file("src/nativeInterop/cinterop/iosappicon.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
+                }
+                if (iosDistribution == "full" && nuvioEngineSliceDirectory.resolve("libCNuvioEngine.a").isFile) {
+                    create("nuvioengine") {
+                        defFile(project.file("src/nativeInterop/cinterop/nuvioengine.def"))
+                        compilerOpts("-I${nuvioEngineSliceDirectory.resolve("Headers").absolutePath}")
+                        extraOpts("-libraryPath", nuvioEngineSliceDirectory.absolutePath)
+                    }
                 }
             }
 
@@ -422,6 +436,14 @@ kotlin {
             if (iosDistribution == "full" && buildType.name == "RELEASE") {
                 optimized = false
                 freeCompilerArgs += "-Xdisable-phases=DevirtualizationAnalysis,RemoveRedundantCallsToStaticInitializersPhase"
+            }
+            if (iosDistribution == "full") {
+                linkerOpts(
+                    "-lc++",
+                    "-framework", "Security",
+                    "-framework", "SystemConfiguration",
+                    "-framework", "CoreFoundation",
+                )
             }
         }
     }
@@ -462,6 +484,7 @@ kotlin {
                 implementation(libs.androidx.media3.container)
                 implementation(libs.androidx.media3.extractor)
                 implementation(libs.mpv.android.lib)
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
                 implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("lib-*.aar"))))
                 if (androidDistribution == "full") {
                     implementation(files("libs/quickjs-kt-android-1.0.5-nuvio.aar"))

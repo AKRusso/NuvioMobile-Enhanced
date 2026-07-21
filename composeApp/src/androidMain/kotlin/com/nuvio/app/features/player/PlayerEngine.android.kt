@@ -10,6 +10,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.graphics.Typeface
 import android.os.Build
+import android.os.SystemClock
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.SurfaceHolder
 import android.util.AttributeSet
@@ -82,6 +83,12 @@ import java.net.URL
 import java.util.Locale
 
 private const val TAG = "NuvioPlayer"
+private const val PLAYER_DIAGNOSTIC_TAG = "NuvioPlayerDiag"
+
+private class PlaybackDiagnostics {
+    var prepareStartedAtMs: Long = 0L
+    var attempt: Int = 0
+}
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -95,8 +102,11 @@ actual fun PlatformPlayerSurface(
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
+    initialPositionMs: Long?,
+    initialPositionRequestKey: String?,
     resizeMode: PlayerResizeMode,
     useNativeController: Boolean,
+    onInitialPositionHandled: (key: String, handled: Boolean) -> Unit,
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
@@ -114,6 +124,7 @@ actual fun PlatformPlayerSurface(
         sanitizePlaybackResponseHeaders(sourceResponseHeaders),
         normalizedStreamType.orEmpty(),
         useYoutubeChunkedPlayback,
+        initialPositionRequestKey.orEmpty(),
     )
     var activeEngine by remember(playerSourceKey, playerSettings.androidPlaybackEngine) {
         mutableStateOf(playerSettings.androidPlaybackEngine.initialAndroidEngine(normalizedStreamType))
@@ -130,13 +141,19 @@ actual fun PlatformPlayerSurface(
             useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
             modifier = modifier,
             playWhenReady = playWhenReady,
+            initialPositionMs = initialPositionMs,
+            initialPositionRequestKey = initialPositionRequestKey,
             resizeMode = resizeMode,
             useNativeController = useNativeController,
+            onInitialPositionHandled = onInitialPositionHandled,
             onControllerReady = onControllerReady,
             onSnapshot = onSnapshot,
             onError = { message ->
                 if (message != null && playerSettings.androidPlaybackEngine == AndroidPlaybackEngine.Auto) {
                     Log.w(TAG, "ExoPlayer failed; falling back to libmpv: $message")
+                    initialPositionRequestKey?.let { key ->
+                        onInitialPositionHandled(key, false)
+                    }
                     activeEngine = ResolvedAndroidPlaybackEngine.Libmpv
                     onError(null)
                 } else {
@@ -144,21 +161,28 @@ actual fun PlatformPlayerSurface(
                 }
             },
         )
-        ResolvedAndroidPlaybackEngine.Libmpv -> LibmpvPlayerSurface(
-            sourceUrl = sourceUrl,
-            sourceAudioUrl = sourceAudioUrl,
-            sourceHeaders = sourceHeaders,
-            externalSubtitles = externalSubtitles,
-            modifier = modifier,
-            playWhenReady = playWhenReady,
-            resizeMode = resizeMode,
-            videoOutput = playerSettings.androidLibmpvVideoOutput,
-            hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled && !isDirectMatroska,
-            yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
-            onControllerReady = onControllerReady,
-            onSnapshot = onSnapshot,
-            onError = onError,
-        )
+        ResolvedAndroidPlaybackEngine.Libmpv -> {
+            LaunchedEffect(initialPositionRequestKey) {
+                initialPositionRequestKey?.let { key ->
+                    onInitialPositionHandled(key, false)
+                }
+            }
+            LibmpvPlayerSurface(
+                sourceUrl = sourceUrl,
+                sourceAudioUrl = sourceAudioUrl,
+                sourceHeaders = sourceHeaders,
+                externalSubtitles = externalSubtitles,
+                modifier = modifier,
+                playWhenReady = playWhenReady,
+                resizeMode = resizeMode,
+                videoOutput = playerSettings.androidLibmpvVideoOutput,
+                hardwareDecodingEnabled = playerSettings.androidLibmpvHardwareDecodingEnabled && !isDirectMatroska,
+                yuv420pEnabled = playerSettings.androidLibmpvYuv420pEnabled,
+                onControllerReady = onControllerReady,
+                onSnapshot = onSnapshot,
+                onError = onError,
+            )
+        }
     }
 }
 
@@ -190,8 +214,11 @@ private fun ExoPlayerSurface(
     useYoutubeChunkedPlayback: Boolean,
     modifier: Modifier,
     playWhenReady: Boolean,
+    initialPositionMs: Long?,
+    initialPositionRequestKey: String?,
     resizeMode: PlayerResizeMode,
     useNativeController: Boolean,
+    onInitialPositionHandled: (key: String, handled: Boolean) -> Unit,
     onControllerReady: (PlayerEngineController) -> Unit,
     onSnapshot: (PlayerPlaybackSnapshot) -> Unit,
     onError: (String?) -> Unit,
@@ -200,6 +227,7 @@ private fun ExoPlayerSurface(
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnSnapshot = rememberUpdatedState(onSnapshot)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnInitialPositionHandled = rememberUpdatedState(onInitialPositionHandled)
     val latestPlayWhenReady = rememberUpdatedState(playWhenReady)
     val coroutineScope = rememberCoroutineScope()
 
@@ -228,7 +256,9 @@ private fun ExoPlayerSurface(
         sanitizedSourceResponseHeaders,
         normalizedStreamType.orEmpty(),
         useYoutubeChunkedPlayback,
+        initialPositionRequestKey.orEmpty(),
     )
+    val playbackDiagnostics = remember(playerSourceKey) { PlaybackDiagnostics() }
     var subtitleDelayMs by remember(playerSourceKey) { mutableStateOf(0) }
     var selectedExternalSubtitleMimeType by remember(playerSourceKey) { mutableStateOf<String?>(null) }
     val latestSubtitleDelayMs = rememberUpdatedState(subtitleDelayMs)
@@ -271,6 +301,7 @@ private fun ExoPlayerSurface(
     }
     val dataSourceFactory = remember(
         context,
+        sourceUrl,
         sanitizedSourceHeaders,
         sanitizedSourceResponseHeaders,
         useYoutubeChunkedPlayback,
@@ -281,6 +312,7 @@ private fun ExoPlayerSurface(
             defaultRequestHeaders = sanitizedSourceHeaders,
             defaultResponseHeaders = sanitizedSourceResponseHeaders,
             useYoutubeChunkedPlayback = useYoutubeChunkedPlayback,
+            useLongReadTimeout = isLoopbackPlaybackSource(sourceUrl),
             externalSubtitles = externalSubtitles,
         )
     }
@@ -312,6 +344,7 @@ private fun ExoPlayerSurface(
         useYoutubeChunkedPlayback,
         effectiveDecoderPriority,
         playerSettings.androidMemorySafeBufferEnabled,
+        initialPositionRequestKey,
     ) {
         val renderersFactory = SubtitleOffsetRenderersFactory(
             context = context,
@@ -364,9 +397,55 @@ private fun ExoPlayerSurface(
         player
     }
 
-    LaunchedEffect(exoPlayer, resolvedMediaItem) {
+    val nowPlayingController = remember(context, exoPlayer) {
+        AndroidPlayerNowPlayingController(
+            context = context,
+            controls = AndroidPlayerNowPlayingController.PlaybackControls(
+                play = {
+                    exoPlayer.playWhenReady = true
+                    exoPlayer.play()
+                },
+                pause = exoPlayer::pause,
+                seekTo = { positionMs -> exoPlayer.seekTo(positionMs.coerceAtLeast(0L)) },
+                seekBy = { offsetMs ->
+                    exoPlayer.seekTo((exoPlayer.currentPosition + offsetMs).coerceAtLeast(0L))
+                },
+            ),
+        )
+    }
+
+    fun dispatchExoPlayerSnapshot() {
+        val snapshot = exoPlayer.snapshot()
+        latestOnSnapshot.value(snapshot)
+        nowPlayingController.syncPlayback(snapshot)
+    }
+
+    DisposableEffect(nowPlayingController) {
+        onDispose { nowPlayingController.release() }
+    }
+
+    LaunchedEffect(exoPlayer, resolvedMediaItem, initialPositionRequestKey) {
         val mediaItem = resolvedMediaItem ?: return@LaunchedEffect
-        exoPlayer.setPlaybackMediaItem(mediaItem, fallbackStartPositionMs)
+        val requestedStartPositionMs = fallbackStartPositionMs
+            ?: initialPositionMs?.takeIf { it > 0L }
+        playbackDiagnostics.attempt += 1
+        playbackDiagnostics.prepareStartedAtMs = SystemClock.elapsedRealtime()
+        Log.i(
+            PLAYER_DIAGNOSTIC_TAG,
+            "prepare begin attempt=${playbackDiagnostics.attempt} " +
+                "source=${diagnosticPlaybackSource(sourceUrl)} audioSource=${!sourceAudioUrl.isNullOrBlank()} " +
+                "mime=${mediaItem.localConfiguration?.mimeType ?: "auto"} " +
+                "startPositionMs=${requestedStartPositionMs ?: 0L}",
+        )
+        exoPlayer.setPlaybackMediaItem(mediaItem, requestedStartPositionMs)
+        if (fallbackStartPositionMs == null) {
+            initialPositionRequestKey?.let { key ->
+                latestOnInitialPositionHandled.value(
+                    key,
+                    requestedStartPositionMs != null,
+                )
+            }
+        }
         exoPlayer.prepare()
     }
 
@@ -442,6 +521,14 @@ private fun ExoPlayerSurface(
 
             override fun onPlayerError(error: PlaybackException) {
                 syncPlayerViewKeepScreenOn()
+                Log.e(
+                    PLAYER_DIAGNOSTIC_TAG,
+                    "error attempt=${playbackDiagnostics.attempt} " +
+                        "elapsedMs=${diagnosticElapsedSince(playbackDiagnostics.prepareStartedAtMs)} " +
+                        "code=${error.errorCodeName} cause=${error.cause?.javaClass?.simpleName ?: "none"} " +
+                        "message=${diagnosticPlayerMessage(error.message)}",
+                    error,
+                )
 
                 val isSourceError = error.errorCode == PlaybackException.ERROR_CODE_BEHIND_LIVE_WINDOW ||
                         error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED ||
@@ -494,6 +581,14 @@ private fun ExoPlayerSurface(
                     else -> "UNKNOWN($playbackState)"
                 }
                 Log.d(TAG, "onPlaybackStateChanged: $stateName")
+                Log.i(
+                    PLAYER_DIAGNOSTIC_TAG,
+                    "state=$stateName attempt=${playbackDiagnostics.attempt} " +
+                        "elapsedMs=${diagnosticElapsedSince(playbackDiagnostics.prepareStartedAtMs)} " +
+                        "positionMs=${exoPlayer.currentPosition.coerceAtLeast(0L)} " +
+                        "bufferedMs=${exoPlayer.bufferedPosition.coerceAtLeast(0L)} " +
+                        "bufferedPercent=${exoPlayer.bufferedPercentage} playWhenReady=${exoPlayer.playWhenReady}",
+                )
                 if (playbackState == Player.STATE_READY) {
                     fallbackStartPositionMs = null
                     latestOnError.value(null)
@@ -504,8 +599,23 @@ private fun ExoPlayerSurface(
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
+                Log.i(
+                    PLAYER_DIAGNOSTIC_TAG,
+                    "isPlaying=$isPlaying attempt=${playbackDiagnostics.attempt} " +
+                        "elapsedMs=${diagnosticElapsedSince(playbackDiagnostics.prepareStartedAtMs)} " +
+                        "positionMs=${exoPlayer.currentPosition.coerceAtLeast(0L)}",
+                )
                 syncPlayerViewKeepScreenOn()
                 latestOnSnapshot.value(exoPlayer.snapshot())
+            }
+
+            override fun onRenderedFirstFrame() {
+                Log.i(
+                    PLAYER_DIAGNOSTIC_TAG,
+                    "firstFrame attempt=${playbackDiagnostics.attempt} " +
+                        "elapsedMs=${diagnosticElapsedSince(playbackDiagnostics.prepareStartedAtMs)} " +
+                        "positionMs=${exoPlayer.currentPosition.coerceAtLeast(0L)}",
+                )
             }
 
             override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) {
@@ -2016,6 +2126,26 @@ private fun guessSubtitleMime(url: String): String {
         else -> MimeTypes.TEXT_VTT
     }
 }
+
+private fun diagnosticElapsedSince(startedAtMs: Long): Long =
+    if (startedAtMs <= 0L) -1L else (SystemClock.elapsedRealtime() - startedAtMs).coerceAtLeast(0L)
+
+private fun diagnosticPlaybackSource(value: String): String = runCatching {
+    val uri = Uri.parse(value)
+    val host = uri.host.orEmpty()
+    val isLoopback = host == "127.0.0.1" || host == "localhost" || host == "::1"
+    "scheme=${uri.scheme ?: "none"},host=${host.ifBlank { "none" }},port=${uri.port},loopback=$isLoopback"
+}.getOrDefault("unparseable")
+
+private fun isLoopbackPlaybackSource(value: String): Boolean = runCatching {
+    when (Uri.parse(value).host.orEmpty().lowercase()) {
+        "127.0.0.1", "localhost", "::1" -> true
+        else -> false
+    }
+}.getOrDefault(false)
+
+private fun diagnosticPlayerMessage(value: String?): String =
+    value?.replace('\n', ' ')?.replace('\r', ' ')?.take(160) ?: "none"
 
 internal class SubtitleRequestHeaderDataSourceFactory(
     private val upstreamFactory: DataSource.Factory,
