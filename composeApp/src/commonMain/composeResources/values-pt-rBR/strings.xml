@@ -1402,4 +1402,14 @@
     <string name="ai_chat_prompt_explain">O que devo saber antes de assistir?</string>
     <string name="ai_chat_prompt_similar">Recomende títulos parecidos</string>
     <string name="ai_chat_error">O assistente não conseguiu responder. Verifique a chave e tente novamente.</string>
+    <string name="settings_playback_section_player_extras">EXTRAS DO PLAYER</string>
+    <string name="settings_playback_subtitle_sync">Sincronização de legendas</string>
+    <string name="settings_playback_subtitle_sync_description">Escolha a fala para alinhar imediatamente as legendas de addons.</string>
+    <string name="settings_playback_clock_end_time">Relógio e horário de término</string>
+    <string name="settings_playback_clock_end_time_description">Mostra a hora do dispositivo e a previsão de término enquanto os controles estão visíveis.</string>
+    <string name="settings_playback_random_next_episode">Próximo episódio aleatório</string>
+    <string name="settings_playback_random_next_episode_description">Mostra um controle no player para escolher um episódio regular de outra temporada quando possível.</string>
+    <string name="player_clock_ends_at">Termina às %1$s</string>
+    <string name="player_random_next_enabled">Próximo episódio aleatório ativado</string>
+    <string name="player_random_next_disabled">Próximo episódio aleatório desativado</string>
 </resources>

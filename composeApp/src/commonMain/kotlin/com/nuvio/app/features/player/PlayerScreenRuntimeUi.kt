@@ -7,9 +7,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.p2p.formatP2pMegabytes
 import com.nuvio.app.features.p2p.formatP2pSpeed
@@ -207,6 +210,13 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             )
         }
 
+        if (playerSettingsUiState.playerClockEndTimeEnabled && contentType != "live-tv" && controlsVisible && !playerControlsLocked) {
+            PlayerClockEndTimeOverlay(
+                playbackSnapshot = playbackSnapshot,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 68.dp, end = horizontalSafePadding + 20.dp),
+            )
+        }
+
         RenderPlayerControls(displayedPositionMs = displayedPositionMs, isEpisode = isEpisode)
         RenderPlaybackOverlays(
             runtime = runtime,
@@ -285,7 +295,15 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
                     showSubtitleModal = true
                 }
             },
-            onSubtitleSyncClick = null,
+            onSubtitleSyncClick = if (playerSettingsUiState.subtitleSyncMenuEnabled) {
+                {
+                    activeSubtitleTab = SubtitleTab.Sync
+                    loadSubtitleAutoSyncCues()
+                    showSubtitleModal = true
+                }
+            } else {
+                null
+            },
             onAudioClick = {
                 refreshTracks()
                 showAudioModal = true
@@ -311,15 +329,10 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             },
             onSourcesClick = if (activeVideoId != null) { { openSourcesPanel() } } else null,
             onEpisodesClick = if (isSeries) { { openEpisodesPanel() } } else null,
-            onRandomEpisodeClick = if (
-                metaScreenSettingsUiState.randomEpisodeButton &&
-                isSeries &&
-                playerMetaVideos.any { (it.season ?: 0) > 0 && it.episode != null }
-            ) {
-                { playRandomEpisodeFromPlayer() }
-            } else {
-                null
-            },
+            randomNextEpisodeMode = randomNextEpisodeMode,
+            onRandomNextEpisodeModeToggle = if (isSeries && playerSettingsUiState.randomNextEpisodeEnabled) {
+                { randomNextEpisodeMode = !randomNextEpisodeMode }
+            } else null,
             onOpenInExternalPlayer = args.onOpenInExternalPlayer?.let { openExternal ->
                 {
                     val loadedSubtitles = addonSubtitles
@@ -576,6 +589,8 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
                 loadSubtitleAutoSyncCues()
             }
         },
+        currentPlaybackPositionMs = playbackSnapshot.positionMs,
+        isPlaying = playbackSnapshot.isPlaying,
         onBuiltInSubtitleTrackSelected = { index ->
             val wasCustom = useCustomSubtitles
             selectedSubtitleIndex = index
@@ -602,6 +617,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
         onAutoSyncCapture = { captureSubtitleAutoSyncTime() },
         onAutoSyncCueSelected = { cue -> applySubtitleAutoSyncCue(cue) },
         onAutoSyncReload = { loadSubtitleAutoSyncCues(force = true) },
+        onTogglePlayback = { togglePlayback() },
         onSubtitleModalDismissed = { showSubtitleModal = false },
         showVideoSettingsModal = showVideoSettingsModal,
         playerSettings = playerSettingsUiState,

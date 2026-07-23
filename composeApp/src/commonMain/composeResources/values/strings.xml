@@ -2531,4 +2531,14 @@
     <string name="person_remove_favorite">Remove from favorite actors</string>
     <string name="profile_insights_favorite_people_title">Favorite Actors</string>
     <string name="profile_insights_favorite_people_open">View profile</string>
+    <string name="settings_playback_section_player_extras">PLAYER EXTRAS</string>
+    <string name="settings_playback_subtitle_sync">Subtitle sync</string>
+    <string name="settings_playback_subtitle_sync_description">Select the spoken line to immediately align addon subtitles.</string>
+    <string name="settings_playback_clock_end_time">Clock and end time</string>
+    <string name="settings_playback_clock_end_time_description">Show the device time and estimated finish time while player controls are visible.</string>
+    <string name="settings_playback_random_next_episode">Random next episode</string>
+    <string name="settings_playback_random_next_episode_description">Show a player control to pick the next regular episode from another season when possible.</string>
+    <string name="player_clock_ends_at">Ends at %1$s</string>
+    <string name="player_random_next_enabled">Random next episode enabled</string>
+    <string name="player_random_next_disabled">Random next episode disabled</string>
 </resources>

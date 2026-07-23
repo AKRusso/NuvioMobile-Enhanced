@@ -69,12 +69,15 @@ fun SubtitleSyncPanel(
     subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    currentPlaybackPositionMs: Long,
     isCompact: Boolean,
+    isPlaying: Boolean,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,
     onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
     onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val sectionPadding = if (isCompact) 12.dp else 16.dp
@@ -87,7 +90,9 @@ fun SubtitleSyncPanel(
             subtitleDelayMs = subtitleDelayMs,
             selectedAddonSubtitle = selectedAddonSubtitle,
             subtitleAutoSyncState = subtitleAutoSyncState,
+            currentPlaybackPositionMs = currentPlaybackPositionMs,
             isCompact = isCompact,
+            isPlaying = isPlaying,
             sectionPadding = sectionPadding,
             colorScheme = colorScheme,
             onSubtitleDelayChanged = onSubtitleDelayChanged,
@@ -95,6 +100,7 @@ fun SubtitleSyncPanel(
             onAutoSyncCapture = onAutoSyncCapture,
             onAutoSyncCueSelected = onAutoSyncCueSelected,
             onAutoSyncReload = onAutoSyncReload,
+            onTogglePlayback = onTogglePlayback,
         )
     }
 }
@@ -104,7 +110,9 @@ private fun SyncControlsCard(
     subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    currentPlaybackPositionMs: Long,
     isCompact: Boolean,
+    isPlaying: Boolean,
     sectionPadding: androidx.compose.ui.unit.Dp,
     colorScheme: androidx.compose.material3.ColorScheme,
     onSubtitleDelayChanged: (Int) -> Unit,
@@ -112,6 +120,7 @@ private fun SyncControlsCard(
     onAutoSyncCapture: () -> Unit,
     onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
     onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
 ) {
     val btnSize = if (isCompact) 28.dp else 32.dp
     val btnRadius = if (isCompact) 14.dp else 16.dp
@@ -167,10 +176,14 @@ private fun SyncControlsCard(
         AutoSyncControls(
             selectedAddonSubtitle = selectedAddonSubtitle,
             state = subtitleAutoSyncState,
+            subtitleDelayMs = subtitleDelayMs,
+            currentPlaybackPositionMs = currentPlaybackPositionMs,
             isCompact = isCompact,
+            isPlaying = isPlaying,
             onCapture = onAutoSyncCapture,
             onCueSelected = onAutoSyncCueSelected,
             onReload = onAutoSyncReload,
+            onTogglePlayback = onTogglePlayback,
         )
     }
 }
@@ -500,21 +513,24 @@ private fun SubtitleFontActionChip(
 private fun AutoSyncControls(
     selectedAddonSubtitle: AddonSubtitle?,
     state: SubtitleAutoSyncUiState,
+    subtitleDelayMs: Int,
+    currentPlaybackPositionMs: Long,
     isCompact: Boolean,
+    isPlaying: Boolean,
     onCapture: () -> Unit,
     onCueSelected: (SubtitleSyncCue) -> Unit,
     onReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val capturedPositionMs = state.capturedPositionMs
+    val sortedCues = state.cues.sortedBy(SubtitleSyncCue::startTimeMs)
+    val subtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
+    val activeCueIndex = sortedCues.indexOfLast { it.startTimeMs <= subtitlePositionMs }
     val cueListState = rememberLazyListState()
-    val highlightedCueIndex = capturedPositionMs?.let { captured ->
-        state.cues.indices.minByOrNull { index -> abs(state.cues[index].startTimeMs - captured) }
-    } ?: -1
 
-    LaunchedEffect(highlightedCueIndex, state.cues.size) {
-        if (highlightedCueIndex >= 0) {
-            cueListState.animateScrollToItem((highlightedCueIndex - 2).coerceAtLeast(0))
+    LaunchedEffect(activeCueIndex, sortedCues.size) {
+        if (activeCueIndex >= 0) {
+            cueListState.animateScrollToItem((activeCueIndex - 2).coerceAtLeast(0))
         }
     }
 
@@ -539,6 +555,16 @@ private fun AutoSyncControls(
                 fontSize = 13.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SmallActionPill(
+                    text = if (isPlaying) {
+                        stringResource(Res.string.compose_action_pause)
+                    } else {
+                        stringResource(Res.string.action_play)
+                    },
+                    enabled = selectedAddonSubtitle != null,
+                    selected = isPlaying,
+                    onClick = onTogglePlayback,
+                )
                 SmallActionPill(
                     text = stringResource(Res.string.compose_player_reload),
                     enabled = selectedAddonSubtitle != null,
@@ -577,16 +603,25 @@ private fun AutoSyncControls(
             )
         }
 
-        if (state.cues.isNotEmpty()) {
+        if (sortedCues.isEmpty() && !state.isLoading && state.errorMessage == null) {
+            Text(
+                text = stringResource(Res.string.compose_player_no_subtitle_lines_found),
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+            )
+        }
+
+        if (sortedCues.isNotEmpty()) {
+            val listHeight = if (isCompact) 170.dp else 240.dp
             LazyColumn(
                 state = cueListState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = if (isCompact) 170.dp else 240.dp),
+                    .heightIn(min = listHeight, max = listHeight),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                itemsIndexed(state.cues) { index, cue ->
-                    val isHighlighted = index == highlightedCueIndex
+                itemsIndexed(sortedCues) { index, cue ->
+                    val isHighlighted = index == activeCueIndex
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
