@@ -57,9 +57,11 @@ internal fun PlayerScreenRuntime.captureSubtitleAutoSyncTime() {
 }
 
 internal fun PlayerScreenRuntime.applySubtitleAutoSyncCue(cue: SubtitleSyncCue) {
-    val capturedPositionMs = subtitleAutoSyncState.capturedPositionMs ?: return
-    val newDelayMs = (capturedPositionMs - cue.startTimeMs - SUBTITLE_AUTO_SYNC_REACTION_COMPENSATION_MS)
+    val anchorPositionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)
+    val newDelayMs = (anchorPositionMs - cue.startTimeMs)
         .toInt()
         .coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS)
     setSubtitleDelay(newDelayMs)
+    subtitleAutoSyncState = subtitleAutoSyncState.copy(capturedPositionMs = null, errorMessage = null)
+    playerController?.refreshSubtitlePosition(anchorPositionMs)
 }

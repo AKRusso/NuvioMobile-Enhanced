@@ -1,6 +1,7 @@
 package com.nuvio.app.features.player.skip
 
 import com.nuvio.app.features.details.MetaVideo
+import kotlin.random.Random
 
 object PlayerNextEpisodeRules {
 
@@ -8,6 +9,7 @@ object PlayerNextEpisodeRules {
         videos: List<MetaVideo>,
         currentSeason: Int?,
         currentEpisode: Int?,
+        randomMode: Boolean = false,
     ): MetaVideo? {
         if (currentSeason == null || currentEpisode == null) return null
         val sortedEpisodes = videos
@@ -21,6 +23,16 @@ object PlayerNextEpisodeRules {
             it.season == currentSeason && it.episode == currentEpisode
         }
         if (currentIndex < 0) return null
+        if (randomMode) {
+            val candidates = sortedEpisodes.filter {
+                (it.season ?: 0) > 0 && (it.episode ?: 0) > 0 &&
+                    !(it.season == currentSeason && it.episode == currentEpisode)
+            }
+            if (candidates.isEmpty()) return null
+            val seasons = candidates.groupBy { it.season }.keys.filterNotNull()
+            val selectedSeason = seasons.filter { it != currentSeason }.ifEmpty { seasons }.random()
+            return candidates.filter { it.season == selectedSeason }.let { it[Random.nextInt(it.size)] }
+        }
         return sortedEpisodes.getOrNull(currentIndex + 1)
     }
 

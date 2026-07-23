@@ -64,6 +64,8 @@ fun SubtitleStylePanel(
     subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
     subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    subtitleSyncEnabled: Boolean,
+    currentPlaybackPositionMs: Long,
     isCompact: Boolean,
     showHeader: Boolean = true,
     onStyleChanged: (SubtitleStyleState) -> Unit,
@@ -183,13 +185,17 @@ fun SubtitleStylePanel(
             )
         }
 
-        SubtitleAutoSyncSection(
-            selectedAddonSubtitle = selectedAddonSubtitle,
-            state = subtitleAutoSyncState,
-            onCapture = onAutoSyncCapture,
-            onCueSelected = onAutoSyncCueSelected,
-            onReload = onAutoSyncReload,
-        )
+        if (subtitleSyncEnabled) {
+            SubtitleAutoSyncSection(
+                selectedAddonSubtitle = selectedAddonSubtitle,
+                state = subtitleAutoSyncState,
+                subtitleDelayMs = subtitleDelayMs,
+                currentPlaybackPositionMs = currentPlaybackPositionMs,
+                onCapture = onAutoSyncCapture,
+                onCueSelected = onAutoSyncCueSelected,
+                onReload = onAutoSyncReload,
+            )
+        }
 
         SubtitleResetAction(
             label = stringResource(Res.string.compose_player_reset_defaults),
@@ -336,16 +342,23 @@ private fun SubtitleColorPicker(
 private fun SubtitleAutoSyncSection(
     selectedAddonSubtitle: AddonSubtitle?,
     state: SubtitleAutoSyncUiState,
+    subtitleDelayMs: Int,
+    currentPlaybackPositionMs: Long,
     onCapture: () -> Unit,
     onCueSelected: (SubtitleSyncCue) -> Unit,
     onReload: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
-    val capturedPositionMs = state.capturedPositionMs
-    val nearestCues = if (capturedPositionMs == null) {
-        emptyList()
+    val sortedCues = state.cues.sortedBy(SubtitleSyncCue::startTimeMs)
+    val subtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
+    val activeCueIndex = sortedCues.indexOfLast { it.startTimeMs <= subtitlePositionMs }
+    val visibleCues = if (activeCueIndex >= 0) {
+        sortedCues.subList(
+            (activeCueIndex - 4).coerceAtLeast(0),
+            (activeCueIndex + 6).coerceAtMost(sortedCues.size),
+        )
     } else {
-        state.cues.sortedBy { abs(it.startTimeMs - capturedPositionMs) }.take(5)
+        sortedCues.take(10)
     }
 
     SubtitleStyleSection(title = stringResource(Res.string.compose_player_auto_sync)) {
@@ -379,17 +392,23 @@ private fun SubtitleAutoSyncSection(
                 )
             }
 
-            capturedPositionMs != null && nearestCues.isEmpty() -> {
+            sortedCues.isEmpty() && !state.isLoading -> {
                 SubtitleHelperText(stringResource(Res.string.compose_player_no_subtitle_lines_found))
             }
         }
 
-        nearestCues.forEach { cue ->
+        visibleCues.forEach { cue ->
+            val isActive = sortedCues.indexOf(cue) == activeCueIndex
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.06f))
+                    .background(if (isActive) tokens.colors.accent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.06f))
+                    .border(
+                        width = 1.dp,
+                        color = if (isActive) tokens.colors.accent.copy(alpha = 0.82f) else Color.Transparent,
+                        shape = RoundedCornerShape(8.dp),
+                    )
                     .clickable { onCueSelected(cue) }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

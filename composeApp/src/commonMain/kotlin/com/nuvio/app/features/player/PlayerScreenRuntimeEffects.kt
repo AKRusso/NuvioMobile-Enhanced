@@ -422,7 +422,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         }
     }
 
-    LaunchedEffect(playerMetaVideos, activeSeasonNumber, activeEpisodeNumber) {
+    LaunchedEffect(playerMetaVideos, activeSeasonNumber, activeEpisodeNumber, randomNextEpisodeMode) {
         if (!isSeries || playerMetaVideos.isEmpty()) {
             nextEpisodeInfo = null
             return@LaunchedEffect
@@ -433,6 +433,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             videos = playerMetaVideos,
             currentSeason = curSeason,
             currentEpisode = curEpisode,
+            randomMode = randomNextEpisodeMode,
         )
         val nextSeason = nextVideo?.season
         val nextEpisode = nextVideo?.episode

@@ -69,6 +69,9 @@ data class PlayerSettingsUiState(
     val introDbApiKey: String = "",
     val introSubmitEnabled: Boolean = false,
     val streamAutoPlayNextEpisodeEnabled: Boolean = false,
+    val subtitleSyncMenuEnabled: Boolean = false,
+    val playerClockEndTimeEnabled: Boolean = false,
+    val randomNextEpisodeEnabled: Boolean = false,
     val streamAutoPlayPreferBingeGroup: Boolean = true,
     val streamAutoPlayReuseBingeGroup: Boolean = true,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
@@ -135,6 +138,9 @@ object PlayerSettingsRepository {
     private var introDbApiKey = ""
     private var introSubmitEnabled = false
     private var streamAutoPlayNextEpisodeEnabled = false
+    private var subtitleSyncMenuEnabled = false
+    private var playerClockEndTimeEnabled = false
+    private var randomNextEpisodeEnabled = false
     private var streamAutoPlayPreferBingeGroup = true
     private var streamAutoPlayReuseBingeGroup = true
     private var nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -206,6 +212,9 @@ object PlayerSettingsRepository {
         introDbApiKey = ""
         introSubmitEnabled = false
         streamAutoPlayNextEpisodeEnabled = false
+        subtitleSyncMenuEnabled = false
+        playerClockEndTimeEnabled = false
+        randomNextEpisodeEnabled = false
         streamAutoPlayPreferBingeGroup = true
         streamAutoPlayReuseBingeGroup = true
         nextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
@@ -329,6 +338,9 @@ object PlayerSettingsRepository {
         introDbApiKey = PlayerSettingsStorage.loadIntroDbApiKey() ?: ""
         introSubmitEnabled = PlayerSettingsStorage.loadIntroSubmitEnabled() ?: false
         streamAutoPlayNextEpisodeEnabled = PlayerSettingsStorage.loadStreamAutoPlayNextEpisodeEnabled() ?: false
+        subtitleSyncMenuEnabled = PlayerSettingsStorage.loadSubtitleSyncMenuEnabled() ?: false
+        playerClockEndTimeEnabled = PlayerSettingsStorage.loadPlayerClockEndTimeEnabled() ?: false
+        randomNextEpisodeEnabled = PlayerSettingsStorage.loadRandomNextEpisodeEnabled() ?: false
         streamAutoPlayPreferBingeGroup = PlayerSettingsStorage.loadStreamAutoPlayPreferBingeGroup() ?: true
         streamAutoPlayReuseBingeGroup = PlayerSettingsStorage.loadStreamAutoPlayReuseBingeGroup() ?: true
         nextEpisodeThresholdMode = PlayerSettingsStorage.loadNextEpisodeThresholdMode()
@@ -687,6 +699,30 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveStreamAutoPlayNextEpisodeEnabled(enabled)
     }
 
+    fun setSubtitleSyncMenuEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (subtitleSyncMenuEnabled == enabled) return
+        subtitleSyncMenuEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveSubtitleSyncMenuEnabled(enabled)
+    }
+
+    fun setPlayerClockEndTimeEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (playerClockEndTimeEnabled == enabled) return
+        playerClockEndTimeEnabled = enabled
+        publish()
+        PlayerSettingsStorage.savePlayerClockEndTimeEnabled(enabled)
+    }
+
+    fun setRandomNextEpisodeEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (randomNextEpisodeEnabled == enabled) return
+        randomNextEpisodeEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveRandomNextEpisodeEnabled(enabled)
+    }
+
     fun setStreamAutoPlayPreferBingeGroup(enabled: Boolean) {
         ensureLoaded()
         if (streamAutoPlayPreferBingeGroup == enabled) return
@@ -947,6 +983,9 @@ object PlayerSettingsRepository {
             introDbApiKey = introDbApiKey,
             introSubmitEnabled = introSubmitEnabled,
             streamAutoPlayNextEpisodeEnabled = streamAutoPlayNextEpisodeEnabled,
+            subtitleSyncMenuEnabled = subtitleSyncMenuEnabled,
+            playerClockEndTimeEnabled = playerClockEndTimeEnabled,
+            randomNextEpisodeEnabled = randomNextEpisodeEnabled,
             streamAutoPlayPreferBingeGroup = streamAutoPlayPreferBingeGroup,
             streamAutoPlayReuseBingeGroup = streamAutoPlayReuseBingeGroup,
             nextEpisodeThresholdMode = nextEpisodeThresholdMode,

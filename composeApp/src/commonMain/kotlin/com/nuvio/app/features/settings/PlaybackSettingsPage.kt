@@ -1089,6 +1089,37 @@ private fun PlaybackSettingsSection(
         }
 
         SettingsSection(
+            title = stringResource(Res.string.settings_playback_section_player_extras),
+            isTablet = isTablet,
+        ) {
+            SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_subtitle_sync),
+                    description = stringResource(Res.string.settings_playback_subtitle_sync_description),
+                    checked = autoPlayPlayerSettings.subtitleSyncMenuEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setSubtitleSyncMenuEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_clock_end_time),
+                    description = stringResource(Res.string.settings_playback_clock_end_time_description),
+                    checked = autoPlayPlayerSettings.playerClockEndTimeEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setPlayerClockEndTimeEnabled,
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_random_next_episode),
+                    description = stringResource(Res.string.settings_playback_random_next_episode_description),
+                    checked = autoPlayPlayerSettings.randomNextEpisodeEnabled,
+                    isTablet = isTablet,
+                    onCheckedChange = PlayerSettingsRepository::setRandomNextEpisodeEnabled,
+                )
+            }
+        }
+
+        SettingsSection(
             title = stringResource(Res.string.settings_playback_section_next_episode),
             isTablet = isTablet,
         ) {

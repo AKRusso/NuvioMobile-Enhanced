@@ -63,6 +63,9 @@ actual object PlayerSettingsStorage {
     private const val introDbApiKeyKey = "introdb_api_key"
     private const val introSubmitEnabledKey = "intro_submit_enabled"
     private const val streamAutoPlayNextEpisodeEnabledKey = "stream_auto_play_next_episode_enabled"
+    private const val subtitleSyncMenuEnabledKey = "subtitle_sync_menu_enabled"
+    private const val playerClockEndTimeEnabledKey = "player_clock_end_time_enabled"
+    private const val randomNextEpisodeEnabledKey = "random_next_episode_enabled"
     private const val streamAutoPlayPreferBingeGroupKey = "stream_auto_play_prefer_binge_group"
     private const val streamAutoPlayReuseBingeGroupKey = "stream_auto_play_reuse_binge_group"
     private const val nextEpisodeThresholdModeKey = "next_episode_threshold_mode"
@@ -130,6 +133,9 @@ actual object PlayerSettingsStorage {
         animeSkipEnabledKey,
         animeSkipClientIdKey,
         streamAutoPlayNextEpisodeEnabledKey,
+        subtitleSyncMenuEnabledKey,
+        playerClockEndTimeEnabledKey,
+        randomNextEpisodeEnabledKey,
         streamAutoPlayPreferBingeGroupKey,
         streamAutoPlayReuseBingeGroupKey,
         nextEpisodeThresholdModeKey,
@@ -718,6 +724,13 @@ actual object PlayerSettingsStorage {
         NSUserDefaults.standardUserDefaults.setBool(enabled, forKey = ProfileScopedKey.of(streamAutoPlayNextEpisodeEnabledKey))
     }
 
+    actual fun loadSubtitleSyncMenuEnabled(): Boolean? = loadBoolean(subtitleSyncMenuEnabledKey)
+    actual fun saveSubtitleSyncMenuEnabled(enabled: Boolean) = saveBoolean(subtitleSyncMenuEnabledKey, enabled)
+    actual fun loadPlayerClockEndTimeEnabled(): Boolean? = loadBoolean(playerClockEndTimeEnabledKey)
+    actual fun savePlayerClockEndTimeEnabled(enabled: Boolean) = saveBoolean(playerClockEndTimeEnabledKey, enabled)
+    actual fun loadRandomNextEpisodeEnabled(): Boolean? = loadBoolean(randomNextEpisodeEnabledKey)
+    actual fun saveRandomNextEpisodeEnabled(enabled: Boolean) = saveBoolean(randomNextEpisodeEnabledKey, enabled)
+
     actual fun loadStreamAutoPlayPreferBingeGroup(): Boolean? {
         val defaults = NSUserDefaults.standardUserDefaults
         val key = ProfileScopedKey.of(streamAutoPlayPreferBingeGroupKey)
@@ -939,6 +952,9 @@ actual object PlayerSettingsStorage {
         loadAnimeSkipEnabled()?.let { put(animeSkipEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipClientId()?.let { put(animeSkipClientIdKey, encodeSyncString(it)) }
         loadStreamAutoPlayNextEpisodeEnabled()?.let { put(streamAutoPlayNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
+        loadSubtitleSyncMenuEnabled()?.let { put(subtitleSyncMenuEnabledKey, encodeSyncBoolean(it)) }
+        loadPlayerClockEndTimeEnabled()?.let { put(playerClockEndTimeEnabledKey, encodeSyncBoolean(it)) }
+        loadRandomNextEpisodeEnabled()?.let { put(randomNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayPreferBingeGroup()?.let { put(streamAutoPlayPreferBingeGroupKey, encodeSyncBoolean(it)) }
         loadStreamAutoPlayReuseBingeGroup()?.let { put(streamAutoPlayReuseBingeGroupKey, encodeSyncBoolean(it)) }
         loadNextEpisodeThresholdMode()?.let { put(nextEpisodeThresholdModeKey, encodeSyncString(it)) }
@@ -1013,6 +1029,9 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncString(animeSkipClientIdKey)?.let(::saveAnimeSkipClientId)
         payload.decodeSyncString(introDbApiKeyKey)?.let(::saveIntroDbApiKey)
         payload.decodeSyncBoolean(streamAutoPlayNextEpisodeEnabledKey)?.let(::saveStreamAutoPlayNextEpisodeEnabled)
+        payload.decodeSyncBoolean(subtitleSyncMenuEnabledKey)?.let(::saveSubtitleSyncMenuEnabled)
+        payload.decodeSyncBoolean(playerClockEndTimeEnabledKey)?.let(::savePlayerClockEndTimeEnabled)
+        payload.decodeSyncBoolean(randomNextEpisodeEnabledKey)?.let(::saveRandomNextEpisodeEnabled)
         payload.decodeSyncBoolean(streamAutoPlayPreferBingeGroupKey)?.let(::saveStreamAutoPlayPreferBingeGroup)
         payload.decodeSyncBoolean(streamAutoPlayReuseBingeGroupKey)?.let(::saveStreamAutoPlayReuseBingeGroup)
         payload.decodeSyncString(nextEpisodeThresholdModeKey)?.let(::saveNextEpisodeThresholdMode)
