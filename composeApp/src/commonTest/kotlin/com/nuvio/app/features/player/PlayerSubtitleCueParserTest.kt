@@ -32,4 +32,15 @@ class PlayerSubtitleCueParserTest {
         assertNull(activeSubtitleSyncCue(cues, 2_500L))
         assertEquals("Second", activeSubtitleSyncCue(cues, 3_500L)?.text)
     }
+
+    @Test
+    fun selectedCueIsAlignedToCapturedPlaybackPosition() {
+        val anchorPositionMs = 60_000L
+        val cueStartTimeMs = 42_000L
+
+        val delayMs = subtitleDelayForCue(anchorPositionMs, cueStartTimeMs)
+
+        assertEquals(18_000, delayMs)
+        assertEquals(cueStartTimeMs, anchorPositionMs - delayMs)
+    }
 }

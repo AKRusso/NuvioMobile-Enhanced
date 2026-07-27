@@ -92,6 +92,7 @@ internal fun PlayerControlsShell(
     isLocked: Boolean,
     showPlaybackControls: Boolean = true,
     showDeviceStatusOverlay: Boolean = false,
+    showClockEndTime: Boolean = false,
     onLockToggle: () -> Unit,
     onBack: () -> Unit,
     onTogglePlayback: () -> Unit,
@@ -178,9 +179,11 @@ internal fun PlayerControlsShell(
                     seasonNumber = seasonNumber,
                     episodeNumber = episodeNumber,
                     episodeTitle = episodeTitle,
+                    playbackSnapshot = playbackSnapshot,
                     metrics = metrics,
                     isLocked = isLocked,
                     showActions = showPlaybackControls,
+                    showClockEndTime = showClockEndTime,
                     onSubmitIntroClick = onSubmitIntroClick,
                     parentalWarnings = parentalWarnings,
                     showParentalGuide = showParentalGuide,
@@ -478,9 +481,11 @@ private fun PlayerHeader(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    playbackSnapshot: PlayerPlaybackSnapshot,
     metrics: PlayerLayoutMetrics,
     isLocked: Boolean,
     showActions: Boolean,
+    showClockEndTime: Boolean,
     onSubmitIntroClick: (() -> Unit)?,
     parentalWarnings: List<ParentalWarning>,
     showParentalGuide: Boolean,
@@ -576,68 +581,76 @@ private fun PlayerHeader(
             }
 
             if (showActions) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (onSubmitIntroClick != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (onSubmitIntroClick != null) {
+                            PlayerHeaderIconButton(
+                                icon = Icons.Rounded.Flag,
+                                contentDescription = stringResource(Res.string.submit_intro_action),
+                                buttonSize = metrics.headerIconSize + 16.dp,
+                                iconSize = metrics.headerIconSize,
+                                onClick = onSubmitIntroClick,
+                            )
+                        }
+                        if (onOpenInExternalPlayer != null) {
+                            PlayerHeaderIconButton(
+                                icon = Icons.AutoMirrored.Rounded.OpenInNew,
+                                contentDescription = stringResource(Res.string.streams_open_external_player),
+                                buttonSize = metrics.headerIconSize + 16.dp,
+                                iconSize = metrics.headerIconSize,
+                                onClick = onOpenInExternalPlayer,
+                            )
+                        }
+                        if (onRandomNextEpisodeModeToggle != null) {
+                            PlayerHeaderIconButton(
+                                icon = Icons.Rounded.Shuffle,
+                                contentDescription = stringResource(
+                                    if (randomNextEpisodeMode) Res.string.player_random_next_enabled else Res.string.player_random_next_disabled,
+                                ),
+                                buttonSize = metrics.headerIconSize + 16.dp,
+                                iconSize = metrics.headerIconSize,
+                                selected = randomNextEpisodeMode,
+                                onClick = onRandomNextEpisodeModeToggle,
+                            )
+                        }
                         PlayerHeaderIconButton(
-                            icon = Icons.Rounded.Flag,
-                            contentDescription = stringResource(Res.string.submit_intro_action),
+                            icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
+                            contentDescription = if (isLocked) {
+                                stringResource(Res.string.compose_player_unlock_controls)
+                            } else {
+                                stringResource(Res.string.compose_player_lock_controls)
+                            },
                             buttonSize = metrics.headerIconSize + 16.dp,
                             iconSize = metrics.headerIconSize,
-                            onClick = onSubmitIntroClick,
+                            onClick = onLockToggle,
                         )
-                    }
-                    if (onOpenInExternalPlayer != null) {
-                        PlayerHeaderIconButton(
-                            icon = Icons.AutoMirrored.Rounded.OpenInNew,
-                            contentDescription = stringResource(Res.string.streams_open_external_player),
+                        if (onVideoSettingsClick != null) {
+                            PlayerHeaderIconButton(
+                                icon = Icons.Rounded.Build,
+                                contentDescription = stringResource(Res.string.player_action_video_settings),
+                                buttonSize = metrics.headerIconSize + 16.dp,
+                                iconSize = metrics.headerIconSize,
+                                onClick = onVideoSettingsClick,
+                            )
+                        }
+                        NuvioBackButton(
+                            onClick = onBack,
+                            containerColor = Color.Black.copy(alpha = 0.35f),
+                            contentColor = Color.White,
                             buttonSize = metrics.headerIconSize + 16.dp,
                             iconSize = metrics.headerIconSize,
-                            onClick = onOpenInExternalPlayer,
+                            contentDescription = stringResource(Res.string.compose_player_close),
                         )
                     }
-                    if (onRandomNextEpisodeModeToggle != null) {
-                        PlayerHeaderIconButton(
-                            icon = Icons.Rounded.Shuffle,
-                            contentDescription = stringResource(
-                                if (randomNextEpisodeMode) Res.string.player_random_next_enabled else Res.string.player_random_next_disabled,
-                            ),
-                            buttonSize = metrics.headerIconSize + 16.dp,
-                            iconSize = metrics.headerIconSize,
-                            selected = randomNextEpisodeMode,
-                            onClick = onRandomNextEpisodeModeToggle,
-                        )
+                    if (showClockEndTime) {
+                        PlayerClockEndTimeOverlay(playbackSnapshot = playbackSnapshot)
                     }
-                    PlayerHeaderIconButton(
-                        icon = if (isLocked) Icons.Rounded.LockOpen else Icons.Rounded.Lock,
-                        contentDescription = if (isLocked) {
-                            stringResource(Res.string.compose_player_unlock_controls)
-                        } else {
-                            stringResource(Res.string.compose_player_lock_controls)
-                        },
-                        buttonSize = metrics.headerIconSize + 16.dp,
-                        iconSize = metrics.headerIconSize,
-                        onClick = onLockToggle,
-                    )
-                    if (onVideoSettingsClick != null) {
-                        PlayerHeaderIconButton(
-                            icon = Icons.Rounded.Build,
-                            contentDescription = stringResource(Res.string.player_action_video_settings),
-                            buttonSize = metrics.headerIconSize + 16.dp,
-                            iconSize = metrics.headerIconSize,
-                            onClick = onVideoSettingsClick,
-                        )
-                    }
-                    NuvioBackButton(
-                        onClick = onBack,
-                        containerColor = Color.Black.copy(alpha = 0.35f),
-                        contentColor = Color.White,
-                        buttonSize = metrics.headerIconSize + 16.dp,
-                        iconSize = metrics.headerIconSize,
-                        contentDescription = stringResource(Res.string.compose_player_close),
-                    )
                 }
             }
         }

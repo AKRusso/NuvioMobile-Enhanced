@@ -33,6 +33,12 @@ same user-facing summary so the in-app updater can display it before download.
   actions, and uses stronger contrast over video.
 - Expanded navigation no longer resets to Adaptive when an older sync payload
   does not contain a navigation style.
+- Selecting a subtitle line in Sync now applies it immediately at the captured
+  playback position.
+- The player clock now stays directly below the header actions without overlapping
+  them on different screen sizes.
+- Restored smooth hero artwork, metadata, and indicator transitions while swiping
+  or auto-advancing.
 
 ### Upstream
 

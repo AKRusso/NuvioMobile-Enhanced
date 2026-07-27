@@ -83,6 +83,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicLong
 
 private const val TAG = "NuvioPlayer"
 private const val PLAYER_DIAGNOSTIC_TAG = "NuvioPlayerDiag"
@@ -261,9 +262,8 @@ private fun ExoPlayerSurface(
         initialPositionRequestKey.orEmpty(),
     )
     val playbackDiagnostics = remember(playerSourceKey) { PlaybackDiagnostics() }
-    var subtitleDelayMs by remember(playerSourceKey) { mutableStateOf(0) }
+    val subtitleDelayUs = remember(playerSourceKey) { AtomicLong(0L) }
     var selectedExternalSubtitleMimeType by remember(playerSourceKey) { mutableStateOf<String?>(null) }
-    val latestSubtitleDelayMs = rememberUpdatedState(subtitleDelayMs)
     val latestExternalSubtitleMimeType = rememberUpdatedState(selectedExternalSubtitleMimeType)
     var playerViewRef by remember { mutableStateOf<PlayerView?>(null) }
     var videoAspectRatio by remember(playerSourceKey) { mutableStateOf(0f) }
@@ -353,7 +353,7 @@ private fun ExoPlayerSurface(
     ) {
         val renderersFactory = SubtitleOffsetRenderersFactory(
             context = context,
-            subtitleDelayUsProvider = { latestSubtitleDelayMs.value.toLong() * 1_000L },
+            subtitleDelayUsProvider = subtitleDelayUs::get,
             shouldNormalizeCuePositionProvider = {
                 latestExternalSubtitleMimeType.value == MimeTypes.TEXT_VTT
             },
@@ -854,7 +854,11 @@ private fun ExoPlayerSurface(
                 }
 
                 override fun setSubtitleDelayMs(delayMs: Int) {
-                    subtitleDelayMs = delayMs.coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS)
+                    subtitleDelayUs.set(
+                        delayMs
+                            .coerceIn(SUBTITLE_DELAY_MIN_MS, SUBTITLE_DELAY_MAX_MS)
+                            .toLong() * 1_000L,
+                    )
                 }
 
                 override fun refreshSubtitlePosition(positionMs: Long) {

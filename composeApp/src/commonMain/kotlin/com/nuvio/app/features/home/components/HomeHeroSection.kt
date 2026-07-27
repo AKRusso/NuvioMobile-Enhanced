@@ -127,7 +127,9 @@ import kotlin.math.abs
 import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 
+private const val HERO_BACKGROUND_PARALLAX = 0.055f
 private const val HERO_BACKGROUND_SCALE = 1.14f
+private const val HERO_CONTENT_PARALLAX = 0.18f
 private const val HERO_SCROLL_PARALLAX = 0.3f
 private const val HERO_SCROLL_DOWN_SCALE_MULTIPLIER = 0.0001f
 private const val HERO_SCROLL_UP_SCALE_MULTIPLIER = 0.002f
@@ -255,6 +257,7 @@ internal fun HomeHeroSection(
             HomeHeroVisualStyle.Default -> layout.heroHeight
         }
         val density = LocalDensity.current
+        val heroWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
         val heroHeightPx = with(density) { activeHeroHeight.toPx() }
         val scrollOffsetPx by remember(listState, heroHeightPx) {
             derivedStateOf {
@@ -277,7 +280,31 @@ internal fun HomeHeroSection(
                 targetPage.coerceIn(items.indices)
             }
         }
+        val visiblePages = listOf(
+            (pagerState.currentPage - 1).coerceIn(items.indices),
+            pagerState.currentPage.coerceIn(items.indices),
+            (pagerState.currentPage + 1).coerceIn(items.indices),
+        ).distinct()
+            .mapNotNull { index ->
+                val pageOffset = heroPageOffset(pagerState, index)
+                val visibility = (1f - abs(pageOffset)).coerceIn(0f, 1f)
+                if (visibility <= 0.001f) {
+                    null
+                } else {
+                    HeroPageLayer(
+                        page = index,
+                        visibility = visibility,
+                        offset = pageOffset,
+                    )
+                }
+            }
+            .sortedBy(HeroPageLayer::visibility)
         val currentItem = items[displayPage]
+        val defaultActiveItem = visiblePages
+            .lastOrNull()
+            ?.page
+            ?.let(items::get)
+            ?: currentItem
         val currentItemKey = currentItem.stableKey()
         val currentVisibleDetailMeta = remember(itemKeys, metadataRefreshKey, currentItemKey) {
             detailMetas[currentItemKey]
@@ -447,30 +474,45 @@ internal fun HomeHeroSection(
                     ) {
                         val motionVisibility = if (motionPreviewEnabled) 1f else 0f
                         val motionPulse = if (motionPreviewEnabled) cinematicPulse else 0.5f
-                        AsyncImage(
-                            model = currentArtworkUrl,
-                            contentDescription = currentItem.name,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    alpha = 1f
-                                    translationX =
-                                        ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
-                                    val cinematicScale =
-                                        1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
-                                    val backgroundScale = HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
-                                    val refreshScaleX = homeHeroRefreshScaleX(heroRefreshProgress)
-                                    val refreshScaleY = homeHeroRefreshScaleY(heroRefreshProgress)
-                                    val verticalBleedPx =
-                                        ((backgroundScale - 1f).coerceAtLeast(0f) * heroHeightPx) / 2f
-                                    translationY = heroScrollTranslationY.coerceIn(-verticalBleedPx, verticalBleedPx) +
-                                        homeHeroRefreshTranslationY(heroRefreshProgress)
-                                    scaleX = backgroundScale * refreshScaleX
-                                    scaleY = backgroundScale * refreshScaleY
-                                },
-                            alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
-                            contentScale = ContentScale.Crop,
-                        )
+                        visiblePages.forEach { layer ->
+                            val layerItem = items[layer.page]
+                            val layerItemKey = layerItem.stableKey()
+                            val layerDetailMeta = detailMetas[layerItemKey]
+                                ?: MetaDetailsRepository.peek(type = layerItem.type, id = layerItem.id)
+                            AsyncImage(
+                                model = layerItem.heroArtworkUrl(
+                                    source = currentArtworkSource,
+                                    detailMeta = layerDetailMeta,
+                                    allowPreviewFallback = true,
+                                ),
+                                contentDescription = layerItem.name,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = layer.visibility
+                                        translationX =
+                                            -layer.offset * heroWidthPx * HERO_BACKGROUND_PARALLAX +
+                                                ((motionPulse - 0.5f) *
+                                                    HERO_CINEMATIC_PAN_PX *
+                                                    motionVisibility)
+                                        val cinematicScale =
+                                            1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
+                                        val backgroundScale =
+                                            HERO_BACKGROUND_SCALE * heroScrollScale * cinematicScale
+                                        val refreshScaleX = homeHeroRefreshScaleX(heroRefreshProgress)
+                                        val refreshScaleY = homeHeroRefreshScaleY(heroRefreshProgress)
+                                        val verticalBleedPx =
+                                            ((backgroundScale - 1f).coerceAtLeast(0f) * heroHeightPx) / 2f
+                                        translationY =
+                                            heroScrollTranslationY.coerceIn(-verticalBleedPx, verticalBleedPx) +
+                                                homeHeroRefreshTranslationY(heroRefreshProgress)
+                                        scaleX = backgroundScale * refreshScaleX
+                                        scaleY = backgroundScale * refreshScaleY
+                                    },
+                                alignment = if (layout.isTablet) Alignment.TopCenter else Alignment.Center,
+                                contentScale = ContentScale.Crop,
+                            )
+                        }
 
                         Box(
                             modifier = Modifier
@@ -514,16 +556,30 @@ internal fun HomeHeroSection(
                                     .widthIn(max = layout.contentMaxWidth),
                                 contentAlignment = if (layout.isTablet) Alignment.CenterStart else Alignment.Center,
                             ) {
-                                HeroContentBlock(
-                                    item = currentItem,
-                                    layout = layout,
-                                    detailMeta = currentVisibleDetailMeta,
-                                    heroDisplayMode = heroDisplayMode,
-                                    compactMetadata = compactMetadata,
-                                    showRatings = showRatings,
-                                    showOverview = showOverview,
-                                    onItemClick = onItemClick,
-                                )
+                                visiblePages.forEach { layer ->
+                                    val layerItem = items[layer.page]
+                                    val layerItemKey = layerItem.stableKey()
+                                    val layerDetailMeta = detailMetas[layerItemKey]
+                                        ?: MetaDetailsRepository.peek(type = layerItem.type, id = layerItem.id)
+                                    Box(
+                                        modifier = Modifier.graphicsLayer {
+                                            alpha = layer.visibility
+                                            translationX =
+                                                -layer.offset * heroWidthPx * HERO_CONTENT_PARALLAX
+                                        },
+                                    ) {
+                                        HeroContentBlock(
+                                            item = layerItem,
+                                            layout = layout,
+                                            detailMeta = layerDetailMeta,
+                                            heroDisplayMode = heroDisplayMode,
+                                            compactMetadata = compactMetadata,
+                                            showRatings = showRatings,
+                                            showOverview = showOverview,
+                                            onItemClick = onItemClick,
+                                        )
+                                    }
+                                }
                             }
 
                             if (!layout.isTablet) {
@@ -531,7 +587,7 @@ internal fun HomeHeroSection(
                                 HeroCtaButton(
                                     text = stringResource(Res.string.home_view_details),
                                     enabled = onItemClick != null,
-                                    onClick = { onItemClick?.invoke(currentItem) },
+                                    onClick = { onItemClick?.invoke(defaultActiveItem) },
                                 )
                             }
 
@@ -543,7 +599,7 @@ internal fun HomeHeroSection(
                                 ) {
                                     items.forEachIndexed { index, _ ->
                                         HeroPageIndicator(
-                                            activeFraction = if (index == displayPage) 1f else 0f,
+                                            activeFraction = heroPageVisibility(pagerState, index),
                                             onClick = {
                                                 coroutineScope.launch {
                                                     pagerState.animateScrollToPage(index)
@@ -572,6 +628,22 @@ private data class PosterHeroRatingItem(
     val value: String,
     val accent: Color,
 )
+
+private data class HeroPageLayer(
+    val page: Int,
+    val visibility: Float,
+    val offset: Float,
+)
+
+private fun heroPageOffset(
+    pagerState: PagerState,
+    page: Int,
+): Float = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+
+private fun heroPageVisibility(
+    pagerState: PagerState,
+    page: Int,
+): Float = (1f - abs(heroPageOffset(pagerState, page))).coerceIn(0f, 1f)
 
 @Composable
 fun HomeHeroReservedSpace(

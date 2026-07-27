@@ -6,18 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeContent
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.unit.dp
 import com.nuvio.app.features.p2p.P2pStreamingState
 import com.nuvio.app.features.p2p.formatP2pMegabytes
 import com.nuvio.app.features.p2p.formatP2pSpeed
@@ -215,25 +207,6 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             )
         }
 
-        if (
-            nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
-            playerSettingsUiState.playerClockEndTimeEnabled &&
-            contentType != "live-tv" &&
-            controlsVisible &&
-            !playerControlsLocked
-        ) {
-            PlayerClockEndTimeOverlay(
-                playbackSnapshot = playbackSnapshot,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top))
-                    .padding(
-                        top = metrics.headerIconSize + metrics.verticalPadding + 36.dp,
-                        end = horizontalSafePadding + 20.dp,
-                    ),
-            )
-        }
-
         RenderPlayerControls(displayedPositionMs = displayedPositionMs, isEpisode = isEpisode)
         RenderPlaybackOverlays(
             runtime = runtime,
@@ -294,6 +267,9 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             isLocked = playerControlsLocked,
             showPlaybackControls = controlsVisible,
             showDeviceStatusOverlay = showQuietDeviceStatusOverlay,
+            showClockEndTime = nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+                playerSettingsUiState.playerClockEndTimeEnabled &&
+                contentType != "live-tv",
             onLockToggle = {
                 if (playerControlsLocked) unlockPlayerControls() else lockPlayerControls()
             },
