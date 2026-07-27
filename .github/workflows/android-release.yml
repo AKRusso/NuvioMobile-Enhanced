@@ -34,6 +34,7 @@ jobs:
       RELEASE_KEYSTORE_BASE64: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 }}
       TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
       TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+      EXPECTED_ANDROID_SIGNING_SHA256: 0b1cb28cf80b26557c9f3ea4b93a86d59b3d733acf064666c7b5390fc410851c
 
     steps:
       - name: Check out full history
@@ -189,6 +190,68 @@ jobs:
       - name: Build full release APKs
         if: inputs.mode != 'dry-run'
         run: ./gradlew :androidApp:assembleFullRelease --stacktrace
+
+      - name: Verify Android signing certificate
+        if: inputs.mode != 'dry-run'
+        run: |
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          if [[ -z "${sdk_root}" ]]; then
+            echo "The Android SDK path is not configured." >&2
+            exit 1
+          fi
+          build_tools_dir="$(
+            find "${sdk_root}/build-tools" \
+              -mindepth 1 \
+              -maxdepth 1 \
+              -type d \
+              -print |
+              sort -V |
+              tail -n 1
+          )"
+          apksigner="${build_tools_dir}/apksigner"
+          if [[ ! -x "${apksigner}" ]]; then
+            echo "apksigner was not found in the Android SDK." >&2
+            exit 1
+          fi
+
+          mapfile -t release_apks < <(
+            find androidApp/build/outputs/apk/full/release \
+              -maxdepth 1 \
+              -type f \
+              -name '*.apk' \
+              -print |
+              sort
+          )
+          if (( ${#release_apks[@]} == 0 )); then
+            echo "No release APKs were produced." >&2
+            exit 1
+          fi
+
+          expected_digest="$(
+            printf '%s' "${EXPECTED_ANDROID_SIGNING_SHA256}" |
+              tr '[:upper:]' '[:lower:]' |
+              tr -d ':[:space:]'
+          )"
+          for apk in "${release_apks[@]}"; do
+            actual_digest="$(
+              "${apksigner}" verify --print-certs "${apk}" |
+                sed -n -E 's/^.*certificate SHA-256 digest:[[:space:]]*//p' |
+                head -n 1 |
+                tr '[:upper:]' '[:lower:]' |
+                tr -d ':[:space:]'
+            )"
+            if [[ -z "${actual_digest}" ]]; then
+              echo "Could not read the signing certificate from ${apk}." >&2
+              exit 1
+            fi
+            if [[ "${actual_digest}" != "${expected_digest}" ]]; then
+              echo "Signing certificate mismatch for ${apk}." >&2
+              echo "Expected: ${expected_digest}" >&2
+              echo "Actual:   ${actual_digest}" >&2
+              echo "This APK cannot update an existing Nuvio Enhanced installation." >&2
+              exit 1
+            fi
+          done
 
       - name: Upload build artifacts
         if: inputs.mode != 'dry-run'

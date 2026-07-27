@@ -25,6 +25,24 @@ The workflow passes the secrets directly to Gradle and does not print their valu
 Forks do not inherit Actions secrets, so every fork that publishes an APK must
 configure its own credentials.
 
+## Android signing
+
+An APK can update an existing Nuvio Enhanced installation only when both APKs
+use the same application ID and signing certificate. The established Android
+certificate SHA-256 digest is:
+
+```text
+0b1cb28cf80b26557c9f3ea4b93a86d59b3d733acf064666c7b5390fc410851c
+```
+
+The repository owner must configure the original signing material through
+`NUVIO_RELEASE_KEYSTORE_BASE64` and the matching release properties. Never
+commit the keystore or its passwords, and do not send them through chat.
+
+The release workflow verifies every generated APK against this digest before
+uploading artifacts or creating a GitHub Release. A mismatch stops the workflow
+because that APK would require users to uninstall the existing app.
+
 ## Update source
 
 GitHub Actions builds automatically use the owner of the repository running the

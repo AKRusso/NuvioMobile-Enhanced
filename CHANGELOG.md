@@ -20,6 +20,8 @@ same user-facing summary so the in-app updater can display it before download.
 - Fork releases can be discovered by the existing in-app updater.
 - Release builds no longer depend on Trakt credentials being stored only in
   `local.properties`.
+- Release publishing now stops when an APK is not signed with the certificate
+  used by existing Nuvio Enhanced installations.
 
 ### Upstream
 
