@@ -1,7 +1,6 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -85,7 +84,6 @@ import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings
 import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings_description
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.resources.painterResource
 
 private const val NuvioEnhancedGithubUrl = "https://github.com/yesnt10/NuvioMobile-Enhanced"
 private const val NuvioEnhancedDiscordUrl = "https://discord.gg/at8xffxuRU"
@@ -138,7 +136,6 @@ private fun NuvioEnhancedSettingsPageContent(
     val uriHandler = LocalUriHandler.current
     var backupPayload by remember { mutableStateOf<String?>(null) }
     var showImportDialog by remember { mutableStateOf(false) }
-    var showAppIconPicker by remember { mutableStateOf(false) }
     var importPayload by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
     val hasNewPlayerTools = settings.isNew(NuvioEnhancedFeature.SubtitleSyncMenu) ||
@@ -382,20 +379,6 @@ private fun NuvioEnhancedSettingsPageContent(
                     onCheckedChange = {
                         markSeen(NuvioEnhancedFeature.StatusBarVisibility)
                         NuvioEnhancedSettingsRepository.setStatusBarVisible(it)
-                    },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
-                val selectedAppIcon = NuvioAppIconOption.entries.firstOrNull { it.id == settings.selectedAppIconId }
-                    ?: NuvioAppIconOption.Default
-                SettingsNavigationRow(
-                    title = stringResource(Res.string.nuvio_enhanced_app_icon_title),
-                    description = stringResource(Res.string.nuvio_enhanced_app_icon_desc),
-                    iconPainter = appIconPreviewPainter(selectedAppIcon),
-                    isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.AppIconPicker),
-                    onClick = {
-                        markSeen(NuvioEnhancedFeature.AppIconPicker)
-                        showAppIconPicker = true
                     },
                 )
                 SettingsGroupDivider(isTablet = isTablet)
@@ -1001,20 +984,6 @@ private fun NuvioEnhancedSettingsPageContent(
         }
     }
 
-    if (showAppIconPicker) {
-        AppIconPickerDialog(
-            selected = settings.selectedAppIconId,
-            onDismiss = { showAppIconPicker = false },
-            onSelected = { option ->
-                val applied = NuvioEnhancedSettingsRepository.setSelectedAppIcon(option)
-                showAppIconPicker = false
-                if (applied) {
-                    NuvioAppIconSwitcher.closeAfterApply()
-                }
-            },
-        )
-    }
-
     backupPayload?.let { payload ->
         BackupPayloadDialog(
             payload = payload,
@@ -1045,114 +1014,6 @@ private fun NuvioEnhancedSettingsPageContent(
         )
     }
 }
-
-@Composable
-private fun AppIconPickerDialog(
-    selected: String,
-    onDismiss: () -> Unit,
-    onSelected: (NuvioAppIconOption) -> Unit,
-) {
-    val tokens = MaterialTheme.nuvio
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(Res.string.nuvio_enhanced_app_icon_title),
-                fontWeight = FontWeight.Bold,
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 420.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                NuvioAppIconOption.entries.forEach { option ->
-                    val isSelected = option.id == selected
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelected(option) },
-                        color = if (isSelected) {
-                            tokens.colors.accent.copy(alpha = 0.14f)
-                        } else {
-                            tokens.colors.surfaceCard.copy(alpha = 0.76f)
-                        },
-                        shape = RoundedCornerShape(NuvioTokens.Radius.lg),
-                        border = BorderStroke(
-                            tokens.borders.hairline,
-                            if (isSelected) {
-                                tokens.colors.accent.copy(alpha = 0.82f)
-                            } else {
-                                tokens.colors.borderSubtle
-                            },
-                        ),
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Image(
-                                painter = appIconPreviewPainter(option),
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                            )
-                            Text(
-                                text = appIconLabel(option),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = tokens.colors.textPrimary,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f),
-                            )
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Rounded.CheckCircle,
-                                    contentDescription = stringResource(Res.string.settings_advanced_doh_selected),
-                                    tint = tokens.colors.accent,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(Res.string.nuvio_enhanced_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun appIconLabel(option: NuvioAppIconOption): String = when (option.id) {
-    NuvioAppIconOption.Enhanced.id -> stringResource(Res.string.nuvio_enhanced_app_icon_enhanced)
-    NuvioAppIconOption.Monochrome.id -> stringResource(Res.string.nuvio_enhanced_app_icon_monochrome)
-    NuvioAppIconOption.Neon.id -> stringResource(Res.string.nuvio_enhanced_app_icon_neon)
-    NuvioAppIconOption.Gear.id -> stringResource(Res.string.nuvio_enhanced_app_icon_gear)
-    NuvioAppIconOption.Chrome.id -> stringResource(Res.string.nuvio_enhanced_app_icon_chrome)
-    NuvioAppIconOption.Aurora.id -> stringResource(Res.string.nuvio_enhanced_app_icon_aurora)
-    NuvioAppIconOption.Emerald.id -> stringResource(Res.string.nuvio_enhanced_app_icon_emerald)
-    else -> stringResource(Res.string.nuvio_enhanced_app_icon_default)
-}
-
-@Composable
-private fun appIconPreviewPainter(option: NuvioAppIconOption): Painter = painterResource(
-    when (option.id) {
-        NuvioAppIconOption.Enhanced.id -> Res.drawable.app_icon_enhanced_preview
-        NuvioAppIconOption.Monochrome.id -> Res.drawable.app_icon_monochrome_preview
-        NuvioAppIconOption.Neon.id -> Res.drawable.app_icon_neon_preview
-        NuvioAppIconOption.Gear.id -> Res.drawable.app_icon_gear_preview
-        NuvioAppIconOption.Chrome.id -> Res.drawable.app_icon_chrome_preview
-        NuvioAppIconOption.Aurora.id -> Res.drawable.app_icon_aurora_preview
-        NuvioAppIconOption.Emerald.id -> Res.drawable.app_icon_emerald_preview
-        else -> Res.drawable.app_icon_default_preview
-    },
-)
 
 @Composable
 private fun EnhancedDnsProviderRow(

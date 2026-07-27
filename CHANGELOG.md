@@ -14,6 +14,9 @@ same user-facing summary so the in-app updater can display it before download.
   selectors.
 - Kept subtitle synchronization as a dedicated player action instead of showing
   it again inside the subtitle selector.
+- Made the Nuvio Enhanced artwork the default application icon.
+- Removed the alternate app icon picker and added a one-time migration back to
+  the default icon to avoid launcher component conflicts.
 - Made the update repository configurable for local builds and forks.
 - Allowed release builds to read Trakt credentials from GitHub Actions secrets.
 

@@ -93,7 +93,6 @@ class MainActivity : AppCompatActivity() {
         NuvioAppIconSwitcher.initialize(applicationContext)
         NuvioEnhancedSettingsStorage.initialize(applicationContext)
         NuvioEnhancedSettingsRepository.ensureLoaded()
-        NuvioAppIconSwitcher.apply(NuvioEnhancedSettingsRepository.uiState.value.selectedAppIconId)
         SentrySettingsStorage.initialize(applicationContext)
         SentryInitializer.start(application)
         super.onCreate(savedInstanceState)

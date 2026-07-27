@@ -37,7 +37,6 @@ internal data class NuvioEnhancedSettingsUiState(
     val playerStatusOverlayEnabled: Boolean = false,
     val subtitleSelectorStyle: NuvioSubtitleSelectorStyle = NuvioSubtitleSelectorStyle.Enhanced,
     val showContinueWatchingReadyBadge: Boolean = true,
-    val selectedAppIconId: String = NuvioAppIconOption.Default.id,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -90,7 +89,6 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     PlayerTimeOverlay("player_time_overlay_v3"),
     PersistentEpisodeShuffle("persistent_episode_shuffle_v3"),
     StatusBarVisibility("status_bar_visibility"),
-    AppIconPicker("app_icon_picker"),
     NetworkControls("network_controls"),
     CommunityLinks("community_links"),
     PremiumLabs("premium_labs"),
@@ -132,7 +130,7 @@ private data class StoredNuvioEnhancedSettings(
     val playerStatusOverlayEnabled: Boolean = false,
     val subtitleSelectorStyle: NuvioSubtitleSelectorStyle = NuvioSubtitleSelectorStyle.Enhanced,
     val showContinueWatchingReadyBadge: Boolean = true,
-    val selectedAppIconId: String = NuvioAppIconOption.Default.id,
+    val appIconSelectionRemoved: Boolean = false,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -169,6 +167,11 @@ internal object NuvioEnhancedSettingsRepository {
                 }
         } else {
             StoredNuvioEnhancedSettings()
+        }
+        if (!stored.appIconSelectionRemoved) {
+            NuvioAppIconSwitcher.restoreDefault()
+            stored = stored.copy(appIconSelectionRemoved = true)
+            persist()
         }
         publish()
     }
@@ -308,14 +311,6 @@ internal object NuvioEnhancedSettingsRepository {
         copy(showContinueWatchingReadyBadge = enabled)
     }
 
-    fun setSelectedAppIcon(option: NuvioAppIconOption): Boolean {
-        val applied = NuvioAppIconSwitcher.apply(option.id)
-        update {
-            copy(selectedAppIconId = option.id)
-        }
-        return applied
-    }
-
     fun setReleaseRadarLibraryOnly(enabled: Boolean) = update {
         copy(releaseRadarLibraryOnly = enabled)
     }
@@ -388,7 +383,6 @@ internal object NuvioEnhancedSettingsRepository {
             playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
             subtitleSelectorStyle = stored.subtitleSelectorStyle,
             showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
-            selectedAppIconId = stored.selectedAppIconId,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,
             releaseRadarWindowDays = stored.releaseRadarWindowDays.coerceIn(7, 45),
             releaseRadarContentFilter = stored.releaseRadarContentFilter,
