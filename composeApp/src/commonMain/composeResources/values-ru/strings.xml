@@ -2374,4 +2374,9 @@
     <string name="person_remove_favorite">Удалить из любимых актеров</string>
     <string name="profile_insights_favorite_people_title">Любимые актеры</string>
     <string name="profile_insights_favorite_people_open">Открыть профиль</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Синхронизация субтитров</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Показывать элементы настройки времени и отслеживать активную строку во время воспроизведения.</string>
+    <string name="nuvio_enhanced_player_clock_title">Время в проигрывателе</string>
+    <string name="nuvio_enhanced_player_clock_desc">Показывать текущее время и расчётное время окончания, когда элементы управления видимы.</string>
+    <string name="player_clock_ends_at">Закончится в %1$s</string>
 </resources>

@@ -527,7 +527,14 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         }
     }
 
-    LaunchedEffect(playerMetaVideos, activeSeasonNumber, activeEpisodeNumber, randomNextEpisodeMode) {
+    LaunchedEffect(
+        playerMetaVideos,
+        activeSeasonNumber,
+        activeEpisodeNumber,
+        randomNextEpisodeMode,
+        playerSettingsUiState.randomNextEpisodeEnabled,
+        nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled,
+    ) {
         if (!isSeries || playerMetaVideos.isEmpty()) {
             nextEpisodeInfo = null
             return@LaunchedEffect
@@ -538,7 +545,9 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             videos = playerMetaVideos,
             currentSeason = curSeason,
             currentEpisode = curEpisode,
-            randomMode = randomNextEpisodeMode,
+            randomMode = randomNextEpisodeMode &&
+                playerSettingsUiState.randomNextEpisodeEnabled &&
+                nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled,
             randomHistoryKey = parentMetaId,
         )
         val nextSeason = nextVideo?.season

@@ -525,7 +525,7 @@ private fun AutoSyncControls(
     val colorScheme = MaterialTheme.colorScheme
     val sortedCues = state.cues.sortedBy(SubtitleSyncCue::startTimeMs)
     val subtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
-    val activeCueIndex = sortedCues.indexOfLast { it.startTimeMs <= subtitlePositionMs }
+    val activeCueIndex = sortedCues.indexOf(activeSubtitleSyncCue(sortedCues, subtitlePositionMs))
     val cueListState = rememberLazyListState()
 
     LaunchedEffect(activeCueIndex, sortedCues.size) {
@@ -658,6 +658,24 @@ private fun AutoSyncControls(
             }
         }
     }
+}
+
+internal fun activeSubtitleSyncCue(
+    sortedCues: List<SubtitleSyncCue>,
+    positionMs: Long,
+): SubtitleSyncCue? {
+    for (index in sortedCues.indices.reversed()) {
+        val cue = sortedCues[index]
+        if (cue.startTimeMs > positionMs) continue
+
+        val nextStartTimeMs = sortedCues.getOrNull(index + 1)?.startTimeMs
+        val endTimeMs = cue.endTimeMs
+            ?.takeIf { it > cue.startTimeMs }
+            ?: nextStartTimeMs?.takeIf { it > cue.startTimeMs }
+            ?: (cue.startTimeMs + 10_000L)
+        if (positionMs < endTimeMs) return cue
+    }
+    return null
 }
 
 @Composable

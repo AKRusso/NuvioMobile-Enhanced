@@ -1907,4 +1907,11 @@
     <string name="person_remove_favorite">Favori oyunculardan kaldır</string>
     <string name="profile_insights_favorite_people_title">Favori Oyuncular</string>
     <string name="profile_insights_favorite_people_open">Profili aç</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Altyazı senkronizasyonu</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Zamanlama kontrollerini gösterir ve oynatma sırasında etkin satırı takip eder.</string>
+    <string name="nuvio_enhanced_player_clock_title">Oynatıcı saati</string>
+    <string name="nuvio_enhanced_player_clock_desc">Kontroller görünürken geçerli saati ve tahmini bitiş saatini gösterir.</string>
+    <string name="player_clock_ends_at">Bitiş: %1$s</string>
+    <string name="player_random_next_enabled">Rastgele sonraki bölüm açık</string>
+    <string name="player_random_next_disabled">Rastgele sonraki bölüm kapalı</string>
 </resources>

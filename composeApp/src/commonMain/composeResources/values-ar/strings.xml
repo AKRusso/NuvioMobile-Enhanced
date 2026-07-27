@@ -2374,4 +2374,9 @@
     <string name="person_remove_favorite">إزالة من الممثلين المفضلين</string>
     <string name="profile_insights_favorite_people_title">الممثلون المفضلون</string>
     <string name="profile_insights_favorite_people_open">عرض الملف</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">مزامنة الترجمة</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">إظهار عناصر توقيت الترجمة ومتابعة السطر النشط أثناء التشغيل.</string>
+    <string name="nuvio_enhanced_player_clock_title">وقت المشغل</string>
+    <string name="nuvio_enhanced_player_clock_desc">عرض الوقت الحالي ووقت الانتهاء المتوقع أثناء ظهور عناصر التحكم.</string>
+    <string name="player_clock_ends_at">ينتهي في %1$s</string>
 </resources>

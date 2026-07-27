@@ -1971,4 +1971,9 @@
         <item quantity="one">%d titel</item>
         <item quantity="other">%d titels</item>
     </plurals>
+    <string name="nuvio_enhanced_subtitle_sync_title">Synchronisatie van ondertitels</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Toon timingbediening en volg de actieve regel tijdens het afspelen.</string>
+    <string name="nuvio_enhanced_player_clock_title">Spelertijd</string>
+    <string name="nuvio_enhanced_player_clock_desc">Toon de huidige tijd en de geschatte eindtijd wanneer de bediening zichtbaar is.</string>
+    <string name="player_clock_ends_at">Eindigt om %1$s</string>
 </resources>

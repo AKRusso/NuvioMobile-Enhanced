@@ -1980,4 +1980,11 @@
     <string name="ai_chat_prompt_explain">Co bych měl/a vědět před sledováním?</string>
     <string name="ai_chat_prompt_similar">Doporuč podobné tituly</string>
     <string name="ai_chat_error">Asistent nemohl odpovědět. Zkontrolujte klíč a zkuste to znovu.</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Synchronizace titulků</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Zobrazí ovládání časování a během přehrávání sleduje aktivní řádek.</string>
+    <string name="nuvio_enhanced_player_clock_title">Čas v přehrávači</string>
+    <string name="nuvio_enhanced_player_clock_desc">Zobrazí aktuální čas a odhadovaný konec, když jsou ovládací prvky viditelné.</string>
+    <string name="player_clock_ends_at">Končí v %1$s</string>
+    <string name="player_random_next_enabled">Náhodný další díl zapnut</string>
+    <string name="player_random_next_disabled">Náhodný další díl vypnut</string>
 </resources>

@@ -1975,4 +1975,11 @@
     <string name="settings_card_depth_surface_trailers">Előzetesek</string>
     <string name="settings_playback_parental_guide">Tartalmi figyelmeztetések</string>
     <string name="settings_playback_parental_guide_description">Szülői felügyeleti figyelmeztetés megjelenítése a lejátszás indításakor.</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Feliratszinkronizálás</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Megjeleníti az időzítési vezérlőket, és lejátszás közben követi az aktív sort.</string>
+    <string name="nuvio_enhanced_player_clock_title">Lejátszó ideje</string>
+    <string name="nuvio_enhanced_player_clock_desc">Megjeleníti az aktuális időt és a várható befejezést, amíg a vezérlők láthatók.</string>
+    <string name="player_clock_ends_at">Vége: %1$s</string>
+    <string name="player_random_next_enabled">Véletlenszerű következő epizód bekapcsolva</string>
+    <string name="player_random_next_disabled">Véletlenszerű következő epizód kikapcsolva</string>
 </resources>

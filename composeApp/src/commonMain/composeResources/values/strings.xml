@@ -2541,4 +2541,8 @@
     <string name="player_clock_ends_at">Ends at %1$s</string>
     <string name="player_random_next_enabled">Random next episode enabled</string>
     <string name="player_random_next_disabled">Random next episode disabled</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Subtitle sync</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle timing controls and follow the active line during playback.</string>
+    <string name="nuvio_enhanced_player_clock_title">Player time</string>
+    <string name="nuvio_enhanced_player_clock_desc">Show the current time and estimated end time while controls are visible.</string>
 </resources>

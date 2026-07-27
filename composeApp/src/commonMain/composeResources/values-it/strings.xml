@@ -1950,4 +1950,11 @@
   <string name="entity_browse_about">Informazioni</string>
   <string name="player_external_loading_subtitles">Caricamento sottotitoli dagli addon...</string>
   <string name="player_external_downloading_subtitles">Download dei sottotitoli...</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Sincronizzazione sottotitoli</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Mostra i controlli di temporizzazione e segue la riga attiva durante la riproduzione.</string>
+    <string name="nuvio_enhanced_player_clock_title">Ora del player</string>
+    <string name="nuvio_enhanced_player_clock_desc">Mostra l’ora attuale e l’orario di fine stimato mentre i controlli sono visibili.</string>
+    <string name="player_clock_ends_at">Termina alle %1$s</string>
+    <string name="player_random_next_enabled">Prossimo episodio casuale attivo</string>
+    <string name="player_random_next_disabled">Prossimo episodio casuale disattivato</string>
 </resources>

@@ -2130,4 +2130,11 @@
     <string name="person_remove_favorite">Quitar de actores favoritos</string>
     <string name="profile_insights_favorite_people_title">Actores favoritos</string>
     <string name="profile_insights_favorite_people_open">Ver perfil</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Sincronización de subtítulos</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Muestra los controles de tiempo y sigue la línea activa durante la reproducción.</string>
+    <string name="nuvio_enhanced_player_clock_title">Hora del reproductor</string>
+    <string name="nuvio_enhanced_player_clock_desc">Muestra la hora actual y la hora estimada de finalización mientras los controles están visibles.</string>
+    <string name="player_clock_ends_at">Termina a las %1$s</string>
+    <string name="player_random_next_enabled">Siguiente episodio aleatorio activado</string>
+    <string name="player_random_next_disabled">Siguiente episodio aleatorio desactivado</string>
 </resources>

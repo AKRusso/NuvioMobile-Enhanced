@@ -374,6 +374,45 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_subtitle_sync_title),
+                    description = stringResource(Res.string.nuvio_enhanced_subtitle_sync_desc),
+                    checked = playerSettings.subtitleSyncMenuEnabled,
+                    enabled = settings.enhancedHomeFeaturesEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.SubtitleSyncMenu),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.SubtitleSyncMenu)
+                        PlayerSettingsRepository.setSubtitleSyncMenuEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_player_clock_title),
+                    description = stringResource(Res.string.nuvio_enhanced_player_clock_desc),
+                    checked = playerSettings.playerClockEndTimeEnabled,
+                    enabled = settings.enhancedHomeFeaturesEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.PlayerTimeOverlay),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.PlayerTimeOverlay)
+                        PlayerSettingsRepository.setPlayerClockEndTimeEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_playback_random_next_episode),
+                    description = stringResource(Res.string.settings_playback_random_next_episode_description),
+                    checked = playerSettings.randomNextEpisodeEnabled,
+                    enabled = settings.enhancedHomeFeaturesEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.PersistentEpisodeShuffle)
+                        PlayerSettingsRepository.setRandomNextEpisodeEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_status_bar_title),
                     description = stringResource(Res.string.nuvio_enhanced_status_bar_desc),
                     checked = settings.statusBarVisible,

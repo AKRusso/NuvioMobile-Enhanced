@@ -210,7 +210,13 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
             )
         }
 
-        if (playerSettingsUiState.playerClockEndTimeEnabled && contentType != "live-tv" && controlsVisible && !playerControlsLocked) {
+        if (
+            nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+            playerSettingsUiState.playerClockEndTimeEnabled &&
+            contentType != "live-tv" &&
+            controlsVisible &&
+            !playerControlsLocked
+        ) {
             PlayerClockEndTimeOverlay(
                 playbackSnapshot = playbackSnapshot,
                 modifier = Modifier.align(Alignment.TopEnd).padding(top = 68.dp, end = horizontalSafePadding + 20.dp),
@@ -295,7 +301,10 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
                     showSubtitleModal = true
                 }
             },
-            onSubtitleSyncClick = if (playerSettingsUiState.subtitleSyncMenuEnabled) {
+            onSubtitleSyncClick = if (
+                nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+                playerSettingsUiState.subtitleSyncMenuEnabled
+            ) {
                 {
                     activeSubtitleTab = SubtitleTab.Sync
                     loadSubtitleAutoSyncCues()
@@ -330,7 +339,11 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             onSourcesClick = if (activeVideoId != null) { { openSourcesPanel() } } else null,
             onEpisodesClick = if (isSeries) { { openEpisodesPanel() } } else null,
             randomNextEpisodeMode = randomNextEpisodeMode,
-            onRandomNextEpisodeModeToggle = if (isSeries && playerSettingsUiState.randomNextEpisodeEnabled) {
+            onRandomNextEpisodeModeToggle = if (
+                nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+                isSeries &&
+                playerSettingsUiState.randomNextEpisodeEnabled
+            ) {
                 { randomNextEpisodeMode = !randomNextEpisodeMode }
             } else null,
             onOpenInExternalPlayer = args.onOpenInExternalPlayer?.let { openExternal ->
@@ -589,6 +602,8 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
                 loadSubtitleAutoSyncCues()
             }
         },
+        subtitleSyncEnabled = nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+            playerSettingsUiState.subtitleSyncMenuEnabled,
         currentPlaybackPositionMs = playbackSnapshot.positionMs,
         isPlaying = playbackSnapshot.isPlaying,
         onBuiltInSubtitleTrackSelected = { index ->

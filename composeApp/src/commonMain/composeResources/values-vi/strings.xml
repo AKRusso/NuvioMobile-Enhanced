@@ -1973,4 +1973,9 @@
     <string name="settings_card_depth_surface_cast">Diễn viên</string>
     <string name="store_empty_unavailable_title">Chưa có nội dung</string>
     <string name="store_empty_unavailable_message">Các addon hiện tại không cung cấp nội dung cho mục này</string>
+    <string name="nuvio_enhanced_subtitle_sync_title">Đồng bộ phụ đề</string>
+    <string name="nuvio_enhanced_subtitle_sync_desc">Hiển thị điều khiển thời gian và theo dõi dòng đang hoạt động khi phát.</string>
+    <string name="nuvio_enhanced_player_clock_title">Thời gian trình phát</string>
+    <string name="nuvio_enhanced_player_clock_desc">Hiển thị thời gian hiện tại và thời gian kết thúc ước tính khi các điều khiển đang hiển thị.</string>
+    <string name="player_clock_ends_at">Kết thúc lúc %1$s</string>
 </resources>
