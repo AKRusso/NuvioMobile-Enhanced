@@ -110,6 +110,7 @@ import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.diagnostics.CrashDiagnostics
 import com.nuvio.app.core.diagnostics.LocalCrashReport
+import com.nuvio.app.core.auth.DeviceSessionRegistration
 import com.nuvio.app.core.deeplink.AppDeepLink
 import com.nuvio.app.core.deeplink.AppDeepLinkRepository
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
@@ -507,6 +508,10 @@ fun App() {
         val pendingCrashReport by remember {
             CrashDiagnostics.pendingReport
         }.collectAsStateWithLifecycle()
+
+        LaunchedEffect(authState) {
+            DeviceSessionRegistration.registerIfAuthenticated(force = true)
+        }
 
         LaunchedEffect(
             profileState.activeProfile?.profileIndex,
@@ -1104,6 +1109,7 @@ private fun MainAppContent(
     LaunchedEffect(Unit) {
         AppForegroundMonitor.events().collect {
             NetworkStatusRepository.requestForegroundRefresh()
+            DeviceSessionRegistration.registerIfAuthenticated()
         }
     }
 

@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.DisintegratingContainer
 import com.nuvio.app.core.ui.NuvioProgressBar
@@ -60,7 +59,6 @@ import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.cloud.CloudLibraryContentType
 import com.nuvio.app.features.cloud.cloudLibraryDisplayArtworkUrl
-import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingSectionStyle
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
@@ -86,13 +84,8 @@ internal fun continueWatchingSectionHeightEstimate(
     style: ContinueWatchingSectionStyle,
     layout: ContinueWatchingLayout,
     basePosterWidthDp: Int,
-    showHeaderAccent: Boolean,
 ): Dp {
-    val headerHeight = NuvioTokens.Space.s40 + if (showHeaderAccent) {
-        NuvioTokens.Space.s6 + NuvioTokens.Space.s4
-    } else {
-        0.dp
-    }
+    val headerHeight = NuvioTokens.Space.s40
     val headerToRowGap = NuvioTokens.Space.s8 + NuvioTokens.Space.s2
     val rowHeight = when (style) {
         ContinueWatchingSectionStyle.Card -> continueWatchingLandscapeCardHeight(basePosterWidthDp)
@@ -106,7 +99,6 @@ internal fun continueWatchingHeroViewportReserveHeight(
     style: ContinueWatchingSectionStyle,
     layout: ContinueWatchingLayout,
     basePosterWidthDp: Int,
-    showHeaderAccent: Boolean,
 ): Dp {
     val bottomNavigationClearance = when (style) {
         ContinueWatchingSectionStyle.Card,
@@ -117,7 +109,6 @@ internal fun continueWatchingHeroViewportReserveHeight(
         style = style,
         layout = layout,
         basePosterWidthDp = basePosterWidthDp,
-        showHeaderAccent = showHeaderAccent,
     ) + bottomNavigationClearance
 }
 
@@ -286,11 +277,6 @@ private fun HomeContinueWatchingSectionContent(
     onItemClick: ((ContinueWatchingItem) -> Unit)?,
     onItemLongPress: ((ContinueWatchingItem) -> Unit)?,
 ) {
-    val homeCatalogSettings by remember {
-        HomeCatalogSettingsRepository.snapshot()
-        HomeCatalogSettingsRepository.uiState
-    }.collectAsStateWithLifecycle()
-
     val disintegration = remember { ContinueWatchingDisintegrationHolder() }
     val displayEntries = disintegration.sync(items)
     val rowResetKey = remember(items) {
@@ -304,7 +290,6 @@ private fun HomeContinueWatchingSectionContent(
         headerHorizontalPadding = sectionPadding,
         rowContentPadding = PaddingValues(horizontal = sectionPadding),
         itemSpacing = layout.itemGap,
-        showHeaderAccent = !homeCatalogSettings.hideCatalogUnderline,
         key = { entry -> entry.videoId },
         animatePlacement = true,
         rowResetKey = rowResetKey,

@@ -226,6 +226,15 @@ object HomeCatalogSettingsRepository {
         HomeCatalogSettingsSyncService.triggerPush()
     }
 
+    fun setHideCatalogUnderline(enabled: Boolean) {
+        ensureLoaded()
+        if (hideCatalogUnderline == enabled) return
+        hideCatalogUnderline = enabled
+        publish()
+        persist()
+        HomeCatalogSettingsSyncService.triggerPush()
+    }
+
     fun setHideUnreleasedContent(enabled: Boolean) {
         ensureLoaded()
         if (hideUnreleasedContent == enabled) return
@@ -233,15 +242,6 @@ object HomeCatalogSettingsRepository {
         publish()
         persist()
         HomeRepository.applyCurrentSettings()
-        HomeCatalogSettingsSyncService.triggerPush()
-    }
-
-    fun setHideCatalogUnderline(enabled: Boolean) {
-        ensureLoaded()
-        if (hideCatalogUnderline == enabled) return
-        hideCatalogUnderline = enabled
-        publish()
-        persist()
         HomeCatalogSettingsSyncService.triggerPush()
     }
 

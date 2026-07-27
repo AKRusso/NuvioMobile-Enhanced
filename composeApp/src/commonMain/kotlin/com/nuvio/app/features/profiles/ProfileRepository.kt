@@ -194,7 +194,7 @@ object ProfileRepository {
             TraktSettingsRepository.onProfileChanged()
         }
         runProfileChangeStep("trakt_auth") {
-            TraktAuthRepository.onProfileChanged()
+            TraktAuthRepository.onProfileChanged(profileIndex)
         }
         runProfileChangeStep("library") {
             LibraryRepository.onProfileChanged(profileIndex)

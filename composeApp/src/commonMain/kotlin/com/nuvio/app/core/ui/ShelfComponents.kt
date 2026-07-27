@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,18 +74,18 @@ fun <T> NuvioShelfSection(
     viewAllPillSize: NuvioViewAllPillSize = NuvioViewAllPillSize.Default,
     key: ((T) -> Any)? = null,
     animatePlacement: Boolean = false,
+    state: LazyListState = rememberLazyListState(),
     rowResetKey: Any? = null,
     itemContent: @Composable (T) -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
-    val rowState = rememberLazyListState()
     val duplicateSafeEntries = remember(entries, key) {
         key?.let { entries.withDuplicateSafeLazyKeys(it) }
     }
 
     LaunchedEffect(rowResetKey) {
-        if (rowResetKey != null && (rowState.firstVisibleItemIndex != 0 || rowState.firstVisibleItemScrollOffset != 0)) {
-            rowState.scrollToItem(0)
+        if (rowResetKey != null && (state.firstVisibleItemIndex != 0 || state.firstVisibleItemScrollOffset != 0)) {
+            state.scrollToItem(0)
         }
     }
 
@@ -102,7 +103,7 @@ fun <T> NuvioShelfSection(
             )
         }
         LazyRow(
-            state = rowState,
+            state = state,
             modifier = rowModifier,
             contentPadding = rowContentPadding,
             horizontalArrangement = Arrangement.spacedBy(itemSpacing),

@@ -226,7 +226,6 @@ fun HomeSkeletonRow(
                 .background(brush),
         )
         if (showHeaderAccent) {
-            // Accent bar
             Box(
                 modifier = Modifier
                     .width(60.dp)

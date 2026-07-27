@@ -59,6 +59,7 @@ private data class RemoteHomeCatalogSettings(
     val payload: SyncHomeCatalogPayload,
     val updatedAt: String?,
     val hasHeroAutoScrollEnabled: Boolean,
+    val hasShowCatalogType: Boolean,
     val hasHideUnreleasedContent: Boolean,
     val hasHideCatalogUnderline: Boolean,
 )
@@ -223,6 +224,7 @@ object HomeCatalogSettingsSyncService {
             payload = payload,
             updatedAt = blob.updatedAt,
             hasHeroAutoScrollEnabled = blob.settingsJson.containsKey(HERO_AUTO_SCROLL_KEY),
+            hasShowCatalogType = blob.settingsJson.containsKey(SHOW_CATALOG_TYPE_KEY),
             hasHideUnreleasedContent = blob.settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY),
             hasHideCatalogUnderline = blob.settingsJson.containsKey(HIDE_CATALOG_UNDERLINE_KEY),
         )
@@ -237,6 +239,9 @@ object HomeCatalogSettingsSyncService {
         val hideUnreleasedSource = rows
             .filter { it.hasHideUnreleasedContent }
             .maxByOrNull { it.updatedAt.orEmpty() }
+        val showCatalogTypeSource = rows
+            .filter { it.hasShowCatalogType }
+            .maxByOrNull { it.updatedAt.orEmpty() }
         val hideUnderlineSource = rows
             .filter { it.hasHideCatalogUnderline }
             .maxByOrNull { it.updatedAt.orEmpty() }
@@ -245,6 +250,8 @@ object HomeCatalogSettingsSyncService {
             payload = payload.copy(
                 heroAutoScrollEnabled = heroAutoScrollSource?.payload?.heroAutoScrollEnabled
                     ?: payload.heroAutoScrollEnabled,
+                showCatalogType = showCatalogTypeSource?.payload?.showCatalogType
+                    ?: payload.showCatalogType,
                 hideUnreleasedContent = hideUnreleasedSource?.payload?.hideUnreleasedContent
                     ?: payload.hideUnreleasedContent,
                 hideCatalogUnderline = hideUnderlineSource?.payload?.hideCatalogUnderline
@@ -275,6 +282,11 @@ object HomeCatalogSettingsSyncService {
                 decoded.heroAutoScrollEnabled
             } else {
                 localPayload.heroAutoScrollEnabled
+            },
+            showCatalogType = if (settingsJson.containsKey(SHOW_CATALOG_TYPE_KEY)) {
+                decoded.showCatalogType
+            } else {
+                localPayload.showCatalogType
             },
             hideUnreleasedContent = if (settingsJson.containsKey(HIDE_UNRELEASED_CONTENT_KEY)) {
                 decoded.hideUnreleasedContent
