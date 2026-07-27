@@ -6,8 +6,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -219,7 +224,13 @@ internal fun PlayerScreenRuntime.RenderPlayerRuntimeUi() {
         ) {
             PlayerClockEndTimeOverlay(
                 playbackSnapshot = playbackSnapshot,
-                modifier = Modifier.align(Alignment.TopEnd).padding(top = 68.dp, end = horizontalSafePadding + 20.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Top))
+                    .padding(
+                        top = metrics.headerIconSize + metrics.verticalPadding + 36.dp,
+                        end = horizontalSafePadding + 20.dp,
+                    ),
             )
         }
 

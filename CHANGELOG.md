@@ -22,6 +22,8 @@ same user-facing summary so the in-app updater can display it before download.
   `local.properties`.
 - Release publishing now stops when an APK is not signed with the certificate
   used by existing Nuvio Enhanced installations.
+- The player clock now respects the top safe area, leaves more room below header
+  actions, and uses stronger contrast over video.
 
 ### Upstream
 
