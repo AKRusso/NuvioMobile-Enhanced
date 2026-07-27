@@ -245,6 +245,15 @@ object HomeCatalogSettingsRepository {
         HomeCatalogSettingsSyncService.triggerPush()
     }
 
+    fun setHideCatalogUnderline(enabled: Boolean) {
+        ensureLoaded()
+        if (hideCatalogUnderline == enabled) return
+        hideCatalogUnderline = enabled
+        publish()
+        persist()
+        HomeCatalogSettingsSyncService.triggerPush()
+    }
+
     fun setHeroSourceEnabled(key: String, enabled: Boolean) {
         updatePreference(key, pushRemote = false) { preference ->
             if (!enabled) {

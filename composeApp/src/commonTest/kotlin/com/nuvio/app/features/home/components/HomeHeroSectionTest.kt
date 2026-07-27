@@ -36,11 +36,13 @@ class HomeHeroSectionTest {
             style = ContinueWatchingSectionStyle.Card,
             layout = continueWatchingLayout,
             basePosterWidthDp = 110,
+            showHeaderAccent = true,
         )
         val reserveHeight = continueWatchingHeroViewportReserveHeight(
             style = ContinueWatchingSectionStyle.Card,
             layout = continueWatchingLayout,
             basePosterWidthDp = 110,
+            showHeaderAccent = true,
         )
         val layout = homeHeroLayout(
             maxWidthDp = 390f,

@@ -184,6 +184,10 @@ fun LibraryScreen(
         NuvioEnhancedSettingsRepository.ensureLoaded()
         NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    val homeCatalogSettingsUiState by remember {
+        HomeCatalogSettingsRepository.snapshot()
+        HomeCatalogSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var observedOfflineState by remember { mutableStateOf(false) }
     var sourceModeName by rememberSaveable { mutableStateOf(LibraryViewMode.Saved.name) }
@@ -3380,6 +3384,7 @@ private fun LazyListScope.librarySections(
             entries = section.previewEntries,
             headerHorizontalPadding = 16.dp,
             rowContentPadding = PaddingValues(horizontal = 16.dp),
+            showHeaderAccent = showHeaderAccent,
             onViewAllClick = section.source
                 ?.takeIf { it.items.size > LIBRARY_SECTION_PREVIEW_LIMIT }
                 ?.let { source -> onSectionViewAllClick?.let { { it(source) } } },
