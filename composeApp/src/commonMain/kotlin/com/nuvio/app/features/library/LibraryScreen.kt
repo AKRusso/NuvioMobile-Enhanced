@@ -184,10 +184,6 @@ fun LibraryScreen(
         NuvioEnhancedSettingsRepository.ensureLoaded()
         NuvioEnhancedSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
-    val homeCatalogSettingsUiState by remember {
-        HomeCatalogSettingsRepository.snapshot()
-        HomeCatalogSettingsRepository.uiState
-    }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var observedOfflineState by remember { mutableStateOf(false) }
     var sourceModeName by rememberSaveable { mutableStateOf(LibraryViewMode.Saved.name) }
