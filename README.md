@@ -9,10 +9,10 @@
   </p>
 
   <p>
-    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/releases/latest"><img src="https://img.shields.io/github/v/release/yesnt10/NuvioMobile-Enhanced?include_prereleases&style=for-the-badge&label=Latest%20Release" alt="Latest release" /></a>
-    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/releases"><img src="https://img.shields.io/github/downloads/yesnt10/NuvioMobile-Enhanced/total?style=for-the-badge&label=Downloads" alt="Downloads" /></a>
-    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/blob/enhanced/LICENSE"><img src="https://img.shields.io/github/license/yesnt10/NuvioMobile-Enhanced?style=for-the-badge" alt="License" /></a>
-    <a href="https://github.com/yesnt10/NuvioMobile-Enhanced/stargazers"><img src="https://img.shields.io/github/stars/yesnt10/NuvioMobile-Enhanced?style=for-the-badge" alt="Stars" /></a>
+    <a href="https://github.com/AKRusso/NuvioMobile-Enhanced/releases/latest"><img src="https://img.shields.io/github/v/release/AKRusso/NuvioMobile-Enhanced?include_prereleases&style=for-the-badge&label=Latest%20Release" alt="Latest release" /></a>
+    <a href="https://github.com/AKRusso/NuvioMobile-Enhanced/releases"><img src="https://img.shields.io/github/downloads/AKRusso/NuvioMobile-Enhanced/total?style=for-the-badge&label=Downloads" alt="Downloads" /></a>
+    <a href="https://github.com/AKRusso/NuvioMobile-Enhanced/blob/enhanced/LICENSE"><img src="https://img.shields.io/github/license/AKRusso/NuvioMobile-Enhanced?style=for-the-badge" alt="License" /></a>
+    <a href="https://github.com/AKRusso/NuvioMobile-Enhanced/stargazers"><img src="https://img.shields.io/github/stars/AKRusso/NuvioMobile-Enhanced?style=for-the-badge" alt="Stars" /></a>
   </p>
 
   <p>
@@ -45,7 +45,7 @@ Current enhanced release:
 
 The fastest way to get the enhanced build is through GitHub Releases:
 
-- [Latest release](https://github.com/yesnt10/NuvioMobile-Enhanced/releases/latest)
+- [Latest release](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/latest)
 
 If you are checking a specific build, the current release line is:
 
@@ -67,7 +67,7 @@ We also try to keep the relationship with upstream clear, so it is obvious what 
 ## Build From Source
 
 ```bash
-git clone https://github.com/yesnt10/NuvioMobile-Enhanced.git
+git clone https://github.com/AKRusso/NuvioMobile-Enhanced.git
 cd NuvioMobile-Enhanced
 git checkout enhanced
 ./gradlew :composeApp:assembleDebug
@@ -76,7 +76,7 @@ git checkout enhanced
 On Windows, use:
 
 ```powershell
-git clone https://github.com/yesnt10/NuvioMobile-Enhanced.git
+git clone https://github.com/AKRusso/NuvioMobile-Enhanced.git
 cd NuvioMobile-Enhanced
 git checkout enhanced
 .\gradlew.bat :composeApp:assembleDebug
@@ -104,7 +104,7 @@ That is the style we will keep using for future enhanced builds.
 ## Credits
 
 - Original project: [NuvioMedia/NuvioMobile](https://github.com/NuvioMedia/NuvioMobile)
-- Enhanced fork: [yesnt10/NuvioMobile-Enhanced](https://github.com/yesnt10/NuvioMobile-Enhanced)
+- Enhanced fork: [AKRusso/NuvioMobile-Enhanced](https://github.com/AKRusso/NuvioMobile-Enhanced)
 - Shared brand asset used here: [tapframe/NuvioTV](https://github.com/tapframe/NuvioTV)
 
 ## Legal & DMCA
@@ -119,10 +119,10 @@ For the full legal policy and disclaimer, see the upstream legal page:
 
 ## Star History
 
-<a href="https://www.star-history.com/#yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left">
+<a href="https://www.star-history.com/#AKRusso/NuvioMobile-Enhanced&type=date&legend=top-left">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&theme=dark&legend=top-left" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yesnt10/NuvioMobile-Enhanced&type=date&legend=top-left" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=AKRusso/NuvioMobile-Enhanced&type=date&theme=dark&legend=top-left" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=AKRusso/NuvioMobile-Enhanced&type=date&legend=top-left" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=AKRusso/NuvioMobile-Enhanced&type=date&legend=top-left" />
   </picture>
 </a>

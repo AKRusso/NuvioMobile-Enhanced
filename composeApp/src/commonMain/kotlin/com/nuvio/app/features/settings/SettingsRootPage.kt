@@ -285,12 +285,12 @@ internal fun LazyListScope.settingsRootContent(
                 textAlign = TextAlign.Center,
             )
             Text(
-                text = "github.com/yesnt10/NuvioMobile-Enhanced",
+                text = "github.com/AKRusso/NuvioMobile-Enhanced",
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 4.dp)
                     .clickable {
-                        uriHandler.openUri("https://github.com/yesnt10/NuvioMobile-Enhanced")
+                        uriHandler.openUri("https://github.com/AKRusso/NuvioMobile-Enhanced")
                     },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,

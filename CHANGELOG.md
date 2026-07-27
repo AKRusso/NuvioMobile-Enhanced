@@ -3,7 +3,7 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
-## 0.3.3 - 2026-07-27
+## 0.3.4 - 2026-07-27
 
 ### Changed
 
@@ -18,6 +18,8 @@ same user-facing summary so the in-app updater can display it before download.
 - Removed the alternate app icon picker and added a one-time migration back to
   the default icon to avoid launcher component conflicts.
 - Made the update repository configurable for local builds and forks.
+- Pointed release badges, in-app project links, and default update checks to
+  `AKRusso/NuvioMobile-Enhanced`.
 - Allowed release builds to read Trakt credentials from GitHub Actions secrets.
 
 ### Fixed

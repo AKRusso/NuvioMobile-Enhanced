@@ -394,7 +394,7 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
         runtimeConfigValue(
             "NUVIO_UPDATE_GITHUB_OWNER",
             "GITHUB_REPOSITORY_OWNER",
-            fallback = "yesnt10",
+            fallback = "AKRusso",
         )
     )
     updateGithubRepo.set(runtimeConfigValue("NUVIO_UPDATE_GITHUB_REPO", fallback = "NuvioMobile-Enhanced"))

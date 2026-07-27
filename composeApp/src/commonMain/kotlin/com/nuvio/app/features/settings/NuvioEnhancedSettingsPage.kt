@@ -85,7 +85,7 @@ import nuvio.composeapp.generated.resources.settings_meta_show_episode_ratings_d
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import org.jetbrains.compose.resources.stringResource
 
-private const val NuvioEnhancedGithubUrl = "https://github.com/yesnt10/NuvioMobile-Enhanced"
+private const val NuvioEnhancedGithubUrl = "https://github.com/AKRusso/NuvioMobile-Enhanced"
 private const val NuvioEnhancedDiscordUrl = "https://discord.gg/at8xffxuRU"
 
 private enum class EnhancedSettingsCategory {

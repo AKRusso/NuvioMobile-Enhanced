@@ -108,7 +108,7 @@ object AiAssistantService {
             messages = messages,
             webContext = webContext,
             extraHeaders = mapOf(
-                "HTTP-Referer" to "https://github.com/yesnt10/NuvioMobile-Enhanced",
+                "HTTP-Referer" to "https://github.com/AKRusso/NuvioMobile-Enhanced",
                 "X-Title" to "Nuvio Mobile Enhanced",
             ),
         )
