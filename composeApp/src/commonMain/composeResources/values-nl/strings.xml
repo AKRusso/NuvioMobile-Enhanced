@@ -1065,7 +1065,7 @@
     <string name="settings_trakt_features">FUNCTIES</string>
     <string name="settings_trakt_finish_sign_in">Voltooi het inloggen bij Trakt in je browser</string>
     <string name="settings_trakt_intro_description">Synchroniseer je kijklijst, kijkvoortgang, verdergaan met kijken, scrobbles en persoonlijke lijsten met Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Trakt-inloggegevens ontbreken in local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt is niet ingesteld in deze build. De appbeheerder moet vóór publicatie Trakt-inloggegevens toevoegen.</string>
     <string name="settings_trakt_open_login">Trakt-inlog openen</string>
     <string name="settings_trakt_save_actions_description">Je opslaacties kunnen nu de Trakt-kijklijst en persoonlijke lijsten als doel hebben.</string>
     <string name="settings_trakt_sign_in_description">Log in bij Trakt om opslaan op basis van lijsten en de Trakt-bibliotheekmodus in te schakelen.</string>
@@ -1981,5 +1981,6 @@
     <string name="nuvio_enhanced_category_home">Start</string>
     <string name="nuvio_enhanced_category_player">Speler</string>
     <string name="nuvio_enhanced_category_system">Systeem</string>
+    <string name="nuvio_enhanced_category_new">Nieuw</string>
     <string name="nuvio_enhanced_section_player_tools">Speler en ondertitels</string>
 </resources>

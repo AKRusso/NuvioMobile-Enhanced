@@ -1209,7 +1209,7 @@
     <string name="settings_trakt_features">ФУНКЦИИ</string>
     <string name="settings_trakt_finish_sign_in">Завершите вход Trakt в браузере.</string>
     <string name="settings_trakt_intro_description">Синхронизируйте свой список наблюдения, наблюдайте за прогрессом, продолжайте просмотр, просматривайте и личные списки с помощью Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Отсутствуют учетные данные Trakt в local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt не настроен в этой сборке. Ответственный за приложение должен добавить данные Trakt перед публикацией.</string>
     <string name="settings_trakt_open_login">Открыть Trakt Войти</string>
     <string name="settings_trakt_save_actions_description">Ваши действия по сохранению теперь могут быть нацелены на список наблюдения и личные списки Trakt.</string>
     <string name="settings_trakt_sign_in_description">Войдите в систему с помощью Trakt, чтобы включить сохранение на основе списка и режим библиотеки Trakt.</string>
@@ -2384,5 +2384,6 @@
     <string name="nuvio_enhanced_category_home">Главная</string>
     <string name="nuvio_enhanced_category_player">Плеер</string>
     <string name="nuvio_enhanced_category_system">Система</string>
+    <string name="nuvio_enhanced_category_new">Новое</string>
     <string name="nuvio_enhanced_section_player_tools">Плеер и субтитры</string>
 </resources>

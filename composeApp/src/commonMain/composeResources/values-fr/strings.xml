@@ -1057,7 +1057,7 @@
     <string name="settings_trakt_features">FONCTIONNALITÉS</string>
     <string name="settings_trakt_finish_sign_in">Terminez la connexion Trakt dans votre navigateur</string>
     <string name="settings_trakt_intro_description">Suivez ce que vous regardez, enregistrez dans votre liste ou vos listes personnalisées et gardez votre bibliothèque synchronisée avec Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Identifiants Trakt manquants dans local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt n’est pas configuré dans cette version. Le responsable de l’application doit ajouter les identifiants Trakt avant la publication.</string>
     <string name="settings_trakt_open_login">Ouvrir la connexion Trakt</string>
     <string name="settings_trakt_save_actions_description">Vos actions d’enregistrement peuvent maintenant cibler la watchlist Trakt et vos listes personnelles.</string>
     <string name="settings_trakt_sign_in_description">Connectez-vous à Trakt pour activer l’enregistrement par liste et le mode bibliothèque Trakt.</string>
@@ -2036,5 +2036,6 @@
     <string name="nuvio_enhanced_category_home">Accueil</string>
     <string name="nuvio_enhanced_category_player">Lecteur</string>
     <string name="nuvio_enhanced_category_system">Système</string>
+    <string name="nuvio_enhanced_category_new">Nouveau</string>
     <string name="nuvio_enhanced_section_player_tools">Lecteur et sous-titres</string>
 </resources>

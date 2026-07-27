@@ -675,7 +675,7 @@
     <string name="settings_trakt_features">ΛΕΙΤΟΥΡΓΙΕΣ</string>
     <string name="settings_trakt_finish_sign_in">Ολοκληρώστε τη σύνδεση Trakt στο πρόγραμμα περιήγησής σας</string>
     <string name="settings_trakt_intro_description">Παρακολουθήστε τι βλέπετε, αποθηκεύστε σε λίστα παρακολούθησης ή προσαρμοσμένες λίστες και διατηρήστε τη βιβλιοθήκη σας συγχρονισμένη με το Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Λείπουν διαπιστευτήρια Trakt στο local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Το Trakt δεν έχει ρυθμιστεί σε αυτήν την έκδοση. Ο διαχειριστής της εφαρμογής πρέπει να προσθέσει τα διαπιστευτήρια Trakt πριν από τη δημοσίευση.</string>
     <string name="settings_trakt_open_login">Άνοιγμα σύνδεσης Trakt</string>
     <string name="settings_trakt_save_actions_description">Οι ενέργειες αποθήκευσης μπορούν τώρα να στοχεύουν στη λίστα παρακολούθησης Trakt και τις προσωπικές λίστες.</string>
     <string name="settings_trakt_sign_in_description">Συνδεθείτε με το Trakt για να ενεργοποιήσετε την αποθήκευση βάσει λίστας και τη λειτουργία βιβλιοθήκης Trakt.</string>
@@ -1981,5 +1981,6 @@
     <string name="nuvio_enhanced_category_home">Αρχική</string>
     <string name="nuvio_enhanced_category_player">Αναπαραγωγή</string>
     <string name="nuvio_enhanced_category_system">Σύστημα</string>
+    <string name="nuvio_enhanced_category_new">Νέα</string>
     <string name="nuvio_enhanced_section_player_tools">Αναπαραγωγή και υπότιτλοι</string>
 </resources>

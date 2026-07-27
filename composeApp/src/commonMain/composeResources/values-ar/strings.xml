@@ -1209,7 +1209,7 @@
     <string name="settings_trakt_features">الميزات</string>
     <string name="settings_trakt_finish_sign_in">إنهاء Trakt تسجيل الدخول المتصفح</string>
     <string name="settings_trakt_intro_description">مزامنة قائمة المراقبة الخاصة بك، ومشاهدة التقدم، ومواصلة المشاهدة، والقوائم الشخصية باستخدام Trakt.</string>
-    <string name="settings_trakt_missing_credentials">بيانات اعتماد Trakt مفقودة في local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">لم يتم إعداد Trakt في هذا الإصدار. يجب على مشرف التطبيق إضافة بيانات اعتماد Trakt قبل النشر.</string>
     <string name="settings_trakt_open_login">افتح Trakt تسجيل الدخول</string>
     <string name="settings_trakt_save_actions_description">يمكن الآن أن تستهدف إجراءات الحفظ الخاصة بك قائمة المراقبة والقوائم الشخصية لـ Trakt.</string>
     <string name="settings_trakt_sign_in_description">سجل الدخول باستخدام Trakt لتمكين الحفظ المستند إلى القائمة ووضع مكتبة Trakt.</string>
@@ -2384,5 +2384,6 @@
     <string name="nuvio_enhanced_category_home">الرئيسية</string>
     <string name="nuvio_enhanced_category_player">المشغل</string>
     <string name="nuvio_enhanced_category_system">النظام</string>
+    <string name="nuvio_enhanced_category_new">جديد</string>
     <string name="nuvio_enhanced_section_player_tools">المشغل والترجمة</string>
 </resources>

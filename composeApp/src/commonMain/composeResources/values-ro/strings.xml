@@ -1065,7 +1065,7 @@
     <string name="settings_trakt_features">CARACTERISTICI</string>
     <string name="settings_trakt_finish_sign_in">Finalizează autentificarea Trakt în browser</string>
     <string name="settings_trakt_intro_description">Sincronizează-ți lista de urmărire, progresul, istoricul, scrobble-urile și listele personale cu Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Lipsesc credențialele Trakt în local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt nu este configurat în această versiune. Responsabilul aplicației trebuie să adauge datele Trakt înainte de publicare.</string>
     <string name="settings_trakt_open_login">Deschide autentificarea Trakt</string>
     <string name="settings_trakt_save_actions_description">Acțiunile tale de salvare pot viza acum lista de urmărire Trakt (watchlist) și listele personale.</string>
     <string name="settings_trakt_sign_in_description">Autentifică-te cu Trakt pentru a activa salvarea bazată pe liste și modul de bibliotecă Trakt.</string>
@@ -1949,5 +1949,6 @@
     <string name="nuvio_enhanced_category_home">Acasă</string>
     <string name="nuvio_enhanced_category_player">Player</string>
     <string name="nuvio_enhanced_category_system">Sistem</string>
+    <string name="nuvio_enhanced_category_new">Nou</string>
     <string name="nuvio_enhanced_section_player_tools">Player și subtitrări</string>
 </resources>

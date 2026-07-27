@@ -876,7 +876,7 @@
     <string name="settings_trakt_features">FUNKCIÓK</string>
     <string name="settings_trakt_finish_sign_in">Fejezd be a Trakt bejelentkezést a böngésződben</string>
     <string name="settings_trakt_intro_description">Szinkronizáld a megnézendők listáját, a megtekintési előrehaladást, a lejátszás folytatását, a scrobble-öket és a személyes listáidat a Trakttal.</string>
-    <string name="settings_trakt_missing_credentials">Hiányzó Trakt hitelesítési adatok a local.properties fájlban (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">A Trakt nincs beállítva ebben a buildben. Az alkalmazás karbantartójának közzététel előtt hozzá kell adnia a Trakt hitelesítő adatokat.</string>
     <string name="settings_trakt_open_login">Trakt bejelentkezés megnyitása</string>
     <string name="settings_trakt_save_actions_description">A mentési műveletek mostantól a Trakt megnézendők listáját és a személyes listákat is célozhatják.</string>
     <string name="settings_trakt_sign_in_description">Jelentkezz be a Trakt fiókodba a listaalapú mentés és a Trakt könyvtár mód engedélyezéséhez.</string>
@@ -1987,5 +1987,6 @@
     <string name="nuvio_enhanced_category_home">Kezdőlap</string>
     <string name="nuvio_enhanced_category_player">Lejátszó</string>
     <string name="nuvio_enhanced_category_system">Rendszer</string>
+    <string name="nuvio_enhanced_category_new">Új</string>
     <string name="nuvio_enhanced_section_player_tools">Lejátszó és feliratok</string>
 </resources>

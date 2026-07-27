@@ -23,8 +23,6 @@ import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 
-private const val gitHubOwner = "yesnt10"
-private const val gitHubRepo = "NuvioMobile-Enhanced"
 private const val gitHubApiBase = "https://api.github.com"
 private val releaseChannelBranches = listOf("enhanced", "cmp-rewrite")
 
@@ -167,10 +165,10 @@ private object AppUpdaterRepository {
     suspend fun getLatestChannelUpdate(): Result<AppUpdate> = runCatching {
         val response = httpRequestRaw(
             method = "GET",
-            url = "$gitHubApiBase/repos/$gitHubOwner/$gitHubRepo/releases?per_page=20",
+            url = "$gitHubApiBase/repos/${AppUpdateConfig.GITHUB_OWNER}/${AppUpdateConfig.GITHUB_REPO}/releases?per_page=20",
             headers = mapOf(
                 "Accept" to "application/vnd.github+json",
-                "User-Agent" to "NuvioMobile",
+                "User-Agent" to "NuvioMobile-Enhanced",
             ),
             body = "",
         )

@@ -899,7 +899,7 @@
     <string name="settings_trakt_features">FUNKSJONER</string>
     <string name="settings_trakt_finish_sign_in">Fullfør Trakt-innlogging i nettleseren din</string>
     <string name="settings_trakt_intro_description">Synkroniser seerliste, fremdrift, Fortsett å se, scrobbles og personlige lister med Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Mangler Trakt-legitimasjon i local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt er ikke konfigurert i denne byggversjonen. Appansvarlig må legge til Trakt-legitimasjon før publisering.</string>
     <string name="settings_trakt_open_login">Åpne Trakt-innlogging</string>
     <string name="settings_trakt_save_actions_description">Lagre-handlinger kan nå målrette Trakt watchlist og personlige lister.</string>
     <string name="settings_trakt_sign_in_description">Logg inn med Trakt for å aktivere listebasert lagring og Trakt-bibliotekmodus.</string>
@@ -1441,5 +1441,6 @@
     <string name="nuvio_enhanced_category_home">Hjem</string>
     <string name="nuvio_enhanced_category_player">Spiller</string>
     <string name="nuvio_enhanced_category_system">System</string>
+    <string name="nuvio_enhanced_category_new">Nytt</string>
     <string name="nuvio_enhanced_section_player_tools">Spiller og undertekster</string>
 </resources>

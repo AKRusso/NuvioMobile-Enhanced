@@ -17,13 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -31,9 +29,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -44,6 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +91,7 @@ private const val NuvioEnhancedGithubUrl = "https://github.com/yesnt10/NuvioMobi
 private const val NuvioEnhancedDiscordUrl = "https://discord.gg/at8xffxuRU"
 
 private enum class EnhancedSettingsCategory {
+    New,
     All,
     Core,
     Home,
@@ -143,7 +141,18 @@ private fun NuvioEnhancedSettingsPageContent(
     var showAppIconPicker by remember { mutableStateOf(false) }
     var importPayload by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
-    var selectedCategory by rememberSaveable { mutableStateOf(EnhancedSettingsCategory.All) }
+    val hasNewPlayerTools = settings.isNew(NuvioEnhancedFeature.SubtitleSyncMenu) ||
+        settings.isNew(NuvioEnhancedFeature.PlayerTimeOverlay) ||
+        settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle)
+    var selectedCategory by rememberSaveable {
+        mutableStateOf(
+            if (hasNewPlayerTools) {
+                EnhancedSettingsCategory.New
+            } else {
+                EnhancedSettingsCategory.Core
+            },
+        )
+    }
     val backupImportedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_imported)
     val invalidBackupPayloadMessage = stringResource(Res.string.nuvio_enhanced_toast_invalid_backup)
     val backupFileReadyMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_ready)
@@ -156,6 +165,12 @@ private fun NuvioEnhancedSettingsPageContent(
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
     val detailHeroTrailerPlaybackSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
+
+    LaunchedEffect(hasNewPlayerTools, selectedCategory) {
+        if (!hasNewPlayerTools && selectedCategory == EnhancedSettingsCategory.New) {
+            selectedCategory = EnhancedSettingsCategory.Player
+        }
+    }
 
     fun isNew(feature: NuvioEnhancedFeature): Boolean = settings.isNew(feature)
     fun markSeen(feature: NuvioEnhancedFeature) {
@@ -191,6 +206,7 @@ private fun NuvioEnhancedSettingsPageContent(
 
         EnhancedSettingsCategoryBar(
             selected = selectedCategory,
+            hasNewFeatures = hasNewPlayerTools,
             onSelected = { selectedCategory = it },
         )
 
@@ -397,7 +413,8 @@ private fun NuvioEnhancedSettingsPageContent(
         }
         }
 
-        if (selectedCategory == EnhancedSettingsCategory.All ||
+        if (selectedCategory == EnhancedSettingsCategory.New ||
+            selectedCategory == EnhancedSettingsCategory.All ||
             selectedCategory == EnhancedSettingsCategory.Player
         ) {
             SettingsSection(
@@ -405,48 +422,49 @@ private fun NuvioEnhancedSettingsPageContent(
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
-                    SettingsSwitchRow(
-                        title = stringResource(Res.string.settings_playback_parental_guide),
-                        description = stringResource(Res.string.settings_playback_parental_guide_description),
-                        checked = playerSettings.showParentalGuide,
-                        isTablet = isTablet,
-                        highlighted = isNew(NuvioEnhancedFeature.ContentWarnings),
-                        onCheckedChange = {
-                            markSeen(NuvioEnhancedFeature.ContentWarnings)
-                            PlayerSettingsRepository.setShowParentalGuide(it)
-                        },
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsSwitchRow(
-                        title = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_title),
-                        description = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_desc),
-                        checked = settings.backgroundStreamPrefetchEnabled,
-                        isTablet = isTablet,
-                        highlighted = isNew(NuvioEnhancedFeature.BackgroundStreamPrefetch),
-                        onCheckedChange = {
-                            markSeen(NuvioEnhancedFeature.BackgroundStreamPrefetch)
-                            NuvioEnhancedSettingsRepository.setBackgroundStreamPrefetchEnabled(it)
-                        },
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsSwitchRow(
-                        title = stringResource(Res.string.nuvio_enhanced_player_status_overlay_title),
-                        description = stringResource(Res.string.nuvio_enhanced_player_status_overlay_desc),
-                        checked = settings.playerStatusOverlayEnabled,
-                        isTablet = isTablet,
-                        highlighted = isNew(NuvioEnhancedFeature.PlayerStatusOverlay),
-                        onCheckedChange = {
-                            markSeen(NuvioEnhancedFeature.PlayerStatusOverlay)
-                            NuvioEnhancedSettingsRepository.setPlayerStatusOverlayEnabled(it)
-                        },
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
+                    if (selectedCategory != EnhancedSettingsCategory.New) {
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.settings_playback_parental_guide),
+                            description = stringResource(Res.string.settings_playback_parental_guide_description),
+                            checked = playerSettings.showParentalGuide,
+                            isTablet = isTablet,
+                            highlighted = isNew(NuvioEnhancedFeature.ContentWarnings),
+                            onCheckedChange = {
+                                markSeen(NuvioEnhancedFeature.ContentWarnings)
+                                PlayerSettingsRepository.setShowParentalGuide(it)
+                            },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_title),
+                            description = stringResource(Res.string.nuvio_enhanced_background_stream_prefetch_desc),
+                            checked = settings.backgroundStreamPrefetchEnabled,
+                            isTablet = isTablet,
+                            highlighted = isNew(NuvioEnhancedFeature.BackgroundStreamPrefetch),
+                            onCheckedChange = {
+                                markSeen(NuvioEnhancedFeature.BackgroundStreamPrefetch)
+                                NuvioEnhancedSettingsRepository.setBackgroundStreamPrefetchEnabled(it)
+                            },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.nuvio_enhanced_player_status_overlay_title),
+                            description = stringResource(Res.string.nuvio_enhanced_player_status_overlay_desc),
+                            checked = settings.playerStatusOverlayEnabled,
+                            isTablet = isTablet,
+                            highlighted = isNew(NuvioEnhancedFeature.PlayerStatusOverlay),
+                            onCheckedChange = {
+                                markSeen(NuvioEnhancedFeature.PlayerStatusOverlay)
+                                NuvioEnhancedSettingsRepository.setPlayerStatusOverlayEnabled(it)
+                            },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     SettingsSwitchRow(
                         title = stringResource(Res.string.nuvio_enhanced_subtitle_sync_title),
                         description = stringResource(Res.string.nuvio_enhanced_subtitle_sync_desc),
                         checked = playerSettings.subtitleSyncMenuEnabled,
                         enabled = settings.enhancedHomeFeaturesEnabled,
-                        icon = Icons.Rounded.AutoAwesome,
                         isTablet = isTablet,
                         highlighted = isNew(NuvioEnhancedFeature.SubtitleSyncMenu),
                         onCheckedChange = {
@@ -460,7 +478,6 @@ private fun NuvioEnhancedSettingsPageContent(
                         description = stringResource(Res.string.nuvio_enhanced_player_clock_desc),
                         checked = playerSettings.playerClockEndTimeEnabled,
                         enabled = settings.enhancedHomeFeaturesEnabled,
-                        icon = Icons.Rounded.AccessTime,
                         isTablet = isTablet,
                         highlighted = isNew(NuvioEnhancedFeature.PlayerTimeOverlay),
                         onCheckedChange = {
@@ -474,7 +491,6 @@ private fun NuvioEnhancedSettingsPageContent(
                         description = stringResource(Res.string.settings_playback_random_next_episode_description),
                         checked = playerSettings.randomNextEpisodeEnabled,
                         enabled = settings.enhancedHomeFeaturesEnabled,
-                        icon = Icons.Rounded.Shuffle,
                         isTablet = isTablet,
                         highlighted = isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle),
                         onCheckedChange = {
@@ -482,7 +498,7 @@ private fun NuvioEnhancedSettingsPageContent(
                             PlayerSettingsRepository.setRandomNextEpisodeEnabled(it)
                         },
                     )
-                    if (!isIos) {
+                    if (selectedCategory != EnhancedSettingsCategory.New && !isIos) {
                         SettingsGroupDivider(isTablet = isTablet)
                         SettingsSwitchRow(
                             title = stringResource(Res.string.settings_playback_android_memory_safe_buffer),
@@ -1447,46 +1463,56 @@ private fun EnhancedFooterLink(
 @Composable
 private fun EnhancedSettingsCategoryBar(
     selected: EnhancedSettingsCategory,
+    hasNewFeatures: Boolean,
     onSelected: (EnhancedSettingsCategory) -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
-    val categories = listOf(
-        EnhancedSettingsCategory.All to stringResource(Res.string.nuvio_enhanced_category_all),
-        EnhancedSettingsCategory.Core to stringResource(Res.string.nuvio_enhanced_category_core),
-        EnhancedSettingsCategory.Home to stringResource(Res.string.nuvio_enhanced_category_home),
-        EnhancedSettingsCategory.Player to stringResource(Res.string.nuvio_enhanced_category_player),
-        EnhancedSettingsCategory.System to stringResource(Res.string.nuvio_enhanced_category_system),
-    )
+    val categories = buildList {
+        if (hasNewFeatures) {
+            add(EnhancedSettingsCategory.New to stringResource(Res.string.nuvio_enhanced_category_new))
+        }
+        add(EnhancedSettingsCategory.All to stringResource(Res.string.nuvio_enhanced_category_all))
+        add(EnhancedSettingsCategory.Core to stringResource(Res.string.nuvio_enhanced_category_core))
+        add(EnhancedSettingsCategory.Home to stringResource(Res.string.nuvio_enhanced_category_home))
+        add(EnhancedSettingsCategory.Player to stringResource(Res.string.nuvio_enhanced_category_player))
+        add(EnhancedSettingsCategory.System to stringResource(Res.string.nuvio_enhanced_category_system))
+    }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = tokens.colors.surface,
+        shape = tokens.shapes.compactCard,
+        border = BorderStroke(tokens.borders.hairline, tokens.colors.borderSubtle),
     ) {
-        categories.forEach { (category, label) ->
-            val isSelected = selected == category
-            Surface(
-                modifier = Modifier.clickable { onSelected(category) },
-                color = if (isSelected) {
-                    tokens.colors.accent.copy(alpha = 0.16f)
-                } else {
-                    tokens.colors.surface
-                },
-                shape = RoundedCornerShape(999.dp),
-                border = BorderStroke(
-                    tokens.borders.hairline,
-                    if (isSelected) tokens.colors.accent else tokens.colors.borderSubtle,
-                ),
-            ) {
-                Text(
-                    text = label,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isSelected) tokens.colors.accent else tokens.colors.textMuted,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                    maxLines = 1,
-                )
+        FlowRow(
+            modifier = Modifier.padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            categories.forEach { (category, label) ->
+                val isSelected = selected == category
+                Surface(
+                    modifier = Modifier.clickable { onSelected(category) },
+                    color = if (isSelected) {
+                        tokens.colors.accent.copy(alpha = 0.16f)
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = RoundedCornerShape(999.dp),
+                    border = BorderStroke(
+                        tokens.borders.hairline,
+                        if (isSelected) tokens.colors.accent else tokens.colors.borderSubtle,
+                    ),
+                ) {
+                    Text(
+                        text = label,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (isSelected) tokens.colors.accent else tokens.colors.textMuted,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
@@ -1534,11 +1560,6 @@ private fun EnhancedIntroCard(
             }
             if (hasNewFeatures) {
                 OutlinedButton(onClick = onMarkAllSeen) {
-                    Icon(
-                        imageVector = Icons.Rounded.NewReleases,
-                        contentDescription = null,
-                    )
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(Res.string.nuvio_enhanced_mark_all_seen))
                 }
             }

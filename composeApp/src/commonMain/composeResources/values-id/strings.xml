@@ -942,7 +942,7 @@
     <string name="settings_trakt_features">FITUR</string>
     <string name="settings_trakt_finish_sign_in">Selesaikan masuk Trakt di browser Anda</string>
     <string name="settings_trakt_intro_description">Sinkronkan daftar tonton, progres menonton, lanjutkan menonton, scrobble, dan daftar pribadi Anda dengan Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Kredensial Trakt hilang di local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt belum dikonfigurasi dalam build ini. Pengelola aplikasi harus menambahkan kredensial Trakt sebelum publikasi.</string>
     <string name="settings_trakt_open_login">Buka Login Trakt</string>
     <string name="settings_trakt_save_actions_description">Anda sekarang dapat menyimpan ke daftar tonton Trakt dan personal.</string>
     <string name="settings_trakt_sign_in_description">Masuk dengan Trakt untuk mengaktifkan penyimpanan berbasis daftar dan mode pustaka Trakt.</string>
@@ -1515,5 +1515,6 @@
     <string name="nuvio_enhanced_category_home">Beranda</string>
     <string name="nuvio_enhanced_category_player">Pemutar</string>
     <string name="nuvio_enhanced_category_system">Sistem</string>
+    <string name="nuvio_enhanced_category_new">Baru</string>
     <string name="nuvio_enhanced_section_player_tools">Pemutar &amp; subtitle</string>
 </resources>

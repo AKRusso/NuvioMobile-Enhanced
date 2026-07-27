@@ -1046,7 +1046,7 @@
     <string name="settings_trakt_features">TÍNH NĂNG</string>
     <string name="settings_trakt_finish_sign_in">Hoàn tất đăng nhập Trakt trong trình duyệt</string>
     <string name="settings_trakt_intro_description">Đồng bộ danh sách theo dõi, tiến trình xem, tiếp tục xem, scrobble và danh sách cá nhân với Trakt</string>
-    <string name="settings_trakt_missing_credentials">Thiếu thông tin xác thực Trakt trong local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET)</string>
+    <string name="settings_trakt_missing_credentials">Trakt chưa được cấu hình trong bản dựng này. Người quản lý ứng dụng phải thêm thông tin Trakt trước khi phát hành.</string>
     <string name="settings_trakt_open_login">Mở trang đăng nhập Trakt</string>
     <string name="settings_trakt_save_actions_description">Thao tác Lưu bây giờ sẽ được đồng bộ với danh sách theo dõi và danh sách cá nhân trên Trakt</string>
     <string name="settings_trakt_sign_in_description">Đăng nhập Trakt để quản lý danh sách và sử dụng thư viện Trakt</string>
@@ -1983,5 +1983,6 @@
     <string name="nuvio_enhanced_category_home">Trang chủ</string>
     <string name="nuvio_enhanced_category_player">Trình phát</string>
     <string name="nuvio_enhanced_category_system">Hệ thống</string>
+    <string name="nuvio_enhanced_category_new">Mới</string>
     <string name="nuvio_enhanced_section_player_tools">Trình phát và phụ đề</string>
 </resources>

@@ -52,6 +52,21 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     @get:Input
     abstract val gifSearchEndpoint: Property<String>
 
+    @get:Input
+    abstract val traktClientId: Property<String>
+
+    @get:Input
+    abstract val traktClientSecret: Property<String>
+
+    @get:Input
+    abstract val traktRedirectUri: Property<String>
+
+    @get:Input
+    abstract val updateGithubOwner: Property<String>
+
+    @get:Input
+    abstract val updateGithubRepo: Property<String>
+
     @TaskAction
     fun generate() {
         val props = Properties()
@@ -109,9 +124,23 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.trakt
                 |
                 |object TraktConfig {
-                |    const val CLIENT_ID = "${props.getProperty("TRAKT_CLIENT_ID", "")}" 
-                |    const val CLIENT_SECRET = "${props.getProperty("TRAKT_CLIENT_SECRET", "")}" 
-                |    const val REDIRECT_URI = "${props.getProperty("TRAKT_REDIRECT_URI", "nuvioenhanced://auth/trakt")}"
+                |    const val CLIENT_ID = "${traktClientId.get()}"
+                |    const val CLIENT_SECRET = "${traktClientSecret.get()}"
+                |    const val REDIRECT_URI = "${traktRedirectUri.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
+
+        outDir.resolve("com/nuvio/app/features/updater").apply {
+            mkdirs()
+            resolve("AppUpdateConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.updater
+                |
+                |object AppUpdateConfig {
+                |    const val GITHUB_OWNER = "${updateGithubOwner.get()}"
+                |    const val GITHUB_REPO = "${updateGithubRepo.get()}"
                 |}
                 """.trimMargin()
             )
@@ -358,6 +387,17 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     )
     gifSearchApiKey.set(configuredGifSearchApiKey)
     gifSearchEndpoint.set(configuredGifSearchEndpoint)
+    traktClientId.set(runtimeConfigValue("TRAKT_CLIENT_ID"))
+    traktClientSecret.set(runtimeConfigValue("TRAKT_CLIENT_SECRET"))
+    traktRedirectUri.set(runtimeConfigValue("TRAKT_REDIRECT_URI", fallback = "nuvioenhanced://auth/trakt"))
+    updateGithubOwner.set(
+        runtimeConfigValue(
+            "NUVIO_UPDATE_GITHUB_OWNER",
+            "GITHUB_REPOSITORY_OWNER",
+            fallback = "yesnt10",
+        )
+    )
+    updateGithubRepo.set(runtimeConfigValue("NUVIO_UPDATE_GITHUB_REPO", fallback = "NuvioMobile-Enhanced"))
 }
 
 tasks.withType<KotlinCompilationTask<*>>().configureEach {

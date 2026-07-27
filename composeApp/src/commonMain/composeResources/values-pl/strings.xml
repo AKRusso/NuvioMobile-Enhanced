@@ -952,7 +952,7 @@
     <string name="settings_trakt_features">FUNKCJE</string>
     <string name="settings_trakt_finish_sign_in">Dokończ logowanie Trakt w przeglądarce</string>
     <string name="settings_trakt_intro_description">Śledź, co oglądasz, zapisuj na liście obserwowanych lub listach niestandardowych i synchronizuj bibliotekę z Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Brak danych uwierzytelniających Trakt w local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt nie jest skonfigurowany w tej kompilacji. Opiekun aplikacji musi dodać dane Trakt przed publikacją.</string>
     <string name="settings_trakt_open_login">Otwórz logowanie Trakt</string>
     <string name="settings_trakt_save_actions_description">Twoje akcje zapisywania mogą teraz celować w listę obserwowanych i osobiste listy Trakt.</string>
     <string name="settings_trakt_sign_in_description">Zaloguj się w Trakt, aby włączyć zapisywanie na listach i tryb biblioteki Trakt.</string>
@@ -2004,5 +2004,6 @@
     <string name="nuvio_enhanced_category_home">Strona główna</string>
     <string name="nuvio_enhanced_category_player">Odtwarzacz</string>
     <string name="nuvio_enhanced_category_system">System</string>
+    <string name="nuvio_enhanced_category_new">Nowe</string>
     <string name="nuvio_enhanced_section_player_tools">Odtwarzacz i napisy</string>
 </resources>

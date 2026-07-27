@@ -1079,7 +1079,7 @@
     <string name="settings_trakt_features">ÖZELLİKLER</string>
     <string name="settings_trakt_finish_sign_in">Trakt girişini tarayıcında tamamla</string>
     <string name="settings_trakt_intro_description">Ne izlediğini takip et, izleme listene veya özel listelerine kaydet ve kitaplığını Trakt ile eşitle.</string>
-    <string name="settings_trakt_missing_credentials">local.properties içinde Trakt bilgileri eksik (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt bu derlemede yapılandırılmamış. Uygulama yöneticisi yayımlamadan önce Trakt bilgilerini eklemelidir.</string>
     <string name="settings_trakt_open_login">Trakt girişini aç</string>
     <string name="settings_trakt_save_actions_description">Kaydet işlemlerin artık Trakt izleme listesine ve kişisel listelere gidebilir.</string>
     <string name="settings_trakt_sign_in_description">Liste bazlı kaydetmeyi ve Trakt kitaplığı modunu açmak için Trakt ile giriş yap.</string>
@@ -1919,5 +1919,6 @@
     <string name="nuvio_enhanced_category_home">Ana Sayfa</string>
     <string name="nuvio_enhanced_category_player">Oynatıcı</string>
     <string name="nuvio_enhanced_category_system">Sistem</string>
+    <string name="nuvio_enhanced_category_new">Yeni</string>
     <string name="nuvio_enhanced_section_player_tools">Oynatıcı ve altyazılar</string>
 </resources>

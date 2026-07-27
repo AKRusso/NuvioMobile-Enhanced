@@ -1,0 +1,6 @@
+# Add these entries to your existing local.properties file.
+TRAKT_CLIENT_ID=
+TRAKT_CLIENT_SECRET=
+TRAKT_REDIRECT_URI=nuvioenhanced://auth/trakt
+NUVIO_UPDATE_GITHUB_OWNER=AKRusso
+NUVIO_UPDATE_GITHUB_REPO=NuvioMobile-Enhanced

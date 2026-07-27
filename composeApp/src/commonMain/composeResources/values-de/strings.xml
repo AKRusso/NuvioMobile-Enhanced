@@ -788,7 +788,7 @@
     <string name="settings_trakt_features">FUNKTIONEN</string>
     <string name="settings_trakt_finish_sign_in">Trakt-Anmeldung in deinem Browser abschließen</string>
     <string name="settings_trakt_intro_description">Verfolge, was du anschaust, speichere in der Watchlist oder in benutzerdefinierten Listen und halte deine Bibliothek mit Trakt synchron.</string>
-    <string name="settings_trakt_missing_credentials">Fehlende Trakt-Anmeldedaten in local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt ist in diesem Build nicht eingerichtet. Die App-Verwaltung muss vor der Veröffentlichung Trakt-Zugangsdaten hinzufügen.</string>
     <string name="settings_trakt_open_login">Trakt-Login öffnen</string>
     <string name="settings_trakt_save_actions_description">Deine Speichern-Aktionen können jetzt auf Trakt-Watchlist und persönliche Listen abzielen.</string>
     <string name="settings_trakt_sign_in_description">Mit Trakt anmelden, um listenbasiertes Speichern und Trakt-Bibliotheksmodus zu aktivieren.</string>
@@ -1285,5 +1285,6 @@
     <string name="nuvio_enhanced_category_home">Start</string>
     <string name="nuvio_enhanced_category_player">Player</string>
     <string name="nuvio_enhanced_category_system">System</string>
+    <string name="nuvio_enhanced_category_new">Neu</string>
     <string name="nuvio_enhanced_section_player_tools">Player und Untertitel</string>
 </resources>

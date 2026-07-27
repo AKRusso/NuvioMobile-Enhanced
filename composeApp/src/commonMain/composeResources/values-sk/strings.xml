@@ -1013,7 +1013,7 @@
     <string name="settings_trakt_features">FUNKCIE</string>
     <string name="settings_trakt_finish_sign_in">Dokončite prihlásenie do Trakt vo vašom prehliadači</string>
     <string name="settings_trakt_intro_description">Synchronizujte váš zoznam sledovania, postup sledovania, pokračovanie v sledovaní, scrobbles a osobné zoznamy s Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Chýbajúce prihlasovacie údaje Trakt v local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt nie je v tejto zostave nastavený. Správca aplikácie musí pred vydaním pridať prihlasovacie údaje Trakt.</string>
     <string name="settings_trakt_open_login">Otvoriť prihlásenie Trakt</string>
     <string name="settings_trakt_save_actions_description">Vaše akcie uloženia môžu teraz cieliť na zoznam sledovania Trakt a osobné zoznamy.</string>
     <string name="settings_trakt_sign_in_description">Prihláste sa pomocou Trakt, aby ste povolili ukladanie na základe zoznamov a režim knižnice Trakt.</string>
@@ -1991,5 +1991,6 @@
     <string name="nuvio_enhanced_category_home">Domov</string>
     <string name="nuvio_enhanced_category_player">Prehrávač</string>
     <string name="nuvio_enhanced_category_system">Systém</string>
+    <string name="nuvio_enhanced_category_new">Nové</string>
     <string name="nuvio_enhanced_section_player_tools">Prehrávač a titulky</string>
 </resources>

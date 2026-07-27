@@ -32,6 +32,8 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
       RELEASE_KEYSTORE_BASE64: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 }}
+      TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+      TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
 
     steps:
       - name: Check out full history
@@ -99,6 +101,7 @@ jobs:
         env:
           PREVIOUS_BUMP: ${{ steps.release.outputs.previous_bump }}
           CURRENT_BUMP: ${{ steps.release.outputs.current_bump }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
           EXCLUDE_COMMITS: ${{ inputs.exclude_commits }}
         run: |
           ./scripts/generate-release-notes.sh \
@@ -106,15 +109,34 @@ jobs:
             --to "${CURRENT_BUMP}" \
             --repository "${GITHUB_REPOSITORY}" \
             --exclude "${EXCLUDE_COMMITS}" \
-            > release-notes.md
+            > release-commits.md
 
-          if [[ ! -s release-notes.md ]]; then
+          if [[ ! -s release-commits.md ]]; then
             echo "No release-note commits were found." >&2
             exit 1
           fi
 
+          awk -v version="${RELEASE_VERSION}" '
+            index($0, "## " version) == 1 { capture = 1; next }
+            capture && /^## / { exit }
+            capture { print }
+          ' CHANGELOG.md > release-changelog.md
+
+          if [[ ! -s release-changelog.md ]]; then
+            echo "CHANGELOG.md has no section for ${RELEASE_VERSION}." >&2
+            exit 1
+          fi
+
           {
-            echo "## ${{ steps.release.outputs.version }} release notes"
+            echo "## Changelog"
+            cat release-changelog.md
+            echo
+            echo "## Commits"
+            cat release-commits.md
+          } > release-notes.md
+
+          {
+            echo "## ${RELEASE_VERSION} release notes"
             echo
             cat release-notes.md
           } >> "${GITHUB_STEP_SUMMARY}"
@@ -141,6 +163,14 @@ jobs:
           sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE)[[:space:]]*=/d' local.properties
           printf '\nNUVIO_RELEASE_STORE_FILE=%s\n' "${keystore_path}" >> local.properties
 
+          for property_name in TRAKT_CLIENT_ID TRAKT_CLIENT_SECRET; do
+            property_value="${!property_name-}"
+            if [[ -n "${property_value}" ]]; then
+              sed -i -E "/^[[:space:]]*${property_name}[[:space:]]*=/d" local.properties
+              printf '%s=%s\n' "${property_name}" "${property_value}" >> local.properties
+            fi
+          done
+
           required_properties=(
             NUVIO_RELEASE_STORE_PASSWORD
             NUVIO_RELEASE_KEY_ALIAS
@@ -149,7 +179,8 @@ jobs:
             TRAKT_CLIENT_SECRET
           )
           for property_name in "${required_properties[@]}"; do
-            if ! grep -Eq "^${property_name}=.+" local.properties; then
+            property_value="${!property_name-}"
+            if ! grep -Eq "^${property_name}=.+" local.properties && [[ -z "${property_value}" ]]; then
               echo "Missing required property: ${property_name}" >&2
               exit 1
             fi

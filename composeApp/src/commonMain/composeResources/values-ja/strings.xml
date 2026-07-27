@@ -1037,7 +1037,7 @@
     <string name="settings_trakt_features">機能</string>
     <string name="settings_trakt_finish_sign_in">ブラウザでTraktのサインインを完了してください</string>
     <string name="settings_trakt_intro_description">ウォッチリスト、視聴進捗、「視聴を続ける」、スクロブル、個人リストをTraktと同期します。</string>
-    <string name="settings_trakt_missing_credentials">local.propertiesにTraktの認証情報がありません（TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET）。</string>
+    <string name="settings_trakt_missing_credentials">このビルドではTraktが設定されていません。公開前にアプリ管理者がTraktの認証情報を追加する必要があります。</string>
     <string name="settings_trakt_open_login">Traktログインを開く</string>
     <string name="settings_trakt_save_actions_description">保存アクションでTraktのウォッチリストと個人リストをターゲットにできます。</string>
     <string name="settings_trakt_sign_in_description">Traktにサインインして、リストベースの保存とTraktライブラリモードを有効にしてください。</string>
@@ -1987,5 +1987,6 @@
     <string name="nuvio_enhanced_category_home">ホーム</string>
     <string name="nuvio_enhanced_category_player">プレーヤー</string>
     <string name="nuvio_enhanced_category_system">システム</string>
+    <string name="nuvio_enhanced_category_new">新着</string>
     <string name="nuvio_enhanced_section_player_tools">プレーヤーと字幕</string>
 </resources>

@@ -888,7 +888,7 @@
     <string name="settings_trakt_features">RECURSOS</string>
     <string name="settings_trakt_finish_sign_in">Conclua o login do Trakt no seu navegador</string>
     <string name="settings_trakt_intro_description">Sincronize sua watchlist, progresso de exibição, continuar assistindo, scrobbles e listas pessoais com o Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Credenciais do Trakt ausentes em local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">O Trakt não está configurado nesta compilação. O responsável pelo app deve adicionar as credenciais do Trakt antes de publicar.</string>
     <string name="settings_trakt_open_login">Abrir Login do Trakt</string>
     <string name="settings_trakt_save_actions_description">Suas ações de Salvar agora podem ter como alvo a watchlist e listas pessoais do Trakt.</string>
     <string name="settings_trakt_sign_in_description">Faça login com o Trakt para ativar o salvamento baseado em listas e o modo de biblioteca do Trakt.</string>
@@ -1421,5 +1421,6 @@
     <string name="nuvio_enhanced_category_home">Início</string>
     <string name="nuvio_enhanced_category_player">Player</string>
     <string name="nuvio_enhanced_category_system">Sistema</string>
+    <string name="nuvio_enhanced_category_new">Novidades</string>
     <string name="nuvio_enhanced_section_player_tools">Player e legendas</string>
 </resources>

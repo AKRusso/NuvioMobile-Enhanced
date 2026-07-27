@@ -334,7 +334,6 @@ internal fun SettingsSwitchRow(
     description: String? = null,
     checked: Boolean,
     enabled: Boolean = true,
-    icon: ImageVector? = null,
     isTablet: Boolean,
     highlighted: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
@@ -344,8 +343,6 @@ internal fun SettingsSwitchRow(
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
     val highlightShape = RoundedCornerShape(if (isTablet) NuvioTokens.Radius.lg else NuvioTokens.Radius.md)
     val highlightBrush = rememberAnimatedAccentBrush() ?: SolidColor(tokens.colors.accent)
-    val iconSize = if (isTablet) 42.dp else 36.dp
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -371,30 +368,6 @@ internal fun SettingsSwitchRow(
                 .alpha(if (enabled) NuvioTokens.Opacity.visible else tokens.opacity.medium),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (icon != null) {
-                Surface(
-                    modifier = Modifier.size(iconSize),
-                    color = tokens.colors.accent.copy(alpha = 0.13f),
-                    shape = tokens.shapes.compactCard,
-                    border = BorderStroke(
-                        tokens.borders.hairline,
-                        tokens.colors.accent.copy(alpha = 0.3f),
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = tokens.colors.accent,
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 14.dp))
-            }
             Column(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {

@@ -1054,7 +1054,7 @@
     <string name="settings_trakt_features">FUNCIONES</string>
     <string name="settings_trakt_finish_sign_in">Completa el inicio de sesión de Trakt en tu navegador</string>
     <string name="settings_trakt_intro_description">Haz seguimiento de lo que ves, guarda en tu lista o listas personalizadas y mantén tu biblioteca sincronizada con Trakt.</string>
-    <string name="settings_trakt_missing_credentials">Faltan credenciales de Trakt en local.properties (TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET).</string>
+    <string name="settings_trakt_missing_credentials">Trakt no está configurado en esta compilación. El responsable de la aplicación debe añadir las credenciales de Trakt antes de publicar.</string>
     <string name="settings_trakt_open_login">Abrir inicio de sesión de Trakt</string>
     <string name="settings_trakt_save_actions_description">Tus acciones de Guardar ahora pueden apuntar a la watchlist de Trakt y a listas personales.</string>
     <string name="settings_trakt_sign_in_description">Inicia sesión con Trakt para habilitar el guardado basado en listas y el modo biblioteca de Trakt.</string>
@@ -2142,5 +2142,6 @@
     <string name="nuvio_enhanced_category_home">Inicio</string>
     <string name="nuvio_enhanced_category_player">Reproductor</string>
     <string name="nuvio_enhanced_category_system">Sistema</string>
+    <string name="nuvio_enhanced_category_new">Nuevo</string>
     <string name="nuvio_enhanced_section_player_tools">Reproductor y subtítulos</string>
 </resources>
