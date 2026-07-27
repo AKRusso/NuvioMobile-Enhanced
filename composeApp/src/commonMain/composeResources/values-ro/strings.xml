@@ -1951,4 +1951,8 @@
     <string name="nuvio_enhanced_category_system">Sistem</string>
     <string name="nuvio_enhanced_category_new">Nou</string>
     <string name="nuvio_enhanced_section_player_tools">Player și subtitrări</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Selector de subtitrări</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Alege între selectorul Enhanced grupat după limbă și noul aspect Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

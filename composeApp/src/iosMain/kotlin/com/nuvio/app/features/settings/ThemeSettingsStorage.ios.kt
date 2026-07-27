@@ -26,7 +26,6 @@ actual object ThemeSettingsStorage {
         amoledEnabledKey,
         liquidGlassNativeTabBarEnabledKey,
         liquidGlassAutoHideOnScrollEnabledKey,
-        NAV_BAR_STYLE_KEY,
     )
 
     actual fun loadSelectedTheme(): String? =

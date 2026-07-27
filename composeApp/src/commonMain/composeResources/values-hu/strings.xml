@@ -1989,4 +1989,8 @@
     <string name="nuvio_enhanced_category_system">Rendszer</string>
     <string name="nuvio_enhanced_category_new">Új</string>
     <string name="nuvio_enhanced_section_player_tools">Lejátszó és feliratok</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Feliratválasztó</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Válassz a nyelv szerint csoportosított Enhanced választó és az új Nuvio elrendezés között.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

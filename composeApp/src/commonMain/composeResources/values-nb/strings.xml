@@ -1443,4 +1443,8 @@
     <string name="nuvio_enhanced_category_system">System</string>
     <string name="nuvio_enhanced_category_new">Nytt</string>
     <string name="nuvio_enhanced_section_player_tools">Spiller og undertekster</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Undertekstvelger</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Velg mellom Enhanced-velgeren gruppert etter språk og det nye Nuvio-oppsettet.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

@@ -35,6 +35,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val libraryHealthEnabled: Boolean = false,
     val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
+    val subtitleSelectorStyle: NuvioSubtitleSelectorStyle = NuvioSubtitleSelectorStyle.Enhanced,
     val showContinueWatchingReadyBadge: Boolean = true,
     val selectedAppIconId: String = NuvioAppIconOption.Default.id,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -68,6 +69,11 @@ internal enum class NuvioReleaseRadarContentFilter {
     Movies,
 }
 
+internal enum class NuvioSubtitleSelectorStyle {
+    Enhanced,
+    Nuvio,
+}
+
 internal enum class NuvioEnhancedFeature(val id: String) {
     HomeExperienceControls("home_experience_controls"),
     SmartResume2("smart_resume_2"),
@@ -80,6 +86,7 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     DetailExperienceControls("detail_experience_controls"),
     PlayerStatusOverlay("player_status_overlay"),
     SubtitleSyncMenu("subtitle_sync_menu_v3"),
+    SubtitleSelectorStyle("subtitle_selector_style_v1"),
     PlayerTimeOverlay("player_time_overlay_v3"),
     PersistentEpisodeShuffle("persistent_episode_shuffle_v3"),
     StatusBarVisibility("status_bar_visibility"),
@@ -123,6 +130,7 @@ private data class StoredNuvioEnhancedSettings(
     val libraryHealthEnabled: Boolean = false,
     val statusBarVisible: Boolean = true,
     val playerStatusOverlayEnabled: Boolean = false,
+    val subtitleSelectorStyle: NuvioSubtitleSelectorStyle = NuvioSubtitleSelectorStyle.Enhanced,
     val showContinueWatchingReadyBadge: Boolean = true,
     val selectedAppIconId: String = NuvioAppIconOption.Default.id,
     val releaseRadarLibraryOnly: Boolean = true,
@@ -288,6 +296,10 @@ internal object NuvioEnhancedSettingsRepository {
         copy(playerStatusOverlayEnabled = enabled)
     }
 
+    fun setSubtitleSelectorStyle(style: NuvioSubtitleSelectorStyle) = update {
+        copy(subtitleSelectorStyle = style)
+    }
+
     fun setStatusBarVisible(visible: Boolean) = update {
         copy(statusBarVisible = visible)
     }
@@ -374,6 +386,7 @@ internal object NuvioEnhancedSettingsRepository {
             libraryHealthEnabled = stored.libraryHealthEnabled,
             statusBarVisible = stored.statusBarVisible,
             playerStatusOverlayEnabled = stored.playerStatusOverlayEnabled,
+            subtitleSelectorStyle = stored.subtitleSelectorStyle,
             showContinueWatchingReadyBadge = stored.showContinueWatchingReadyBadge,
             selectedAppIconId = stored.selectedAppIconId,
             releaseRadarLibraryOnly = stored.releaseRadarLibraryOnly,

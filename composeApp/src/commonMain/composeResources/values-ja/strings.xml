@@ -1989,4 +1989,8 @@
     <string name="nuvio_enhanced_category_system">システム</string>
     <string name="nuvio_enhanced_category_new">新着</string>
     <string name="nuvio_enhanced_section_player_tools">プレーヤーと字幕</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">字幕セレクター</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">言語別にグループ化された Enhanced セレクターと新しい Nuvio レイアウトを選択します。</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

@@ -6,6 +6,7 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
+import com.nuvio.app.features.settings.NuvioSubtitleSelectorStyle
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
@@ -26,6 +27,7 @@ internal fun PlayerScreenModalHosts(
     onAudioModalDismissed: () -> Unit,
     showSubtitleModal: Boolean,
     activeSubtitleTab: SubtitleTab,
+    subtitleSelectorStyle: NuvioSubtitleSelectorStyle,
     subtitleTracks: List<SubtitleTrack>,
     selectedSubtitleIndex: Int,
     addonSubtitles: List<AddonSubtitle>,
@@ -135,11 +137,14 @@ internal fun PlayerScreenModalHosts(
     SubtitleModal(
         visible = showSubtitleModal,
         activeTab = activeSubtitleTab,
+        selectorStyle = subtitleSelectorStyle,
         subtitleTracks = subtitleTracks,
         selectedSubtitleIndex = selectedSubtitleIndex,
         addonSubtitles = addonSubtitles,
         selectedAddonSubtitleId = selectedAddonSubtitleId,
         isLoadingAddonSubtitles = isLoadingAddonSubtitles,
+        preferredSubtitleLanguage = playerSettings.preferredSubtitleLanguage,
+        secondaryPreferredSubtitleLanguage = playerSettings.secondaryPreferredSubtitleLanguage,
         subtitleStyle = subtitleStyle,
         subtitleDelayMs = subtitleDelayMs,
         selectedAddonSubtitle = selectedAddonSubtitle,

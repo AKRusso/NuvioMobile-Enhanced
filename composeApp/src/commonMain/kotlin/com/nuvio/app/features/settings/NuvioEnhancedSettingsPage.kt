@@ -142,6 +142,7 @@ private fun NuvioEnhancedSettingsPageContent(
     var importPayload by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
     val hasNewPlayerTools = settings.isNew(NuvioEnhancedFeature.SubtitleSyncMenu) ||
+        settings.isNew(NuvioEnhancedFeature.SubtitleSelectorStyle) ||
         settings.isNew(NuvioEnhancedFeature.PlayerTimeOverlay) ||
         settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle)
     var selectedCategory by rememberSaveable {
@@ -470,6 +471,28 @@ private fun NuvioEnhancedSettingsPageContent(
                         onCheckedChange = {
                             markSeen(NuvioEnhancedFeature.SubtitleSyncMenu)
                             PlayerSettingsRepository.setSubtitleSyncMenuEnabled(it)
+                        },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    EnhancedChoiceRow(
+                        title = stringResource(Res.string.nuvio_enhanced_subtitle_selector_title),
+                        description = stringResource(Res.string.nuvio_enhanced_subtitle_selector_desc),
+                        selected = settings.subtitleSelectorStyle,
+                        options = listOf(
+                            EnhancedChoiceOption(
+                                NuvioSubtitleSelectorStyle.Enhanced,
+                                stringResource(Res.string.nuvio_enhanced_subtitle_selector_enhanced),
+                            ),
+                            EnhancedChoiceOption(
+                                NuvioSubtitleSelectorStyle.Nuvio,
+                                stringResource(Res.string.nuvio_enhanced_subtitle_selector_nuvio),
+                            ),
+                        ),
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.SubtitleSelectorStyle),
+                        onSelected = {
+                            markSeen(NuvioEnhancedFeature.SubtitleSelectorStyle)
+                            NuvioEnhancedSettingsRepository.setSubtitleSelectorStyle(it)
                         },
                     )
                     SettingsGroupDivider(isTablet = isTablet)

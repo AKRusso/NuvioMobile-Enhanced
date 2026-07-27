@@ -309,6 +309,7 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             onSubtitleClick = if (isLiveTv) null else {
                 {
                     refreshTracks()
+                    activeSubtitleTab = SubtitleTab.BuiltIn
                     showSubtitleModal = true
                 }
             },
@@ -598,6 +599,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
         onAudioModalDismissed = { showAudioModal = false },
         showSubtitleModal = showSubtitleModal,
         activeSubtitleTab = activeSubtitleTab,
+        subtitleSelectorStyle = nuvioEnhancedSettingsUiState.subtitleSelectorStyle,
         subtitleTracks = subtitleTracks,
         selectedSubtitleIndex = selectedSubtitleIndex,
         addonSubtitles = visibleAddonSubtitles,

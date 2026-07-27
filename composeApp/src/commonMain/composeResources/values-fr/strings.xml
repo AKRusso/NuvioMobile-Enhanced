@@ -2038,4 +2038,8 @@
     <string name="nuvio_enhanced_category_system">Système</string>
     <string name="nuvio_enhanced_category_new">Nouveau</string>
     <string name="nuvio_enhanced_section_player_tools">Lecteur et sous-titres</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Sélecteur de sous-titres</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Choisissez entre le sélecteur Enhanced regroupé par langue et la nouvelle interface Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

@@ -1963,4 +1963,8 @@
     <string name="nuvio_enhanced_category_system">Система</string>
     <string name="nuvio_enhanced_category_new">Ново</string>
     <string name="nuvio_enhanced_section_player_tools">Плейър и субтитри</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Избор на субтитри</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Изберете между селектора Enhanced, групиран по език, и новия изглед на Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

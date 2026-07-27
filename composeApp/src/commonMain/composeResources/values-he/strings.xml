@@ -730,4 +730,8 @@
     <string name="nuvio_enhanced_category_new">חדש</string>
     <string name="nuvio_enhanced_section_player_tools">נגן וכתוביות</string>
     <string name="settings_trakt_missing_credentials">Trakt אינו מוגדר בגרסה זו. מנהל האפליקציה חייב להוסיף פרטי Trakt לפני הפרסום.</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">בורר כתוביות</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">בחרו בין בורר Enhanced המקובץ לפי שפה לבין הפריסה החדשה של Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

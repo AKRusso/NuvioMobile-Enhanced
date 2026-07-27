@@ -10,6 +10,10 @@ same user-facing summary so the in-app updater can display it before download.
 - Reorganized Enhanced settings into a compact, wrapping category selector.
 - Added a dedicated New category for subtitle sync, player time, and episode shuffle.
 - Removed decorative icons from the three new player settings.
+- Added a translated setting to choose between the Enhanced and Nuvio subtitle
+  selectors.
+- Kept subtitle synchronization as a dedicated player action instead of showing
+  it again inside the subtitle selector.
 - Made the update repository configurable for local builds and forks.
 - Allowed release builds to read Trakt credentials from GitHub Actions secrets.
 
@@ -24,6 +28,8 @@ same user-facing summary so the in-app updater can display it before download.
   used by existing Nuvio Enhanced installations.
 - The player clock now respects the top safe area, leaves more room below header
   actions, and uses stronger contrast over video.
+- Expanded navigation no longer resets to Adaptive when an older sync payload
+  does not contain a navigation style.
 
 ### Upstream
 

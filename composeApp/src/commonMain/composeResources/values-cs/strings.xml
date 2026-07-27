@@ -1994,4 +1994,8 @@
     <string name="nuvio_enhanced_category_system">Systém</string>
     <string name="nuvio_enhanced_category_new">Nové</string>
     <string name="nuvio_enhanced_section_player_tools">Přehrávač a titulky</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Výběr titulků</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Vyberte mezi voličem Enhanced seskupeným podle jazyka a novým rozvržením Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

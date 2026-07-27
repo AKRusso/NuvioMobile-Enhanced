@@ -1921,4 +1921,8 @@
     <string name="nuvio_enhanced_category_system">Sistem</string>
     <string name="nuvio_enhanced_category_new">Yeni</string>
     <string name="nuvio_enhanced_section_player_tools">Oynatıcı ve altyazılar</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Altyazı seçici</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Dile göre gruplandırılmış Enhanced seçici ile yeni Nuvio düzeni arasında seçim yapın.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

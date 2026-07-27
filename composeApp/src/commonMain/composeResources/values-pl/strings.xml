@@ -2006,4 +2006,8 @@
     <string name="nuvio_enhanced_category_system">System</string>
     <string name="nuvio_enhanced_category_new">Nowe</string>
     <string name="nuvio_enhanced_section_player_tools">Odtwarzacz i napisy</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Wybór napisów</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Wybierz selektor Enhanced pogrupowany według języka lub nowy układ Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

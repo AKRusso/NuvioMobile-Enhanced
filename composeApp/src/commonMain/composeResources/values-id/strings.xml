@@ -1517,4 +1517,8 @@
     <string name="nuvio_enhanced_category_system">Sistem</string>
     <string name="nuvio_enhanced_category_new">Baru</string>
     <string name="nuvio_enhanced_section_player_tools">Pemutar &amp; subtitle</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Pemilih subtitle</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Pilih antara pemilih Enhanced yang dikelompokkan berdasarkan bahasa dan tata letak Nuvio terbaru.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

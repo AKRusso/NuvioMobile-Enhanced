@@ -1983,4 +1983,8 @@
     <string name="nuvio_enhanced_category_system">Σύστημα</string>
     <string name="nuvio_enhanced_category_new">Νέα</string>
     <string name="nuvio_enhanced_section_player_tools">Αναπαραγωγή και υπότιτλοι</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Επιλογή υποτίτλων</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Επιλέξτε ανάμεσα στον επιλογέα Enhanced με ομαδοποίηση ανά γλώσσα και τη νέα διάταξη Nuvio.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

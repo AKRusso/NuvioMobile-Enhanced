@@ -2386,4 +2386,8 @@
     <string name="nuvio_enhanced_category_system">النظام</string>
     <string name="nuvio_enhanced_category_new">جديد</string>
     <string name="nuvio_enhanced_section_player_tools">المشغل والترجمة</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">محدد الترجمة</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">اختر بين محدد Enhanced المجمع حسب اللغة وتخطيط Nuvio الجديد.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

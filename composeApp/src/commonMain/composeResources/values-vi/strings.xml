@@ -1985,4 +1985,8 @@
     <string name="nuvio_enhanced_category_system">Hệ thống</string>
     <string name="nuvio_enhanced_category_new">Mới</string>
     <string name="nuvio_enhanced_section_player_tools">Trình phát và phụ đề</string>
+    <string name="nuvio_enhanced_subtitle_selector_title">Trình chọn phụ đề</string>
+    <string name="nuvio_enhanced_subtitle_selector_desc">Chọn giữa trình chọn Enhanced được nhóm theo ngôn ngữ và bố cục Nuvio mới.</string>
+    <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
+    <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
 </resources>

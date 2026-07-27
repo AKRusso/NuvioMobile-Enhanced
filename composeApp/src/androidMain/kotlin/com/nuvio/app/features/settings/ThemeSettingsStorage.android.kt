@@ -30,7 +30,6 @@ actual object ThemeSettingsStorage {
         amoledEnabledKey,
         liquidGlassNativeTabBarEnabledKey,
         liquidGlassAutoHideOnScrollEnabledKey,
-        NAV_BAR_STYLE_KEY,
     )
 
     private var preferences: SharedPreferences? = null
