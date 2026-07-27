@@ -546,7 +546,8 @@ fun MetaDetailsScreen(
                         searchTitle = if (hasEpisodesForPrefetch) seriesAction?.episodeTitle ?: meta.name else meta.name,
                     )
                 }
-                val showRandomEpisodeButton = metaScreenSettingsUiState.randomEpisodeButton &&
+                val showRandomEpisodeButton = nuvioEnhancedSettings.enhancedHomeFeaturesEnabled &&
+                    playerSettingsUiState.randomNextEpisodeEnabled &&
                     meta.isSeriesLikeForEpisodeRatings()
                 val randomEpisodeLabel = stringResource(Res.string.action_random_episode)
                 var randomEpisodeHistory by remember(

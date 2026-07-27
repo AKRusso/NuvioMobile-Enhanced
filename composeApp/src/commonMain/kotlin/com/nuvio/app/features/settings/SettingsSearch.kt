@@ -511,11 +511,11 @@ internal fun settingsSearchEntries(
     )
     addRow(
         page = SettingsPage.NuvioEnhanced,
-        key = "random-episode-button",
-        title = stringResource(Res.string.settings_meta_random_episode_button),
-        description = stringResource(Res.string.settings_meta_random_episode_button_description),
+        key = "random-next-episode",
+        title = stringResource(Res.string.settings_playback_random_next_episode),
+        description = stringResource(Res.string.settings_playback_random_next_episode_description),
         pageLabel = nuvioEnhancedPage,
-        section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
+        section = stringResource(Res.string.nuvio_enhanced_section_player_tools),
         category = enhancedCategory,
         icon = Icons.Rounded.PlayArrow,
     )

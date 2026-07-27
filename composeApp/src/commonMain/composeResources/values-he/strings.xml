@@ -722,4 +722,10 @@
     <string name="entity_browse_type">סוג</string>
     <string name="entity_browse_catalogue">קטלוג</string>
     <string name="entity_browse_about">אודות</string>
+    <string name="nuvio_enhanced_category_all">הכל</string>
+    <string name="nuvio_enhanced_category_core">עיקרי</string>
+    <string name="nuvio_enhanced_category_home">בית</string>
+    <string name="nuvio_enhanced_category_player">נגן</string>
+    <string name="nuvio_enhanced_category_system">מערכת</string>
+    <string name="nuvio_enhanced_section_player_tools">נגן וכתוביות</string>
 </resources>

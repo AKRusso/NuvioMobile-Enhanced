@@ -2545,4 +2545,10 @@
     <string name="nuvio_enhanced_subtitle_sync_desc">Show subtitle timing controls and follow the active line during playback.</string>
     <string name="nuvio_enhanced_player_clock_title">Player time</string>
     <string name="nuvio_enhanced_player_clock_desc">Show the current time and estimated end time while controls are visible.</string>
+    <string name="nuvio_enhanced_category_all">All</string>
+    <string name="nuvio_enhanced_category_core">Core</string>
+    <string name="nuvio_enhanced_category_home">Home</string>
+    <string name="nuvio_enhanced_category_player">Player</string>
+    <string name="nuvio_enhanced_category_system">System</string>
+    <string name="nuvio_enhanced_section_player_tools">Player &amp; subtitles</string>
 </resources>

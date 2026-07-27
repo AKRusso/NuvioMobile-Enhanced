@@ -2379,4 +2379,10 @@
     <string name="nuvio_enhanced_player_clock_title">وقت المشغل</string>
     <string name="nuvio_enhanced_player_clock_desc">عرض الوقت الحالي ووقت الانتهاء المتوقع أثناء ظهور عناصر التحكم.</string>
     <string name="player_clock_ends_at">ينتهي في %1$s</string>
+    <string name="nuvio_enhanced_category_all">الكل</string>
+    <string name="nuvio_enhanced_category_core">الأساسيات</string>
+    <string name="nuvio_enhanced_category_home">الرئيسية</string>
+    <string name="nuvio_enhanced_category_player">المشغل</string>
+    <string name="nuvio_enhanced_category_system">النظام</string>
+    <string name="nuvio_enhanced_section_player_tools">المشغل والترجمة</string>
 </resources>

@@ -1982,4 +1982,10 @@
     <string name="player_clock_ends_at">終了予定 %1$s</string>
     <string name="player_random_next_enabled">次のエピソードをランダム再生：オン</string>
     <string name="player_random_next_disabled">次のエピソードをランダム再生：オフ</string>
+    <string name="nuvio_enhanced_category_all">すべて</string>
+    <string name="nuvio_enhanced_category_core">基本</string>
+    <string name="nuvio_enhanced_category_home">ホーム</string>
+    <string name="nuvio_enhanced_category_player">プレーヤー</string>
+    <string name="nuvio_enhanced_category_system">システム</string>
+    <string name="nuvio_enhanced_section_player_tools">プレーヤーと字幕</string>
 </resources>

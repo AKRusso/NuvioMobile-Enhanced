@@ -1986,4 +1986,10 @@
     <string name="player_clock_ends_at">Končí o %1$s</string>
     <string name="player_random_next_enabled">Náhodná ďalšia epizóda zapnutá</string>
     <string name="player_random_next_disabled">Náhodná ďalšia epizóda vypnutá</string>
+    <string name="nuvio_enhanced_category_all">Všetko</string>
+    <string name="nuvio_enhanced_category_core">Základné</string>
+    <string name="nuvio_enhanced_category_home">Domov</string>
+    <string name="nuvio_enhanced_category_player">Prehrávač</string>
+    <string name="nuvio_enhanced_category_system">Systém</string>
+    <string name="nuvio_enhanced_section_player_tools">Prehrávač a titulky</string>
 </resources>

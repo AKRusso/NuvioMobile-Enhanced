@@ -1914,4 +1914,10 @@
     <string name="player_clock_ends_at">Bitiş: %1$s</string>
     <string name="player_random_next_enabled">Rastgele sonraki bölüm açık</string>
     <string name="player_random_next_disabled">Rastgele sonraki bölüm kapalı</string>
+    <string name="nuvio_enhanced_category_all">Tümü</string>
+    <string name="nuvio_enhanced_category_core">Temel</string>
+    <string name="nuvio_enhanced_category_home">Ana Sayfa</string>
+    <string name="nuvio_enhanced_category_player">Oynatıcı</string>
+    <string name="nuvio_enhanced_category_system">Sistem</string>
+    <string name="nuvio_enhanced_section_player_tools">Oynatıcı ve altyazılar</string>
 </resources>

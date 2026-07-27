@@ -1280,4 +1280,10 @@
     <string name="player_clock_ends_at">Endet um %1$s</string>
     <string name="player_random_next_enabled">Nächste Folge zufällig aktiviert</string>
     <string name="player_random_next_disabled">Nächste Folge zufällig deaktiviert</string>
+    <string name="nuvio_enhanced_category_all">Alle</string>
+    <string name="nuvio_enhanced_category_core">Basis</string>
+    <string name="nuvio_enhanced_category_home">Start</string>
+    <string name="nuvio_enhanced_category_player">Player</string>
+    <string name="nuvio_enhanced_category_system">System</string>
+    <string name="nuvio_enhanced_section_player_tools">Player und Untertitel</string>
 </resources>

@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -254,6 +255,7 @@ internal fun SettingsNavigationRow(
     val verticalPadding = if (isTablet) 16.dp else 14.dp
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
     val highlightShape = RoundedCornerShape(if (isTablet) NuvioTokens.Radius.lg else NuvioTokens.Radius.md)
+    val highlightBrush = rememberAnimatedAccentBrush() ?: SolidColor(tokens.colors.accent)
 
     Row(
         modifier = Modifier
@@ -262,7 +264,7 @@ internal fun SettingsNavigationRow(
                 if (highlighted) {
                     Modifier
                         .background(tokens.colors.accent.copy(alpha = 0.08f), highlightShape)
-                        .border(tokens.borders.hairline, tokens.colors.accent.copy(alpha = 0.72f), highlightShape)
+                        .border(tokens.borders.hairline, highlightBrush, highlightShape)
                 } else {
                     Modifier
                 },
@@ -332,6 +334,7 @@ internal fun SettingsSwitchRow(
     description: String? = null,
     checked: Boolean,
     enabled: Boolean = true,
+    icon: ImageVector? = null,
     isTablet: Boolean,
     highlighted: Boolean = false,
     onCheckedChange: (Boolean) -> Unit,
@@ -340,6 +343,8 @@ internal fun SettingsSwitchRow(
     val verticalPadding = if (isTablet) 16.dp else 14.dp
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
     val highlightShape = RoundedCornerShape(if (isTablet) NuvioTokens.Radius.lg else NuvioTokens.Radius.md)
+    val highlightBrush = rememberAnimatedAccentBrush() ?: SolidColor(tokens.colors.accent)
+    val iconSize = if (isTablet) 42.dp else 36.dp
 
     Row(
         modifier = Modifier
@@ -348,7 +353,7 @@ internal fun SettingsSwitchRow(
                 if (highlighted) {
                     Modifier
                         .background(tokens.colors.accent.copy(alpha = 0.08f), highlightShape)
-                        .border(tokens.borders.hairline, tokens.colors.accent.copy(alpha = 0.72f), highlightShape)
+                        .border(tokens.borders.hairline, highlightBrush, highlightShape)
                 } else {
                     Modifier
                 },
@@ -358,24 +363,52 @@ internal fun SettingsSwitchRow(
         horizontalArrangement = Arrangement.Start,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .weight(1f)
                 .padding(end = 12.dp)
                 .widthIn(max = if (isTablet) 560.dp else Dp.Unspecified)
                 .alpha(if (enabled) NuvioTokens.Opacity.visible else tokens.opacity.medium),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            SettingsRowTitle(
-                title = title,
-                highlighted = highlighted,
-            )
-            if (!description.isNullOrBlank()) {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = tokens.colors.textMuted,
+            if (icon != null) {
+                Surface(
+                    modifier = Modifier.size(iconSize),
+                    color = tokens.colors.accent.copy(alpha = 0.13f),
+                    shape = tokens.shapes.compactCard,
+                    border = BorderStroke(
+                        tokens.borders.hairline,
+                        tokens.colors.accent.copy(alpha = 0.3f),
+                    ),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = tokens.colors.accent,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(if (isTablet) 16.dp else 14.dp))
+            }
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                SettingsRowTitle(
+                    title = title,
+                    highlighted = highlighted,
                 )
+                if (!description.isNullOrBlank()) {
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = tokens.colors.textMuted,
+                    )
+                }
             }
         }
         SettingsGradientSwitch(

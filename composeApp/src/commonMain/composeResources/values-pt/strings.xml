@@ -1921,4 +1921,10 @@
     <string name="nuvio_enhanced_subtitle_sync_desc">Mostra os controlos de tempo e acompanha a legenda ativa durante a reprodução.</string>
     <string name="nuvio_enhanced_player_clock_title">Hora no player</string>
     <string name="nuvio_enhanced_player_clock_desc">Mostra a hora atual e a hora estimada de fim enquanto os controlos estão visíveis.</string>
+    <string name="nuvio_enhanced_category_all">Tudo</string>
+    <string name="nuvio_enhanced_category_core">Essencial</string>
+    <string name="nuvio_enhanced_category_home">Início</string>
+    <string name="nuvio_enhanced_category_player">Leitor</string>
+    <string name="nuvio_enhanced_category_system">Sistema</string>
+    <string name="nuvio_enhanced_section_player_tools">Leitor e legendas</string>
 </resources>

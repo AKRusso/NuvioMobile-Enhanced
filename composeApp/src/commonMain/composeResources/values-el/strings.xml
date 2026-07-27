@@ -1976,4 +1976,10 @@
     <string name="player_clock_ends_at">Τελειώνει στις %1$s</string>
     <string name="player_random_next_enabled">Τυχαίο επόμενο επεισόδιο ενεργό</string>
     <string name="player_random_next_disabled">Τυχαίο επόμενο επεισόδιο ανενεργό</string>
+    <string name="nuvio_enhanced_category_all">Όλα</string>
+    <string name="nuvio_enhanced_category_core">Βασικά</string>
+    <string name="nuvio_enhanced_category_home">Αρχική</string>
+    <string name="nuvio_enhanced_category_player">Αναπαραγωγή</string>
+    <string name="nuvio_enhanced_category_system">Σύστημα</string>
+    <string name="nuvio_enhanced_section_player_tools">Αναπαραγωγή και υπότιτλοι</string>
 </resources>

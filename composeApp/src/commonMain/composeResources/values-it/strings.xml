@@ -1957,4 +1957,10 @@
     <string name="player_clock_ends_at">Termina alle %1$s</string>
     <string name="player_random_next_enabled">Prossimo episodio casuale attivo</string>
     <string name="player_random_next_disabled">Prossimo episodio casuale disattivato</string>
+    <string name="nuvio_enhanced_category_all">Tutto</string>
+    <string name="nuvio_enhanced_category_core">Essenziali</string>
+    <string name="nuvio_enhanced_category_home">Home</string>
+    <string name="nuvio_enhanced_category_player">Lettore</string>
+    <string name="nuvio_enhanced_category_system">Sistema</string>
+    <string name="nuvio_enhanced_section_player_tools">Lettore e sottotitoli</string>
 </resources>

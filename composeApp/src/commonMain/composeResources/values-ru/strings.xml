@@ -2379,4 +2379,10 @@
     <string name="nuvio_enhanced_player_clock_title">Время в проигрывателе</string>
     <string name="nuvio_enhanced_player_clock_desc">Показывать текущее время и расчётное время окончания, когда элементы управления видимы.</string>
     <string name="player_clock_ends_at">Закончится в %1$s</string>
+    <string name="nuvio_enhanced_category_all">Все</string>
+    <string name="nuvio_enhanced_category_core">Основное</string>
+    <string name="nuvio_enhanced_category_home">Главная</string>
+    <string name="nuvio_enhanced_category_player">Плеер</string>
+    <string name="nuvio_enhanced_category_system">Система</string>
+    <string name="nuvio_enhanced_section_player_tools">Плеер и субтитры</string>
 </resources>

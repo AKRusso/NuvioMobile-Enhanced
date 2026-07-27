@@ -2137,4 +2137,10 @@
     <string name="player_clock_ends_at">Termina a las %1$s</string>
     <string name="player_random_next_enabled">Siguiente episodio aleatorio activado</string>
     <string name="player_random_next_disabled">Siguiente episodio aleatorio desactivado</string>
+    <string name="nuvio_enhanced_category_all">Todo</string>
+    <string name="nuvio_enhanced_category_core">Esencial</string>
+    <string name="nuvio_enhanced_category_home">Inicio</string>
+    <string name="nuvio_enhanced_category_player">Reproductor</string>
+    <string name="nuvio_enhanced_category_system">Sistema</string>
+    <string name="nuvio_enhanced_section_player_tools">Reproductor y subtítulos</string>
 </resources>

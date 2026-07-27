@@ -1976,4 +1976,10 @@
     <string name="nuvio_enhanced_player_clock_title">Spelertijd</string>
     <string name="nuvio_enhanced_player_clock_desc">Toon de huidige tijd en de geschatte eindtijd wanneer de bediening zichtbaar is.</string>
     <string name="player_clock_ends_at">Eindigt om %1$s</string>
+    <string name="nuvio_enhanced_category_all">Alles</string>
+    <string name="nuvio_enhanced_category_core">Basis</string>
+    <string name="nuvio_enhanced_category_home">Start</string>
+    <string name="nuvio_enhanced_category_player">Speler</string>
+    <string name="nuvio_enhanced_category_system">Systeem</string>
+    <string name="nuvio_enhanced_section_player_tools">Speler en ondertitels</string>
 </resources>
