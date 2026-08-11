@@ -657,8 +657,13 @@ internal data class CollectionCatalogDefinition(
     val isPinnedToTop: Boolean,
 )
 
+internal fun visibleCollectionsWithUniqueIds(collections: List<Collection>): List<Collection> =
+    collections
+        .filter { collection -> collection.folders.isNotEmpty() }
+        .distinctBy(Collection::id)
+
 internal fun buildCollectionDefinitions(collections: List<Collection>): List<CollectionCatalogDefinition> =
-    collections.filter { it.folders.isNotEmpty() }.map { collection ->
+    visibleCollectionsWithUniqueIds(collections).map { collection ->
         CollectionCatalogDefinition(
             key = "collection_${collection.id}",
             collectionId = collection.id,

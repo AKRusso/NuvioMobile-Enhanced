@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.core.storage.LocalAccountDataCleaner
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.exceptions.RestException
@@ -116,8 +117,9 @@ object AuthRepository {
         }
         Unit
     }.onFailure { e ->
-        logAuthFailure("Email sign-up failed", e)
-        _error.value = readableAuthError(e, getString(Res.string.auth_sign_up_failed))
+        log.e(e) { "Email sign-up failed" }
+        _error.value = e.safeAuthErrorDescription()
+            ?: getString(Res.string.auth_sign_up_failed)
     }
 
     suspend fun signInWithEmail(email: String, password: String): Result<Unit> = runCatching {
@@ -127,8 +129,9 @@ object AuthRepository {
             this.password = password
         }
     }.onFailure { e ->
-        logAuthFailure("Email sign-in failed", e)
-        _error.value = readableAuthError(e, getString(Res.string.auth_sign_in_failed))
+        log.e(e) { "Email sign-in failed" }
+        _error.value = e.safeAuthErrorDescription()
+            ?: getString(Res.string.auth_sign_in_failed)
     }
 
     suspend fun signOut(): Result<Unit> {
@@ -240,39 +243,6 @@ object AuthRepository {
             )
     }
 
-    private suspend fun readableAuthError(error: Throwable, fallback: String): String =
-        when {
-            isInvalidCredentialsError(error) -> getString(Res.string.auth_invalid_credentials)
-            else -> fallback
-        }
-
-    private fun isInvalidCredentialsError(error: Throwable): Boolean {
-        val restError = error.findCause<RestException>()
-        val message = buildString {
-            append(error.message.orEmpty())
-            if (restError != null) {
-                append(' ')
-                append(restError.error)
-                append(' ')
-                append(restError.description)
-            }
-        }.lowercase()
-
-        return "invalid_credentials" in message ||
-            "invalid login credentials" in message ||
-            "invalid credentials" in message
-    }
-
-    private fun logAuthFailure(message: String, error: Throwable) {
-        val restError = error.findCause<RestException>()
-        val summary = if (restError != null) {
-            "status=${restError.statusCode}, error=${restError.error}, description=${restError.description}"
-        } else {
-            error::class.simpleName ?: "unknown error"
-        }
-        log.w { "$message: $summary" }
-    }
-
     private inline fun <reified T : Throwable> Throwable.findCause(): T? {
         var current: Throwable? = this
         while (current != null) {
@@ -281,4 +251,14 @@ object AuthRepository {
         }
         return null
     }
+
+    private fun Throwable.safeAuthErrorDescription(): String? =
+        findCause<AuthRestException>()
+            ?.errorDescription
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: findCause<RestException>()
+                ?.description
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
 }

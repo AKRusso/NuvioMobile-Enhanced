@@ -585,23 +585,10 @@ actual object PluginRepository {
                 }
                 ?: emptyList(),
             scrapers = stored?.scrapers
-                ?.map {
-                    PluginScraper(
-                        id = it.id,
-                        repositoryUrl = it.repositoryUrl,
-                        name = it.name,
-                        description = it.description,
-                        version = it.version,
-                        filename = it.filename,
-                        supportedTypes = it.supportedTypes,
-                        enabled = it.enabled,
-                        manifestEnabled = it.manifestEnabled,
-                        hasSettings = it.hasSettings,
-                        logo = it.logo,
-                        contentLanguage = it.contentLanguage,
-                        formats = it.formats,
-                        code = it.code,
-                    )
+                ?.mapNotNull { storedScraper ->
+                    storedScraper.restorePluginScraper { scraperId ->
+                        PluginStorage.loadScraperCode(profileId, scraperId)
+                    }?.scraper
                 }
                 ?: emptyList(),
         )

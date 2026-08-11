@@ -3,6 +3,33 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.5 - 2026-08-11
+
+### Changed
+
+- Integrated NuvioMobile 0.4.4 while retaining the Enhanced settings, Live TV,
+  release radar, library health, subtitle sync, player clock, and episode shuffle.
+- Adopted the new provider-neutral tracking and library architecture, including
+  Trakt and Simkl support.
+- Updated the Android application structure, plugin runtime, media engine, and
+  notification services to the latest upstream implementations.
+
+### Fixed
+
+- Preserved immediate subtitle synchronization, custom subtitle fonts, volume
+  boost, memory-safe buffering, exact seeking, and stable libmpv playback.
+- Reloaded Enhanced and Live TV settings correctly when switching profiles.
+- Restored Enhanced Live TV navigation and incoming playlist, stream, and magnet
+  routing after the upstream navigation migration.
+- Kept the Enhanced Android package, launcher, signing continuity, notification
+  routing, iOS bundle identifiers, primary icon, and packaged Compose resources.
+- Reconciled the Enhanced Home experience with the latest upstream caching and
+  next-up behavior.
+
+### Upstream
+
+- Includes NuvioMobile `0.4.4` through commit `f9ad843b`.
+
 ## 0.3.4 - 2026-07-27
 
 ### Changed

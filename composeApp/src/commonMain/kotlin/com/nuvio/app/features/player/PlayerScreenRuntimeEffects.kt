@@ -16,6 +16,7 @@ import com.nuvio.app.features.streams.BingeGroupCacheRepository
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.hasLikelyExpiringPlaybackCredentials
+import com.nuvio.app.features.tracking.TrackingScrobbleAction
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -75,7 +76,7 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         lastProgressRemoteSyncEpochMs = 0L
         lastProgressRemoteSyncPositionMs = 0L
         previousIsPlaying = false
-        pendingScrobbleStartAfterSeek = false
+        pendingSeekScrobbleRestart = false
         seekProgressSyncJob?.cancel()
         seekProgressSyncJob = null
         accumulatedSeekResetJob?.cancel()
@@ -249,11 +250,20 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         controller.updateNowPlayingMetadata(buildNowPlayingInfo())
     }
 
-    LaunchedEffect(activeSourceUrl, addonSubtitleFetchKey, playerSettingsUiState.addonSubtitleStartupMode) {
+    LaunchedEffect(
+        activeSourceUrl,
+        addonSubtitleFetchKey,
+        playerSettingsUiState.addonSubtitleStartupMode,
+        playerController,
+        playerControllerSourceUrl,
+    ) {
         val fetchKey = addonSubtitleFetchKey ?: return@LaunchedEffect
-        if (playerSettingsUiState.addonSubtitleStartupMode == AddonSubtitleStartupMode.FAST_STARTUP) {
-            return@LaunchedEffect
-        }
+        val playerInitialized = playerController != null && playerControllerSourceUrl == activeSourceUrl
+        val canFetch = canAutomaticallyFetchAddonSubtitles(
+            mode = playerSettingsUiState.addonSubtitleStartupMode,
+            playerInitialized = playerInitialized,
+        )
+        if (!canFetch) return@LaunchedEffect
         if (autoFetchedAddonSubtitlesForKey == fetchKey) return@LaunchedEffect
         autoFetchedAddonSubtitlesForKey = fetchKey
         fetchAddonSubtitlesForActiveItem()
@@ -437,22 +447,26 @@ private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
         playbackSnapshot.durationMs,
     ) {
         if (playbackSnapshot.isEnded) {
-            flushWatchProgress()
+            flushWatchProgress(TrackingScrobbleAction.STOP)
             previousIsPlaying = false
-            pendingScrobbleStartAfterSeek = false
+            pendingSeekScrobbleRestart = false
             return@LaunchedEffect
         }
 
         if (previousIsPlaying && !playbackSnapshot.isPlaying && !playbackSnapshot.isLoading) {
-            pendingScrobbleStartAfterSeek = false
-            flushWatchProgress()
+            pendingSeekScrobbleRestart = false
+            flushWatchProgress(TrackingScrobbleAction.PAUSE)
         }
 
-        if (playbackSnapshot.isPlaying && pendingScrobbleStartAfterSeek) {
-            pendingScrobbleStartAfterSeek = false
-            emitTraktScrobbleStart()
+        if (playbackSnapshot.isPlaying && pendingSeekScrobbleRestart) {
+            pendingSeekScrobbleRestart = false
+            if (hasRequestedScrobbleStartForCurrentItem) {
+                emitTrackingSeekScrobbleStart()
+            } else {
+                emitTrackingScrobbleStart()
+            }
         } else if (!previousIsPlaying && playbackSnapshot.isPlaying) {
-            emitTraktScrobbleStart()
+            emitTrackingScrobbleStart()
         }
 
         if (!playbackSnapshot.isLoading) {
@@ -502,12 +516,21 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         if (season == null || episode == null || vid == null) return@LaunchedEffect
 
         launch {
-            val imdbId = vid.split(":").firstOrNull()?.takeIf { it.startsWith("tt") }
-            val intervals = SkipIntroRepository.getSkipIntervals(
-                imdbId = imdbId,
-                season = season,
-                episode = episode,
-            )
+            val intervals = when {
+                vid.startsWith("mal:") -> {
+                    val malId = vid.removePrefix("mal:").substringBefore(':')
+                    SkipIntroRepository.getSkipIntervalsForMal(malId = malId, episode = episode)
+                }
+                vid.startsWith("kitsu:") -> {
+                    val kitsuId = vid.removePrefix("kitsu:").substringBefore(':')
+                    SkipIntroRepository.getSkipIntervalsForKitsu(kitsuId = kitsuId, episode = episode)
+                }
+                else -> SkipIntroRepository.getSkipIntervals(
+                    imdbId = vid.substringBefore(':').takeIf { it.startsWith("tt") },
+                    season = season,
+                    episode = episode,
+                )
+            }
             skipIntervals = intervals
         }
     }

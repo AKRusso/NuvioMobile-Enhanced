@@ -36,6 +36,53 @@ data class ProfilePushPayload(
     @SerialName("background_url") val backgroundUrl: String? = null,
 )
 
+@Serializable
+internal data class UpstreamProfilePushPayload(
+    @SerialName("profile_index") val profileIndex: Int,
+    val name: String,
+    @SerialName("avatar_color_hex") val avatarColorHex: String,
+    @SerialName("uses_primary_addons") val usesPrimaryAddons: Boolean,
+    @SerialName("uses_primary_plugins") val usesPrimaryPlugins: Boolean,
+    @SerialName("avatar_id") val avatarId: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
+)
+
+internal fun NuvioProfile.toProfilePushPayload(): ProfilePushPayload =
+    ProfilePushPayload(
+        profileIndex = profileIndex,
+        name = name,
+        avatarColorHex = avatarColorHex,
+        usesPrimaryAddons = usesPrimaryAddons,
+        usesPrimaryPlugins = usesPrimaryPlugins,
+        avatarId = avatarId,
+        avatarUrl = avatarUrl,
+        backgroundUrl = backgroundUrl,
+    )
+
+internal fun ProfilePushPayload.toUpstreamProfilePushPayload(): UpstreamProfilePushPayload =
+    UpstreamProfilePushPayload(
+        profileIndex = profileIndex,
+        name = name,
+        avatarColorHex = avatarColorHex,
+        usesPrimaryAddons = usesPrimaryAddons,
+        usesPrimaryPlugins = usesPrimaryPlugins,
+        avatarId = avatarId,
+        avatarUrl = normalizedAvatarUrl(avatarUrl),
+    )
+
+internal fun mergeProfileBackgrounds(
+    remoteProfiles: List<NuvioProfile>,
+    localBackgrounds: Map<Int, String?>,
+    backgroundOverrides: Map<Int, String?> = emptyMap(),
+): List<NuvioProfile> = remoteProfiles.map { profile ->
+    val backgroundUrl = when {
+        backgroundOverrides.containsKey(profile.profileIndex) -> backgroundOverrides[profile.profileIndex]
+        !profile.backgroundUrl.isNullOrBlank() -> normalizedProfileBackgroundUrl(profile.backgroundUrl)
+        else -> localBackgrounds[profile.profileIndex]
+    }
+    profile.copy(backgroundUrl = backgroundUrl)
+}
+
 data class ProfileMutationResult(
     val success: Boolean,
     val message: String? = null,

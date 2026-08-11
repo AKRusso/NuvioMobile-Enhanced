@@ -15,11 +15,13 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.Operation
 import androidx.work.WorkManager
+import com.nuvio.app.MainActivity
 import com.nuvio.app.core.storage.ProfileScopedKey
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -205,7 +207,10 @@ internal actual object EpisodeReleaseNotificationPlatform {
     ): android.app.Notification {
         val pendingIntent = buildPendingIntent(context, request)
         val backdropBitmap = loadBackdropBitmap(request.backdropUrl)
-        val appIconBitmap = BitmapFactory.decodeResource(context.resources, com.nuvio.app.R.mipmap.ic_launcher)
+        val appIconBitmap = ContextCompat.getDrawable(
+            context,
+            com.nuvio.app.R.mipmap.ic_launcher_alt_enhanced,
+        )?.toBitmap()
 
         return NotificationCompat.Builder(context, channelId)
             .setSmallIcon(com.nuvio.app.R.drawable.ic_notification_small)
@@ -238,7 +243,7 @@ internal actual object EpisodeReleaseNotificationPlatform {
         context: Context,
         request: EpisodeReleaseNotificationRequest,
     ): PendingIntent {
-        val launchIntent = Intent(context, com.nuvio.app.MainActivity::class.java).apply {
+        val launchIntent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             data = android.net.Uri.parse(request.deepLinkUrl)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or

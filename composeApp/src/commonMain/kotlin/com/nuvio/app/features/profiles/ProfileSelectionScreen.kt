@@ -59,11 +59,10 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.ui.ProfileMeshBackground
-import com.nuvio.app.features.home.components.CollectionCardRemoteImage
-import com.nuvio.app.features.settings.AppLanguage
-import com.nuvio.app.features.settings.ThemeSettingsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import nuvio.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun ProfileSelectionScreen(
@@ -74,15 +73,22 @@ fun ProfileSelectionScreen(
 ) {
     val authState by AuthRepository.state.collectAsStateWithLifecycle()
     val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
-    val selectedAppLanguage by ThemeSettingsRepository.selectedAppLanguage.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var pinDialogProfile by remember { mutableStateOf<NuvioProfile?>(null) }
     var isEditMode by remember { mutableStateOf(false) }
-    val copy = remember(selectedAppLanguage) { profileSelectionCopy(selectedAppLanguage) }
 
     val titleAlpha = remember { Animatable(0f) }
     val titleOffset = remember { Animatable(20f) }
     val manageAlpha = remember { Animatable(0f) }
+    val onProfileClick: (NuvioProfile) -> Unit = { profile ->
+        routeProfileSelection(
+            profile = profile,
+            isEditMode = isEditMode,
+            onEditProfile = onEditProfile,
+            onPinRequired = { pinDialogProfile = it },
+            onProfileSelected = onProfileSelected,
+        )
+    }
 
     LaunchedEffect(Unit) {
         AvatarRepository.fetchAvatars()
@@ -103,45 +109,18 @@ fun ProfileSelectionScreen(
     }
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val backgroundProfile = remember(profileState.activeProfile, profileState.profiles) {
-        profileState.activeProfile ?: profileState.profiles.firstOrNull()
-    }
-    val backgroundProfileColor = remember(backgroundProfile) {
-        val sourceProfile = backgroundProfile
+    val backgroundProfileColor = remember(profileState.activeProfile, profileState.profiles) {
+        val sourceProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
         sourceProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
-    }
-    val backgroundImageUrl = remember(backgroundProfile) {
-        backgroundProfile?.let(::profileBackgroundImageUrl)
-    }
-    val greetingText = remember(copy, backgroundProfile) {
-        copy.greeting(backgroundProfile?.name?.takeIf { it.isNotBlank() })
     }
 
     BoxWithConstraints(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxSize(),
     ) {
         val isTabletLayout = maxWidth >= 768.dp
 
-        if (backgroundImageUrl != null) {
-            AsyncImage(
-                model = backgroundImageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.34f)),
-            )
-        }
-        ProfileMeshBackground(
-            profileColor = backgroundProfileColor,
-            modifier = Modifier.graphicsLayer {
-                alpha = if (backgroundImageUrl != null) 0.62f else 1f
-            },
-        )
+        ProfileMeshBackground(profileColor = backgroundProfileColor)
 
         Column(
             modifier = Modifier
@@ -161,7 +140,7 @@ fun ProfileSelectionScreen(
             Spacer(modifier = Modifier.height(if (isTabletLayout) 0.dp else 60.dp))
 
             Text(
-                text = copy.whoIsWatching,
+                text = stringResource(Res.string.profile_who_is_watching),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontSize = 30.sp,
                     letterSpacing = 0.sp,
@@ -171,19 +150,6 @@ fun ProfileSelectionScreen(
                 modifier = Modifier.graphicsLayer {
                     alpha = titleAlpha.value
                     translationY = titleOffset.value
-                },
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = greetingText,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.graphicsLayer {
-                    alpha = titleAlpha.value
-                    translationY = titleOffset.value * 0.6f
                 },
             )
 
@@ -210,21 +176,13 @@ fun ProfileSelectionScreen(
                                     profile = profile,
                                     isEditMode = isEditMode,
                                     animDelay = currentIndex * 80,
-                                    copy = copy,
                                     onClick = {
-                                        if (isEditMode) {
-                                            onEditProfile(profile)
-                                        } else if (profile.pinEnabled) {
-                                            pinDialogProfile = profile
-                                        } else {
-                                            onProfileSelected(profile)
-                                        }
+                                        onProfileClick(profile)
                                     },
                                 )
                             } else {
                                 AddProfileCard(
                                     animDelay = currentIndex * 80,
-                                    copy = copy,
                                     onClick = onAddProfile,
                                 )
                             }
@@ -252,21 +210,13 @@ fun ProfileSelectionScreen(
                                             profile = profile,
                                             isEditMode = isEditMode,
                                             animDelay = currentIndex * 80,
-                                            copy = copy,
                                             onClick = {
-                                                if (isEditMode) {
-                                                    onEditProfile(profile)
-                                                } else if (profile.pinEnabled) {
-                                                    pinDialogProfile = profile
-                                                } else {
-                                                    onProfileSelected(profile)
-                                                }
+                                                onProfileClick(profile)
                                             },
                                         )
                                     } else {
                                         AddProfileCard(
                                             animDelay = currentIndex * 80,
-                                            copy = copy,
                                             onClick = onAddProfile,
                                         )
                                     }
@@ -302,7 +252,11 @@ fun ProfileSelectionScreen(
                     .padding(horizontal = 24.dp, vertical = 10.dp),
             ) {
                 Text(
-                    text = if (isEditMode) copy.done else copy.manageProfiles,
+                    text = if (isEditMode) {
+                        stringResource(Res.string.action_done)
+                    } else {
+                        stringResource(Res.string.profile_manage_profiles)
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (isEditMode) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -332,7 +286,6 @@ private fun ProfileAvatarCard(
     profile: NuvioProfile,
     isEditMode: Boolean,
     animDelay: Int,
-    copy: ProfileSelectionCopy,
     onClick: () -> Unit,
 ) {
     val avatarColor = remember(profile.avatarColorHex) {
@@ -411,12 +364,11 @@ private fun ProfileAvatarCard(
                 contentAlignment = Alignment.Center,
             ) {
                 if (avatarImageUrl != null) {
-                    CollectionCardRemoteImage(
-                        imageUrl = avatarImageUrl,
+                    AsyncImage(
+                        model = avatarImageUrl,
                         contentDescription = avatarItem?.displayName ?: profile.name,
                         modifier = Modifier.size(100.dp).clip(CircleShape),
                         contentScale = ContentScale.Crop,
-                        animateIfPossible = true,
                     )
                 } else if (profile.name.isNotBlank()) {
                     Text(
@@ -478,7 +430,7 @@ private fun ProfileAvatarCard(
 
         Text(
             text = profile.name.ifBlank {
-                copy.profileNumber(profile.profileIndex)
+                stringResource(Res.string.profile_label_number, profile.profileIndex)
             },
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
             color = MaterialTheme.colorScheme.onSurface,
@@ -493,7 +445,6 @@ private fun ProfileAvatarCard(
 @Composable
 private fun AddProfileCard(
     animDelay: Int,
-    copy: ProfileSelectionCopy,
     onClick: () -> Unit,
 ) {
     val animAlpha = remember { Animatable(0f) }
@@ -557,157 +508,11 @@ private fun AddProfileCard(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
-            text = copy.addProfile,
+            text = stringResource(Res.string.compose_profile_add_profile),
             style = MaterialTheme.typography.bodyLarge.copy(fontSize = 16.sp),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-        )
-    }
-}
-
-private data class ProfileSelectionCopy(
-    val whoIsWatching: String,
-    val manageProfiles: String,
-    val done: String,
-    val addProfile: String,
-    val profileNumber: (Int) -> String,
-    val greeting: (String?) -> String = { name ->
-        "Welcome back${name?.let { ", $it" } ?: ""}."
-    },
-)
-
-private fun profileSelectionCopy(language: AppLanguage): ProfileSelectionCopy {
-    val code = language.code.lowercase()
-
-    fun profileLabel(index: Int, template: String): String =
-        template.replace("%1\$d", index.toString())
-
-    return when (code) {
-        "tr" -> ProfileSelectionCopy(
-            whoIsWatching = "Kim izliyor?",
-            manageProfiles = "Profilleri yönet",
-            done = "Tamam",
-            addProfile = "Profil ekle",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-            greeting = { name ->
-                listOf(
-                    "${name ?: "Hazırsan"} izlemeye devam edelim.",
-                    "${name ?: "Bugün"} ne açıyoruz?",
-                    "${name ?: "Hazırsan"}, güzel bir şey bulalım.",
-                ).random()
-            },
-        )
-
-        "es" -> ProfileSelectionCopy(
-            whoIsWatching = "¿Quién está viendo?",
-            manageProfiles = "Gestionar perfiles",
-            done = "Hecho",
-            addProfile = "Añadir perfil",
-            profileNumber = { index -> profileLabel(index, "Perfil %1\$d") },
-        )
-
-        "fr" -> ProfileSelectionCopy(
-            whoIsWatching = "Qui regarde ?",
-            manageProfiles = "Gérer les profils",
-            done = "Terminé",
-            addProfile = "Ajouter un profil",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        "de" -> ProfileSelectionCopy(
-            whoIsWatching = "Wer schaut?",
-            manageProfiles = "Profile verwalten",
-            done = "Fertig",
-            addProfile = "Profil hinzufügen",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        "el" -> ProfileSelectionCopy(
-            whoIsWatching = "Ποιος παρακολουθεί;",
-            manageProfiles = "Διαχείριση προφίλ",
-            done = "ΟΚ",
-            addProfile = "Προσθήκη προφίλ",
-            profileNumber = { index -> profileLabel(index, "Προφίλ %1\$d") },
-        )
-
-        "id" -> ProfileSelectionCopy(
-            whoIsWatching = "Siapa yang menonton?",
-            manageProfiles = "Kelola profil",
-            done = "Selesai",
-            addProfile = "Tambah profil",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        "it" -> ProfileSelectionCopy(
-            whoIsWatching = "Chi sta guardando?",
-            manageProfiles = "Gestisci profili",
-            done = "Fatto",
-            addProfile = "Aggiungi profilo",
-            profileNumber = { index -> profileLabel(index, "Profilo %1\$d") },
-        )
-
-        "pl" -> ProfileSelectionCopy(
-            whoIsWatching = "Kto ogląda?",
-            manageProfiles = "Zarządzaj profilami",
-            done = "Gotowe",
-            addProfile = "Dodaj profil",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        "pt-br" -> ProfileSelectionCopy(
-            whoIsWatching = "Quem está assistindo?",
-            manageProfiles = "Gerenciar perfis",
-            done = "Concluído",
-            addProfile = "Adicionar perfil",
-            profileNumber = { index -> profileLabel(index, "Perfil %1\$d") },
-        )
-
-        "pt" -> ProfileSelectionCopy(
-            whoIsWatching = "Quem está a ver?",
-            manageProfiles = "Gerir perfis",
-            done = "Feito",
-            addProfile = "Adicionar perfil",
-            profileNumber = { index -> profileLabel(index, "Perfil %1\$d") },
-        )
-
-        "nb" -> ProfileSelectionCopy(
-            whoIsWatching = "Hvem ser?",
-            manageProfiles = "Administrer profiler",
-            done = "Ferdig",
-            addProfile = "Legg til profil",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        "ja" -> ProfileSelectionCopy(
-            whoIsWatching = "誰が視聴しますか？",
-            manageProfiles = "プロフィールを管理",
-            done = "完了",
-            addProfile = "プロフィールを追加",
-            profileNumber = { index -> profileLabel(index, "プロフィール %1\$d") },
-        )
-
-        "cs" -> ProfileSelectionCopy(
-            whoIsWatching = "Kdo se dívá?",
-            manageProfiles = "Spravovat profily",
-            done = "Hotovo",
-            addProfile = "Přidat profil",
-            profileNumber = { index -> profileLabel(index, "Profil %1\$d") },
-        )
-
-        else -> ProfileSelectionCopy(
-            whoIsWatching = "Who's watching?",
-            manageProfiles = "Manage Profiles",
-            done = "Done",
-            addProfile = "Add Profile",
-            profileNumber = { index -> profileLabel(index, "Profile %1\$d") },
-            greeting = { name ->
-                listOf(
-                    "Welcome back${name?.let { ", $it" } ?: ""}.",
-                    "Ready for the next watch${name?.let { ", $it" } ?: ""}?",
-                    "Let’s find something great${name?.let { ", $it" } ?: ""}.",
-                ).random()
-            },
         )
     }
 }

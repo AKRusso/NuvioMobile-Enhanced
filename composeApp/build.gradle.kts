@@ -62,6 +62,15 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val traktRedirectUri: Property<String>
 
     @get:Input
+    abstract val simklClientId: Property<String>
+
+    @get:Input
+    abstract val simklRedirectUri: Property<String>
+
+    @get:Input
+    abstract val simklAppName: Property<String>
+
+    @get:Input
     abstract val updateGithubOwner: Property<String>
 
     @get:Input
@@ -127,6 +136,21 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |    const val CLIENT_ID = "${traktClientId.get()}"
                 |    const val CLIENT_SECRET = "${traktClientSecret.get()}"
                 |    const val REDIRECT_URI = "${traktRedirectUri.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
+
+        outDir.resolve("com/nuvio/app/features/simkl").apply {
+            mkdirs()
+            resolve("SimklConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.simkl
+                |
+                |object SimklConfig {
+                |    const val CLIENT_ID = "${simklClientId.get()}"
+                |    const val REDIRECT_URI = "${simklRedirectUri.get()}"
+                |    const val APP_NAME = "${simklAppName.get()}"
                 |}
                 """.trimMargin()
             )
@@ -298,6 +322,9 @@ val requestedAndroidDistributions = requestedGradleTasks.mapNotNull { taskName -
         else -> null
     }
 }.toSet()
+val isAndroidHostTestRequested = requestedGradleTasks.any { taskName ->
+    "androidhosttest" in taskName
+}
 require(requestedAndroidDistributions.size <= 1) {
     "Build Android full and playstore distributions separately, or set -Pnuvio.android.distribution=full|playstore."
 }
@@ -314,7 +341,7 @@ require(configuredAndroidDistribution != null || !isAmbiguousAndroidPackageTask)
 val androidDistribution = (
     configuredAndroidDistribution
         ?: requestedAndroidDistributions.singleOrNull()
-        ?: "playstore"
+        ?: if (isAndroidHostTestRequested) "full" else "playstore"
     ).trim().lowercase()
 require(androidDistribution == "playstore" || androidDistribution == "full") {
     "nuvio.android.distribution must be 'playstore' or 'full'."
@@ -390,6 +417,9 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     traktClientId.set(runtimeConfigValue("TRAKT_CLIENT_ID"))
     traktClientSecret.set(runtimeConfigValue("TRAKT_CLIENT_SECRET"))
     traktRedirectUri.set(runtimeConfigValue("TRAKT_REDIRECT_URI", fallback = "nuvioenhanced://auth/trakt"))
+    simklClientId.set(runtimeConfigValue("SIMKL_CLIENT_ID"))
+    simklRedirectUri.set(runtimeConfigValue("SIMKL_REDIRECT_URI", fallback = "nuvioenhanced://auth/simkl"))
+    simklAppName.set(runtimeConfigValue("SIMKL_APP_NAME", fallback = "nuvio"))
     updateGithubOwner.set(
         runtimeConfigValue(
             "NUVIO_UPDATE_GITHUB_OWNER",
@@ -547,11 +577,19 @@ kotlin {
                 }
             }
         }
+        getByName("androidHostTest") {
+            if (androidDistribution == "full") {
+                kotlin.srcDir(project.file("src/androidFullHostTest/kotlin"))
+            }
+        }
         commonMain.dependencies {
             implementation("io.coil-kt.coil3:coil-compose:${libs.versions.coil.get()}") {
                 exclude(group = "org.jetbrains.skiko", module = "skiko")
             }
             implementation("io.coil-kt.coil3:coil-network-ktor3:${libs.versions.coil.get()}") {
+                exclude(group = "org.jetbrains.skiko", module = "skiko")
+            }
+            implementation("io.coil-kt.coil3:coil-network-cache-control:${libs.versions.coil.get()}") {
                 exclude(group = "org.jetbrains.skiko", module = "skiko")
             }
             implementation("io.coil-kt.coil3:coil-svg:${libs.versions.coil.get()}") {
@@ -561,7 +599,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
-            implementation(compose.materialIconsExtended)
+            implementation(libs.compose.materialIconsExtended)
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
@@ -577,7 +615,6 @@ kotlin {
             implementation(libs.supabase.postgrest)
             implementation(libs.supabase.auth)
             implementation(libs.supabase.functions)
-            implementation(libs.supabase.realtime)
             implementation(libs.reorderable)
         }
         commonTest.dependencies {

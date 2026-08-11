@@ -231,6 +231,7 @@ private fun firstNonBlank(vararg values: String?): String? =
 internal fun HomeContinueWatchingSection(
     items: List<ContinueWatchingItem>,
     style: ContinueWatchingSectionStyle,
+    title: String? = null,
     useEpisodeThumbnails: Boolean = true,
     blurNextUp: Boolean = false,
     showReadyBadge: Boolean = true,
@@ -246,6 +247,7 @@ internal fun HomeContinueWatchingSection(
         HomeContinueWatchingSectionContent(
             items = items,
             style = style,
+            title = title,
             useEpisodeThumbnails = useEpisodeThumbnails,
             blurNextUp = blurNextUp,
             showReadyBadge = showReadyBadge,
@@ -260,6 +262,7 @@ internal fun HomeContinueWatchingSection(
             HomeContinueWatchingSectionContent(
                 items = items,
                 style = style,
+                title = title,
                 useEpisodeThumbnails = useEpisodeThumbnails,
                 blurNextUp = blurNextUp,
                 showReadyBadge = showReadyBadge,
@@ -277,6 +280,7 @@ internal fun HomeContinueWatchingSection(
 private fun HomeContinueWatchingSectionContent(
     items: List<ContinueWatchingItem>,
     style: ContinueWatchingSectionStyle,
+    title: String?,
     useEpisodeThumbnails: Boolean,
     blurNextUp: Boolean,
     showReadyBadge: Boolean,
@@ -298,7 +302,7 @@ private fun HomeContinueWatchingSectionContent(
     }
 
     NuvioShelfSection(
-        title = stringResource(Res.string.compose_settings_page_continue_watching),
+        title = title ?: stringResource(Res.string.compose_settings_page_continue_watching),
         entries = displayEntries,
         modifier = modifier,
         headerHorizontalPadding = sectionPadding,
@@ -688,7 +692,7 @@ private fun ContinueWatchingCard(
     }
     val todayIsoDate = CurrentDateProvider.todayIsoDate()
     val compactAirDateText = if (item.progressFraction <= 0f && item.seasonNumber != null && item.episodeNumber != null) {
-        computeAirDateBadgeText(item.released, todayIsoDate, compact = true)
+        computeAirDateBadgeText(item.released, todayIsoDate)
     } else {
         null
     }
@@ -959,7 +963,7 @@ private fun ContinueWatchingWideCard(
                                 else stringResource(Res.string.cw_new_episode)
                             }
                             else -> {
-                                computeAirDateBadgeText(item.released, todayIsoDate, compact = isCompact)
+                                computeAirDateBadgeText(item.released, todayIsoDate)
                                     ?: stringResource(Res.string.home_continue_watching_up_next)
                             }
                         }
@@ -1066,7 +1070,7 @@ private fun ContinueWatchingPosterCard(
                             else stringResource(Res.string.cw_new_episode)
                         }
                         else -> {
-                            computeAirDateBadgeText(item.released, todayIsoDate, compact = true)
+                            computeAirDateBadgeText(item.released, todayIsoDate)
                                 ?: stringResource(Res.string.home_continue_watching_up_next)
                         }
                     }

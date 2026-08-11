@@ -32,7 +32,7 @@ use the same application ID and signing certificate. The established Android
 certificate SHA-256 digest is:
 
 ```text
-0b1cb28cf80b26557c9f3ea4b93a86d59b3d733acf064666c7b5390fc410851c
+4d87e3d92c54ae0efcdebb75dd08b8cfca1eace052198ed3b8f3f552533a21e3
 ```
 
 The repository owner must configure the original signing material through

@@ -2998,14 +2998,23 @@ private fun mobileHeroHeight(
     val widthFallbackHeight = (maxWidthDp * 1.02f).dp
     val baseHeight = viewportDrivenHeight ?: widthFallbackHeight
 
-    val cappedHeight = if (viewportHeightDp != null && mobileBelowSectionHeightHintDp != null) {
-        val maxAllowedFromViewport = (viewportHeightDp - mobileBelowSectionHeightHintDp).dp
-        baseHeight.coerceAtMost(maxAllowedFromViewport)
+    val maxAllowedFromViewportDp = if (viewportHeightDp != null && mobileBelowSectionHeightHintDp != null) {
+        viewportHeightDp - mobileBelowSectionHeightHintDp
+    } else {
+        null
+    }
+    val cappedHeight = if (maxAllowedFromViewportDp != null) {
+        baseHeight.coerceAtMost(maxAllowedFromViewportDp.dp)
     } else {
         baseHeight
     }
+    val minHeight = if (maxAllowedFromViewportDp != null) {
+        minOf(MOBILE_HERO_MIN_HEIGHT_DP, maxAllowedFromViewportDp.coerceAtLeast(0f)).dp
+    } else {
+        MOBILE_HERO_MIN_HEIGHT_DP.dp
+    }
 
-    return cappedHeight.coerceIn(MOBILE_HERO_MIN_HEIGHT_DP.dp, MOBILE_HERO_MAX_HEIGHT_DP.dp)
+    return cappedHeight.coerceIn(minHeight, MOBILE_HERO_MAX_HEIGHT_DP.dp)
 }
 
 private fun heroBackgroundScrollScale(scrollOffsetPx: Float): Float {

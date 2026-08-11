@@ -7,21 +7,17 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
-import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.nuvio.app.MainActivity
 import com.nuvio.app.core.deeplink.buildDownloadsDeepLinkUrl
 import kotlinx.coroutines.runBlocking
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.math.abs
 
 internal actual object DownloadsLiveStatusPlatform {
@@ -36,7 +32,6 @@ internal actual object DownloadsLiveStatusPlatform {
     private var permissionRequestInFlight = false
     private var permissionRequestedThisSession = false
     private val lastRenderStateById = mutableMapOf<String, RenderState>()
-    private val artworkCache = mutableMapOf<String, Bitmap?>()
     private var foregroundServiceRequested = false
 
     fun initialize(context: Context) {
@@ -130,15 +125,7 @@ internal actual object DownloadsLiveStatusPlatform {
 
     private fun buildNotification(context: Context, item: DownloadItem): android.app.Notification {
         val subtitle = buildSubtitle(item)
-        val metadata = buildMetadata(item)
-        val artwork = loadArtworkBitmap(item)
-        val launchIntent = Intent(context, com.nuvio.app.MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            data = android.net.Uri.parse(buildDownloadsDeepLinkUrl())
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
+        val launchIntent = buildLaunchIntent(context)
         val launchPendingIntent = PendingIntent.getActivity(
             context,
             notificationId(item.id),
@@ -150,26 +137,10 @@ internal actual object DownloadsLiveStatusPlatform {
             .setSmallIcon(com.nuvio.app.R.drawable.ic_notification_small)
             .setContentTitle(item.title)
             .setContentText(subtitle)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(subtitle))
             .setOnlyAlertOnce(true)
             .setContentIntent(launchPendingIntent)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
-
-        artwork?.let { bitmap ->
-            notificationBuilder
-                .setLargeIcon(bitmap)
-                .setStyle(
-                    NotificationCompat.BigPictureStyle()
-                        .bigPicture(bitmap)
-                        .bigLargeIcon(bitmap)
-                        .setSummaryText(metadata.ifBlank { subtitle }),
-                )
-        } ?: notificationBuilder.setStyle(
-            NotificationCompat.BigTextStyle().bigText(
-                listOf(subtitle, metadata)
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n"),
-            ),
-        )
 
         when (item.status) {
             DownloadStatus.Downloading -> {
@@ -185,15 +156,6 @@ internal actual object DownloadsLiveStatusPlatform {
                             downloadId = item.id,
                         ),
                     )
-                    .addAction(
-                        0,
-                        runBlocking { getString(Res.string.action_cancel) },
-                        buildActionPendingIntent(
-                            context = context,
-                            action = DownloadsNotificationActionReceiver.actionCancel,
-                            downloadId = item.id,
-                        ),
-                    )
 
                 val progress = progressPercent(item)
                 if (progress >= 0) {
@@ -204,7 +166,9 @@ internal actual object DownloadsLiveStatusPlatform {
             }
 
             DownloadStatus.Paused,
-            DownloadStatus.Failed -> {
+            DownloadStatus.Failed,
+            DownloadStatus.Completed,
+            -> {
                 notificationBuilder
                     .setOngoing(false)
                     .setAutoCancel(false)
@@ -218,39 +182,13 @@ internal actual object DownloadsLiveStatusPlatform {
                     .setProgress(0, 0, false)
                     .addAction(
                         0,
-                        runBlocking {
-                            getString(
-                                if (item.status == DownloadStatus.Failed) {
-                                    Res.string.action_retry
-                                } else {
-                                    Res.string.action_resume
-                                },
-                            )
-                        },
+                        runBlocking { getString(Res.string.action_resume) },
                         buildActionPendingIntent(
                             context = context,
                             action = DownloadsNotificationActionReceiver.actionResume,
                             downloadId = item.id,
                         ),
                     )
-                    .addAction(
-                        0,
-                        runBlocking { getString(Res.string.action_cancel) },
-                        buildActionPendingIntent(
-                            context = context,
-                            action = DownloadsNotificationActionReceiver.actionCancel,
-                            downloadId = item.id,
-                        ),
-                    )
-            }
-
-            DownloadStatus.Completed -> {
-                notificationBuilder
-                    .setOngoing(false)
-                    .setAutoCancel(true)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                    .setCategory(NotificationCompat.CATEGORY_STATUS)
-                    .setProgress(0, 0, false)
             }
         }
 
@@ -264,27 +202,17 @@ internal actual object DownloadsLiveStatusPlatform {
         ensureNotificationChannel()
         val downloadingItems = items.filter { it.status == DownloadStatus.Downloading }
         val primaryItem = downloadingItems.firstOrNull()
-        val launchIntent = Intent(context, com.nuvio.app.MainActivity::class.java).apply {
-            action = Intent.ACTION_VIEW
-            data = android.net.Uri.parse(buildDownloadsDeepLinkUrl())
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
         val launchPendingIntent = PendingIntent.getActivity(
             context,
             foregroundNotificationId,
-            launchIntent,
+            buildLaunchIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val contentTitle = runBlocking { getString(Res.string.downloads_channel_name) }
+        val channelTitle = runBlocking { getString(Res.string.downloads_channel_name) }
         val contentText = when {
-            primaryItem == null -> contentTitle
-            downloadingItems.size == 1 -> listOf(
-                buildSubtitle(primaryItem),
-                buildMetadata(primaryItem),
-            ).filter { it.isNotBlank() }.joinToString(" • ")
+            primaryItem == null -> channelTitle
+            downloadingItems.size == 1 -> buildSubtitle(primaryItem)
             else -> runBlocking {
                 getString(
                     Res.string.downloads_live_multiple_active,
@@ -296,7 +224,7 @@ internal actual object DownloadsLiveStatusPlatform {
 
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(com.nuvio.app.R.drawable.ic_notification_small)
-            .setContentTitle(primaryItem?.title ?: contentTitle)
+            .setContentTitle(primaryItem?.title ?: channelTitle)
             .setContentText(contentText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(contentText))
             .setOnlyAlertOnce(true)
@@ -305,39 +233,16 @@ internal actual object DownloadsLiveStatusPlatform {
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setPriority(NotificationCompat.PRIORITY_LOW)
 
-        primaryItem
-            ?.let(::loadArtworkBitmap)
-            ?.let { bitmap ->
-                builder
-                    .setLargeIcon(bitmap)
-                    .setStyle(
-                        NotificationCompat.BigPictureStyle()
-                            .bigPicture(bitmap)
-                            .bigLargeIcon(bitmap)
-                            .setSummaryText(contentText),
-                    )
-            }
-
         primaryItem?.let { item ->
-            builder
-                .addAction(
-                    0,
-                    runBlocking { getString(Res.string.compose_action_pause) },
-                    buildActionPendingIntent(
-                        context = context,
-                        action = DownloadsNotificationActionReceiver.actionPause,
-                        downloadId = item.id,
-                    ),
-                )
-                .addAction(
-                    0,
-                    runBlocking { getString(Res.string.action_cancel) },
-                    buildActionPendingIntent(
-                        context = context,
-                        action = DownloadsNotificationActionReceiver.actionCancel,
-                        downloadId = item.id,
-                    ),
-                )
+            builder.addAction(
+                0,
+                runBlocking { getString(Res.string.compose_action_pause) },
+                buildActionPendingIntent(
+                    context = context,
+                    action = DownloadsNotificationActionReceiver.actionPause,
+                    downloadId = item.id,
+                ),
+            )
         }
 
         val progress = primaryItem?.let(::progressPercent) ?: -1
@@ -345,8 +250,6 @@ internal actual object DownloadsLiveStatusPlatform {
             builder.setProgress(100, progress, false)
         } else if (primaryItem != null) {
             builder.setProgress(100, 0, true)
-        } else {
-            builder.setProgress(0, 0, false)
         }
 
         return builder.build()
@@ -355,78 +258,22 @@ internal actual object DownloadsLiveStatusPlatform {
     internal fun foregroundNotificationId(): Int = foregroundNotificationId
 
     private fun buildSubtitle(item: DownloadItem): String {
-        val detail = item.displaySubtitle.ifBlank { item.providerName }
+        val detail = item.displaySubtitle
         return when (item.status) {
             DownloadStatus.Downloading -> {
                 val downloaded = formatBytes(item.downloadedBytes)
                 val total = item.totalBytes?.let(::formatBytes)
-                val sizeText = if (total != null) {
+                if (total != null) {
                     runBlocking { getString(Res.string.downloads_live_downloading_with_total, detail, downloaded, total) }
                 } else {
                     runBlocking { getString(Res.string.downloads_live_downloading, detail, downloaded) }
                 }
-                listOfNotNull(
-                    sizeText,
-                    item.downloadSpeedLabel(),
-                    item.downloadEtaLabel(),
-                ).joinToString(" • ")
             }
 
             DownloadStatus.Paused -> runBlocking { getString(Res.string.downloads_live_paused, detail) }
             DownloadStatus.Failed -> item.errorMessage?.takeIf { it.isNotBlank() } ?: runBlocking { getString(Res.string.downloads_live_failed) }
             DownloadStatus.Completed -> runBlocking { getString(Res.string.downloads_live_completed) }
         }
-    }
-
-    private fun buildMetadata(item: DownloadItem): String =
-        listOf(
-            item.displaySubtitle,
-            item.providerName,
-            item.streamTitle,
-            item.streamSubtitle.orEmpty(),
-        )
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .take(3)
-            .joinToString(" • ")
-
-    private fun artworkUrl(item: DownloadItem): String? =
-        listOf(
-            item.episodeThumbnail,
-            item.poster,
-            item.background,
-            item.detailsSnapshot?.poster,
-            item.detailsSnapshot?.background,
-        )
-            .firstOrNull { it?.startsWith("http", ignoreCase = true) == true }
-
-    private fun loadArtworkBitmap(item: DownloadItem): Bitmap? {
-        if (Looper.myLooper() == Looper.getMainLooper()) return null
-        val url = artworkUrl(item) ?: return null
-        synchronized(artworkCache) {
-            if (artworkCache.containsKey(url)) return artworkCache[url]
-        }
-        val bitmap = runCatching {
-            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 2_500
-                readTimeout = 2_500
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "Mozilla/5.0")
-            }
-            try {
-                connection.inputStream.use(BitmapFactory::decodeStream)
-            } finally {
-                connection.disconnect()
-            }
-        }.getOrNull()
-        synchronized(artworkCache) {
-            if (artworkCache.size > 24) {
-                artworkCache.clear()
-            }
-            artworkCache[url] = bitmap
-        }
-        return bitmap
     }
 
     private fun formatBytes(bytes: Long): String {
@@ -475,6 +322,14 @@ internal actual object DownloadsLiveStatusPlatform {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+    }
+
+    private fun buildLaunchIntent(context: Context): Intent = Intent(context, MainActivity::class.java).apply {
+        action = Intent.ACTION_VIEW
+        data = android.net.Uri.parse(buildDownloadsDeepLinkUrl())
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+            Intent.FLAG_ACTIVITY_SINGLE_TOP
     }
 
     private fun ensureNotificationChannel() {
