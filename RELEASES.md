@@ -25,6 +25,25 @@ The workflow passes the secrets directly to Gradle and does not print their valu
 Forks do not inherit Actions secrets, so every fork that publishes an APK must
 configure its own credentials.
 
+## Simkl
+
+Create a Simkl API application and use this redirect URI:
+
+```text
+nuvioenhanced://auth/simkl
+```
+
+For local builds, add these values to `local.properties`:
+
+```properties
+SIMKL_CLIENT_ID=your_client_id
+SIMKL_REDIRECT_URI=nuvioenhanced://auth/simkl
+SIMKL_APP_NAME=Nuvio Enhanced
+```
+
+For GitHub Actions releases, add the repository secret `SIMKL_CLIENT_ID`.
+Simkl authentication uses PKCE and does not embed a client secret in the app.
+
 ## Android signing
 
 An APK can update an existing Nuvio Enhanced installation only when both APKs
