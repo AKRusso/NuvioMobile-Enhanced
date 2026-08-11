@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.BasicAlertDialog
@@ -35,6 +38,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
@@ -75,6 +80,7 @@ import com.nuvio.app.features.trakt.traktBrandPainter
 import com.nuvio.app.features.watchprogress.WatchProgressSourceCoordinator
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.action_donate
 import nuvio.composeapp.generated.resources.action_cancel
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_expired
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_revoked
@@ -108,9 +114,9 @@ import nuvio.composeapp.generated.resources.settings_trakt_missing_credentials
 import nuvio.composeapp.generated.resources.settings_trakt_open_login
 import nuvio.composeapp.generated.resources.settings_trakt_save_actions_description
 import nuvio.composeapp.generated.resources.settings_trakt_sign_in_description
-import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_action
 import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_description
 import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_title
+import nuvio.composeapp.generated.resources.settings_trakt_supporters_count
 import org.jetbrains.compose.resources.stringResource
 
 internal enum class TrackingBrand(val displayName: String) {
@@ -155,6 +161,7 @@ internal fun TrackingProviderCards(
     isTablet: Boolean,
     traktUiState: TraktAuthUiState,
     simklUiState: SimklAuthUiState,
+    onSupportersClick: () -> Unit,
 ) {
     val syncState by remember {
         SimklSyncRepository.ensureLoaded()
@@ -162,6 +169,11 @@ internal fun TrackingProviderCards(
     }.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showSyncInfo by rememberSaveable { mutableStateOf(false) }
+    var supportersResult by remember { mutableStateOf<SupportersResult?>(null) }
+    LaunchedEffect(Unit) {
+        SupportersContributorsRepository.getSupporters()
+            .onSuccess { supportersResult = it }
+    }
     val onSimklSyncRequested: () -> Unit = {
         scope.launch {
             WatchProgressSourceCoordinator.refreshProviderAndActiveSource(
@@ -185,6 +197,8 @@ internal fun TrackingProviderCards(
             ) {
                 TraktProviderCard(
                     uiState = traktUiState,
+                    supportersResult = supportersResult,
+                    onSupportersClick = onSupportersClick,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -207,6 +221,8 @@ internal fun TrackingProviderCards(
             ) {
                 TraktProviderCard(
                     uiState = traktUiState,
+                    supportersResult = supportersResult,
+                    onSupportersClick = onSupportersClick,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 SimklProviderCard(
@@ -229,6 +245,8 @@ internal fun TrackingProviderCards(
 @Composable
 private fun TraktProviderCard(
     uiState: TraktAuthUiState,
+    supportersResult: SupportersResult?,
+    onSupportersClick: () -> Unit,
     modifier: Modifier,
 ) {
     TrackingProviderCard(
@@ -250,8 +268,11 @@ private fun TraktProviderCard(
         missingCredentialsMessage = stringResource(Res.string.settings_trakt_missing_credentials),
         unavailableTitle = stringResource(Res.string.settings_trakt_vip_unavailable_title),
         unavailableDescription = stringResource(Res.string.settings_trakt_vip_unavailable_description),
-        unavailableActionLabel = stringResource(Res.string.settings_trakt_vip_unavailable_action),
-        unavailableActionUrl = TRACKING_DISCORD_URL,
+        unavailableActionLabel = stringResource(Res.string.action_donate),
+        unavailableActionUrl = CommunityConfig.DONATIONS_DONATE_URL.ifBlank { KOFI_DONATE_URL },
+        unavailableSupporters = supportersResult?.supporters.orEmpty(),
+        unavailableSupporterCount = supportersResult?.supporterCount ?: 0,
+        onUnavailableSupportersClick = onSupportersClick,
         statusMessage = uiState.statusMessage.takeUnless {
             uiState.mode == TraktConnectionMode.CONNECTED
         },
@@ -339,6 +360,9 @@ private fun TrackingProviderCard(
     unavailableDescription: String? = null,
     unavailableActionLabel: String? = null,
     unavailableActionUrl: String? = null,
+    unavailableSupporters: List<SupporterDonation> = emptyList(),
+    unavailableSupporterCount: Int = 0,
+    onUnavailableSupportersClick: (() -> Unit)? = null,
     onConnectRequested: () -> String?,
     onResumeAuthorization: () -> String?,
     onCancelAuthorization: () -> Unit,
@@ -465,6 +489,9 @@ private fun TrackingProviderCard(
                             description = unavailableDescription,
                             actionLabel = unavailableActionLabel,
                             onAction = { openUrl(unavailableActionUrl) },
+                            supporters = unavailableSupporters,
+                            supporterCount = unavailableSupporterCount,
+                            onSupportersClick = onUnavailableSupportersClick,
                         )
                     } else {
                         TrackingBrandMessage(
@@ -536,7 +563,7 @@ private fun TrackingProviderCard(
                     }
                     if (hasInfoAction) {
                         TextButton(
-                            onClick = { onInfoRequested?.invoke() },
+                            onClick = { onInfoRequested.invoke() },
                             modifier = if (footerActionCount > 1) Modifier.weight(1.55f) else Modifier,
                             contentPadding = PaddingValues(horizontal = 2.dp, vertical = 0.dp),
                             colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
@@ -572,6 +599,9 @@ private fun TrackingUnavailableSupport(
     description: String,
     actionLabel: String,
     onAction: () -> Unit,
+    supporters: List<SupporterDonation>,
+    supporterCount: Int,
+    onSupportersClick: (() -> Unit)?,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -594,6 +624,37 @@ private fun TrackingUnavailableSupport(
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.8f),
             )
+            if (supporters.isNotEmpty() && onSupportersClick != null) {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable(onClick = onSupportersClick)
+                        .padding(horizontal = 2.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                        supporters
+                            .distinctBy { it.name.lowercase() }
+                            .take(4)
+                            .forEach { supporter ->
+                                TrackingSupporterAvatar(
+                                    supporter = supporter,
+                                    modifier = Modifier.size(34.dp),
+                                )
+                            }
+                    }
+                    Text(
+                        text = stringResource(
+                            Res.string.settings_trakt_supporters_count,
+                            supporterCount.coerceAtLeast(supporters.distinctBy { it.name.lowercase() }.size),
+                        ),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
             OutlinedButton(
                 onClick = onAction,
                 modifier = Modifier
@@ -604,6 +665,36 @@ private fun TrackingUnavailableSupport(
             ) {
                 Text(actionLabel)
             }
+        }
+    }
+}
+
+@Composable
+private fun TrackingSupporterAvatar(
+    supporter: SupporterDonation,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color(0xFF2B202D))
+            .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (supporter.avatarUrl.isNullOrBlank()) {
+            Text(
+                text = supporter.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+        } else {
+            AsyncImage(
+                model = supporter.avatarUrl,
+                contentDescription = supporter.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
         }
     }
 }
@@ -848,4 +939,4 @@ private fun simklErrorMessage(error: SimklAuthError?): String? = when (error) {
 
 private val TrackingErrorColor = Color(0xFFFFDAD6)
 private const val SIMKL_WEBSITE_URL = "https://simkl.com"
-private const val TRACKING_DISCORD_URL = "https://discord.gg/at8xffxuRU"
+private const val KOFI_DONATE_URL = "https://ko-fi.com/nuvioenhanced"

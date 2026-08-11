@@ -3263,6 +3263,11 @@ private fun MainAppContent(
                         onCollectionsClick = {
                             navController.navigate(CollectionsRoute(collectionsTitle))
                         },
+                        onSupportersContributorsClick = {
+                            if (AppFeaturePolicy.supportersContributorsPageEnabled) {
+                                navController.navigate(SupportersContributorsSettingsRoute(supportersSettingsTitle))
+                            }
+                        },
                         onCheckForUpdatesClick = if (AppFeaturePolicy.inAppUpdaterEnabled) {
                             {
                                 appUpdaterController.checkForUpdates(

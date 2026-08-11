@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.compose_about_nuvio_version_format
 import nuvio.composeapp.generated.resources.compose_about_version_format
 import nuvio.composeapp.generated.resources.compose_settings_page_account
 import nuvio.composeapp.generated.resources.compose_settings_page_advanced
@@ -322,6 +323,16 @@ internal fun LazyListScope.settingsRootContent(
                     Res.string.compose_about_version_format,
                     AppVersionConfig.VERSION_NAME,
                     AppVersionConfig.VERSION_CODE,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(
+                    Res.string.compose_about_nuvio_version_format,
+                    AppVersionConfig.NUVIO_VERSION_NAME,
                 ),
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodySmall,

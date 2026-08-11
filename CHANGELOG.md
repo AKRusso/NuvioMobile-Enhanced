@@ -3,6 +3,45 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.5 - 2026-08-11
+
+### Added
+
+- Added Ko-fi donations at `ko-fi.com/nuvioenhanced`, with recent public
+  supporters, approved avatars, profiles, messages, and supporter totals in the
+  existing Supporters page.
+- Added recent supporter avatars and direct Supporters navigation to the Trakt
+  card when sponsored Trakt access is unavailable.
+- Added a Cloudflare Worker and D1 backend for verified Ko-fi webhooks, public
+  donation data, contributor data, profile administration, and privacy removals.
+- Added release-safe public defaults for the donation, contributor, and Ko-fi
+  URLs without embedding verification or administration secrets in the app.
+
+### Changed
+
+- Integrated the official Nuvio `0.4.4` codebase while retaining Enhanced
+  features and adopting the current Trakt and Simkl tracking architecture.
+- Displayed the Enhanced release version separately from the official Nuvio base
+  version in Settings: Nuvio Enhanced `0.4.5`, based on Nuvio `0.4.4`.
+- Opened Supporters by default and loaded each community tab only when needed.
+- Updated the Cloudflare deployment toolchain to a supported release with no
+  known npm audit vulnerabilities.
+
+### Fixed
+
+- Fixed Supporters navigation from the Trakt card when using native phone
+  settings navigation.
+- Hid monthly donation progress when Ko-fi does not provide a real monthly goal,
+  instead of presenting an artificial zero-percent target.
+- Hardened the webhook with bounded streaming input, constant-time token checks,
+  idempotent inserts, approved avatar hosts, and authenticated donation removal.
+- Stored only public donation names, messages, dates, and approved profile data;
+  email addresses, amounts, payment data, and raw webhook payloads are not stored.
+
+### Upstream
+
+- Includes NuvioMobile `0.4.4` through commit `f9ad843b`.
+
 ## 0.4.4 - 2026-08-11
 
 ### Changed

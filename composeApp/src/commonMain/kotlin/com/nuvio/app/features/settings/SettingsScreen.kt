@@ -911,6 +911,7 @@ private fun MobileSettingsScreen(
                     settingsUiState = trackingSettingsUiState,
                     commentsEnabled = traktCommentsEnabled,
                     onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
+                    onSupportersClick = onSupportersContributorsClick,
                 )
             }
         }
@@ -1372,6 +1373,7 @@ private fun TabletSettingsScreen(
                         settingsUiState = trackingSettingsUiState,
                         commentsEnabled = traktCommentsEnabled,
                         onCommentsEnabledChange = TraktCommentsSettings::setEnabled,
+                        onSupportersClick = { openInlinePage(SettingsPage.SupportersContributors) },
                     )
                 }
             }

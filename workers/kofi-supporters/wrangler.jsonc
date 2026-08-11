@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nuvio-enhanced-supporters",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-11",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nuvio-enhanced-supporters",
+      "database_id": "04074fef-32da-419c-8513-2937f8aa20ee"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

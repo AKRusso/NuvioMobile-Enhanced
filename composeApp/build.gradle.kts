@@ -26,6 +26,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val appVersionCode: Property<Int>
 
     @get:Input
+    abstract val nuvioVersionName: Property<String>
+
+    @get:Input
     abstract val supabaseUrl: Property<String>
 
     @get:Input
@@ -240,6 +243,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |object AppVersionConfig {
                 |    const val VERSION_NAME = "${appVersionName.get()}"
                 |    const val VERSION_CODE = ${appVersionCode.get()}
+                |    const val NUVIO_VERSION_NAME = "${nuvioVersionName.get()}"
                 |}
                 """.trimMargin()
             )
@@ -252,9 +256,9 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.settings
                 |
                 |object CommunityConfig {
-                |    const val CONTRIBUTIONS_URL = "${props.getProperty("CONTRIBUTIONS_URL", "")}" 
-                |    const val DONATIONS_BASE_URL = "${props.getProperty("DONATIONS_BASE_URL", "")}" 
-                |    const val DONATIONS_DONATE_URL = "${props.getProperty("DONATIONS_DONATE_URL", "")}" 
+                |    const val CONTRIBUTIONS_URL = "${props.getProperty("CONTRIBUTIONS_URL", "https://nuvio-enhanced-supporters.bim0russo.workers.dev/api/contributors")}"
+                |    const val DONATIONS_BASE_URL = "${props.getProperty("DONATIONS_BASE_URL", "https://nuvio-enhanced-supporters.bim0russo.workers.dev")}"
+                |    const val DONATIONS_DONATE_URL = "${props.getProperty("DONATIONS_DONATE_URL", "https://ko-fi.com/nuvioenhanced")}"
                 |}
                 """.trimMargin()
             )
@@ -382,6 +386,7 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     localPropertiesFile.set(rootProject.layout.projectDirectory.file("local.properties"))
     appVersionName.set(releaseAppVersionName)
     appVersionCode.set(releaseAppVersionCode)
+    nuvioVersionName.set("0.4.4")
     supabaseUrl.set(runtimeConfigValue("NUVIO_SUPABASE_URL", "SUPABASE_URL", fallback = publicNuvioApiUrl))
     supabaseAnonKey.set(runtimeConfigValue("NUVIO_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY", fallback = publicNuvioApiKey))
     supabaseFallbackUrl.set(runtimeConfigValue("NUVIO_SUPABASE_FALLBACK_URL"))

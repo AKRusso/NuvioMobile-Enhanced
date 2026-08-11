@@ -70,7 +70,7 @@ private enum class CommunityTab {
 }
 
 private data class CommunityUiState(
-    val selectedTab: CommunityTab = CommunityTab.Contributors,
+    val selectedTab: CommunityTab = CommunityTab.Supporters,
     val isContributorsLoading: Boolean = false,
     val hasLoadedContributors: Boolean = false,
     val contributors: List<CommunityContributor> = emptyList(),
@@ -99,6 +99,7 @@ private data class ContributionDto(
 private data class DonationsResponseDto(
     val currency: String? = null,
     val monthlyGoal: DonationMonthlyGoalDto? = null,
+    val supporterCount: Int? = null,
     val donations: List<DonationDto> = emptyList(),
 )
 
@@ -115,6 +116,8 @@ private data class DonationDto(
     val date: String? = null,
     val createdAt: String? = null,
     val message: String? = null,
+    val avatar: String? = null,
+    val profile: String? = null,
 )
 
 internal data class CommunityContributor(
@@ -129,6 +132,8 @@ internal data class SupporterDonation(
     val name: String,
     val date: String,
     val message: String?,
+    val avatarUrl: String?,
+    val profileUrl: String?,
     val sortTimestamp: Long,
 )
 
@@ -138,10 +143,11 @@ internal data class DonationProgress(
 
 internal data class SupportersResult(
     val supporters: List<SupporterDonation>,
+    val supporterCount: Int,
     val progress: DonationProgress?,
 )
 
-private object SupportersContributorsRepository {
+internal object SupportersContributorsRepository {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     suspend fun getContributors(): Result<List<CommunityContributor>> = runCatching {
@@ -199,6 +205,8 @@ private object SupportersContributorsRepository {
                     name = name,
                     date = date,
                     message = donation.message?.trim()?.takeIf { it.isNotBlank() },
+                    avatarUrl = donation.avatar?.trim()?.takeIf { it.startsWith("https://") },
+                    profileUrl = donation.profile?.trim()?.takeIf { it.startsWith("https://") },
                     sortTimestamp = supporterSortTimestamp(date),
                 )
             }
@@ -214,6 +222,9 @@ private object SupportersContributorsRepository {
 
         SupportersResult(
             supporters = supporters,
+            supporterCount = donationsResponse.supporterCount
+                ?.coerceAtLeast(supporters.distinctBy { it.name.lowercase() }.size)
+                ?: supporters.distinctBy { it.name.lowercase() }.size,
             progress = progress,
         )
     }
@@ -350,14 +361,10 @@ private fun SupportersContributorsBody(
         }
     }
 
-    LaunchedEffect(Unit) {
-        loadContributors(force = false)
-        loadSupporters(force = false)
-    }
-
     LaunchedEffect(uiState.selectedTab) {
-        if (uiState.selectedTab == CommunityTab.Supporters) {
-            loadSupporters(force = false)
+        when (uiState.selectedTab) {
+            CommunityTab.Contributors -> loadContributors(force = false)
+            CommunityTab.Supporters -> loadSupporters(force = false)
         }
     }
 
@@ -377,12 +384,10 @@ private fun SupportersContributorsBody(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (donationsConfigured) {
+            uiState.donationProgress?.let { progress ->
                 Spacer(modifier = Modifier.height(16.dp))
                 DonationProgressSection(
-                    progress = uiState.donationProgress,
-                    isLoading = uiState.isSupportersLoading,
-                    errorMessage = uiState.supportersErrorMessage,
+                    progress = progress,
                 )
             }
             Spacer(modifier = Modifier.height(16.dp))
@@ -478,8 +483,10 @@ private fun SupportersContributorsBody(
             title = supporter.name,
             subtitle = formatDonationDate(supporter.date),
             onDismiss = { selectedSupporter = null },
-            primaryActionLabel = null,
-            onPrimaryAction = null,
+            primaryActionLabel = supporter.profileUrl?.let {
+                stringResource(Res.string.community_open_profile)
+            },
+            onPrimaryAction = supporter.profileUrl?.let { url -> { uriHandler.openUri(url) } },
             secondaryActionLabel = null,
             onSecondaryAction = null,
         ) {
@@ -489,6 +496,7 @@ private fun SupportersContributorsBody(
             ) {
                 NameAvatar(
                     label = supporter.name,
+                    imageUrl = supporter.avatarUrl,
                     modifier = Modifier.size(72.dp),
                 )
                 Text(
@@ -622,11 +630,9 @@ private fun SupportersCard(
 
 @Composable
 private fun DonationProgressSection(
-    progress: DonationProgress?,
-    isLoading: Boolean,
-    errorMessage: String?,
+    progress: DonationProgress,
 ) {
-    val percent = progress?.progressPercent ?: 0
+    val percent = progress.progressPercent
     val progressFraction = (percent / 100f).coerceIn(0f, 1f)
 
     Column(
@@ -645,46 +651,29 @@ private fun DonationProgressSection(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
-            if (progress != null && errorMessage == null) {
-                Text(
-                    text = "$percent%",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            Text(
+                text = "$percent%",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
 
-        if (isLoading && progress == null) {
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-            )
-        } else {
-            LinearProgressIndicator(
-                progress = { progressFraction },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-            )
-        }
+        LinearProgressIndicator(
+            progress = { progressFraction },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(999.dp)),
+        )
 
         Text(
             text = when {
-                errorMessage != null -> errorMessage
-                isLoading && progress == null -> stringResource(Res.string.community_loading_donation_progress)
                 percent >= 100 -> stringResource(Res.string.community_donation_progress_complete)
                 else -> stringResource(Res.string.community_donation_progress_remaining)
             },
             style = MaterialTheme.typography.bodySmall,
-            color = if (errorMessage != null) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -745,6 +734,7 @@ private fun SupporterRow(
     ) {
         NameAvatar(
             label = supporter.name,
+            imageUrl = supporter.avatarUrl,
             modifier = Modifier.size(54.dp),
         )
         Column(
@@ -817,21 +807,10 @@ private fun CommunityAvatar(
 @Composable
 private fun NameAvatar(
     label: String,
+    imageUrl: String?,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
+    CommunityAvatar(label = label, imageUrl = imageUrl, modifier = modifier)
 }
 
 @Composable

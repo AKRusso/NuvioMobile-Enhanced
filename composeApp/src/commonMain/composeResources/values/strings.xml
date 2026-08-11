@@ -322,7 +322,8 @@
     <string name="collections_tab_all">All</string>
     <string name="collections_your_collections">Your Collections</string>
     <string name="compose_about_made_with">Made with ❤️ by Tapframe and friends</string>
-    <string name="compose_about_version_format">Version %1$s (%2$s)</string>
+    <string name="compose_about_version_format">Nuvio Enhanced %1$s (%2$s)</string>
+    <string name="compose_about_nuvio_version_format">Based on Nuvio %1$s</string>
     <string name="compose_action_off">Off</string>
     <string name="compose_action_on">On</string>
     <string name="compose_action_pause">Pause</string>
@@ -900,6 +901,7 @@
     <string name="community_tab_contributors">Contributors</string>
     <string name="community_tab_supporters">Supporters</string>
     <string name="community_open_github">Open GitHub</string>
+    <string name="community_open_profile">Open profile</string>
     <string name="community_github_profile_unavailable">GitHub profile unavailable</string>
     <string name="community_no_message_attached">No message attached.</string>
     <string name="community_loading_contributors">Loading contributors...</string>
@@ -1148,7 +1150,7 @@
     <string name="settings_trakt_missing_credentials">Missing TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET in local.properties.</string>
     <string name="settings_trakt_vip_unavailable_title">Trakt support needs a sponsor</string>
     <string name="settings_trakt_vip_unavailable_description">Trakt requires a paid VIP subscription to register the API application needed by this build. If you would like to fund Trakt support and be credited in the Trakt supporters list, contact me on Discord.</string>
-    <string name="settings_trakt_vip_unavailable_action">Sponsor Trakt on Discord</string>
+    <string name="settings_trakt_supporters_count">%1$d Donors</string>
     <string name="settings_trakt_open_login">Open Trakt Login</string>
     <string name="settings_trakt_save_actions_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>
     <string name="settings_trakt_sign_in_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>

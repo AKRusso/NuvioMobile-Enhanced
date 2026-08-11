@@ -102,6 +102,7 @@ internal fun LazyListScope.trackingSettingsContent(
     settingsUiState: TrackingSettingsUiState,
     commentsEnabled: Boolean,
     onCommentsEnabledChange: (Boolean) -> Unit,
+    onSupportersClick: () -> Unit,
 ) {
     item {
         SettingsSection(
@@ -112,6 +113,7 @@ internal fun LazyListScope.trackingSettingsContent(
                 isTablet = isTablet,
                 traktUiState = traktUiState,
                 simklUiState = simklUiState,
+                onSupportersClick = onSupportersClick,
             )
         }
     }
