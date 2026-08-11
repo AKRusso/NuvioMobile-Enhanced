@@ -1146,6 +1146,9 @@
     <string name="settings_trakt_finish_sign_in">Finish connection approval</string>
     <string name="settings_trakt_intro_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>
     <string name="settings_trakt_missing_credentials">Missing TRAKT_CLIENT_ID / TRAKT_CLIENT_SECRET in local.properties.</string>
+    <string name="settings_trakt_vip_unavailable_title">Trakt support needs a sponsor</string>
+    <string name="settings_trakt_vip_unavailable_description">Trakt requires a paid VIP subscription to register the API application needed by this build. If you would like to fund Trakt support and be credited in the Trakt supporters list, contact me on Discord.</string>
+    <string name="settings_trakt_vip_unavailable_action">Sponsor Trakt on Discord</string>
     <string name="settings_trakt_open_login">Open Trakt Login</string>
     <string name="settings_trakt_save_actions_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>
     <string name="settings_trakt_sign_in_description">Sync your watchlist, watch progress, continue watching, scrobbles, and personal lists with Trakt.</string>

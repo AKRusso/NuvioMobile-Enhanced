@@ -108,6 +108,9 @@ import nuvio.composeapp.generated.resources.settings_trakt_missing_credentials
 import nuvio.composeapp.generated.resources.settings_trakt_open_login
 import nuvio.composeapp.generated.resources.settings_trakt_save_actions_description
 import nuvio.composeapp.generated.resources.settings_trakt_sign_in_description
+import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_action
+import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_description
+import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_title
 import org.jetbrains.compose.resources.stringResource
 
 internal enum class TrackingBrand(val displayName: String) {
@@ -245,6 +248,10 @@ private fun TraktProviderCard(
         openLoginLabel = stringResource(Res.string.settings_trakt_open_login),
         disconnectLabel = stringResource(Res.string.settings_trakt_disconnect),
         missingCredentialsMessage = stringResource(Res.string.settings_trakt_missing_credentials),
+        unavailableTitle = stringResource(Res.string.settings_trakt_vip_unavailable_title),
+        unavailableDescription = stringResource(Res.string.settings_trakt_vip_unavailable_description),
+        unavailableActionLabel = stringResource(Res.string.settings_trakt_vip_unavailable_action),
+        unavailableActionUrl = TRACKING_DISCORD_URL,
         statusMessage = uiState.statusMessage.takeUnless {
             uiState.mode == TraktConnectionMode.CONNECTED
         },
@@ -328,6 +335,10 @@ private fun TrackingProviderCard(
     errorMessage: String? = null,
     websiteLabel: String? = null,
     websiteUrl: String? = null,
+    unavailableTitle: String? = null,
+    unavailableDescription: String? = null,
+    unavailableActionLabel: String? = null,
+    unavailableActionUrl: String? = null,
     onConnectRequested: () -> String?,
     onResumeAuthorization: () -> String?,
     onCancelAuthorization: () -> Unit,
@@ -436,13 +447,26 @@ private fun TrackingProviderCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.82f),
                     )
-                    TrackingBrandPrimaryButton(
-                        label = connectLabel,
-                        loading = isLoading,
-                        enabled = credentialsConfigured && !isLoading,
-                        onClick = { openUrl(onConnectRequested()) },
-                    )
-                    if (!credentialsConfigured) {
+                    if (credentialsConfigured) {
+                        TrackingBrandPrimaryButton(
+                            label = connectLabel,
+                            loading = isLoading,
+                            enabled = !isLoading,
+                            onClick = { openUrl(onConnectRequested()) },
+                        )
+                    } else if (
+                        unavailableTitle != null &&
+                        unavailableDescription != null &&
+                        unavailableActionLabel != null &&
+                        unavailableActionUrl != null
+                    ) {
+                        TrackingUnavailableSupport(
+                            title = unavailableTitle,
+                            description = unavailableDescription,
+                            actionLabel = unavailableActionLabel,
+                            onAction = { openUrl(unavailableActionUrl) },
+                        )
+                    } else {
                         TrackingBrandMessage(
                             text = missingCredentialsMessage,
                             isError = true,
@@ -539,6 +563,48 @@ private fun TrackingProviderCard(
             },
             onDismiss = { showDisconnectDialog = false },
         )
+    }
+}
+
+@Composable
+private fun TrackingUnavailableSupport(
+    title: String,
+    description: String,
+    actionLabel: String,
+    onAction: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White.copy(alpha = 0.11f),
+        shape = RoundedCornerShape(NuvioTokens.Radius.lg),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.8f),
+            )
+            OutlinedButton(
+                onClick = onAction,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 44.dp),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.48f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+            ) {
+                Text(actionLabel)
+            }
+        }
     }
 }
 
@@ -782,3 +848,4 @@ private fun simklErrorMessage(error: SimklAuthError?): String? = when (error) {
 
 private val TrackingErrorColor = Color(0xFFFFDAD6)
 private const val SIMKL_WEBSITE_URL = "https://simkl.com"
+private const val TRACKING_DISCORD_URL = "https://discord.gg/at8xffxuRU"
