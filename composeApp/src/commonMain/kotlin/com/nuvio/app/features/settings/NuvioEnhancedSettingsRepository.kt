@@ -130,7 +130,6 @@ private data class StoredNuvioEnhancedSettings(
     val playerStatusOverlayEnabled: Boolean = false,
     val subtitleSelectorStyle: NuvioSubtitleSelectorStyle = NuvioSubtitleSelectorStyle.Enhanced,
     val showContinueWatchingReadyBadge: Boolean = true,
-    val appIconSelectionRemoved: Boolean = false,
     val releaseRadarLibraryOnly: Boolean = true,
     val releaseRadarWindowDays: Int = 30,
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
@@ -167,11 +166,6 @@ internal object NuvioEnhancedSettingsRepository {
                 }
         } else {
             StoredNuvioEnhancedSettings()
-        }
-        if (!stored.appIconSelectionRemoved) {
-            NuvioAppIconSwitcher.restoreDefault()
-            stored = stored.copy(appIconSelectionRemoved = true)
-            persist()
         }
         publish()
     }

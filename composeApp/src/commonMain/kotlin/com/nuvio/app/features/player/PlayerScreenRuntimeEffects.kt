@@ -481,12 +481,20 @@ private fun PlayerScreenRuntime.BindPlayerUiVisibilityEffects() {
 
 @Composable
 private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
-    LaunchedEffect(activeVideoId, activeSeasonNumber, activeEpisodeNumber, parentMetaId, parentMetaType) {
+    LaunchedEffect(
+        activeVideoId,
+        activeSeasonNumber,
+        activeEpisodeNumber,
+        parentMetaId,
+        parentMetaType,
+        playerSettingsUiState.showParentalGuide,
+    ) {
         parentalWarnings = emptyList()
         showParentalGuide = false
         parentalGuideHasShown = false
         playbackStartedForParentalGuide = false
 
+        if (!playerSettingsUiState.showParentalGuide) return@LaunchedEffect
         val imdbId = resolveParentalGuideImdbId() ?: return@LaunchedEffect
         val guide = ParentalGuideRepository.getParentalGuide(imdbId) ?: return@LaunchedEffect
         parentalWarnings = buildParentalWarnings(guide, parentalGuideLabels)

@@ -81,10 +81,6 @@ internal object ContinueWatchingEnrichmentCache {
     private val lastPayloadHashByScope = mutableMapOf<CacheScope, Int>()
     private val _generation = MutableStateFlow(0)
     val generation: StateFlow<Int> = _generation.asStateFlow()
-    val cacheCleared: StateFlow<Int> = generation
-
-    fun getSnapshots(profileId: Int): Pair<List<CachedNextUpItem>, List<CachedInProgressItem>> =
-        getSnapshots(profileId = profileId, source = WatchProgressSource.TRAKT)
 
     fun getNextUpSnapshot(
         profileId: Int,
@@ -107,20 +103,6 @@ internal object ContinueWatchingEnrichmentCache {
         val inProgress = payload?.inProgress ?: emptyList()
         return nextUp to inProgress
     }
-
-    fun saveSnapshots(
-        profileId: Int,
-        nextUp: List<CachedNextUpItem>,
-        inProgress: List<CachedInProgressItem>,
-    ): Boolean =
-        saveSnapshots(
-            profileId = profileId,
-            source = WatchProgressSource.TRAKT,
-            generation = _generation.value,
-            nextUp = nextUp,
-            inProgress = inProgress,
-            force = true,
-        )
 
     fun saveSnapshots(
         profileId: Int,

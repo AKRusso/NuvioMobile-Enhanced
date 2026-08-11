@@ -107,12 +107,25 @@ private fun SettingsPage.isEnabledByPolicy(): Boolean =
     }
 
 @Composable
+private fun settingsPageTitles(): Map<SettingsPage, String> {
+    val titles = mutableMapOf<SettingsPage, String>()
+    for (page in SettingsPage.entries) {
+        titles[page] = stringResource(page.titleRes)
+    }
+    return titles
+}
+
+@Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     rootActionRequests: Flow<Unit> = emptyFlow(),
+    initialPageName: String = SettingsPage.Root.name,
     requestedPageName: String? = null,
     onRequestedPageConsumed: () -> Unit = {},
     rootActionsEnabled: Boolean = true,
+    onNavigatePage: ((pageName: String, title: String) -> Unit)? = null,
+    onExternalBack: (() -> Unit)? = null,
+    showInternalHeader: Boolean = true,
     onSwitchProfile: (() -> Unit)? = null,
     onHomescreenClick: () -> Unit = {},
     onMetaScreenClick: () -> Unit = {},
@@ -154,6 +167,14 @@ fun SettingsScreen(
         val liquidGlassNativeTabBarSupported = remember { isLiquidGlassNativeTabBarSupported() }
         val selectedAppLanguage by remember { ThemeSettingsRepository.selectedAppLanguage }.collectAsStateWithLifecycle()
         val selectedNavBarStyle by remember { ThemeSettingsRepository.navBarStyle }.collectAsStateWithLifecycle()
+        val appIconState by remember {
+            AppIconRepository.ensureLoaded()
+            AppIconRepository.state
+        }.collectAsStateWithLifecycle()
+        val appIconScope = rememberCoroutineScope()
+        val onAppIconSelected: (AppIconOption) -> Unit = { icon ->
+            appIconScope.launch { AppIconRepository.select(icon) }
+        }
         val tmdbSettings by remember {
             TmdbSettingsRepository.ensureLoaded()
             TmdbSettingsRepository.uiState
@@ -244,8 +265,15 @@ fun SettingsScreen(
             HomeCatalogSettingsRepository.syncCollections(collections)
         }
 
-        var currentPage by rememberSaveable { mutableStateOf(SettingsPage.Root.name) }
+        val initialPage = remember(initialPageName) {
+            runCatching { SettingsPage.valueOf(initialPageName) }
+                .getOrDefault(SettingsPage.Root)
+                .takeIf { it.isEnabledByPolicy() }
+                ?: SettingsPage.Root
+        }
+        var currentPage by rememberSaveable(initialPageName) { mutableStateOf(initialPage.name) }
         val scrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
+        val pageTitles = settingsPageTitles()
         val page = remember(currentPage) {
             runCatching { SettingsPage.valueOf(currentPage) }
                 .getOrDefault(SettingsPage.Root)
@@ -253,6 +281,78 @@ fun SettingsScreen(
                 ?: SettingsPage.Root
         }
         val previousPage = page.previousPage()
+
+        fun openPage(targetPage: SettingsPage) {
+            if (!targetPage.isEnabledByPolicy()) return
+            val externalNavigator = onNavigatePage
+            if (externalNavigator == null) {
+                currentPage = targetPage.name
+                return
+            }
+            if (targetPage == SettingsPage.Root && onExternalBack != null) {
+                onExternalBack()
+                return
+            }
+            externalNavigator(
+                targetPage.name,
+                pageTitles.getValue(targetPage),
+            )
+        }
+
+        fun navigateBack() {
+            val parentPage = previousPage ?: return
+            if (onNavigatePage != null && onExternalBack != null) {
+                onExternalBack()
+            } else {
+                currentPage = parentPage.name
+            }
+        }
+
+        val openHomescreen = if (onNavigatePage != null) {
+            { openPage(SettingsPage.Homescreen) }
+        } else {
+            onHomescreenClick
+        }
+        val openMetaScreen = if (onNavigatePage != null) {
+            { openPage(SettingsPage.MetaScreen) }
+        } else {
+            onMetaScreenClick
+        }
+        val openContinueWatching = if (onNavigatePage != null) {
+            { openPage(SettingsPage.ContinueWatching) }
+        } else {
+            onContinueWatchingClick
+        }
+        val openAddons = if (onNavigatePage != null) {
+            { openPage(SettingsPage.Addons) }
+        } else {
+            onAddonsClick
+        }
+        val openPlugins = if (onNavigatePage != null) {
+            { openPage(SettingsPage.Plugins) }
+        } else {
+            onPluginsClick
+        }
+        val openCloudStream = if (onNavigatePage != null) {
+            { openPage(SettingsPage.CloudStream) }
+        } else {
+            onCloudStreamClick
+        }
+        val openAccount = if (onNavigatePage != null) {
+            { openPage(SettingsPage.Account) }
+        } else {
+            onAccountClick
+        }
+        val openSupportersContributors = if (onNavigatePage != null) {
+            { openPage(SettingsPage.SupportersContributors) }
+        } else {
+            onSupportersContributorsClick
+        }
+        val openLicensesAttributions = if (onNavigatePage != null) {
+            { openPage(SettingsPage.LicensesAttributions) }
+        } else {
+            onLicensesAttributionsClick
+        }
 
         LaunchedEffect(page, currentPage) {
             if (page.name != currentPage) {
@@ -265,7 +365,7 @@ fun SettingsScreen(
                 if (!rootActionsEnabled) return@collect
                 val pageToOpen = page.previousPage()
                 if (pageToOpen != null) {
-                    currentPage = pageToOpen.name
+                    navigateBack()
                 } else {
                     scrollToTopRequests.tryEmit(Unit)
                 }
@@ -280,20 +380,22 @@ fun SettingsScreen(
                 return@LaunchedEffect
             }
             if (!rootActionsEnabled) return@LaunchedEffect
-            currentPage = targetPage.name
+            openPage(targetPage)
             onRequestedPageConsumed()
         }
 
         PlatformBackHandler(
-            enabled = rootActionsEnabled && previousPage != null,
-            onBack = { previousPage?.let { currentPage = it.name } },
+            enabled = previousPage != null && (rootActionsEnabled || onExternalBack != null),
+            onBack = ::navigateBack,
         )
 
         if (maxWidth >= 768.dp) {
             TabletSettingsScreen(
                 page = page,
                 scrollToTopRequests = scrollToTopRequests,
-                onPageChange = { currentPage = it.name },
+                onPageChange = ::openPage,
+                onNavigateBack = ::navigateBack,
+                showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
@@ -323,6 +425,9 @@ fun SettingsScreen(
                 onLiquidGlassNativeTabBarToggle = ThemeSettingsRepository::setLiquidGlassNativeTabBar,
                 liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
                 onLiquidGlassAutoHideOnScrollToggle = ThemeSettingsRepository::setLiquidGlassAutoHideOnScroll,
+                appIconState = appIconState,
+                onAppIconSelected = onAppIconSelected,
+                onAppIconFailureDismissed = AppIconRepository::clearFailure,
                 selectedAppLanguage = selectedAppLanguage,
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 selectedNavBarStyle = selectedNavBarStyle,
@@ -347,8 +452,8 @@ fun SettingsScreen(
                 onSwitchProfile = onSwitchProfile,
                 onEditProfile = onEditProfile,
                 onDownloadsClick = onDownloadsClick,
-                onSupportersContributorsClick = onSupportersContributorsClick,
-                onLicensesAttributionsClick = onLicensesAttributionsClick,
+                onSupportersContributorsClick = openSupportersContributors,
+                onLicensesAttributionsClick = openLicensesAttributions,
                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                 onTestUpdateBannerClick = onTestUpdateBannerClick,
                 onCollectionsClick = onCollectionsClick,
@@ -360,7 +465,9 @@ fun SettingsScreen(
             MobileSettingsScreen(
                 page = page,
                 scrollToTopRequests = scrollToTopRequests,
-                onPageChange = { currentPage = it.name },
+                onPageChange = ::openPage,
+                onNavigateBack = ::navigateBack,
+                showInternalHeader = showInternalHeader,
                 showLoadingOverlay = playerSettingsUiState.showLoadingOverlay,
                 holdToSpeedEnabled = playerSettingsUiState.holdToSpeedEnabled,
                 holdToSpeedValue = playerSettingsUiState.holdToSpeedValue,
@@ -390,6 +497,9 @@ fun SettingsScreen(
                 onLiquidGlassNativeTabBarToggle = ThemeSettingsRepository::setLiquidGlassNativeTabBar,
                 liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
                 onLiquidGlassAutoHideOnScrollToggle = ThemeSettingsRepository::setLiquidGlassAutoHideOnScroll,
+                appIconState = appIconState,
+                onAppIconSelected = onAppIconSelected,
+                onAppIconFailureDismissed = AppIconRepository::clearFailure,
                 selectedAppLanguage = selectedAppLanguage,
                 onAppLanguageSelected = ThemeSettingsRepository::setAppLanguage,
                 selectedNavBarStyle = selectedNavBarStyle,
@@ -413,16 +523,16 @@ fun SettingsScreen(
                 posterCardStyleUiState = posterCardStyleUiState,
                 onSwitchProfile = onSwitchProfile,
                 onEditProfile = onEditProfile,
-                onHomescreenClick = onHomescreenClick,
-                onMetaScreenClick = onMetaScreenClick,
-                onContinueWatchingClick = onContinueWatchingClick,
-                onAddonsClick = onAddonsClick,
-                onPluginsClick = onPluginsClick,
-                onCloudStreamClick = onCloudStreamClick,
+                onHomescreenClick = openHomescreen,
+                onMetaScreenClick = openMetaScreen,
+                onContinueWatchingClick = openContinueWatching,
+                onAddonsClick = openAddons,
+                onPluginsClick = openPlugins,
+                onCloudStreamClick = openCloudStream,
                 onDownloadsClick = onDownloadsClick,
-                onAccountClick = onAccountClick,
-                onSupportersContributorsClick = onSupportersContributorsClick,
-                onLicensesAttributionsClick = onLicensesAttributionsClick,
+                onAccountClick = openAccount,
+                onSupportersContributorsClick = openSupportersContributors,
+                onLicensesAttributionsClick = openLicensesAttributions,
                 onCheckForUpdatesClick = onCheckForUpdatesClick,
                 onTestUpdateBannerClick = onTestUpdateBannerClick,
                 onCollectionsClick = onCollectionsClick,
@@ -439,6 +549,8 @@ private fun MobileSettingsScreen(
     page: SettingsPage,
     scrollToTopRequests: Flow<Unit>,
     onPageChange: (SettingsPage) -> Unit,
+    onNavigateBack: () -> Unit,
+    showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
@@ -468,6 +580,9 @@ private fun MobileSettingsScreen(
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
     liquidGlassAutoHideOnScrollEnabled: Boolean,
     onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
+    appIconState: AppIconSettingsState,
+    onAppIconSelected: (AppIconOption) -> Unit,
+    onAppIconFailureDismissed: () -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     selectedNavBarStyle: NavBarStyle,
@@ -589,17 +704,21 @@ private fun MobileSettingsScreen(
             modifier = Modifier.nestedScroll(rootSearchRevealConnection),
             listState = listState,
         ) {
-            stickyHeader {
-                val previousPage = page.previousPage()
-                NuvioScreenHeader(
-                    title = stringResource(page.titleRes),
-                    titleStyle = if (page == SettingsPage.FavoriteActors) {
-                        MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
-                    } else {
-                        MaterialTheme.typography.displayLarge
-                    },
-                    onBack = previousPage?.let { { onPageChange(it) } },
-                )
+            if (showInternalHeader) {
+                stickyHeader {
+                    val previousPage = page.previousPage()
+                    NuvioScreenHeader(
+                        title = stringResource(page.titleRes),
+                        titleStyle = if (page == SettingsPage.FavoriteActors) {
+                            MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold)
+                        } else {
+                            MaterialTheme.typography.displayLarge
+                        },
+                        onBack = previousPage?.let { { onNavigateBack() } },
+                    )
+                }
+            } else {
+                item { Spacer(modifier = Modifier.height(44.dp)) }
             }
 
             when (page) {
@@ -623,6 +742,7 @@ private fun MobileSettingsScreen(
                             onContentDiscoveryClick = { onPageChange(SettingsPage.ContentDiscovery) },
                             onNuvioEnhancedClick = { onPageChange(SettingsPage.NuvioEnhanced) },
                             onIntegrationsClick = { onPageChange(SettingsPage.Integrations) },
+                            onTrackingClick = { onPageChange(SettingsPage.TraktAuthentication) },
                             onSupportersContributorsClick = onSupportersContributorsClick,
                             onLicensesAttributionsClick = onLicensesAttributionsClick,
                             onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -698,6 +818,9 @@ private fun MobileSettingsScreen(
                     onLiquidGlassNativeTabBarToggle = onLiquidGlassNativeTabBarToggle,
                     liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
                     onLiquidGlassAutoHideOnScrollToggle = onLiquidGlassAutoHideOnScrollToggle,
+                    appIconState = appIconState,
+                    onAppIconSelected = onAppIconSelected,
+                    onAppIconFailureDismissed = onAppIconFailureDismissed,
                     selectedAppLanguage = selectedAppLanguage,
                     onAppLanguageSelected = onAppLanguageSelected,
                     selectedNavBarStyle = selectedNavBarStyle,
@@ -760,7 +883,6 @@ private fun MobileSettingsScreen(
                 )
                 SettingsPage.Integrations -> integrationsContent(
                     isTablet = false,
-                    onTraktClick = { onPageChange(SettingsPage.TraktAuthentication) },
                     onAiAssistantClick = { onPageChange(SettingsPage.AiAssistant) },
                     onTmdbClick = { onPageChange(SettingsPage.TmdbEnrichment) },
                     onMdbListClick = { onPageChange(SettingsPage.MdbListRatings) },
@@ -842,6 +964,8 @@ private fun TabletSettingsScreen(
     page: SettingsPage,
     scrollToTopRequests: Flow<Unit>,
     onPageChange: (SettingsPage) -> Unit,
+    onNavigateBack: () -> Unit,
+    showInternalHeader: Boolean,
     showLoadingOverlay: Boolean,
     holdToSpeedEnabled: Boolean,
     holdToSpeedValue: Float,
@@ -871,6 +995,9 @@ private fun TabletSettingsScreen(
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
     liquidGlassAutoHideOnScrollEnabled: Boolean,
     onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
+    appIconState: AppIconSettingsState,
+    onAppIconSelected: (AppIconOption) -> Unit,
+    onAppIconFailureDismissed: () -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     selectedNavBarStyle: NavBarStyle,
@@ -1032,21 +1159,23 @@ private fun TabletSettingsScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                item {
-                    val previousPage = page.previousPage()
-                    TabletPageHeader(
-                        title = if (page == SettingsPage.Root) {
-                            if (settingsSearchQuery.isBlank()) {
-                                stringResource(activeCategory.labelRes)
+                if (showInternalHeader) {
+                    item {
+                        val previousPage = page.previousPage()
+                        TabletPageHeader(
+                            title = if (page == SettingsPage.Root) {
+                                if (settingsSearchQuery.isBlank()) {
+                                    stringResource(activeCategory.labelRes)
+                                } else {
+                                    stringResource(Res.string.compose_settings_page_root)
+                                }
                             } else {
-                                stringResource(Res.string.compose_settings_page_root)
-                            }
-                        } else {
-                            stringResource(page.titleRes)
-                        },
-                        showBack = previousPage != null,
-                        onBack = { previousPage?.let(onPageChange) },
-                    )
+                                stringResource(page.titleRes)
+                            },
+                            showBack = previousPage != null,
+                            onBack = onNavigateBack,
+                        )
+                    }
                 }
                 when (page) {
                     SettingsPage.Root -> {
@@ -1069,6 +1198,7 @@ private fun TabletSettingsScreen(
                                 onContentDiscoveryClick = { openInlinePage(SettingsPage.ContentDiscovery) },
                                 onNuvioEnhancedClick = { openInlinePage(SettingsPage.NuvioEnhanced) },
                                 onIntegrationsClick = { openInlinePage(SettingsPage.Integrations) },
+                                onTrackingClick = { openInlinePage(SettingsPage.TraktAuthentication) },
                                 onSupportersContributorsClick = { openInlinePage(SettingsPage.SupportersContributors) },
                                 onLicensesAttributionsClick = { openInlinePage(SettingsPage.LicensesAttributions) },
                                 onCheckForUpdatesClick = onCheckForUpdatesClick,
@@ -1149,6 +1279,9 @@ private fun TabletSettingsScreen(
                         onLiquidGlassNativeTabBarToggle = onLiquidGlassNativeTabBarToggle,
                         liquidGlassAutoHideOnScrollEnabled = liquidGlassAutoHideOnScrollEnabled,
                         onLiquidGlassAutoHideOnScrollToggle = onLiquidGlassAutoHideOnScrollToggle,
+                        appIconState = appIconState,
+                        onAppIconSelected = onAppIconSelected,
+                        onAppIconFailureDismissed = onAppIconFailureDismissed,
                         selectedAppLanguage = selectedAppLanguage,
                         onAppLanguageSelected = onAppLanguageSelected,
                         selectedNavBarStyle = selectedNavBarStyle,
@@ -1211,7 +1344,6 @@ private fun TabletSettingsScreen(
                     )
                     SettingsPage.Integrations -> integrationsContent(
                         isTablet = true,
-                        onTraktClick = { openInlinePage(SettingsPage.TraktAuthentication) },
                         onAiAssistantClick = { openInlinePage(SettingsPage.AiAssistant) },
                         onTmdbClick = { openInlinePage(SettingsPage.TmdbEnrichment) },
                         onMdbListClick = { openInlinePage(SettingsPage.MdbListRatings) },

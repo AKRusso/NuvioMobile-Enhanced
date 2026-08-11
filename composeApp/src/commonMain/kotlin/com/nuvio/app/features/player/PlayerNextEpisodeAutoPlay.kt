@@ -19,6 +19,41 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
+internal fun shouldRestrictNextEpisodeAutoPlayToBingeGroup(
+    mode: StreamAutoPlayMode,
+    autoPlayNextEpisodeEnabled: Boolean,
+    fallbackEnabled: Boolean,
+    preferBingeGroup: Boolean,
+): Boolean {
+    val shouldAutoSelectInManualMode = mode == StreamAutoPlayMode.MANUAL &&
+        (autoPlayNextEpisodeEnabled || preferBingeGroup)
+    return shouldAutoSelectInManualMode &&
+        (!autoPlayNextEpisodeEnabled || !fallbackEnabled) &&
+        preferBingeGroup
+}
+
+internal fun currentProviderNextEpisodeCandidates(
+    streams: List<StreamItem>,
+    currentProviderAddonId: String?,
+    currentProviderName: String?,
+    preferredBingeGroup: String?,
+    bingeGroupOnly: Boolean,
+): List<StreamItem> {
+    val providerStreams = streams.filter { stream ->
+        (!currentProviderAddonId.isNullOrBlank() && stream.addonId == currentProviderAddonId) ||
+            currentProviderName
+                ?.takeIf { it.isNotBlank() }
+                ?.let { stream.addonName.equals(it, ignoreCase = true) } == true
+    }
+    val providerBingeStreams = preferredBingeGroup
+        ?.takeIf { it.isNotBlank() }
+        ?.let { bingeGroup ->
+            providerStreams.filter { stream -> stream.behaviorHints.bingeGroup == bingeGroup }
+        }
+        .orEmpty()
+    return if (bingeGroupOnly) providerBingeStreams else providerBingeStreams.ifEmpty { providerStreams }
+}
+
 internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     previousJob: Job?,
     nextEpisodeInfo: NextEpisodeInfo?,
@@ -66,10 +101,12 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                     settings.streamAutoPlayPreferBingeGroup
                 )
 
-    val bingeGroupOnlyManualMode =
-        shouldAutoSelectInManualMode &&
-            !settings.streamAutoPlayNextEpisodeEnabled &&
-            settings.streamAutoPlayPreferBingeGroup
+    val bingeGroupOnlyManualMode = shouldRestrictNextEpisodeAutoPlayToBingeGroup(
+        mode = settings.streamAutoPlayMode,
+        autoPlayNextEpisodeEnabled = settings.streamAutoPlayNextEpisodeEnabled,
+        fallbackEnabled = settings.streamAutoPlayNextEpisodeFallbackEnabled,
+        preferBingeGroup = settings.streamAutoPlayPreferBingeGroup,
+    )
 
     val effectiveMode = if (shouldAutoSelectInManualMode) {
         StreamAutoPlayMode.FIRST_STREAM
@@ -157,24 +194,15 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
                 activeResolverProviderId = debridSettings.activeResolverProviderId,
             )
 
-        fun StreamItem.matchesCurrentProvider(): Boolean {
-            if (!currentProviderAddonId.isNullOrBlank() && addonId == currentProviderAddonId) return true
-            return currentProviderName
-                ?.takeIf { it.isNotBlank() }
-                ?.let { addonName.equals(it, ignoreCase = true) } == true
-        }
-
         fun tryCurrentProviderFirst(streams: List<StreamItem>): StreamItem? {
-            val providerStreams = streams.filter { stream -> stream.matchesCurrentProvider() }
-            if (providerStreams.isEmpty()) return null
-            val providerBingeStreams = if (!preferredBingeGroup.isNullOrBlank()) {
-                providerStreams.filter { stream -> stream.behaviorHints.bingeGroup == preferredBingeGroup }
-            } else {
-                emptyList()
-            }
-            return trySelectStream(providerBingeStreams.ifEmpty { providerStreams })
-                ?: providerBingeStreams.firstOrNull()
-                ?: providerStreams.firstOrNull()
+            val candidates = currentProviderNextEpisodeCandidates(
+                streams = streams,
+                currentProviderAddonId = currentProviderAddonId,
+                currentProviderName = currentProviderName,
+                preferredBingeGroup = preferredBingeGroup,
+                bingeGroupOnly = bingeGroupOnlyManualMode,
+            )
+            return trySelectStream(candidates)
         }
 
         fun tryBingeGroupOnly(streams: List<StreamItem>): StreamItem? {

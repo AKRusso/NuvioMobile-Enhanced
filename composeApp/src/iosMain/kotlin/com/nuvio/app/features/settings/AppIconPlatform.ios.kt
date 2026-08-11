@@ -15,11 +15,20 @@ import kotlin.coroutines.resume
 internal actual object AppIconPlatform {
     actual val requiresCloseConfirmation: Boolean = false
 
+    private val legacyIconNames = listOf(
+        "IconEnhanced",
+        "IconMonochrome",
+        "IconNeon",
+        "IconGear",
+        "IconChrome",
+        "IconAurora",
+        "IconEmerald",
+    )
     private var pendingChange: CancellableContinuation<Boolean>? = null
 
-    actual fun currentIconName(): String? = AppIconOption.entries
-        .mapNotNull(AppIconOption::platformName)
-        .firstOrNull { name -> NuvioIsCurrentAlternateAppIcon(name) }
+    actual fun currentIconName(): String? =
+        (AppIconOption.entries.mapNotNull(AppIconOption::platformName) + legacyIconNames)
+            .firstOrNull { name -> NuvioIsCurrentAlternateAppIcon(name) }
 
     actual suspend fun activateIcon(name: String?): Boolean {
         if (!NuvioSupportsAlternateAppIcons()) return false

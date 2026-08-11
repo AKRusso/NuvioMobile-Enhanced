@@ -27,7 +27,8 @@ internal object AppIconRepository {
     suspend fun select(icon: AppIconOption) {
         ensureLoaded()
         val current = _state.value
-        if (current.pending != null || current.selected == icon) return
+        if (current.pending != null) return
+        if (current.selected == icon && AppIconPlatform.currentIconName() == icon.platformName) return
 
         _state.value = current.copy(
             pending = icon,

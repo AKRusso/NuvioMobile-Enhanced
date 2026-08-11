@@ -89,6 +89,8 @@ import com.nuvio.app.core.format.extractReleaseYearForDisplay
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import com.nuvio.app.core.ui.rememberAnimatedLineBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
+import com.nuvio.app.core.ui.heroStretchHeight
+import com.nuvio.app.core.ui.heroStretchZoom
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaExternalRating
@@ -192,6 +194,7 @@ internal fun HomeHeroSection(
     showOverview: Boolean = true,
     metadataRefreshKey: String? = null,
     refreshPullProgress: Float = 0f,
+    stretchPx: () -> Float = { 0f },
     onItemClick: ((MetaPreview) -> Unit)? = null,
     onPlayClick: ((MetaPreview) -> Unit)? = null,
     onSaveClick: ((MetaPreview) -> Unit)? = null,
@@ -406,7 +409,7 @@ internal fun HomeHeroSection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(activeHeroHeight),
+                .heroStretchHeight(activeHeroHeight, stretchPx),
         ) {
             Box(
                 modifier = Modifier
@@ -435,6 +438,7 @@ internal fun HomeHeroSection(
                             heroScrollTranslationY = heroScrollTranslationY,
                             heroHeightPx = heroHeightPx,
                             refreshProgress = heroRefreshProgress,
+                            stretchPx = stretchPx,
                             showOverviewCue = showOverview,
                             showRatings = showRatings,
                             onItemClick = onItemClick,
@@ -453,6 +457,7 @@ internal fun HomeHeroSection(
                             heroScrollTranslationY = heroScrollTranslationY,
                             heroHeightPx = heroHeightPx,
                             refreshProgress = heroRefreshProgress,
+                            stretchPx = stretchPx,
                             videoPreviewEnabled = streamingShowcaseVideoPreviewEnabled,
                             videoPreviewSoundEnabled = streamingShowcaseVideoPreviewSoundEnabled,
                             videoPreviewActive = scrollOffsetPx < heroHeightPx * 0.74f,
@@ -488,6 +493,7 @@ internal fun HomeHeroSection(
                                 contentDescription = layerItem.name,
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .heroStretchZoom(stretchPx)
                                     .graphicsLayer {
                                         alpha = layer.visibility
                                         translationX =
@@ -738,6 +744,7 @@ private fun StreamingShowcaseHeroPage(
     heroScrollTranslationY: Float,
     heroHeightPx: Float,
     refreshProgress: Float,
+    stretchPx: () -> Float,
     videoPreviewEnabled: Boolean,
     videoPreviewSoundEnabled: Boolean,
     videoPreviewActive: Boolean,
@@ -923,6 +930,7 @@ private fun StreamingShowcaseHeroPage(
             contentDescription = title,
             modifier = Modifier
                 .fillMaxSize()
+                .heroStretchZoom(stretchPx)
                 .graphicsLayer {
                     translationX = ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
                     val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
@@ -947,6 +955,7 @@ private fun StreamingShowcaseHeroPage(
                 muted = !videoPreviewSoundEnabled,
                 modifier = Modifier
                     .fillMaxSize()
+                    .heroStretchZoom(stretchPx)
                     .graphicsLayer {
                         alpha = trailerAlpha
                         scaleX = homeHeroRefreshScaleX(refreshProgress)
@@ -1838,6 +1847,7 @@ private fun PosterArtHeroPage(
     heroScrollTranslationY: Float,
     heroHeightPx: Float,
     refreshProgress: Float,
+    stretchPx: () -> Float,
     showOverviewCue: Boolean,
     showRatings: Boolean,
     onItemClick: ((MetaPreview) -> Unit)?,
@@ -1944,6 +1954,7 @@ private fun PosterArtHeroPage(
             contentDescription = title,
             modifier = Modifier
                 .fillMaxSize()
+                .heroStretchZoom(stretchPx)
                 .graphicsLayer {
                     translationX = ((motionPulse - 0.5f) * HERO_CINEMATIC_PAN_PX * motionVisibility)
                     val cinematicScale = 1f + (HERO_CINEMATIC_SCALE * motionPulse * motionVisibility)
@@ -1966,6 +1977,7 @@ private fun PosterArtHeroPage(
                 alpha = motionPreviewAlpha,
                 motionPulse = motionPulse,
                 refreshProgress = refreshProgress,
+                stretchPx = stretchPx,
             )
         }
 
@@ -2096,6 +2108,7 @@ private fun PosterHeroMotionPreviewLayer(
     alpha: Float,
     motionPulse: Float,
     refreshProgress: Float,
+    stretchPx: () -> Float,
 ) {
     if (previewImageUrl.isNullOrBlank() || alpha <= 0.01f) return
 
@@ -2109,6 +2122,7 @@ private fun PosterHeroMotionPreviewLayer(
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
+                .heroStretchZoom(stretchPx)
                 .graphicsLayer {
                     val previewScale = 1.10f + (0.045f * motionPulse)
                     scaleX = previewScale * homeHeroRefreshScaleX(refreshProgress)

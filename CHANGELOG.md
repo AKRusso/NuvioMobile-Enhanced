@@ -3,7 +3,7 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
-## 0.4.5 - 2026-08-11
+## 0.4.4 - 2026-08-11
 
 ### Changed
 
@@ -13,6 +13,9 @@ same user-facing summary so the in-app updater can display it before download.
   Trakt and Simkl support.
 - Updated the Android application structure, plugin runtime, media engine, and
   notification services to the latest upstream implementations.
+- Restored the complete Tracking page with Trakt and Simkl, Downloads navigation,
+  native settings transitions, source-aware Home behavior, and upstream animations.
+- Restored the original app icon picker with all six icon colorways.
 
 ### Fixed
 
@@ -25,6 +28,8 @@ same user-facing summary so the in-app updater can display it before download.
   routing, iOS bundle identifiers, primary icon, and packaged Compose resources.
 - Reconciled the Enhanced Home experience with the latest upstream caching and
   next-up behavior.
+- Restored upstream PiP control handling, parental-guide behavior, autoplay
+  fallback preference, transient Next Up retries, and Hebrew language selection.
 
 ### Upstream
 

@@ -73,6 +73,7 @@ data class PlayerSettingsUiState(
     val introDbApiKey: String = "",
     val introSubmitEnabled: Boolean = false,
     val streamAutoPlayNextEpisodeEnabled: Boolean = false,
+    val streamAutoPlayNextEpisodeFallbackEnabled: Boolean = true,
     val subtitleSyncMenuEnabled: Boolean = false,
     val playerClockEndTimeEnabled: Boolean = false,
     val randomNextEpisodeEnabled: Boolean = false,
@@ -146,6 +147,7 @@ object PlayerSettingsRepository {
     private var introDbApiKey = ""
     private var introSubmitEnabled = false
     private var streamAutoPlayNextEpisodeEnabled = false
+    private var streamAutoPlayNextEpisodeFallbackEnabled = true
     private var subtitleSyncMenuEnabled = false
     private var playerClockEndTimeEnabled = false
     private var randomNextEpisodeEnabled = false
@@ -224,6 +226,7 @@ object PlayerSettingsRepository {
         introDbApiKey = ""
         introSubmitEnabled = false
         streamAutoPlayNextEpisodeEnabled = false
+        streamAutoPlayNextEpisodeFallbackEnabled = true
         subtitleSyncMenuEnabled = false
         playerClockEndTimeEnabled = false
         randomNextEpisodeEnabled = false
@@ -360,6 +363,8 @@ object PlayerSettingsRepository {
         introDbApiKey = PlayerSettingsStorage.loadIntroDbApiKey() ?: ""
         introSubmitEnabled = PlayerSettingsStorage.loadIntroSubmitEnabled() ?: false
         streamAutoPlayNextEpisodeEnabled = PlayerSettingsStorage.loadStreamAutoPlayNextEpisodeEnabled() ?: false
+        streamAutoPlayNextEpisodeFallbackEnabled =
+            PlayerSettingsStorage.loadStreamAutoPlayNextEpisodeFallbackEnabled() ?: true
         subtitleSyncMenuEnabled = PlayerSettingsStorage.loadSubtitleSyncMenuEnabled() ?: false
         playerClockEndTimeEnabled = PlayerSettingsStorage.loadPlayerClockEndTimeEnabled() ?: false
         randomNextEpisodeEnabled = PlayerSettingsStorage.loadRandomNextEpisodeEnabled() ?: false
@@ -761,6 +766,14 @@ object PlayerSettingsRepository {
         PlayerSettingsStorage.saveStreamAutoPlayNextEpisodeEnabled(enabled)
     }
 
+    fun setStreamAutoPlayNextEpisodeFallbackEnabled(enabled: Boolean) {
+        ensureLoaded()
+        if (streamAutoPlayNextEpisodeFallbackEnabled == enabled) return
+        streamAutoPlayNextEpisodeFallbackEnabled = enabled
+        publish()
+        PlayerSettingsStorage.saveStreamAutoPlayNextEpisodeFallbackEnabled(enabled)
+    }
+
     fun setSubtitleSyncMenuEnabled(enabled: Boolean) {
         ensureLoaded()
         if (subtitleSyncMenuEnabled == enabled) return
@@ -1050,6 +1063,7 @@ object PlayerSettingsRepository {
             introDbApiKey = introDbApiKey,
             introSubmitEnabled = introSubmitEnabled,
             streamAutoPlayNextEpisodeEnabled = streamAutoPlayNextEpisodeEnabled,
+            streamAutoPlayNextEpisodeFallbackEnabled = streamAutoPlayNextEpisodeFallbackEnabled,
             subtitleSyncMenuEnabled = subtitleSyncMenuEnabled,
             playerClockEndTimeEnabled = playerClockEndTimeEnabled,
             randomNextEpisodeEnabled = randomNextEpisodeEnabled,

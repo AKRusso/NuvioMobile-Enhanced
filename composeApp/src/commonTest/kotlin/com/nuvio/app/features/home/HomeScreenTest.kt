@@ -496,7 +496,7 @@ class HomeScreenTest {
         val result = buildHomeNextUpSeedCandidates(
             progressEntries = listOf(completedProgress),
             watchedItems = listOf(olderWatchedItem),
-            isTraktProgressActive = false,
+            providerOwnsCompletedHistory = false,
             preferFurthestEpisode = true,
             nowEpochMs = 3_000L,
         )
@@ -527,7 +527,7 @@ class HomeScreenTest {
         val result = buildHomeNextUpSeedCandidates(
             progressEntries = listOf(olderCompletedProgress),
             watchedItems = listOf(newerWatchedItem),
-            isTraktProgressActive = false,
+            providerOwnsCompletedHistory = false,
             preferFurthestEpisode = true,
             nowEpochMs = 3_000L,
         )
@@ -537,7 +537,7 @@ class HomeScreenTest {
     }
 
     @Test
-    fun `Trakt completed history ignores the separate watched projection`() {
+    fun `provider-owned completed history ignores the separate watched projection`() {
         val traktProgress = progressEntry(
             videoId = "show:1:2",
             title = "Show",
@@ -556,7 +556,7 @@ class HomeScreenTest {
         val result = buildHomeNextUpSeedCandidates(
             progressEntries = listOf(traktProgress),
             watchedItems = listOf(watchedItem),
-            isTraktProgressActive = true,
+            providerOwnsCompletedHistory = true,
             preferFurthestEpisode = true,
             nowEpochMs = 4_000L,
         )
@@ -581,13 +581,13 @@ class HomeScreenTest {
             markedAtEpochMs = 2_000L,
         )
 
-        val hiddenContentIds = setOf("dropped-show")
         val result = buildHomeNextUpSeedCandidates(
-            progressEntries = listOf(progress).filterNot { it.parentMetaId in hiddenContentIds },
-            watchedItems = listOf(watched).filterNot { it.id in hiddenContentIds },
-            isTraktProgressActive = false,
+            progressEntries = listOf(progress),
+            watchedItems = listOf(watched),
+            providerOwnsCompletedHistory = false,
             preferFurthestEpisode = true,
             nowEpochMs = 3_000L,
+            isContentHidden = { contentId -> contentId == "dropped-show" },
         )
 
         assertTrue(result.isEmpty())
@@ -616,7 +616,7 @@ class HomeScreenTest {
     fun `home next up waits for the selected seed source before resolving or clearing cache`() {
         assertFalse(
             isHomeNextUpSeedSourceLoaded(
-                isTraktProgressActive = false,
+                providerOwnsCompletedHistory = false,
                 hasLoadedRemoteProgress = false,
                 hasLoadedWatchedItems = true,
                 hasLoadedRemoteWatchedItems = true,
@@ -624,7 +624,7 @@ class HomeScreenTest {
         )
         assertFalse(
             isHomeNextUpSeedSourceLoaded(
-                isTraktProgressActive = false,
+                providerOwnsCompletedHistory = false,
                 hasLoadedRemoteProgress = true,
                 hasLoadedWatchedItems = false,
                 hasLoadedRemoteWatchedItems = true,
@@ -632,7 +632,7 @@ class HomeScreenTest {
         )
         assertFalse(
             isHomeNextUpSeedSourceLoaded(
-                isTraktProgressActive = false,
+                providerOwnsCompletedHistory = false,
                 hasLoadedRemoteProgress = true,
                 hasLoadedWatchedItems = true,
                 hasLoadedRemoteWatchedItems = false,
@@ -640,7 +640,7 @@ class HomeScreenTest {
         )
         assertTrue(
             isHomeNextUpSeedSourceLoaded(
-                isTraktProgressActive = false,
+                providerOwnsCompletedHistory = false,
                 hasLoadedRemoteProgress = true,
                 hasLoadedWatchedItems = true,
                 hasLoadedRemoteWatchedItems = true,
@@ -648,7 +648,7 @@ class HomeScreenTest {
         )
         assertTrue(
             isHomeNextUpSeedSourceLoaded(
-                isTraktProgressActive = true,
+                providerOwnsCompletedHistory = true,
                 hasLoadedRemoteProgress = true,
                 hasLoadedWatchedItems = false,
                 hasLoadedRemoteWatchedItems = false,

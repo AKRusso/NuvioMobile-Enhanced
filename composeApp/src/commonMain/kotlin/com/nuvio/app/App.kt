@@ -2124,12 +2124,29 @@ private fun MainAppContent(
                                             }
                                         },
                                         onConnectCloudClick = {
-                                            requestedSettingsPageName = "Debrid"
-                                            activateTab(AppScreenTab.Settings)
+                                            if (useNativeNavigation && !isTabletLayout) {
+                                                activateTab(AppScreenTab.Settings)
+                                                navController.navigate(
+                                                    SettingsPageRoute(
+                                                        pageName = "Debrid",
+                                                        title = debridSettingsTitle,
+                                                    )
+                                                )
+                                            } else {
+                                                requestedSettingsPageName = "Debrid"
+                                                activateTab(AppScreenTab.Settings)
+                                            }
                                         },
                                         onContinueWatchingClick = onContinueWatchingClick,
                                         onContinueWatchingLongPress = onContinueWatchingLongPress,
                                         onSwitchProfile = onSwitchProfile,
+                                        onSettingsPageClick = if (useNativeNavigation && !isTabletLayout) {
+                                            { pageName, title ->
+                                                navController.navigate(SettingsPageRoute(pageName, title))
+                                            }
+                                        } else {
+                                            null
+                                        },
                                         onHomescreenSettingsClick = { navController.navigate(HomescreenSettingsRoute(homescreenSettingsTitle)) },
                                         onMetaScreenSettingsClick = { navController.navigate(MetaScreenSettingsRoute(metaScreenSettingsTitle)) },
                                         onContinueWatchingSettingsClick = { navController.navigate(ContinueWatchingSettingsRoute(continueWatchingSettingsTitle)) },
@@ -3230,11 +3247,40 @@ private fun MainAppContent(
                         navController = navController,
                         route = route,
                     )
-                    LaunchedEffect(route) {
-                        requestedSettingsPageName = route.pageName
-                        activateTab(AppScreenTab.Settings)
-                        onBack()
-                    }
+                    SettingsScreen(
+                        modifier = Modifier.fillMaxSize(),
+                        initialPageName = route.pageName,
+                        rootActionsEnabled = false,
+                        onNavigatePage = { pageName, title ->
+                            navController.navigate(SettingsPageRoute(pageName, title))
+                        },
+                        onExternalBack = onBack,
+                        showInternalHeader = !useNativeNavigation,
+                        onSwitchProfile = onSwitchProfile,
+                        onDownloadsClick = {
+                            navController.navigate(DownloadsSettingsRoute(downloadsSettingsTitle))
+                        },
+                        onCollectionsClick = {
+                            navController.navigate(CollectionsRoute(collectionsTitle))
+                        },
+                        onCheckForUpdatesClick = if (AppFeaturePolicy.inAppUpdaterEnabled) {
+                            {
+                                appUpdaterController.checkForUpdates(
+                                    force = true,
+                                    showNoUpdateFeedback = true,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                        onTestUpdateBannerClick = if (
+                            AppFeaturePolicy.inAppUpdaterEnabled && AppUpdaterPlatform.isDebugBuild
+                        ) {
+                            appUpdaterController::showDebugTestUpdate
+                        } else {
+                            null
+                        },
+                    )
                 }
                 entry<DownloadsSettingsRoute> { route ->
                     val onBack = rememberGuardedPopBackStack(
@@ -3822,6 +3868,7 @@ private fun AppTabHost(
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
     onSwitchProfile: (() -> Unit)? = null,
+    onSettingsPageClick: ((pageName: String, title: String) -> Unit)? = null,
     onHomescreenSettingsClick: () -> Unit = {},
     onMetaScreenSettingsClick: () -> Unit = {},
     onContinueWatchingSettingsClick: () -> Unit = {},
@@ -3895,6 +3942,7 @@ private fun AppTabHost(
                         requestedPageName = requestedSettingsPageName,
                         onRequestedPageConsumed = onRequestedSettingsPageConsumed,
                         rootActionsEnabled = rootActionsEnabled,
+                        onNavigatePage = onSettingsPageClick,
                         onSwitchProfile = onSwitchProfile,
                         onHomescreenClick = onHomescreenSettingsClick,
                         onMetaScreenClick = onMetaScreenSettingsClick,

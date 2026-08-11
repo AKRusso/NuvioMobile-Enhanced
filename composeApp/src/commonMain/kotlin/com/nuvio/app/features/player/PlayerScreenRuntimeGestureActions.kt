@@ -177,22 +177,6 @@ internal fun PlayerScreenRuntime.togglePlayback() {
     controlsVisible = true
 }
 
-internal fun PlayerScreenRuntime.togglePlaybackFromDoubleTap() {
-    if (playbackSnapshot.isPlaying) {
-        shouldPlay = false
-        playerController?.pause()
-        pausedOverlayVisible = true
-    } else {
-        if (playbackSnapshot.isEnded) {
-            playerController?.seekTo(0L)
-        }
-        shouldPlay = true
-        playerController?.play()
-        pausedOverlayVisible = false
-    }
-    controlsVisible = false
-}
-
 internal fun PlayerScreenRuntime.seekBy(offsetMs: Long) {
     playerController?.seekBy(offsetMs)
     scheduleProgressSyncAfterSeek()
@@ -320,7 +304,7 @@ internal fun PlayerScreenRuntime.rememberSurfaceGestureCallbacks(): PlayerSurfac
             offset.x > layoutSize.width * PlayerRightGestureBoundary -> {
                 handleDoubleTapSeek(PlayerSeekDirection.Forward)
             }
-            else -> togglePlaybackFromDoubleTap()
+            else -> controlsVisible = !controlsVisible
         }
     }
     return PlayerSurfaceGestureCallbacks(

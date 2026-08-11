@@ -78,6 +78,7 @@ import nuvio.composeapp.generated.resources.compose_settings_page_poster_customi
 import nuvio.composeapp.generated.resources.compose_settings_page_streams
 import nuvio.composeapp.generated.resources.settings_appearance_app_language
 import nuvio.composeapp.generated.resources.settings_appearance_app_language_sheet_title
+import nuvio.composeapp.generated.resources.settings_appearance_app_icon
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_black
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_description
 import nuvio.composeapp.generated.resources.settings_appearance_continue_watching_description
@@ -102,6 +103,7 @@ import nuvio.composeapp.generated.resources.settings_content_discovery_homescree
 import nuvio.composeapp.generated.resources.settings_content_discovery_meta_screen_description
 import nuvio.composeapp.generated.resources.compose_settings_root_streams_description
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -117,6 +119,9 @@ internal fun LazyListScope.appearanceSettingsContent(
     onLiquidGlassNativeTabBarToggle: (Boolean) -> Unit,
     liquidGlassAutoHideOnScrollEnabled: Boolean,
     onLiquidGlassAutoHideOnScrollToggle: (Boolean) -> Unit,
+    appIconState: AppIconSettingsState,
+    onAppIconSelected: (AppIconOption) -> Unit,
+    onAppIconFailureDismissed: () -> Unit,
     selectedAppLanguage: AppLanguage,
     onAppLanguageSelected: (AppLanguage) -> Unit,
     selectedNavBarStyle: NavBarStyle,
@@ -207,6 +212,7 @@ internal fun LazyListScope.appearanceSettingsContent(
     item {
         var showLanguageSheet by remember { mutableStateOf(false) }
         var showNavBarStyleSheet by remember { mutableStateOf(false) }
+        var showAppIconPicker by remember { mutableStateOf(false) }
         SettingsSection(
             title = stringResource(Res.string.settings_appearance_section_display),
             isTablet = isTablet,
@@ -240,6 +246,18 @@ internal fun LazyListScope.appearanceSettingsContent(
                 }
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsNavigationRow(
+                    title = stringResource(Res.string.settings_appearance_app_icon),
+                    description = stringResource(appIconState.selected.labelResource),
+                    iconPainter = painterResource(appIconState.selected.previewResource),
+                    enabled = appIconState.pending == null,
+                    isTablet = isTablet,
+                    onClick = {
+                        onAppIconFailureDismissed()
+                        showAppIconPicker = true
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsNavigationRow(
                     title = stringResource(Res.string.settings_appearance_app_language),
                     description = stringResource(selectedAppLanguage.labelRes),
                     isTablet = isTablet,
@@ -265,6 +283,18 @@ internal fun LazyListScope.appearanceSettingsContent(
                     showLanguageSheet = false
                 },
                 onDismiss = { showLanguageSheet = false },
+            )
+        }
+
+        if (showAppIconPicker) {
+            AppIconPicker(
+                isTablet = isTablet,
+                state = appIconState,
+                onSelected = onAppIconSelected,
+                onDismiss = {
+                    onAppIconFailureDismissed()
+                    showAppIconPicker = false
+                },
             )
         }
 

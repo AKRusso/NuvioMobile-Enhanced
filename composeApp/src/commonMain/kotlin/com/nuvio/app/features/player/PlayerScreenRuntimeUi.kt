@@ -242,14 +242,20 @@ private fun PlayerScreenRuntime.currentInitialPositionRequestKey(): String? {
 
 @Composable
 private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, isEpisode: Boolean) {
+    val isInPip = rememberIsInPictureInPicture()
     val showQuietDeviceStatusOverlay = nuvioEnhancedSettingsUiState.playerStatusOverlayEnabled &&
         !controlsVisible &&
         !showParentalGuide &&
         !playerControlsLocked &&
         !pausedOverlayVisible
     AnimatedVisibility(
-        visible = ((controlsVisible || showParentalGuide) && !playerControlsLocked) ||
-            showQuietDeviceStatusOverlay,
+        visible = shouldShowPlayerControlsShell(
+            isInPip = isInPip,
+            controlsVisible = controlsVisible,
+            showParentalGuide = showParentalGuide,
+            playerControlsLocked = playerControlsLocked,
+            showQuietDeviceStatusOverlay = showQuietDeviceStatusOverlay,
+        ),
         enter = fadeIn(),
         exit = fadeOut(),
     ) {
@@ -390,6 +396,15 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
         )
     }
 }
+
+internal fun shouldShowPlayerControlsShell(
+    isInPip: Boolean,
+    controlsVisible: Boolean,
+    showParentalGuide: Boolean,
+    playerControlsLocked: Boolean,
+    showQuietDeviceStatusOverlay: Boolean,
+): Boolean = !isInPip &&
+    (((controlsVisible || showParentalGuide) && !playerControlsLocked) || showQuietDeviceStatusOverlay)
 
 @Composable
 private fun BoxScope.RenderPlaybackOverlays(

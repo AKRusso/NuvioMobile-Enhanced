@@ -109,8 +109,92 @@
         </activity>
 
         <activity-alias
-            android:name="com.nuvio.enhanced.IconDefault"
+            android:name="com.nuvio.app.launcher.AppIconDefault"
             android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_alt_enhanced"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_alt_enhanced"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.app.launcher.AppIconArcticBlue"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_arctic_blue"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_arctic_blue"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.app.launcher.AppIconEmerald"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_emerald"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_emerald"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.app.launcher.AppIconRoseGold"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_rose_gold"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_rose_gold"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.app.launcher.AppIconCopper"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_copper"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_copper"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.app.launcher.AppIconGraphite"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_graphite"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_graphite"
+            android:targetActivity="com.nuvio.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name="com.nuvio.enhanced.IconDefault"
+            android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_alt_enhanced"
             android:roundIcon="@mipmap/ic_launcher_alt_enhanced"

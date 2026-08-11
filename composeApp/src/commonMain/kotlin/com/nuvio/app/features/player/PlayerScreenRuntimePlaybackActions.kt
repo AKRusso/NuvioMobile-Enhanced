@@ -248,6 +248,7 @@ internal fun PlayerScreenRuntime.emitTrackingSeekScrobbleStart() {
 }
 
 internal fun PlayerScreenRuntime.tryShowParentalGuide() {
+    if (!playerSettingsUiState.showParentalGuide) return
     if (
         !parentalGuideHasShown &&
         parentalWarnings.isNotEmpty() &&

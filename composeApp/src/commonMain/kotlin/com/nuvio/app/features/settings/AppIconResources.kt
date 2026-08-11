@@ -16,7 +16,7 @@ internal val AppIconOption.labelResource: StringResource
 
 internal val AppIconOption.previewResource: DrawableResource
     get() = when (this) {
-        AppIconOption.ORIGINAL -> Res.drawable.app_icon_original
+        AppIconOption.ORIGINAL -> Res.drawable.app_icon_enhanced_preview
         AppIconOption.ARCTIC_BLUE -> Res.drawable.app_icon_arctic_blue
         AppIconOption.EMERALD -> Res.drawable.app_icon_emerald
         AppIconOption.ROSE_GOLD -> Res.drawable.app_icon_rose_gold

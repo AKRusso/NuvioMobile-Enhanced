@@ -32,6 +32,41 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
+			<key>AppIconArcticBlue</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconArcticBlue</string>
+				</array>
+			</dict>
+			<key>AppIconEmerald</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconEmerald</string>
+				</array>
+			</dict>
+			<key>AppIconRoseGold</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconRoseGold</string>
+				</array>
+			</dict>
+			<key>AppIconCopper</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconCopper</string>
+				</array>
+			</dict>
+			<key>AppIconGraphite</key>
+			<dict>
+				<key>CFBundleIconFiles</key>
+				<array>
+					<string>AppIconGraphite</string>
+				</array>
+			</dict>
 			<key>IconEnhanced</key>
 			<dict>
 				<key>CFBundleIconFiles</key>

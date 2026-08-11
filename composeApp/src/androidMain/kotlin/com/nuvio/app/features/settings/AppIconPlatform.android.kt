@@ -4,6 +4,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Process
+import kotlin.system.exitProcess
 
 internal actual object AppIconPlatform {
     actual val requiresCloseConfirmation: Boolean = true
@@ -12,13 +14,23 @@ internal actual object AppIconPlatform {
     private val launcherComponents = AppIconOption.entries.map { option ->
         option.platformName to "$launcherPackage.${option.platformName ?: "AppIconDefault"}"
     }
+    private val legacyLauncherClasses = listOf(
+        "com.nuvio.enhanced.IconDefault",
+        "com.nuvio.enhanced.IconEnhanced",
+        "com.nuvio.enhanced.IconMonochrome",
+        "com.nuvio.enhanced.IconNeon",
+        "com.nuvio.enhanced.IconGear",
+        "com.nuvio.enhanced.IconChrome",
+        "com.nuvio.enhanced.IconAurora",
+        "com.nuvio.enhanced.IconEmerald",
+    )
 
     private var context: Context? = null
 
     fun initialize(context: Context) {
         val appContext = context.applicationContext
         this.context = appContext
-        restoreDefaultIfNeeded(appContext)
+        reconcileLegacyLaunchers(appContext)
     }
 
     actual fun currentIconName(): String? {
@@ -29,7 +41,7 @@ internal actual object AppIconPlatform {
     fun currentLauncherIconResource(context: Context): Int {
         val option = AppIconOption.fromPlatformName(currentIconName(context))
         val resourceName = if (option == AppIconOption.ORIGINAL) {
-            "ic_launcher"
+            "ic_launcher_alt_enhanced"
         } else {
             "ic_launcher_${option.key}"
         }
@@ -54,64 +66,71 @@ internal actual object AppIconPlatform {
         return explicitlyEnabled?.first
     }
 
-    private fun restoreDefaultIfNeeded(context: Context) {
+    internal fun reconcileLegacyLaunchers() {
+        context?.let(::reconcileLegacyLaunchers)
+    }
+
+    private fun reconcileLegacyLaunchers(context: Context) {
         val packageManager = context.packageManager
-        val hasEnabledComponent = launcherComponents.any { (_, className) ->
+        val selectedClass = launcherComponents.firstOrNull { (_, className) ->
             packageManager.getComponentEnabledSetting(component(context, className)) ==
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        }
-        if (hasEnabledComponent) return
-
-        val defaultClass = launcherComponents.first { it.first == null }.second
-        if (
-            packageManager.getComponentEnabledSetting(component(context, defaultClass)) !=
-            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        ) {
-            return
-        }
-        packageManager.setComponentEnabledSetting(
-            component(context, defaultClass),
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.DONT_KILL_APP,
-        )
+        }?.second ?: launcherComponents.first { it.first == null }.second
+        applyComponentStates(context, selectedClass)
     }
 
     actual suspend fun activateIcon(name: String?): Boolean {
         val appContext = context ?: return false
         val selectedClass = launcherComponents.firstOrNull { it.first == name }?.second ?: return false
-        val packageManager = appContext.packageManager
+        val changed = applyComponentStates(appContext, selectedClass)
+        if (changed) {
+            Process.killProcess(Process.myPid())
+            exitProcess(0)
+        }
+        return false
+    }
 
-        return runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                packageManager.setComponentEnabledSettings(
-                    launcherComponents.map { (_, className) ->
-                        PackageManager.ComponentEnabledSetting(
-                            component(appContext, className),
-                            if (className == selectedClass) {
-                                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                            } else {
-                                PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-                            },
-                            PackageManager.DONT_KILL_APP,
-                        )
-                    },
-                )
-            } else {
-                launcherComponents.forEach { (_, className) ->
-                    packageManager.setComponentEnabledSetting(
-                        component(appContext, className),
+    private fun applyComponentStates(context: Context, selectedClass: String): Boolean = runCatching {
+        val packageManager = context.packageManager
+        val allClasses = launcherComponents.map { it.second } + legacyLauncherClasses
+        val flags = PackageManager.DONT_KILL_APP or synchronousPackageManagerFlag()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.setComponentEnabledSettings(
+                allClasses.map { className ->
+                    PackageManager.ComponentEnabledSetting(
+                        component(context, className),
                         if (className == selectedClass) {
                             PackageManager.COMPONENT_ENABLED_STATE_ENABLED
                         } else {
                             PackageManager.COMPONENT_ENABLED_STATE_DISABLED
                         },
-                        PackageManager.DONT_KILL_APP,
+                        flags,
                     )
-                }
+                },
+            )
+        } else {
+            packageManager.setComponentEnabledSetting(
+                component(context, selectedClass),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                flags,
+            )
+            allClasses.filterNot { it == selectedClass }.forEach { className ->
+                packageManager.setComponentEnabledSetting(
+                    component(context, className),
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    flags,
+                )
             }
-        }.isSuccess
-    }
+        }
+    }.isSuccess
 
     private fun component(context: Context, className: String): ComponentName =
         ComponentName(context.packageName, className)
+
+    private fun synchronousPackageManagerFlag(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            PackageManager.SYNCHRONOUS
+        } else {
+            0
+        }
 }

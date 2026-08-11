@@ -53,8 +53,8 @@ import com.nuvio.app.features.profiles.ProfileStorage
 import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.SentrySettingsStorage
+import com.nuvio.app.features.settings.AppIconPlatform
 import com.nuvio.app.features.settings.ThemeSettingsStorage
-import com.nuvio.app.features.settings.NuvioAppIconSwitcher
 import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsStorage
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
             ),
         )
         ThemeSettingsStorage.initialize(applicationContext)
-        NuvioAppIconSwitcher.initialize(applicationContext)
+        AppIconPlatform.initialize(applicationContext)
         NuvioEnhancedSettingsStorage.initialize(applicationContext)
         NuvioEnhancedSettingsRepository.ensureLoaded()
         SentrySettingsStorage.initialize(applicationContext)

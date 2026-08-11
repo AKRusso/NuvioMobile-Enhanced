@@ -70,6 +70,7 @@ actual object PlayerSettingsStorage {
     private const val introDbApiKeyKey = "introdb_api_key"
     private const val introSubmitEnabledKey = "intro_submit_enabled"
     private const val streamAutoPlayNextEpisodeEnabledKey = "stream_auto_play_next_episode_enabled"
+    private const val streamAutoPlayNextEpisodeFallbackEnabledKey = "stream_auto_play_next_episode_fallback_enabled"
     private const val subtitleSyncMenuEnabledKey = "subtitle_sync_menu_enabled"
     private const val playerClockEndTimeEnabledKey = "player_clock_end_time_enabled"
     private const val randomNextEpisodeEnabledKey = "random_next_episode_enabled"
@@ -146,6 +147,7 @@ actual object PlayerSettingsStorage {
         animeSkipEnabledKey,
         animeSkipClientIdKey,
         streamAutoPlayNextEpisodeEnabledKey,
+        streamAutoPlayNextEpisodeFallbackEnabledKey,
         subtitleSyncMenuEnabledKey,
         playerClockEndTimeEnabledKey,
         randomNextEpisodeEnabledKey,
@@ -808,6 +810,23 @@ actual object PlayerSettingsStorage {
         NSUserDefaults.standardUserDefaults.setBool(enabled, forKey = ProfileScopedKey.of(streamAutoPlayNextEpisodeEnabledKey))
     }
 
+    actual fun loadStreamAutoPlayNextEpisodeFallbackEnabled(): Boolean? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(streamAutoPlayNextEpisodeFallbackEnabledKey)
+        return if (defaults.objectForKey(key) != null) {
+            defaults.boolForKey(key)
+        } else {
+            null
+        }
+    }
+
+    actual fun saveStreamAutoPlayNextEpisodeFallbackEnabled(enabled: Boolean) {
+        NSUserDefaults.standardUserDefaults.setBool(
+            enabled,
+            forKey = ProfileScopedKey.of(streamAutoPlayNextEpisodeFallbackEnabledKey),
+        )
+    }
+
     actual fun loadSubtitleSyncMenuEnabled(): Boolean? = loadBoolean(subtitleSyncMenuEnabledKey)
     actual fun saveSubtitleSyncMenuEnabled(enabled: Boolean) = saveBoolean(subtitleSyncMenuEnabledKey, enabled)
     actual fun loadPlayerClockEndTimeEnabled(): Boolean? = loadBoolean(playerClockEndTimeEnabledKey)
@@ -1042,6 +1061,9 @@ actual object PlayerSettingsStorage {
         loadAnimeSkipEnabled()?.let { put(animeSkipEnabledKey, encodeSyncBoolean(it)) }
         loadAnimeSkipClientId()?.let { put(animeSkipClientIdKey, encodeSyncString(it)) }
         loadStreamAutoPlayNextEpisodeEnabled()?.let { put(streamAutoPlayNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
+        loadStreamAutoPlayNextEpisodeFallbackEnabled()?.let {
+            put(streamAutoPlayNextEpisodeFallbackEnabledKey, encodeSyncBoolean(it))
+        }
         loadSubtitleSyncMenuEnabled()?.let { put(subtitleSyncMenuEnabledKey, encodeSyncBoolean(it)) }
         loadPlayerClockEndTimeEnabled()?.let { put(playerClockEndTimeEnabledKey, encodeSyncBoolean(it)) }
         loadRandomNextEpisodeEnabled()?.let { put(randomNextEpisodeEnabledKey, encodeSyncBoolean(it)) }
@@ -1125,6 +1147,8 @@ actual object PlayerSettingsStorage {
         payload.decodeSyncString(animeSkipClientIdKey)?.let(::saveAnimeSkipClientId)
         payload.decodeSyncString(introDbApiKeyKey)?.let(::saveIntroDbApiKey)
         payload.decodeSyncBoolean(streamAutoPlayNextEpisodeEnabledKey)?.let(::saveStreamAutoPlayNextEpisodeEnabled)
+        payload.decodeSyncBoolean(streamAutoPlayNextEpisodeFallbackEnabledKey)
+            ?.let(::saveStreamAutoPlayNextEpisodeFallbackEnabled)
         payload.decodeSyncBoolean(subtitleSyncMenuEnabledKey)?.let(::saveSubtitleSyncMenuEnabled)
         payload.decodeSyncBoolean(playerClockEndTimeEnabledKey)?.let(::savePlayerClockEndTimeEnabled)
         payload.decodeSyncBoolean(randomNextEpisodeEnabledKey)?.let(::saveRandomNextEpisodeEnabled)
