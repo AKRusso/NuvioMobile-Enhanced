@@ -3,6 +3,23 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.6 - 2026-08-11
+
+### Fixed
+
+- Restored the Trakt sponsor card as the primary disconnected-state action when
+  no Trakt API credentials are distributed with the release.
+- Restored the Donate button, recent supporter avatars, donor count, and direct
+  Supporters navigation in the tracking card.
+- Removed Trakt API credentials from GitHub release configuration so public APKs
+  do not ship with maintainer credentials.
+- Updated the repository homepage and download links in English.
+
+### Release
+
+- This release is based on official NuvioMobile `0.4.4` and is versioned
+  independently as Nuvio Enhanced `0.4.6 (110)`.
+
 ## 0.4.5 - 2026-08-11
 
 ### Added

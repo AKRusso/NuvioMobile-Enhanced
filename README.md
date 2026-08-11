@@ -4,11 +4,11 @@
 
   <h1>NuvioMobile Enhanced</h1>
 
-  <p><strong>Uma continuação independente do NuvioMobile, mantida por AKRusso.</strong></p>
+  <p><strong>An independent continuation of NuvioMobile, maintained by AKRusso.</strong></p>
 
   <p>
-    Este fork mantém o Nuvio atualizado e acrescenta melhorias de experiência,
-    reprodução, navegação, tracking e suporte à comunidade.
+    This fork keeps Nuvio up to date while adding improvements to the user experience,
+    playback, navigation, tracking, and community support.
   </p>
 
   <p>
@@ -20,95 +20,94 @@
 
   <p>
     <a href="#download">Download</a> |
-    <a href="#o-que-estou-a-manter">O que estou a manter</a> |
-    <a href="#funcionalidades">Funcionalidades</a> |
-    <a href="#contribuir">Contribuir</a> |
-    <a href="#créditos-e-atribuição">Créditos</a>
+    <a href="#what-i-maintain">What I maintain</a> |
+    <a href="#features">Features</a> |
+    <a href="#contributing">Contributing</a> |
+    <a href="#credits-and-attribution">Credits</a>
   </p>
 
 </div>
 
-## Estado Atual
+## Current Status
 
-Este repositório é mantido por **AKRusso** como uma continuação independente do
-NuvioMobile Enhanced. O objetivo é acompanhar o projeto original, corrigir bugs,
-melhorar a experiência Android e disponibilizar builds fáceis de instalar.
+This repository is maintained by **AKRusso** as an independent continuation of
+NuvioMobile Enhanced. The goal is to keep the fork aligned with the original
+project, fix bugs, improve the Android experience, and provide easy-to-install
+release builds.
 
-| Linha | Versão |
+| Track | Version |
 | --- | --- |
-| Nuvio Enhanced | `0.4.5 (109)` |
-| Base oficial NuvioMobile | `0.4.4` |
-| Branch principal do fork | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
+| Nuvio Enhanced | `0.4.6 (110)` |
+| Official NuvioMobile base | `0.4.4` |
+| Fork main branch | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
 | Maintainer | [AKRusso](https://github.com/AKRusso) |
 
-O número da versão Enhanced é separado da versão oficial para deixar claro o que
-vem do Nuvio original e o que é trabalho deste fork.
+The Enhanced version is kept separate from the official version so it is clear
+which work comes from the original Nuvio project and which work belongs to this
+fork.
 
 ## Download
 
 ### Android
 
-Descarrega sempre a partir da release oficial do fork:
+Always download from the official fork release:
 
-**[Download Nuvio Enhanced 0.4.5](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/tag/0.4.5)**
+**[Download Nuvio Enhanced 0.4.6](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/tag/0.4.6)**
 
-Para a maioria dos telemóveis Android, escolhe:
+For most Android phones, choose:
 
-**[ARM64-v8a - recomendado](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.5/androidApp-full-arm64-v8a-release.apk)**
+**[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.6/androidApp-full-arm64-v8a-release.apk)**
 
-Outras arquiteturas estão disponíveis na página da release:
+Other architectures are available on the release page:
 
-- `armeabi-v7a`: dispositivos Android antigos de 32 bits.
-- `x86_64`: emuladores Intel de 64 bits.
-- `x86`: emuladores Intel de 32 bits.
+- `armeabi-v7a`: older 32-bit Android devices.
+- `x86_64`: 64-bit Intel emulators or compatible devices.
+- `x86`: 32-bit Intel emulators or compatible devices.
 
-Os APKs de release são compilados pelo GitHub Actions, têm o certificado de
-atualização compatível com as versões Enhanced anteriores e são acompanhados por
-hashes SHA-256 na release.
+Release APKs are built by GitHub Actions, use the update-compatible certificate
+from previous Enhanced builds, and include SHA-256 hashes in the release notes.
 
-## O Que Estou A Manter
+## What I Maintain
 
-- Atualização do fork com as versões estáveis do NuvioMobile original.
-- Correções de bugs e regressões encontradas no Android.
-- Builds Android assinadas e publicadas através do GitHub Actions.
-- Melhorias de navegação, playback, biblioteca, Live TV e tracking.
-- Documentação, changelog e releases identificáveis.
-- Integração comunitária de apoiantes através do Ko-fi, sem guardar dados privados
-  de pagamento.
+- Keeping this fork aligned with stable NuvioMobile releases.
+- Fixing bugs and regressions found on Android.
+- Building and publishing signed Android releases through GitHub Actions.
+- Improving navigation, playback, library, Live TV, and tracking.
+- Maintaining clear documentation, changelogs, and release notes.
+- Supporting the community through Ko-fi without storing private payment data.
 
-## Funcionalidades
+## Features
 
-| Área | Melhorias do Enhanced |
+| Area | Enhanced improvements |
 | --- | --- |
-| Playback | Reprodução Android com libmpv, tap-to-seek, sincronização de progresso e melhorias de estabilidade. |
-| Live TV | Navegação M3U, favoritos, troca de canais, filtros, XMLTV EPG e canais recentes. |
-| Tracking | Trakt e Simkl com fluxo de autenticação e sincronização atualizados. |
-| Biblioteca | Calendário de lançamentos, estados mais claros e navegação refinada. |
-| Assistente AI | Integrações Gemini, OpenRouter, Cerebras e Groq, com respostas formatadas. |
-| Comunidade | Supporters, contribuintes, doações Ko-fi e avatares aprovados. |
-| UX | Mais consistência visual, transições suaves e menos flicker em ecrãs dinâmicos. |
+| Playback | Android libmpv playback, tap-to-seek, progress synchronization, and stability improvements. |
+| Live TV | M3U navigation, favorites, channel switching, filters, XMLTV EPG, and recent channels. |
+| Tracking | Updated Trakt and Simkl authentication and synchronization flows. |
+| Library | Release calendar, clearer status handling, and refined navigation. |
+| AI assistant | Gemini, OpenRouter, Cerebras, and Groq integrations with formatted responses. |
+| Community | Supporters, contributors, Ko-fi donations, and approved supporter avatars. |
+| UX | More consistent visuals, smoother transitions, and less flicker on dynamic screens. |
 
 ## Roadmap
 
-- Continuar a acompanhar as versões oficiais do NuvioMobile.
-- Corrigir problemas reportados pela comunidade e melhorar a compatibilidade Android.
-- Manter releases assinadas, verificáveis e fáceis de instalar.
-- Melhorar a documentação técnica e os fluxos de contribuição.
+- Continue tracking official NuvioMobile releases.
+- Fix community-reported issues and improve Android compatibility.
+- Keep releases signed, verifiable, and easy to install.
+- Improve technical documentation and contribution workflows.
 
-Funcionalidades podem mudar conforme a evolução do upstream e o feedback da
-comunidade. Alterações específicas ficam registadas no
-[`CHANGELOG.md`](CHANGELOG.md) e nas notas de cada release.
+Features may change as upstream evolves and community feedback arrives. Specific
+changes are recorded in [`CHANGELOG.md`](CHANGELOG.md) and each release's notes.
 
-## Suporte E Feedback
+## Support And Feedback
 
-- [Reportar um bug](https://github.com/AKRusso/NuvioMobile-Enhanced/issues/new/choose)
-- [Ver issues abertas](https://github.com/AKRusso/NuvioMobile-Enhanced/issues)
-- [Ver ações e builds](https://github.com/AKRusso/NuvioMobile-Enhanced/actions)
-- [Apoiar o desenvolvimento no Ko-fi](https://ko-fi.com/nuvioenhanced)
-- [Discord da comunidade](https://discord.gg/at8xffxuRU)
+- [Report a bug](https://github.com/AKRusso/NuvioMobile-Enhanced/issues/new/choose)
+- [View open issues](https://github.com/AKRusso/NuvioMobile-Enhanced/issues)
+- [View builds and workflows](https://github.com/AKRusso/NuvioMobile-Enhanced/actions)
+- [Support development on Ko-fi](https://ko-fi.com/nuvioenhanced)
+- [Join the community Discord](https://discord.gg/at8xffxuRU)
 
-Ao reportar um problema, indica a versão Enhanced, arquitetura do dispositivo,
-versão Android, passos para reproduzir e logs relevantes sem dados pessoais.
+When reporting an issue, include the Enhanced version, device architecture,
+Android version, reproduction steps, and relevant logs without personal data.
 
 ## Build From Source
 
@@ -119,7 +118,7 @@ git checkout enhanced
 ./gradlew :androidApp:assembleFullDebug
 ```
 
-No Windows:
+On Windows:
 
 ```powershell
 git clone https://github.com/AKRusso/NuvioMobile-Enhanced.git
@@ -128,55 +127,53 @@ git checkout enhanced
 .\gradlew.bat :androidApp:assembleFullDebug
 ```
 
-Para validar o projeto:
+To run the main validation tasks:
 
 ```powershell
 .\gradlew.bat allTests :androidApp:lintFullDebug
 ```
 
-Credenciais, tokens e configurações privadas devem permanecer em
-`local.properties` ou nos secrets do GitHub Actions. Nunca coloques esses dados
-no Git.
+Credentials, tokens, and private configuration must stay in `local.properties` or
+GitHub Actions secrets. Never commit them to Git.
 
-## Contribuir
+## Contributing
 
-Pull requests e issues são bem-vindos. Antes de contribuir:
+Pull requests and issues are welcome. Before contributing:
 
-1. Confirma que a alteração pertence ao Enhanced e não ao upstream original.
-2. Mantém alterações focadas e explica o comportamento esperado.
-3. Executa os testes e o lint relevantes.
-4. Atualiza o changelog quando a alteração tiver impacto para utilizadores.
-5. Não incluas tokens, passwords, credenciais ou ficheiros privados.
+1. Confirm that the change belongs in Enhanced rather than the original upstream project.
+2. Keep changes focused and explain the expected behavior.
+3. Run the relevant tests and lint checks.
+4. Update the changelog when the change affects users.
+5. Never include tokens, passwords, credentials, or private files.
 
-Para alterações grandes, abre primeiro uma issue para discutir a direção.
+For larger changes, open an issue first so the direction can be discussed.
 
-## Créditos E Atribuição
+## Credits And Attribution
 
-Este é um fork comunitário independente. **NuvioMobile Enhanced não é o projeto
-original nem fala em nome dos maintainers do upstream.**
+This is an independent community fork. **NuvioMobile Enhanced is not the original
+project and does not speak on behalf of the upstream maintainers.**
 
-- Maintainer deste fork: [AKRusso](https://github.com/AKRusso)
-- Projeto original: [NuvioMedia/NuvioMobile](https://github.com/NuvioMedia/NuvioMobile)
-- Organização upstream: [NuvioMedia](https://github.com/NuvioMedia)
-- Asset de marca utilizado: [tapframe/NuvioTV](https://github.com/tapframe/NuvioTV)
+- Fork maintainer: [AKRusso](https://github.com/AKRusso)
+- Original project: [NuvioMedia/NuvioMobile](https://github.com/NuvioMedia/NuvioMobile)
+- Upstream organization: [NuvioMedia](https://github.com/NuvioMedia)
+- Brand asset used here: [tapframe/NuvioTV](https://github.com/tapframe/NuvioTV)
 
-As alterações específicas do fork estão no histórico Git, no changelog e nas
-release notes. O código original permanece sujeito à sua licença e atribuições.
+Fork-specific changes are documented in the Git history, changelog, and release
+notes. Original code remains subject to its license and attribution requirements.
 
-## Legal & DMCA
+## Legal And DMCA
 
-NuvioMobile Enhanced é uma interface client-side para navegar metadados e
-reproduzir media através de extensões instaladas pelo utilizador e/ou fontes
-fornecidas pelo utilizador. Usa-o apenas com conteúdo que possuas ou tenhas
-autorização para aceder.
+NuvioMobile Enhanced is a client-side interface for browsing metadata and playing
+media through user-installed extensions and/or user-provided sources. Use it only
+with content you own or are authorized to access.
 
-O projeto não aloja, guarda ou distribui conteúdo media e não é afiliado a
-extensões, catálogos, fontes ou fornecedores de conteúdo terceiros.
+The project does not host, store, or distribute media content and is not affiliated
+with third-party extensions, catalogs, sources, or content providers.
 
-- [Política legal e disclaimer](https://nuvioapp.space/legal)
-- [Licença GPL-3.0](LICENSE)
+- [Legal policy and disclaimer](https://nuvioapp.space/legal)
+- [GPL-3.0 license](LICENSE)
 
-## Histórico De Stars
+## Star History
 
 <a href="https://www.star-history.com/#AKRusso/NuvioMobile-Enhanced&type=date&legend=top-left">
   <picture>
