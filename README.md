@@ -58,6 +58,10 @@ For most Android phones, choose:
 
 **[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.7/androidApp-full-arm64-v8a-release.apk)**
 
+If you are unsure which architecture your device uses, download the universal APK:
+
+**[Universal APK - easiest option](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.7/androidApp-full-universal-release.apk)**
+
 Other architectures are available on the release page:
 
 - `armeabi-v7a`: older 32-bit Android devices.

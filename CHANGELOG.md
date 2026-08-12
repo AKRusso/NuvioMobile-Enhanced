@@ -5,13 +5,31 @@ same user-facing summary so the in-app updater can display it before download.
 
 ## 0.4.7 - 2026-08-12
 
-### Changed
+### Added
 
-- Added episode artwork to the Library release calendar, falling back to the
-  season or title artwork when an episode thumbnail is unavailable.
-- Added season and episode codes plus episode titles to calendar entries.
-- Removed the redundant Downloads management card from the Saved Library view.
+- Added the release calendar to the Saved Library with exact release dates.
+- Added episode artwork to calendar entries, falling back to season or title
+  artwork when an episode thumbnail is unavailable.
+- Added episode titles and season/episode codes to calendar entries.
+- Added a Downloads tab to the Library with active downloads, completed movies,
+  completed shows, and local playback.
+- Added Enhanced audio selector and Next Episode button settings.
+
+### Improved
+
+- Improved release calendar and release radar loading with concurrent metadata
+  resolution and profile-scoped caching.
+- Improved Library downloads presentation with progress, grouping, and direct
+  playback for completed local files.
+- Improved player subtitle, audio, and next-episode controls.
+
+### Fixed
+
 - Removed the post-login preparation gate so profiles open directly into the app.
+- Removed the redundant “Manage your downloaded movies and episodes” card from
+  the Saved Library view.
+- Fixed calendar entries that previously showed only a date and parent title by
+  preserving episode artwork and episode metadata.
 
 ### Release
 
