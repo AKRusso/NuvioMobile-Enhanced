@@ -3,6 +3,21 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.7 - 2026-08-12
+
+### Changed
+
+- Added episode artwork to the Library release calendar, falling back to the
+  season or title artwork when an episode thumbnail is unavailable.
+- Added season and episode codes plus episode titles to calendar entries.
+- Removed the redundant Downloads management card from the Saved Library view.
+- Removed the post-login preparation gate so profiles open directly into the app.
+
+### Release
+
+- This release is based on official NuvioMobile `0.4.4` and is versioned
+  independently as Nuvio Enhanced `0.4.7 (111)`.
+
 ## 0.4.6 - 2026-08-11
 
 ### Fixed

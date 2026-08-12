@@ -37,7 +37,7 @@ release builds.
 
 | Track | Version |
 | --- | --- |
-| Nuvio Enhanced | `0.4.6 (110)` |
+| Nuvio Enhanced | `0.4.7 (111)` |
 | Official NuvioMobile base | `0.4.4` |
 | Fork main branch | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
 | Maintainer | [AKRusso](https://github.com/AKRusso) |
@@ -52,11 +52,11 @@ fork.
 
 Always download from the official fork release:
 
-**[Download Nuvio Enhanced 0.4.6](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/tag/0.4.6)**
+**[Download Nuvio Enhanced 0.4.7](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/tag/0.4.7)**
 
 For most Android phones, choose:
 
-**[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.6/androidApp-full-arm64-v8a-release.apk)**
+**[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.7/androidApp-full-arm64-v8a-release.apk)**
 
 Other architectures are available on the release page:
 
