@@ -142,7 +142,17 @@ internal fun PlayerScreenRuntime.refreshTracks() {
     val selectedAudio = audioTracks.firstOrNull { it.isSelected }
     if (selectedAudio != null) selectedAudioIndex = selectedAudio.index
     val selectedSub = subtitleTracks.firstOrNull { it.isSelected }
-    if (selectedSub != null && !useCustomSubtitles) selectedSubtitleIndex = selectedSub.index
+    if (!useCustomSubtitles) {
+        if (manualSubtitleSelectionLocked) {
+            if (selectedSubtitleIndex < 0) {
+                if (selectedSub != null) playerController?.selectSubtitleTrack(-1)
+            } else if (selectedSub?.index != selectedSubtitleIndex) {
+                playerController?.selectSubtitleTrack(selectedSubtitleIndex)
+            }
+        } else if (selectedSub != null) {
+            selectedSubtitleIndex = selectedSub.index
+        }
+    }
 
     restorePersistedTrackPreferenceIfNeeded()
 

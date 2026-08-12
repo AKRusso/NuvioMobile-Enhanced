@@ -441,6 +441,9 @@ object PlayerStreamsRepository {
                     eligibleGroupIds = eligibleGroupIds,
                 ).firstOrNull() ?: group
 
+                // Show network results immediately; cache availability is an enrichment step.
+                publishStreamGroup(presentStreamGroup(checkingGroup))
+
                 val availabilityJob = launch {
                     val availabilityGroup = LocalDebridAvailabilityService.annotateCachedAvailability(
                         groups = listOf(checkingGroup),

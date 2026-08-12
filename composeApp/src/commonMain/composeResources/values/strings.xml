@@ -1256,8 +1256,10 @@
     <string name="theme_violet">Violet</string>
     <string name="theme_white">White</string>
     <string name="player_next_episode">Next Episode</string>
+    <string name="compose_player_next_ep">Next Ep</string>
     <string name="player_next_episode_finding_source">Finding source…</string>
     <string name="player_next_episode_playing_via_countdown">Playing via %1$s in %2$d…</string>
+    <string name="player_next_episode_ready_via">Ready via %1$s</string>
     <string name="player_next_episode_thumbnail">Next episode thumbnail</string>
     <string name="player_next_episode_unaired">Unaired</string>
     <string name="player_skip">Skip</string>
@@ -2664,4 +2666,8 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Choose between the Enhanced language-grouped selector and the latest Nuvio layout.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="nuvio_enhanced_audio_selector_title">Audio selector</string>
+    <string name="nuvio_enhanced_audio_selector_desc">Choose between the Enhanced audio selector and the latest Nuvio layout.</string>
+    <string name="nuvio_enhanced_next_episode_button_title">Next Ep button</string>
+    <string name="nuvio_enhanced_next_episode_button_desc">Show a Next Ep button when an aired episode is available. This only controls button visibility; provider choice remains linked to Playback &gt; Stream Auto-play, including source scope, allowed addons/plugins, timeout and binge-group rules.</string>
 </resources>

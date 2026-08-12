@@ -37,7 +37,7 @@ internal fun SubtitleModal(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (activeTab == SubtitleTab.Sync) {
+    if (activeTab == SubtitleTab.Sync && selectorStyle == NuvioSubtitleSelectorStyle.Enhanced) {
         EnhancedSubtitleModal(
             visible = visible,
             activeTab = activeTab,
@@ -103,6 +103,7 @@ internal fun SubtitleModal(
 
         NuvioSubtitleSelectorStyle.Nuvio -> NuvioSubtitleModal(
             visible = visible,
+            activeTab = activeTab,
             subtitleTracks = subtitleTracks,
             selectedSubtitleIndex = selectedSubtitleIndex,
             addonSubtitles = addonSubtitles,
@@ -111,11 +112,21 @@ internal fun SubtitleModal(
             preferredSubtitleLanguage = preferredSubtitleLanguage,
             secondaryPreferredSubtitleLanguage = secondaryPreferredSubtitleLanguage,
             subtitleStyle = subtitleStyle,
+            subtitleDelayMs = subtitleDelayMs,
             selectedAddonSubtitle = selectedAddonSubtitle,
+            subtitleAutoSyncState = subtitleAutoSyncState,
             onBuiltInTrackSelected = onBuiltInTrackSelected,
             onAddonSubtitleSelected = onAddonSubtitleSelected,
             onFetchAddonSubtitles = onFetchAddonSubtitles,
             onStyleChanged = onStyleChanged,
+            onSubtitleDelayChanged = onSubtitleDelayChanged,
+            onSubtitleDelayReset = onSubtitleDelayReset,
+            onAutoSyncCapture = onAutoSyncCapture,
+            onAutoSyncCueSelected = onAutoSyncCueSelected,
+            onAutoSyncReload = onAutoSyncReload,
+            onTogglePlayback = onTogglePlayback,
+            currentPlaybackPositionMs = currentPlaybackPositionMs,
+            isPlaying = isPlaying,
             onDismiss = onDismiss,
             modifier = modifier,
         )

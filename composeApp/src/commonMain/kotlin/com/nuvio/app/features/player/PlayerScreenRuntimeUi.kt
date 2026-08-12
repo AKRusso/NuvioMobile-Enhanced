@@ -332,6 +332,18 @@ private fun PlayerScreenRuntime.RenderPlayerControls(displayedPositionMs: Long, 
             },
             onSourcesClick = if (activeVideoId != null) { { openSourcesPanel() } } else null,
             onEpisodesClick = if (isSeries) { { openEpisodesPanel() } } else null,
+            onNextEpisodeClick = if (
+                nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
+                nuvioEnhancedSettingsUiState.nextEpisodeButtonEnabled &&
+                isSeries &&
+                nextEpisodeInfo?.hasAired == true
+            ) {
+                {
+                    playPreparedNextEpisode()
+                }
+            } else null,
+            nextEpisodeSearching = nextEpisodeAutoPlaySearching,
+            nextEpisodeReady = nextEpisodeAutoPlayReady,
             randomNextEpisodeMode = randomNextEpisodeMode,
             onRandomNextEpisodeModeToggle = if (
                 nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled &&
@@ -461,18 +473,21 @@ private fun BoxScope.RenderPlaybackOverlays(
         nextEpisodeInfo = nextEpisodeInfo,
         showNextEpisodeCard = showNextEpisodeCard,
         nextEpisodeAutoPlaySearching = nextEpisodeAutoPlaySearching,
+        nextEpisodeAutoPlayReady = nextEpisodeAutoPlayReady,
         nextEpisodeAutoPlaySourceName = nextEpisodeAutoPlaySourceName,
         nextEpisodeAutoPlayCountdown = nextEpisodeAutoPlayCountdown,
         onPlayNextEpisode = {
-            nextEpisodeAutoPlayJob?.cancel()
-            playNextEpisode()
+            playPreparedNextEpisode()
         },
         onDismissNextEpisode = {
             nextEpisodeAutoPlayJob?.cancel()
             showNextEpisodeCard = false
             nextEpisodeAutoPlaySearching = false
+            nextEpisodeAutoPlayReady = false
             nextEpisodeAutoPlaySourceName = null
             nextEpisodeAutoPlayCountdown = null
+            pendingNextEpisodeLaunch = false
+            pendingNextEpisodeLaunchWithCountdown = false
         },
         errorMessage = errorMessage,
             onDismissError = {
@@ -581,6 +596,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
         showAudioModal = showAudioModal,
         audioTracks = audioTracks,
         selectedAudioIndex = selectedAudioIndex,
+        audioSelectorStyle = nuvioEnhancedSettingsUiState.audioSelectorStyle,
         onAudioTrackSelected = { index ->
             selectedAudioIndex = index
             persistAudioPreference(audioTracks.firstOrNull { it.index == index })
@@ -613,24 +629,32 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             playerSettingsUiState.subtitleSyncMenuEnabled,
         currentPlaybackPositionMs = playbackSnapshot.positionMs,
         isPlaying = playbackSnapshot.isPlaying,
-        onBuiltInSubtitleTrackSelected = { index ->
-            val wasCustom = useCustomSubtitles
-            selectedSubtitleIndex = index
-            selectedAddonSubtitleId = null
-            useCustomSubtitles = false
-            persistInternalSubtitlePreference(subtitleTracks.firstOrNull { it.index == index })
-            if (wasCustom) {
-                playerController?.clearExternalSubtitleAndSelect(index)
+         onBuiltInSubtitleTrackSelected = { index ->
+             val wasCustom = useCustomSubtitles
+             selectedSubtitleIndex = index
+             selectedAddonSubtitleId = null
+             useCustomSubtitles = false
+             manualSubtitleSelectionLocked = true
+             // A manual choice must survive track refreshes caused by seeking.
+             trackPreferenceRestoreApplied = true
+             preferredSubtitleSelectionApplied = true
+             persistInternalSubtitlePreference(subtitleTracks.firstOrNull { it.index == index })
+             if (wasCustom) {
+                 playerController?.clearExternalSubtitleAndSelect(index)
             } else {
                 playerController?.selectSubtitleTrack(index)
             }
         },
-        onAddonSubtitleSelected = { addon ->
-            selectedAddonSubtitleId = addon.id
-            selectedSubtitleIndex = -1
-            useCustomSubtitles = true
-            persistAddonSubtitlePreference(addon)
-            playerController?.setSubtitleUri(addon.url)
+         onAddonSubtitleSelected = { addon ->
+             selectedAddonSubtitleId = addon.id
+             selectedSubtitleIndex = -1
+             useCustomSubtitles = true
+             manualSubtitleSelectionLocked = true
+             // Do not let the next player refresh replace a manual addon choice.
+             trackPreferenceRestoreApplied = true
+             preferredSubtitleSelectionApplied = true
+             persistAddonSubtitlePreference(addon)
+             playerController?.setSubtitleUri(addon.url)
         },
         onFetchAddonSubtitles = { fetchAddonSubtitlesForActiveItem() },
         onSubtitleStyleChanged = PlayerSettingsRepository::setSubtitleStyle,

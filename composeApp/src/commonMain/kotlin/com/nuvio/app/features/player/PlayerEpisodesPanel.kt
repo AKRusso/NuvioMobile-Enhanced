@@ -455,40 +455,68 @@ private fun EpisodeStreamsPanelContent(
 
     Column(modifier = modifier) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PlayerDialogButton(
-                label = stringResource(Res.string.action_back),
-                onClick = onBack,
-            )
-            PlayerDialogButton(
-                label = stringResource(Res.string.compose_action_reload),
-                onClick = onReload,
-            )
-            Text(
-                text = buildString {
-                    if (episode.season != null && episode.episode != null) {
-                        append(
-                            stringResource(
-                                Res.string.compose_player_episode_code_full,
-                                episode.season,
-                                episode.episode,
-                            ),
-                        )
-                    }
-                    if (episode.title.isNotBlank()) {
-                        if (isNotEmpty()) append(" • ")
-                        append(episode.title)
-                    }
-                },
-                color = tokens.colors.textSecondary,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            if (episode.thumbnail != null) {
+                AsyncImage(
+                    model = episode.thumbnail,
+                    contentDescription = episode.title,
+                    modifier = Modifier
+                        .width(80.dp)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PlayerDialogButton(
+                        label = stringResource(Res.string.action_back),
+                        onClick = onBack,
+                    )
+                    PlayerDialogButton(
+                        label = stringResource(Res.string.compose_action_reload),
+                        onClick = onReload,
+                    )
+                }
+                Text(
+                    text = buildString {
+                        if (episode.season != null && episode.episode != null) {
+                            append(
+                                stringResource(
+                                    Res.string.compose_player_episode_code_full,
+                                    episode.season,
+                                    episode.episode,
+                                ),
+                            )
+                        }
+                        if (episode.title.isNotBlank()) {
+                            if (isNotEmpty()) append(" • ")
+                            append(episode.title)
+                        }
+                    },
+                    color = tokens.colors.textPrimary,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                episode.overview?.takeIf { it.isNotBlank() }?.let { overview ->
+                    Text(
+                        text = overview,
+                        color = tokens.colors.textMuted,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(16.dp))

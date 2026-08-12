@@ -23,14 +23,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -42,7 +47,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,12 +65,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.nuvio.app.core.i18n.localizedByteUnit
+import com.nuvio.app.core.i18n.localizedMonthName
+import com.nuvio.app.core.i18n.localizedShortMonthName
+import com.nuvio.app.core.i18n.localizedSeasonEpisodeCode
+import com.nuvio.app.core.format.formatReleaseDateForDisplay
+import com.nuvio.app.core.ui.NuvioBottomSheetDivider
+import com.nuvio.app.core.ui.NuvioModalBottomSheet
+import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.DisintegratingContainer
@@ -82,6 +98,15 @@ import com.nuvio.app.features.cloud.CloudLibraryItemType
 import com.nuvio.app.features.cloud.CloudLibraryRepository
 import com.nuvio.app.features.cloud.CloudLibraryUiState
 import com.nuvio.app.features.debrid.DebridSettingsRepository
+import com.nuvio.app.features.details.MetaDetails
+import com.nuvio.app.features.details.MetaDetailsRepository
+import com.nuvio.app.features.details.MetaVideo
+import com.nuvio.app.features.downloads.DownloadItem
+import com.nuvio.app.features.downloads.DownloadsRepository
+import com.nuvio.app.features.downloads.DownloadsUiState
+import com.nuvio.app.features.downloads.sortedForSeriesDownloads
+import com.nuvio.app.features.home.libraryItemKeyForHomeRadar
+import com.nuvio.app.features.home.homeRadarDetailsRequestKey
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomePosterCard
 import com.nuvio.app.features.home.components.HomeSkeletonRow
@@ -90,9 +115,18 @@ import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tracking.TrackingRefreshIntent
 import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watching.application.WatchingState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -105,6 +139,8 @@ fun LibraryScreen(
     onSectionViewAllClick: ((LibrarySection, LibrarySortOption) -> Unit)? = null,
     onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
     onConnectCloudClick: (() -> Unit)? = null,
+    onDownloadsClick: (() -> Unit)? = null,
+    onOpenDownload: ((DownloadItem) -> Unit)? = null,
 ) {
     val uiState by remember {
         LibraryRepository.ensureLoaded()
@@ -124,6 +160,10 @@ fun LibraryScreen(
         LibraryDisplaySettingsRepository.ensureLoaded()
         LibraryDisplaySettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    val downloadsUiState by remember {
+        DownloadsRepository.ensureLoaded()
+        DownloadsRepository.uiState
+    }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var observedOfflineState by remember { mutableStateOf(false) }
     var sourceModeName by rememberSaveable { mutableStateOf(LibraryViewMode.Saved.name) }
@@ -139,6 +179,23 @@ fun LibraryScreen(
     var selectedCloudItemKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedLibrarySectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedLibraryType by rememberSaveable { mutableStateOf<String?>(null) }
+    var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
+    val releaseCalendarItemsKey = remember(uiState.items) { libraryCalendarItemsCacheKey(uiState.items) }
+    val releaseCalendarFallbackEvents = remember(releaseCalendarItemsKey) {
+        buildLibraryReleaseCalendarFallbackEvents(uiState.items)
+    }
+    var releaseCalendarEvents by remember { mutableStateOf(releaseCalendarFallbackEvents) }
+    var releaseCalendarLoading by remember { mutableStateOf(false) }
+    var releaseCalendarLoadedKey by remember { mutableStateOf<String?>(null) }
+    val releaseRadarDetailsRequestKey = remember(uiState.items) { uiState.items.homeRadarDetailsRequestKey() }
+    val releaseSupportProfileId = ProfileRepository.activeProfileId
+    val releaseSupportCacheKey = remember(releaseCalendarItemsKey, releaseRadarDetailsRequestKey) {
+        libraryReleaseSupportCacheKey(
+            calendarItemsKey = releaseCalendarItemsKey,
+            radarDetailsRequestKey = releaseRadarDetailsRequestKey,
+        )
+    }
+    var releaseRadarDetailsByKey by remember { mutableStateOf<Map<String, MetaDetails>>(emptyMap()) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val isRemoteSource = uiState.sourceMode != LibrarySourceMode.LOCAL
@@ -216,9 +273,77 @@ fun LibraryScreen(
         }
     }
 
+    LaunchedEffect(releaseSupportProfileId, releaseSupportCacheKey, releaseCalendarFallbackEvents) {
+        val cachedDetails = loadLibraryReleaseSupportCache(
+            profileId = releaseSupportProfileId,
+            cacheKey = releaseSupportCacheKey,
+        )?.detailsByKey.orEmpty()
+        releaseCalendarEvents = if (cachedDetails.isNotEmpty()) {
+            buildLibraryReleaseCalendarEventsFromDetails(uiState.items, cachedDetails)
+        } else {
+            releaseCalendarFallbackEvents
+        }
+        releaseCalendarLoading = false
+        releaseCalendarLoadedKey = null
+    }
+
+    LaunchedEffect(showReleaseCalendar, releaseSupportProfileId, releaseSupportCacheKey) {
+        if (!showReleaseCalendar) return@LaunchedEffect
+        val itemsSnapshot = uiState.items
+        if (releaseCalendarLoadedKey == releaseSupportCacheKey) return@LaunchedEffect
+        val cachedPayload = loadLibraryReleaseSupportCache(releaseSupportProfileId, releaseSupportCacheKey)
+        val cachedDetails = cachedPayload?.detailsByKey.orEmpty()
+        releaseCalendarEvents = if (cachedDetails.isNotEmpty()) {
+            buildLibraryReleaseCalendarEventsFromDetails(itemsSnapshot, cachedDetails)
+        } else {
+            releaseCalendarFallbackEvents
+        }
+        if (itemsSnapshot.isEmpty()) {
+            releaseCalendarLoadedKey = releaseSupportCacheKey
+            return@LaunchedEffect
+        }
+        if (cachedPayload?.isFresh() == true) {
+            releaseCalendarLoadedKey = releaseSupportCacheKey
+            return@LaunchedEffect
+        }
+        releaseCalendarLoading = cachedPayload == null
+        try {
+            val resolvedDetails = resolveLibraryReleaseRadarDetails(itemsSnapshot)
+            val nextDetails = if (cachedDetails.isNotEmpty()) cachedDetails + resolvedDetails else resolvedDetails
+            if (nextDetails.isNotEmpty()) {
+                saveLibraryReleaseSupportCache(releaseSupportProfileId, releaseSupportCacheKey, nextDetails)
+            }
+            releaseCalendarEvents = buildLibraryReleaseCalendarEventsFromDetails(itemsSnapshot, nextDetails)
+            releaseCalendarLoadedKey = releaseSupportCacheKey
+        } finally {
+            releaseCalendarLoading = false
+        }
+    }
+
+    LaunchedEffect(sourceMode, releaseSupportProfileId, releaseSupportCacheKey) {
+        if (sourceMode == LibraryViewMode.Cloud || releaseRadarDetailsRequestKey.isBlank()) {
+            releaseRadarDetailsByKey = emptyMap()
+            return@LaunchedEffect
+        }
+        val cachedPayload = loadLibraryReleaseSupportCache(releaseSupportProfileId, releaseSupportCacheKey)
+        val cachedDetails = cachedPayload?.detailsByKey.orEmpty()
+        if (cachedDetails.isNotEmpty()) {
+            releaseRadarDetailsByKey = cachedDetails
+            if (cachedPayload?.isFresh() == true) return@LaunchedEffect
+        }
+        val resolvedDetails = withContext(Dispatchers.Default) {
+            resolveLibraryReleaseRadarDetails(uiState.items)
+        }
+        val nextDetails = if (cachedDetails.isNotEmpty()) cachedDetails + resolvedDetails else resolvedDetails
+        if (nextDetails.isNotEmpty()) {
+            releaseRadarDetailsByKey = nextDetails
+            saveLibraryReleaseSupportCache(releaseSupportProfileId, releaseSupportCacheKey, nextDetails)
+        }
+    }
+
     val disintegration = remember { LibraryDisintegrationHolder() }
     val librarySectionsDisplay = if (
-        sourceMode != LibraryViewMode.Cloud &&
+        sourceMode == LibraryViewMode.Saved &&
         displaySettings.layoutMode == LibraryLayoutMode.HORIZONTAL &&
         uiState.isLoaded &&
         sortedSections.isNotEmpty()
@@ -255,6 +380,8 @@ fun LibraryScreen(
                         NuvioScreenHeader(
                             title = if (sourceMode == LibraryViewMode.Cloud) {
                                 stringResource(Res.string.library_title)
+                            } else if (sourceMode == LibraryViewMode.Downloads) {
+                                stringResource(Res.string.compose_settings_root_downloads_title)
                             } else {
                                 when (uiState.sourceMode) {
                                     LibrarySourceMode.LOCAL -> stringResource(Res.string.library_title)
@@ -294,6 +421,13 @@ fun LibraryScreen(
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                         }
+                                    }
+                                    IconButton(onClick = { showReleaseCalendar = true }) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CalendarMonth,
+                                            contentDescription = stringResource(Res.string.library_calendar_open),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
                             },
@@ -341,6 +475,13 @@ fun LibraryScreen(
                     onBackToItems = { selectedCloudItemKey = null },
                     onRefresh = { CloudLibraryRepository.refresh() },
                     onConnectCloudClick = onConnectCloudClick,
+                )
+            } else if (sourceMode == LibraryViewMode.Downloads) {
+                downloadsLibraryContent(
+                    uiState = downloadsUiState,
+                    showHeaderAccent = true,
+                    onOpenDownload = onOpenDownload,
+                    onDownloadsClick = onDownloadsClick,
                 )
             } else {
                 when {
@@ -455,6 +596,672 @@ fun LibraryScreen(
             }
         }
     }
+
+    if (showReleaseCalendar) {
+        LibraryReleaseCalendarSheet(
+            events = releaseCalendarEvents,
+            onDismiss = { showReleaseCalendar = false },
+            onPosterClick = onPosterClick,
+        )
+    }
+}
+
+private fun LazyListScope.downloadsLibraryContent(
+    uiState: DownloadsUiState,
+    showHeaderAccent: Boolean,
+    onOpenDownload: ((DownloadItem) -> Unit)?,
+    onDownloadsClick: (() -> Unit)?,
+) {
+    val activeItems = uiState.activeItems.sortedByDescending { it.updatedAtEpochMs }
+    val completedMovies = uiState.completedItems
+        .filterNot(DownloadItem::isEpisode)
+        .sortedByDescending { it.updatedAtEpochMs }
+    val completedShows = uiState.completedItems
+        .filter(DownloadItem::isEpisode)
+        .groupBy { it.parentMetaId }
+        .mapNotNull { (_, episodes) ->
+            episodes.sortedForSeriesDownloads().lastOrNull()?.let { latest ->
+                LibraryDownloadShowGroup(latest, episodes)
+            }
+        }
+        .sortedBy { it.representative.title.lowercase() }
+
+    if (uiState.items.isEmpty()) {
+        item(key = "library-downloads-empty") {
+            LibraryDownloadsEmptyState(
+                onManageClick = onDownloadsClick,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 26.dp),
+            )
+        }
+        return
+    }
+
+    item(key = "library-downloads-overview") {
+        LibraryDownloadsOverview(
+            activeCount = activeItems.size,
+            movieCount = completedMovies.size,
+            showCount = completedShows.size,
+            onManageClick = onDownloadsClick,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+
+    if (activeItems.isNotEmpty()) {
+        item(key = "library-downloads-active") {
+            NuvioShelfSection(
+                title = stringResource(Res.string.downloads_section_active),
+                entries = activeItems.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
+                headerHorizontalPadding = 16.dp,
+                rowContentPadding = PaddingValues(horizontal = 16.dp),
+                showHeaderAccent = showHeaderAccent,
+                onViewAllClick = onDownloadsClick,
+                viewAllPillSize = NuvioViewAllPillSize.Compact,
+                key = { item -> item.id },
+            ) { item ->
+                LibraryActiveDownloadCard(
+                    item = item,
+                    onClick = {
+                        if (item.isPlayable) onOpenDownload?.invoke(item) else onDownloadsClick?.invoke()
+                    },
+                )
+            }
+        }
+    }
+
+    if (completedMovies.isNotEmpty()) {
+        item(key = "library-downloads-movies") {
+            NuvioShelfSection(
+                title = stringResource(Res.string.downloads_section_movies),
+                entries = completedMovies.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
+                headerHorizontalPadding = 16.dp,
+                rowContentPadding = PaddingValues(horizontal = 16.dp),
+                showHeaderAccent = showHeaderAccent,
+                onViewAllClick = onDownloadsClick,
+                viewAllPillSize = NuvioViewAllPillSize.Compact,
+                key = { item -> item.id },
+            ) { item ->
+                HomePosterCard(
+                    item = item.toDownloadedLibraryItem().toMetaPreview(),
+                    isWatched = false,
+                    onClick = { onOpenDownload?.invoke(item) },
+                )
+            }
+        }
+    }
+
+    if (completedShows.isNotEmpty()) {
+        item(key = "library-downloads-shows") {
+            NuvioShelfSection(
+                title = stringResource(Res.string.downloads_section_shows),
+                entries = completedShows.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
+                headerHorizontalPadding = 16.dp,
+                rowContentPadding = PaddingValues(horizontal = 16.dp),
+                showHeaderAccent = showHeaderAccent,
+                onViewAllClick = onDownloadsClick,
+                viewAllPillSize = NuvioViewAllPillSize.Compact,
+                key = { group -> group.representative.parentMetaId },
+            ) { group ->
+                val representative = group.representative
+                HomePosterCard(
+                    item = representative.toDownloadedLibraryItem().copy(
+                        releaseInfo = stringResource(Res.string.downloads_episode_count, group.episodes.size),
+                    ).toMetaPreview(),
+                    isWatched = false,
+                    onClick = onDownloadsClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryDownloadsEmptyState(
+    onManageClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.downloads_empty_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = stringResource(Res.string.downloads_empty_message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (onManageClick != null) {
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(22.dp))
+                    .clickable(onClick = onManageClick),
+                shape = RoundedCornerShape(22.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+            ) {
+                Text(
+                    text = stringResource(Res.string.downloads_show_downloads),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryDownloadsOverview(
+    activeCount: Int,
+    movieCount: Int,
+    showCount: Int,
+    onManageClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        listOf(
+            stringResource(Res.string.downloads_section_active) to activeCount,
+            stringResource(Res.string.downloads_section_movies) to movieCount,
+            stringResource(Res.string.downloads_section_shows) to showCount,
+        ).forEach { (label, value) ->
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(value.toString(), fontWeight = FontWeight.Bold)
+                    Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        if (onManageClick != null) {
+            IconButton(onClick = onManageClick) {
+                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryActiveDownloadCard(
+    item: DownloadItem,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(item.episodeTitle ?: item.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(item.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LinearProgressIndicator(
+                progress = { item.progressFraction },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+private data class LibraryDownloadShowGroup(
+    val representative: DownloadItem,
+    val episodes: List<DownloadItem>,
+)
+
+private fun DownloadItem.toDownloadedLibraryItem(): LibraryItem {
+    val snapshot = detailsSnapshot
+    val type = snapshot?.type?.trim()?.takeIf { it.isNotBlank() }
+        ?: parentMetaType.trim().ifBlank { contentType.trim() }.ifBlank { "movie" }
+    return LibraryItem(
+        id = snapshot?.id?.trim()?.takeIf { it.isNotBlank() } ?: parentMetaId.trim().ifBlank { id },
+        type = type,
+        name = snapshot?.name?.trim()?.takeIf { it.isNotBlank() } ?: title.trim().ifBlank { streamTitle },
+        poster = snapshot?.poster ?: poster ?: episodeThumbnail,
+        banner = snapshot?.background ?: background,
+        logo = snapshot?.logo ?: logo,
+        description = snapshot?.description ?: episodeOverview,
+        releaseInfo = snapshot?.releaseInfo,
+        imdbRating = snapshot?.imdbRating,
+        genres = snapshot?.genres.orEmpty(),
+        savedAtEpochMs = updatedAtEpochMs.takeIf { it > 0L } ?: createdAtEpochMs,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LibraryReleaseCalendarSheet(
+    events: List<LibraryCalendarEvent>,
+    onDismiss: () -> Unit,
+    onPosterClick: ((LibraryItem) -> Unit)?,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val initialMonth = remember(events) { initialLibraryCalendarMonth(events) }
+    var visibleMonth by remember(events) { mutableStateOf(initialMonth) }
+    val monthEvents = remember(events, visibleMonth) {
+        events.filter { it.date.year == visibleMonth.year && it.date.month == visibleMonth.month }
+            .sortedBy { it.date.iso }
+    }
+    val eventsByDate = remember(events) { events.groupBy { it.date.iso } }
+    var selectedDateIso by remember(events) { mutableStateOf(monthEvents.firstOrNull()?.date?.iso) }
+    val selectedEvents = selectedDateIso?.let(eventsByDate::get).orEmpty()
+    NuvioModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(Res.string.library_calendar_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(Res.string.library_calendar_exact_dates_only), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Rounded.Close, contentDescription = stringResource(Res.string.action_close))
+                }
+            }
+            if (events.isEmpty()) {
+                Text(stringResource(Res.string.library_calendar_empty_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(Res.string.library_calendar_empty_message), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    IconButton(onClick = { visibleMonth = visibleMonth.previous(); selectedDateIso = null }) {
+                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, contentDescription = stringResource(Res.string.library_calendar_previous_month))
+                    }
+                    Text(visibleMonth.displayTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { visibleMonth = visibleMonth.next(); selectedDateIso = null }) {
+                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = stringResource(Res.string.library_calendar_next_month))
+                    }
+                }
+                LibraryCalendarWeekdayHeader()
+                LibraryCalendarMonthGrid(
+                    month = visibleMonth,
+                    eventsByDate = eventsByDate,
+                    selectedDateIso = selectedDateIso,
+                    onDateSelected = { selectedDateIso = it.iso },
+                )
+                NuvioBottomSheetDivider()
+                val visibleEvents = selectedEvents.ifEmpty { monthEvents }
+                Text(
+                    text = if (selectedEvents.isNotEmpty()) {
+                        stringResource(Res.string.library_calendar_selected_day, displayLibraryCalendarDate(selectedDateIso.orEmpty()))
+                    } else {
+                        stringResource(Res.string.library_calendar_month_events)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                visibleEvents.forEach { event ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onPosterClick?.invoke(event.item) },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.36f),
+                        shape = RoundedCornerShape(16.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "${event.date.day} ${localizedShortMonthName(event.date.month)}",
+                                modifier = Modifier.width(44.dp),
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 56.dp, height = 76.dp)
+                                    .clip(RoundedCornerShape(10.dp)),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                event.artwork?.let { artwork ->
+                                    AsyncImage(
+                                        model = artwork,
+                                        contentDescription = event.displayTitle,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                }
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = event.displayTitle,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                event.episodeCode?.let { code ->
+                                    Text(
+                                        text = code,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                    )
+                                }
+                                Text(
+                                    formatReleaseDateForDisplay(event.rawReleaseInfo),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarWeekdayHeader() {
+    val labels = listOf(
+        Res.string.library_calendar_weekday_mon,
+        Res.string.library_calendar_weekday_tue,
+        Res.string.library_calendar_weekday_wed,
+        Res.string.library_calendar_weekday_thu,
+        Res.string.library_calendar_weekday_fri,
+        Res.string.library_calendar_weekday_sat,
+        Res.string.library_calendar_weekday_sun,
+    )
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        labels.forEach { label ->
+            Text(stringResource(label), modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun LibraryCalendarMonthGrid(
+    month: LibraryCalendarMonth,
+    eventsByDate: Map<String, List<LibraryCalendarEvent>>,
+    selectedDateIso: String?,
+    onDateSelected: (LibraryCalendarDate) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        libraryCalendarCells(month).chunked(7).forEach { week ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                week.forEach { date ->
+                    if (date == null) {
+                        Spacer(Modifier.weight(1f).height(44.dp))
+                    } else {
+                        val hasEvents = eventsByDate[date.iso].orEmpty().isNotEmpty()
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable(enabled = hasEvents) { onDateSelected(date) },
+                            color = when {
+                                selectedDateIso == date.iso -> MaterialTheme.colorScheme.primary
+                                hasEvents -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
+                                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                Text(date.day.toString(), color = if (selectedDateIso == date.iso) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                                if (hasEvents) Text(eventsByDate[date.iso].orEmpty().size.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class LibraryCalendarEvent(
+    val date: LibraryCalendarDate,
+    val rawReleaseInfo: String,
+    val item: LibraryItem,
+    val displayTitle: String = item.name,
+    val artwork: String? = item.poster ?: item.banner,
+    val season: Int? = null,
+    val episode: Int? = null,
+) {
+    val episodeCode: String? = if (season != null && episode != null) {
+        localizedSeasonEpisodeCode(season, episode)
+    } else {
+        null
+    }
+}
+
+private fun MetaVideo.calendarDisplayTitle(item: LibraryItem): String =
+    title.trim().takeIf { it.isNotBlank() } ?: item.name
+
+private fun MetaVideo.calendarArtwork(item: LibraryItem): String? =
+    thumbnail?.takeIf { it.isNotBlank() }
+        ?: seasonPoster?.takeIf { it.isNotBlank() }
+        ?: item.poster?.takeIf { it.isNotBlank() }
+        ?: item.banner?.takeIf { it.isNotBlank() }
+
+private fun MetaVideo.toLibraryCalendarEvent(item: LibraryItem): LibraryCalendarEvent? {
+    val raw = released?.takeIf { it.isNotBlank() } ?: return null
+    val date = parseLibraryCalendarDate(raw) ?: return null
+    return LibraryCalendarEvent(
+        date = date,
+        rawReleaseInfo = raw,
+        item = item,
+        displayTitle = calendarDisplayTitle(item),
+        artwork = calendarArtwork(item),
+        season = season,
+        episode = episode,
+    )
+}
+
+private data class LibraryCalendarDate(val year: Int, val month: Int, val day: Int) {
+    val iso: String = "${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}"
+}
+
+private data class LibraryCalendarMonth(val year: Int, val month: Int) {
+    val displayTitle: String = "${localizedMonthName(month)} $year"
+    fun previous() = if (month == 1) LibraryCalendarMonth(year - 1, 12) else copy(month = month - 1)
+    fun next() = if (month == 12) LibraryCalendarMonth(year + 1, 1) else copy(month = month + 1)
+}
+
+private fun libraryCalendarItemsCacheKey(items: List<LibraryItem>): String =
+    items.joinToString(separator = "|") { item ->
+        "${item.type}:${item.id}:${item.releaseInfo.orEmpty()}"
+    }
+
+private fun libraryReleaseSupportCacheKey(
+    calendarItemsKey: String,
+    radarDetailsRequestKey: String,
+): String = "release_support_v2:${calendarItemsKey.hashCode()}:${radarDetailsRequestKey.hashCode()}"
+
+private suspend fun buildLibraryReleaseCalendarEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> {
+    val resolvedDetails = resolveLibraryReleaseRadarDetails(items)
+    return buildLibraryReleaseCalendarEventsFromDetails(items, resolvedDetails)
+}
+
+private fun buildLibraryReleaseCalendarEventsFromDetails(
+    items: List<LibraryItem>,
+    detailsByKey: Map<String, MetaDetails>,
+): List<LibraryCalendarEvent> {
+    val fallbackEvents = buildLibraryReleaseCalendarFallbackEvents(items)
+    val libraryItemsByRadarKey = items.associateBy(::libraryItemKeyForHomeRadar)
+    val episodeEvents = detailsByKey.flatMap { (radarKey, details) ->
+        val item = libraryItemsByRadarKey[radarKey] ?: return@flatMap emptyList()
+        details.videos.mapNotNull { video -> video.toLibraryCalendarEvent(item) }
+    }
+    val seriesWithEpisodeEvents = episodeEvents.map { it.item.id to it.item.type.lowercase() }.toSet()
+    return (episodeEvents + fallbackEvents.filterNot { event ->
+        event.item.isLibrarySeries() && (event.item.id to event.item.type.lowercase()) in seriesWithEpisodeEvents
+    }).distinctBy {
+        it.date.iso + it.item.type + it.item.id + it.season + it.episode + it.displayTitle
+    }
+        .sortedBy { it.date.iso }
+}
+
+private fun buildLibraryReleaseCalendarFallbackEvents(items: List<LibraryItem>): List<LibraryCalendarEvent> =
+    items.asSequence().mapNotNull { item ->
+        val raw = item.releaseInfo?.trim()?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val date = parseLibraryCalendarDate(raw) ?: return@mapNotNull null
+        LibraryCalendarEvent(date, raw, item)
+    }.sortedBy { it.date.iso }.toList()
+
+private suspend fun resolveLibraryReleaseRadarDetails(items: List<LibraryItem>): Map<String, MetaDetails> =
+    coroutineScope {
+        val resolved = mutableListOf<Pair<String, MetaDetails>>()
+        items.filter(LibraryItem::isLibrarySeries)
+            .take(LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT)
+            .chunked(LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY)
+            .forEach { chunk ->
+                resolved += chunk.map { item ->
+                    async {
+                        val details = runCatching { MetaDetailsRepository.fetch(item.type, item.id) }.getOrNull()
+                            ?: return@async null
+                        libraryItemKeyForHomeRadar(item) to details
+                    }
+                }.awaitAll().filterNotNull()
+            }
+        resolved.toMap()
+    }
+
+private fun loadLibraryReleaseSupportCache(profileId: Int, cacheKey: String): LibraryReleaseSupportCachePayload? =
+    LibraryStorage.loadReleaseSupportPayload(profileId, cacheKey)
+        ?.let { payload -> runCatching { libraryReleaseSupportJson.decodeFromString<StoredLibraryReleaseSupportPayload>(payload) }.getOrNull() }
+        ?.toCachePayload()
+
+private fun saveLibraryReleaseSupportCache(profileId: Int, cacheKey: String, detailsByKey: Map<String, MetaDetails>) {
+    if (detailsByKey.isEmpty()) return
+    val payload = StoredLibraryReleaseSupportPayload(
+        fetchedAtEpochMs = LibraryClock.nowEpochMs(),
+        details = detailsByKey.map { (key, details) -> StoredLibraryReleaseSupportDetail.from(key, details) },
+    )
+    runCatching { LibraryStorage.saveReleaseSupportPayload(profileId, cacheKey, libraryReleaseSupportJson.encodeToString(payload)) }
+}
+
+private data class LibraryReleaseSupportCachePayload(
+    val fetchedAtEpochMs: Long,
+    val detailsByKey: Map<String, MetaDetails>,
+) {
+    fun isFresh(nowEpochMs: Long = LibraryClock.nowEpochMs()): Boolean =
+        fetchedAtEpochMs > 0L && nowEpochMs - fetchedAtEpochMs <= LIBRARY_RELEASE_SUPPORT_CACHE_TTL_MS && detailsByKey.isNotEmpty()
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportPayload(
+    val fetchedAtEpochMs: Long,
+    val details: List<StoredLibraryReleaseSupportDetail> = emptyList(),
+) {
+    fun toCachePayload() = LibraryReleaseSupportCachePayload(
+        fetchedAtEpochMs,
+        details.associate { it.key to it.toMetaDetails() },
+    )
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportDetail(
+    val key: String,
+    val id: String,
+    val type: String,
+    val name: String,
+    val poster: String? = null,
+    val background: String? = null,
+    val logo: String? = null,
+    val description: String? = null,
+    val releaseInfo: String? = null,
+    val imdbRating: String? = null,
+    val genres: List<String> = emptyList(),
+    val videos: List<StoredLibraryReleaseSupportVideo> = emptyList(),
+) {
+    fun toMetaDetails() = MetaDetails(
+        id, type, name, poster = poster, background = background, logo = logo,
+        description = description, releaseInfo = releaseInfo, imdbRating = imdbRating,
+        genres = genres, videos = videos.map { it.toMetaVideo() },
+    )
+
+    companion object {
+        fun from(key: String, details: MetaDetails) = StoredLibraryReleaseSupportDetail(
+            key, details.id, details.type, details.name, details.poster, details.background,
+            details.logo, details.description, details.releaseInfo, details.imdbRating,
+            details.genres, details.videos.map { StoredLibraryReleaseSupportVideo.from(it) },
+        )
+    }
+}
+
+@Serializable
+private data class StoredLibraryReleaseSupportVideo(
+    val id: String,
+    val title: String,
+    val released: String? = null,
+    val thumbnail: String? = null,
+    val seasonPoster: String? = null,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val overview: String? = null,
+    val runtime: Int? = null,
+) {
+    fun toMetaVideo() = MetaVideo(id, title, released, thumbnail = thumbnail, seasonPoster = seasonPoster, season = season, episode = episode, overview = overview, runtime = runtime)
+
+    companion object {
+        fun from(video: MetaVideo) = StoredLibraryReleaseSupportVideo(video.id, video.title, video.released, video.thumbnail, video.seasonPoster, video.season, video.episode, video.overview, video.runtime)
+    }
+}
+
+private fun parseLibraryCalendarDate(raw: String?): LibraryCalendarDate? {
+    val parts = raw?.trim()?.substringBefore('T')?.split('-') ?: return null
+    if (parts.size != 3) return null
+    val year = parts[0].toIntOrNull()?.takeIf { it in 1000..9999 } ?: return null
+    val month = parts[1].toIntOrNull()?.takeIf { it in 1..12 } ?: return null
+    val day = parts[2].toIntOrNull()?.takeIf { it in 1..daysInLibraryCalendarMonth(year, month) } ?: return null
+    return LibraryCalendarDate(year, month, day)
+}
+
+private fun LibraryItem.isLibrarySeries(): Boolean =
+    type.equals("series", true) || type.equals("tv", true) || type.equals("show", true) || type.equals("tvshow", true)
+
+private fun initialLibraryCalendarMonth(events: List<LibraryCalendarEvent>): LibraryCalendarMonth {
+    val today = CurrentDateProvider.todayIsoDate()
+    val target = events.firstOrNull { it.date.iso >= today }?.date ?: events.lastOrNull()?.date
+    return LibraryCalendarMonth(target?.year ?: 1970, target?.month ?: 1)
+}
+
+private fun displayLibraryCalendarDate(iso: String): String {
+    val parts = iso.split('-')
+    return if (parts.size == 3) "${parts[2].toIntOrNull() ?: parts[2]} ${localizedMonthName(parts[1].toIntOrNull() ?: 1)} ${parts[0]}" else iso
+}
+
+private fun libraryCalendarCells(month: LibraryCalendarMonth): List<LibraryCalendarDate?> {
+    val cells = MutableList<LibraryCalendarDate?>(firstLibraryCalendarWeekdayOffset(month.year, month.month)) { null }
+    repeat(daysInLibraryCalendarMonth(month.year, month.month)) { cells += LibraryCalendarDate(month.year, month.month, it + 1) }
+    while (cells.size < 42) cells += null
+    return cells
+}
+
+private fun daysInLibraryCalendarMonth(year: Int, month: Int): Int = when (month) {
+    2 -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
+    4, 6, 9, 11 -> 30
+    else -> 31
+}
+
+private fun firstLibraryCalendarWeekdayOffset(year: Int, month: Int): Int {
+    val y = if (month < 3) year - 1 else year
+    val m = if (month < 3) month + 12 else month
+    return ((1 + (13 * (m + 1)) / 5 + y + y / 4 - y / 100 + y / 400) % 7 + 6) % 7
 }
 
 private fun LazyListScope.cloudLibraryContent(
@@ -654,6 +1461,11 @@ private fun LibrarySourceSwitch(
             label = stringResource(Res.string.library_source_saved),
             selected = selectedMode == LibraryViewMode.Saved,
             onClick = { onModeSelected(LibraryViewMode.Saved) },
+        )
+        LibraryChip(
+            label = stringResource(Res.string.compose_settings_root_downloads_title),
+            selected = selectedMode == LibraryViewMode.Downloads,
+            onClick = { onModeSelected(LibraryViewMode.Downloads) },
         )
         LibraryChip(
             label = stringResource(Res.string.library_source_cloud),
@@ -1179,6 +1991,7 @@ private fun CloudSkeletonBlock(
 
 private enum class LibraryViewMode {
     Saved,
+    Downloads,
     Cloud,
 }
 
@@ -1236,6 +2049,14 @@ private fun LazyListScope.librarySections(
 }
 
 private const val LIBRARY_SECTION_PREVIEW_LIMIT = 18
+private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_LIMIT = 24
+private const val LIBRARY_RELEASE_RADAR_DETAILS_RESOLUTION_CONCURRENCY = 4
+private const val LIBRARY_RELEASE_SUPPORT_CACHE_TTL_MS = 6L * 60L * 60L * 1_000L
+private const val LIBRARY_DOWNLOADS_PREVIEW_LIMIT = 18
+private val libraryReleaseSupportJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = false
+}
 
 private data class LibraryDisplayEntry(
     val globalKey: String,

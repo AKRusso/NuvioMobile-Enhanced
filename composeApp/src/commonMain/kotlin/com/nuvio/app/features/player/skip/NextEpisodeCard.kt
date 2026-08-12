@@ -1,7 +1,11 @@
 package com.nuvio.app.features.player.skip
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -27,9 +31,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -44,6 +50,7 @@ import nuvio.composeapp.generated.resources.detail_btn_play
 import nuvio.composeapp.generated.resources.player_next_episode
 import nuvio.composeapp.generated.resources.player_next_episode_finding_source
 import nuvio.composeapp.generated.resources.player_next_episode_playing_via_countdown
+import nuvio.composeapp.generated.resources.player_next_episode_ready_via
 import nuvio.composeapp.generated.resources.player_next_episode_thumbnail
 import nuvio.composeapp.generated.resources.player_next_episode_unaired
 import org.jetbrains.compose.resources.stringResource
@@ -53,6 +60,7 @@ fun NextEpisodeCard(
     nextEpisode: NextEpisodeInfo?,
     visible: Boolean,
     isAutoPlaySearching: Boolean,
+    isAutoPlayReady: Boolean,
     autoPlaySourceName: String?,
     autoPlayCountdownSec: Int?,
     onPlayNext: () -> Unit,
@@ -62,6 +70,15 @@ fun NextEpisodeCard(
     if (nextEpisode == null) return
 
     val isPlayable = nextEpisode.hasAired
+    val statusPulse by rememberInfiniteTransition(label = "nextEpisodeStatusPulse").animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(850),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "nextEpisodeStatusPulseValue",
+    )
 
     AnimatedVisibility(
         visible = visible,
@@ -138,6 +155,10 @@ fun NextEpisodeCard(
                 val autoPlayStatus = when {
                     !isPlayable && !nextEpisode.unairedMessage.isNullOrBlank() -> nextEpisode.unairedMessage
                     isAutoPlaySearching -> stringResource(Res.string.player_next_episode_finding_source)
+                    isAutoPlayReady -> stringResource(
+                        Res.string.player_next_episode_ready_via,
+                        autoPlaySourceName ?: "Provider",
+                    )
                     !autoPlaySourceName.isNullOrBlank() && autoPlayCountdownSec != null ->
                         stringResource(
                             Res.string.player_next_episode_playing_via_countdown,
@@ -148,13 +169,25 @@ fun NextEpisodeCard(
                 }
                 if (autoPlayStatus != null) {
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = autoPlayStatus,
-                        color = Color.White.copy(alpha = 0.78f),
-                        fontSize = 10.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .graphicsLayer { alpha = if (isAutoPlaySearching) statusPulse else 1f }
+                                .background(
+                                    if (isAutoPlayReady) Color(0xFF72E6A1) else Color(0xFF8AC7FF),
+                                    CircleShape,
+                                ),
+                        )
+                        Text(
+                            text = autoPlayStatus,
+                            color = if (isAutoPlayReady) Color(0xFF9AF0BD) else Color.White.copy(alpha = 0.78f),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(start = 5.dp),
+                        )
+                    }
                 }
             }
 

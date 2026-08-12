@@ -38,20 +38,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nuvio.app.features.settings.NuvioAudioSelectorStyle
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_player_audio_tracks
 import nuvio.composeapp.generated.resources.compose_player_no_audio_tracks_available
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun AudioTrackModal(
+internal fun AudioTrackModal(
     visible: Boolean,
     audioTracks: List<AudioTrack>,
     selectedIndex: Int,
+    selectorStyle: NuvioAudioSelectorStyle,
     onTrackSelected: (Int) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (selectorStyle == NuvioAudioSelectorStyle.Nuvio) {
+        NuvioAudioTrackModal(
+            visible = visible,
+            audioTracks = audioTracks,
+            selectedIndex = selectedIndex,
+            onTrackSelected = onTrackSelected,
+            onDismiss = onDismiss,
+            modifier = modifier,
+        )
+        return
+    }
+
     val colorScheme = MaterialTheme.colorScheme
 
     AnimatedVisibility(

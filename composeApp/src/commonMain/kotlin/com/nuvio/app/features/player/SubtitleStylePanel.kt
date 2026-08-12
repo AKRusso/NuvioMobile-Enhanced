@@ -3,6 +3,9 @@ package com.nuvio.app.features.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,13 +32,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.yield
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.abs
@@ -523,14 +535,46 @@ private fun AutoSyncControls(
     onTogglePlayback: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val sortedCues = state.cues.sortedBy(SubtitleSyncCue::startTimeMs)
+    val sortedCues = remember(state.cues) {
+        state.cues.sortedBy(SubtitleSyncCue::startTimeMs)
+    }
     val subtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
     val activeCueIndex = sortedCues.indexOf(activeSubtitleSyncCue(sortedCues, subtitlePositionMs))
     val cueListState = rememberLazyListState()
+    var followActiveCue by remember { mutableStateOf(true) }
+    var autoScrollInProgress by remember { mutableStateOf(false) }
 
-    LaunchedEffect(activeCueIndex, sortedCues.size) {
-        if (activeCueIndex >= 0) {
-            cueListState.animateScrollToItem((activeCueIndex - 2).coerceAtLeast(0))
+    LaunchedEffect(cueListState) {
+        snapshotFlow { cueListState.isScrollInProgress }.collect { isScrolling ->
+            if (isScrolling && !autoScrollInProgress) {
+                followActiveCue = false
+            } else if (!isScrolling && !autoScrollInProgress && !followActiveCue) {
+                delay(900)
+                val activeItem = cueListState.layoutInfo.visibleItemsInfo
+                    .firstOrNull { it.index == activeCueIndex }
+                val viewportCenter = (
+                    cueListState.layoutInfo.viewportStartOffset +
+                        cueListState.layoutInfo.viewportEndOffset
+                    ) / 2
+                val itemCenter = activeItem?.let { it.offset + it.size / 2 }
+                if (itemCenter != null && abs(itemCenter - viewportCenter) <= 96) {
+                    followActiveCue = true
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(state.cues) {
+        followActiveCue = true
+    }
+
+    LaunchedEffect(activeCueIndex, sortedCues.size, followActiveCue) {
+        if (!followActiveCue || activeCueIndex < 0) return@LaunchedEffect
+        autoScrollInProgress = true
+        try {
+            cueListState.animateSubtitleCueToCenter(activeCueIndex)
+        } finally {
+            autoScrollInProgress = false
         }
     }
 
@@ -618,6 +662,9 @@ private fun AutoSyncControls(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = listHeight, max = listHeight),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    vertical = listHeight / 2,
+                ),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(sortedCues) { index, cue ->
@@ -676,6 +723,46 @@ internal fun activeSubtitleSyncCue(
         if (positionMs < endTimeMs) return cue
     }
     return null
+}
+
+internal suspend fun androidx.compose.foundation.lazy.LazyListState.animateSubtitleCueToCenter(
+    cueIndex: Int,
+) {
+    if (cueIndex < 0) return
+
+    // Use a relative offset whenever the cue is laid out. This keeps the active
+    // row anchored and moves the whole track in the correct direction.
+    repeat(8) {
+        if (layoutInfo.totalItemsCount <= cueIndex) {
+            yield()
+        }
+    }
+
+    if (layoutInfo.visibleItemsInfo.none { it.index == cueIndex }) {
+        // This is only a fallback for large seeks where the new cue is outside
+        // the viewport. The final correction below still establishes the exact
+        // center position after the item has been laid out.
+        animateScrollToItem(cueIndex)
+    }
+
+    repeat(3) {
+        val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == cueIndex } ?: return
+        val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+        val itemCenter = item.offset + item.size / 2
+        val delta = (itemCenter - viewportCenter).toFloat()
+        if (abs(delta) < 1f) return
+        animateScrollBy(delta, animationSpec = androidx.compose.animation.core.tween(360))
+        yield()
+    }
+}
+
+internal fun androidx.compose.ui.Modifier.subtitleSyncManualScroll(
+    onManualScrollStarted: () -> Unit,
+): androidx.compose.ui.Modifier = pointerInput(Unit) {
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        onManualScrollStarted()
+    }
 }
 
 @Composable

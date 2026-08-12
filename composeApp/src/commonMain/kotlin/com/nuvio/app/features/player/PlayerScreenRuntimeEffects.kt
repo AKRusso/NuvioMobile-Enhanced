@@ -86,12 +86,19 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         trackPreferenceRestoreApplied = false
         preferredAudioSelectionApplied = false
         preferredSubtitleSelectionApplied = false
+        manualSubtitleSelectionLocked = false
         showSourcesPanel = false
         showEpisodesPanel = false
         showQualityPanel = false
         showLiveTvChannelsPanel = false
         episodeStreamsPanelState = EpisodeStreamsPanelState()
         preloadedNextEpisodeVideoId = null
+        nextEpisodePreparationJob?.cancel()
+        nextEpisodePreparationJob = null
+        preloadedNextEpisodeStream = null
+        pendingNextEpisodeLaunch = false
+        pendingNextEpisodeLaunchWithCountdown = false
+        nextEpisodeAutoPlayReady = false
         PlayerStreamsRepository.clearEpisodeStreams()
         SubtitleRepository.clear()
         WatchProgressRepository.ensureLoaded()
@@ -258,7 +265,11 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         playerControllerSourceUrl,
     ) {
         val fetchKey = addonSubtitleFetchKey ?: return@LaunchedEffect
-        val playerInitialized = playerController != null && playerControllerSourceUrl == activeSourceUrl
+        val playbackSurfaceUrl = currentPlaybackSurfaceSourceUrl
+        val playerInitialized = playerController != null && (
+            playerControllerSourceUrl == activeSourceUrl ||
+                playerControllerSourceUrl == playbackSurfaceUrl
+            )
         val canFetch = canAutomaticallyFetchAddonSubtitles(
             mode = playerSettingsUiState.addonSubtitleStartupMode,
             playerInitialized = playerInitialized,
@@ -516,7 +527,14 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         skipIntervalDismissed = false
         showNextEpisodeCard = false
         nextEpisodeAutoPlayJob?.cancel()
+        nextEpisodePreparationJob?.cancel()
         nextEpisodeAutoPlaySearching = false
+        nextEpisodeAutoPlayReady = false
+        nextEpisodeAutoPlaySourceName = null
+        nextEpisodeAutoPlayCountdown = null
+        preloadedNextEpisodeVideoId = null
+        preloadedNextEpisodeStream = null
+        pendingNextEpisodeLaunch = false
 
         val season = activeSeasonNumber
         val episode = activeEpisodeNumber
@@ -556,6 +574,38 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             activeSkipInterval = current
             if (current != null) skipIntervalDismissed = false
         }
+    }
+
+    LaunchedEffect(
+        nextEpisodeInfo,
+        nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled,
+        nuvioEnhancedSettingsUiState.nextEpisodeButtonEnabled,
+        playerSettingsUiState.streamAutoPlayMode,
+        playerSettingsUiState.streamAutoPlaySource,
+        playerSettingsUiState.streamAutoPlaySelectedAddons,
+        playerSettingsUiState.streamAutoPlaySelectedPlugins,
+        playerSettingsUiState.streamAutoPlayRegex,
+        playerSettingsUiState.streamAutoPlayTimeoutSeconds,
+        playerSettingsUiState.streamAutoPlayPreferBingeGroup,
+        playerSettingsUiState.streamAutoPlayNextEpisodeFallbackEnabled,
+        activeProviderAddonId,
+        activeProviderName,
+        currentStreamBingeGroup,
+    ) {
+        if (
+            !nuvioEnhancedSettingsUiState.enhancedHomeFeaturesEnabled ||
+            !nuvioEnhancedSettingsUiState.nextEpisodeButtonEnabled ||
+            nextEpisodeInfo?.hasAired != true
+        ) {
+            nextEpisodePreparationJob?.cancel()
+            nextEpisodePreparationJob = null
+            nextEpisodeAutoPlaySearching = false
+            nextEpisodeAutoPlayReady = false
+            nextEpisodeAutoPlaySourceName = null
+            preloadedNextEpisodeStream = null
+            return@LaunchedEffect
+        }
+        prepareNextEpisodeStream(force = true)
     }
 
     LaunchedEffect(
@@ -609,7 +659,11 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
         playerSettingsUiState.nextEpisodeThresholdPercent,
         playerSettingsUiState.nextEpisodeThresholdMinutesBeforeEnd,
     ) {
-        if (nextEpisodeInfo == null || playbackSnapshot.durationMs <= 0L) {
+        if (nextEpisodeInfo == null || (
+                playbackSnapshot.durationMs <= 0L &&
+                    !nuvioEnhancedSettingsUiState.nextEpisodeButtonEnabled
+            )
+        ) {
             showNextEpisodeCard = false
             return@LaunchedEffect
         }
@@ -625,7 +679,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             preloadNextEpisodeStreams()
             showNextEpisodeCard = true
             if (playerSettingsUiState.streamAutoPlayNextEpisodeEnabled && nextEpisodeInfo?.hasAired == true) {
-                playNextEpisode()
+                playPreparedNextEpisode(withCountdown = true)
             }
         } else if (!shouldShow) {
             showNextEpisodeCard = false
@@ -637,7 +691,7 @@ private fun PlayerScreenRuntime.BindPlayerMetadataAndSkipEffects() {
             preloadNextEpisodeStreams()
             showNextEpisodeCard = true
             if (playerSettingsUiState.streamAutoPlayNextEpisodeEnabled && nextEpisodeInfo?.hasAired == true) {
-                playNextEpisode()
+                playPreparedNextEpisode(withCountdown = true)
             }
         }
     }

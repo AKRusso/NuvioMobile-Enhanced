@@ -72,6 +72,8 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
     onSourceNameChanged: (String?) -> Unit,
     onCountdownChanged: (Int?) -> Unit,
     onNextEpisodeCardVisibleChanged: (Boolean) -> Unit,
+    prepareOnly: Boolean = false,
+    onPrepared: (StreamItem?, MetaVideo) -> Unit = { _, _ -> },
 ): Job? {
     val nextVideoId = nextEpisodeInfo?.videoId ?: return null
     val nextVideo = allEpisodes.firstOrNull { video -> video.id == nextVideoId } ?: return null
@@ -84,6 +86,10 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
         videoId = nextVideo.id,
     )
     if (downloadedNextEpisode != null) {
+        if (prepareOnly) {
+            onPrepared(null, nextVideo)
+            return null
+        }
         onDownloadedEpisodeSelected(downloadedNextEpisode, nextVideo)
         return null
     }
@@ -316,6 +322,10 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
         val selected = selectedStream
         if (selected != null) {
             onSourceNameChanged(selected.addonName)
+            if (prepareOnly) {
+                onPrepared(selected, nextVideo)
+                return@launch
+            }
             for (i in 3 downTo 1) {
                 onCountdownChanged(i)
                 delay(1000)
@@ -325,6 +335,10 @@ internal fun CoroutineScope.launchPlayerNextEpisodeAutoPlay(
             onCountdownChanged(null)
             onSourceNameChanged(null)
         } else {
+            if (prepareOnly) {
+                onPrepared(null, nextVideo)
+                return@launch
+            }
             onManualSelectionRequired(nextVideo)
             onNextEpisodeCardVisibleChanged(false)
         }

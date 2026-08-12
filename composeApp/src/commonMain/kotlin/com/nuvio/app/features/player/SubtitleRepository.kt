@@ -10,6 +10,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,36 +54,37 @@ object SubtitleRepository {
             _addonSubtitles.value = emptyList()
 
             val addons = AddonRepository.uiState.value.addons.enabledAddons()
-            val allSubs = mutableListOf<AddonSubtitle>()
-
-            for (addon in addons) {
-                val manifest = addon.manifest ?: continue
-                val subtitleResource = manifest.resources.find { it.name.isSubtitleResourceName() } ?: continue
-                if (!subtitleResource.supportsSubtitleType(requestType, videoId)) continue
-
-                val subtitleUrl = buildAddonResourceUrl(
-                    manifestUrl = manifest.transportUrl,
-                    resource = "subtitles",
-                    type = requestType,
-                    id = videoId,
-                )
-
-                try {
-                    val response = withContext(Dispatchers.Default) {
-                        httpGetText(subtitleUrl)
+            val allSubs = addons.map { addon ->
+                async {
+                    val manifest = addon.manifest ?: return@async emptyList()
+                    val subtitleResource = manifest.resources.find { it.name.isSubtitleResourceName() }
+                        ?: return@async emptyList()
+                    if (!subtitleResource.supportsSubtitleType(requestType, videoId)) {
+                        return@async emptyList()
                     }
-                    val parsed = json.parseToJsonElement(response).jsonObject
-                    val subtitlesArray = parsed["subtitles"]?.jsonArray ?: continue
 
-                    for (element in subtitlesArray) {
-                        val obj = element.jsonObject
-                        val id = obj.stringValue("id")
-                            ?: "${manifest.id}_${allSubs.size}"
-                        val url = obj.stringValue("url") ?: continue
-                        val rawLang = obj.subtitleLanguage() ?: "unknown"
-                        val normalizedLang = normalizeLanguageCode(rawLang) ?: rawLang
+                    val subtitleUrl = buildAddonResourceUrl(
+                        manifestUrl = manifest.transportUrl,
+                        resource = "subtitles",
+                        type = requestType,
+                        id = videoId,
+                    )
 
-                        allSubs.add(
+                    try {
+                        val response = withContext(Dispatchers.Default) {
+                            httpGetText(subtitleUrl)
+                        }
+                        val parsed = json.parseToJsonElement(response).jsonObject
+                        val subtitlesArray = parsed["subtitles"]?.jsonArray ?: return@async emptyList()
+
+                        subtitlesArray.mapIndexedNotNull { index, element ->
+                            val obj = element.jsonObject
+                            val id = obj.stringValue("id")
+                                ?: "${manifest.id}_$index"
+                            val url = obj.stringValue("url") ?: return@mapIndexedNotNull null
+                            val rawLang = obj.subtitleLanguage() ?: "unknown"
+                            val normalizedLang = normalizeLanguageCode(rawLang) ?: rawLang
+
                             AddonSubtitle(
                                 id = id,
                                 url = url,
@@ -93,12 +96,13 @@ object SubtitleRepository {
                                 ),
                                 addonName = addon.displayTitle,
                             )
-                        )
+                        }
+                    } catch (error: Throwable) {
+                        if (error is CancellationException) throw error
+                        emptyList()
                     }
-                } catch (error: Throwable) {
-                    if (error is CancellationException) throw error
                 }
-            }
+            }.awaitAll().flatten()
 
             _addonSubtitles.value = allSubs
             if (allSubs.isEmpty() && addons.any { it.manifest?.resources?.any { r -> r.name.isSubtitleResourceName() } == true }) {

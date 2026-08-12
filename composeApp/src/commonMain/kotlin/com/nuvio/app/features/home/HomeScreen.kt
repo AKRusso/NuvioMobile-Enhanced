@@ -1016,8 +1016,14 @@ fun HomeScreen(
         hasContinueWatchingRows ||
         hasRenderableCollectionRows ||
         hasPremiumHomeRows
-    LaunchedEffect(hasInitialHomeContent, onFirstCatalogRendered) {
-        if (firstCatalogReported || !hasInitialHomeContent) return@LaunchedEffect
+    val initialHomeReady = hasInitialHomeContent ||
+        (
+            !homeUiState.isLoading &&
+                !isRefreshingEnabledAddons &&
+                (!hasActiveAddons || homeUiState.errorMessage != null)
+            )
+    LaunchedEffect(initialHomeReady, onFirstCatalogRendered) {
+        if (firstCatalogReported || !initialHomeReady) return@LaunchedEffect
         firstCatalogReported = true
         onFirstCatalogRendered?.invoke()
     }

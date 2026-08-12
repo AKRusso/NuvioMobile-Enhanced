@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Tv
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
+import com.nuvio.app.core.ui.AppSystemUiController
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -129,6 +131,7 @@ import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.addons.AddAddonResult
 import com.nuvio.app.features.addons.AddonRepository
+import com.nuvio.app.features.addons.enabledAddons
 import com.nuvio.app.features.catalog.CatalogRepository
 import com.nuvio.app.features.catalog.CatalogScreen
 import com.nuvio.app.features.catalog.CatalogTarget
@@ -199,6 +202,7 @@ import com.nuvio.app.features.profiles.parseHexColor
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
 import com.nuvio.app.features.search.SearchScreen
 import com.nuvio.app.features.settings.SettingsScreen
+import com.nuvio.app.features.settings.SettingsPage
 import com.nuvio.app.features.settings.HomescreenSettingsScreen
 import com.nuvio.app.features.settings.MetaScreenSettingsScreen
 import com.nuvio.app.features.settings.ContinueWatchingSettingsScreen
@@ -212,11 +216,11 @@ import com.nuvio.app.features.settings.NavBarStyle
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.settings.ThemeSettingsRepository
 import com.nuvio.app.features.collection.CollectionManagementScreen
+import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.collection.CollectionEditorScreen
 import com.nuvio.app.features.collection.CollectionEditorRepository
 import com.nuvio.app.features.collection.CollectionEditorPage
 import com.nuvio.app.features.collection.CollectionSyncService
-import com.nuvio.app.features.collection.CollectionRepository
 import com.nuvio.app.features.collection.disposeCollectionEditorPage
 import com.nuvio.app.features.collection.FolderDetailScreen
 import com.nuvio.app.features.collection.FolderDetailRepository
@@ -242,12 +246,12 @@ import com.nuvio.app.features.tracking.toggleTrackingLibraryMembership
 import com.nuvio.app.features.updater.AppUpdaterHost
 import com.nuvio.app.features.updater.AppUpdaterPlatform
 import com.nuvio.app.features.updater.rememberAppUpdaterController
-import com.nuvio.app.features.watched.WatchedRepository
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
-import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.ResumePromptRepository
-import com.nuvio.app.features.watchprogress.WatchProgressPlaybackSession
+import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
+import com.nuvio.app.features.watched.WatchedRepository
+import com.nuvio.app.features.watchprogress.WatchProgressPlaybackSession
 import com.nuvio.app.features.watchprogress.WatchProgressSourceCoordinator
 import com.nuvio.app.features.watchprogress.nextUpDismissKey
 import com.nuvio.app.features.watchprogress.toContinueWatchingItem
@@ -468,7 +472,16 @@ fun App(
         ThemeSettingsRepository.selectedTheme
     }.collectAsStateWithLifecycle()
     val amoledEnabled by remember { ThemeSettingsRepository.amoledEnabled }.collectAsStateWithLifecycle()
-    NuvioTheme(appTheme = selectedTheme, amoled = amoledEnabled) {
+    val customThemeFirstColor by remember { ThemeSettingsRepository.customThemeFirstColor }
+        .collectAsStateWithLifecycle()
+    val customThemeSecondColor by remember { ThemeSettingsRepository.customThemeSecondColor }
+        .collectAsStateWithLifecycle()
+    NuvioTheme(
+        appTheme = selectedTheme,
+        customFirst = customThemeFirstColor,
+        customSecond = customThemeSecondColor,
+        amoled = amoledEnabled,
+    ) {
         if (bypassAppGate) {
             MainAppContent(
                 initialTab = initialTab,
@@ -567,6 +580,15 @@ fun App(
                 ?.takeUnless { it.pinEnabled }
         }
 
+        fun completeProfileSelection(profile: NuvioProfile, syncOnEnter: Boolean) {
+            ProfileRepository.selectProfile(profile.profileIndex)
+            if (syncOnEnter) {
+                SyncManager.pullAllForProfile(profile.profileIndex)
+            }
+            gateScreen = AppGateScreen.Main.name
+            autoSkipProfileSelection = false
+        }
+
         fun enterProfileGate(profiles: List<NuvioProfile>, syncOnEnter: Boolean) {
             if (profiles.isEmpty()) {
                 autoSkipProfileSelection = true
@@ -575,12 +597,7 @@ fun App(
             }
 
             rememberedStartupProfile(profiles)?.let { profile ->
-                ProfileRepository.selectProfile(profile.profileIndex)
-                if (syncOnEnter) {
-                    SyncManager.pullAllForProfile(profile.profileIndex)
-                }
-                gateScreen = AppGateScreen.Main.name
-                autoSkipProfileSelection = false
+                completeProfileSelection(profile, syncOnEnter)
                 return
             }
 
@@ -591,12 +608,7 @@ fun App(
                     gateScreen = AppGateScreen.ProfileSelection.name
                     return
                 }
-                ProfileRepository.selectProfile(onlyProfile.profileIndex)
-                if (syncOnEnter) {
-                    SyncManager.pullAllForProfile(onlyProfile.profileIndex)
-                }
-                gateScreen = AppGateScreen.Main.name
-                autoSkipProfileSelection = false
+                completeProfileSelection(onlyProfile, syncOnEnter)
             } else {
                 gateScreen = AppGateScreen.ProfileSelection.name
             }
@@ -660,10 +672,7 @@ fun App(
                 gateScreen == AppGateScreen.ProfileSelection.name
             ) {
                 rememberedStartupProfile(profileState.profiles)?.let { profile ->
-                    ProfileRepository.selectProfile(profile.profileIndex)
-                    SyncManager.pullAllForProfile(profile.profileIndex)
-                    gateScreen = AppGateScreen.Main.name
-                    autoSkipProfileSelection = false
+                    completeProfileSelection(profile, syncOnEnter = true)
                     return@LaunchedEffect
                 }
 
@@ -672,10 +681,7 @@ fun App(
                 val onlyProfile = profileState.profiles.first()
                 if (onlyProfile.pinEnabled) return@LaunchedEffect
 
-                ProfileRepository.selectProfile(onlyProfile.profileIndex)
-                SyncManager.pullAllForProfile(onlyProfile.profileIndex)
-                gateScreen = AppGateScreen.Main.name
-                autoSkipProfileSelection = false
+                completeProfileSelection(onlyProfile, syncOnEnter = true)
             }
         }
 
@@ -709,11 +715,10 @@ fun App(
                     }
                     ProfileSelectionScreen(
                         onProfileSelected = { profile ->
-                            ProfileRepository.selectProfile(profile.profileIndex)
-                            if (authState is AuthState.Authenticated) {
-                                SyncManager.pullAllForProfile(profile.profileIndex)
-                            }
-                            gateScreen = AppGateScreen.Main.name
+                            completeProfileSelection(
+                                profile = profile,
+                                syncOnEnter = authState is AuthState.Authenticated,
+                            )
                         },
                         onEditProfile = { profile ->
                             editingProfile = profile
@@ -913,6 +918,7 @@ private fun MainAppContent(
     val downloadsSettingsTitle = stringResource(Res.string.compose_settings_root_downloads_title)
     val addonsSettingsTitle = stringResource(Res.string.compose_settings_page_addons)
     val pluginsSettingsTitle = stringResource(Res.string.compose_settings_page_plugins)
+    val cloudStreamSettingsTitle = stringResource(Res.string.compose_settings_page_cloudstream)
     val accountSettingsTitle = stringResource(Res.string.compose_settings_page_account)
     val supportersSettingsTitle = stringResource(Res.string.compose_settings_page_supporters_contributors)
     val licensesSettingsTitle = stringResource(Res.string.compose_settings_page_licenses_attributions)
@@ -920,6 +926,13 @@ private fun MainAppContent(
     val newCollectionTitle = stringResource(Res.string.collections_new)
     val detailsFallbackTitle = stringResource(Res.string.meta_section_details_title)
     val isRemoteLibrarySource = libraryUiState.sourceMode != LibrarySourceMode.LOCAL
+    val enhancedSettingsUiState by remember {
+        NuvioEnhancedSettingsRepository.ensureLoaded()
+        NuvioEnhancedSettingsRepository.uiState
+    }.collectAsStateWithLifecycle()
+    LaunchedEffect(enhancedSettingsUiState.statusBarVisible) {
+        AppSystemUiController.setStatusBarVisible(enhancedSettingsUiState.statusBarVisible)
+    }
     var initialHomeReady by rememberSaveable(ownsAppRuntime) {
         mutableStateOf(!ownsAppRuntime)
     }
@@ -1089,8 +1102,6 @@ private fun MainAppContent(
         if (!ownsAppRuntime) return@LaunchedEffect
         NetworkStatusRepository.ensureStarted()
         EpisodeReleaseNotificationsRepository.refreshAsync()
-        kotlinx.coroutines.delay(5_000)
-        initialHomeReady = true
     }
 
     LaunchedEffect(Unit) {
@@ -2102,6 +2113,7 @@ private fun MainAppContent(
                                             )
                                         },
                                         onLibrarySectionViewAllClick = onLibrarySectionViewAllClick,
+                                        onLibraryDownloadClick = ::openDownloadedItem,
                                         onCloudFilePlay = { item, file ->
                                             coroutineScope.launch {
                                                 val resumeItem = WatchProgressRepository
@@ -2155,6 +2167,21 @@ private fun MainAppContent(
                                         onPluginsSettingsClick = {
                                             if (AppFeaturePolicy.pluginsEnabled) {
                                                 navController.navigate(PluginsSettingsRoute(pluginsSettingsTitle))
+                                            }
+                                        },
+                                        onCloudStreamSettingsClick = {
+                                            if (AppFeaturePolicy.pluginsEnabled) {
+                                                if (useNativeNavigation && !isTabletLayout) {
+                                                    navController.navigate(
+                                                        SettingsPageRoute(
+                                                            pageName = SettingsPage.CloudStream.name,
+                                                            title = cloudStreamSettingsTitle,
+                                                        )
+                                                    )
+                                                } else {
+                                                    requestedSettingsPageName = SettingsPage.CloudStream.name
+                                                    activateTab(AppScreenTab.Settings)
+                                                }
                                             }
                                         },
                                         onAccountSettingsClick = { navController.navigate(AccountSettingsRoute(accountSettingsTitle)) },
@@ -3003,6 +3030,7 @@ private fun MainAppContent(
                             episodeNumber = launch.episodeNumber,
                             episodeTitle = launch.episodeTitle,
                             episodeThumbnail = launch.episodeThumbnail,
+                            episodeOverview = launch.pauseDescription,
                             resumePositionMs = launch.resumePositionMs,
                             resumeProgressFraction = launch.resumeProgressFraction,
                             manualSelection = launch.manualSelection,
@@ -3797,7 +3825,6 @@ private fun MainAppContent(
             // Auto-dismiss profile switch overlay
             if (profileSwitchLoading) {
                 LaunchedEffect(Unit) {
-                    // Brief loading screen while home refreshes for the new profile
                     kotlinx.coroutines.delay(1200)
                     profileSwitchLoading = false
                 }
@@ -3870,6 +3897,7 @@ private fun AppTabHost(
     onLibrarySectionViewAllClick: ((LibrarySection, LibrarySortOption) -> Unit)? = null,
     onCloudFilePlay: ((CloudLibraryItem, CloudLibraryFile) -> Unit)? = null,
     onConnectCloudClick: (() -> Unit)? = null,
+    onLibraryDownloadClick: ((DownloadItem) -> Unit)? = null,
     onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
     onSwitchProfile: (() -> Unit)? = null,
@@ -3880,6 +3908,7 @@ private fun AppTabHost(
     onDownloadsSettingsClick: () -> Unit = {},
     onAddonsSettingsClick: () -> Unit = {},
     onPluginsSettingsClick: () -> Unit = {},
+    onCloudStreamSettingsClick: () -> Unit = {},
     onAccountSettingsClick: () -> Unit = {},
     onSupportersContributorsSettingsClick: () -> Unit = {},
     onLicensesAttributionsSettingsClick: () -> Unit = {},
@@ -3937,6 +3966,8 @@ private fun AppTabHost(
                         onSectionViewAllClick = onLibrarySectionViewAllClick,
                         onCloudFilePlay = onCloudFilePlay,
                         onConnectCloudClick = onConnectCloudClick,
+                        onDownloadsClick = onDownloadsSettingsClick,
+                        onOpenDownload = onLibraryDownloadClick,
                     )
                 }
 
@@ -3955,6 +3986,7 @@ private fun AppTabHost(
                         onDownloadsClick = onDownloadsSettingsClick,
                         onAddonsClick = onAddonsSettingsClick,
                         onPluginsClick = onPluginsSettingsClick,
+                        onCloudStreamClick = onCloudStreamSettingsClick,
                         onAccountClick = onAccountSettingsClick,
                         onSupportersContributorsClick = onSupportersContributorsSettingsClick,
                         onLicensesAttributionsClick = onLicensesAttributionsSettingsClick,

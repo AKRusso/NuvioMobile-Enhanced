@@ -30,8 +30,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.rounded.AccessTime
 import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.Lock
@@ -109,6 +111,9 @@ internal fun PlayerControlsShell(
     onVideoSettingsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onNextEpisodeClick: (() -> Unit)? = null,
+    nextEpisodeSearching: Boolean = false,
+    nextEpisodeReady: Boolean = false,
     randomNextEpisodeMode: Boolean = false,
     onRandomNextEpisodeModeToggle: (() -> Unit)? = null,
     onOpenInExternalPlayer: (() -> Unit)? = null,
@@ -249,6 +254,9 @@ internal fun PlayerControlsShell(
                     onChannelsClick = onChannelsClick,
                     onSourcesClick = onSourcesClick,
                     onEpisodesClick = onEpisodesClick,
+                    onNextEpisodeClick = onNextEpisodeClick,
+                    nextEpisodeSearching = nextEpisodeSearching,
+                    nextEpisodeReady = nextEpisodeReady,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
@@ -798,6 +806,9 @@ private fun ProgressControls(
     onChannelsClick: (() -> Unit)? = null,
     onSourcesClick: (() -> Unit)? = null,
     onEpisodesClick: (() -> Unit)? = null,
+    onNextEpisodeClick: (() -> Unit)? = null,
+    nextEpisodeSearching: Boolean = false,
+    nextEpisodeReady: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val seekableDurationMs = playbackSnapshot.durationMs.takeIf { it > 0L }
@@ -915,6 +926,35 @@ private fun ProgressControls(
                             label = stringResource(Res.string.compose_player_episodes),
                             icon = Icons.Rounded.VideoLibrary,
                             onClick = onEpisodesClick,
+                        )
+                    }
+                    if (onNextEpisodeClick != null) {
+                        PlayerActionPillButton(
+                            label = stringResource(Res.string.compose_player_next_ep),
+                            icon = Icons.Filled.SkipNext,
+                            onClick = onNextEpisodeClick,
+                            statusIndicator = when {
+                                nextEpisodeSearching -> {
+                                    @Composable {
+                                        androidx.compose.material3.CircularProgressIndicator(
+                                            color = Color(0xFF8AC7FF),
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    }
+                                }
+                                nextEpisodeReady -> {
+                                    @Composable {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = Color(0xFF72E6A1),
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    }
+                                }
+                                else -> null
+                            },
                         )
                     }
                 }
@@ -1086,6 +1126,7 @@ private fun PlayerActionPillButton(
     onClick: () -> Unit,
     icon: ImageVector? = null,
     painter: Painter? = null,
+    statusIndicator: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -1118,5 +1159,6 @@ private fun PlayerActionPillButton(
             overflow = TextOverflow.Ellipsis,
             softWrap = false,
         )
+        statusIndicator?.invoke()
     }
 }

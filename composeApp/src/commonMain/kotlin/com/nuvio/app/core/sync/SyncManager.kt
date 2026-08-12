@@ -199,6 +199,7 @@ internal class ProfileSyncRequestGate {
         }
         job?.cancel()
     }
+
 }
 
 object SyncManager {

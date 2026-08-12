@@ -16,6 +16,7 @@ import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamLinkCacheRepository
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 internal fun PlayerScreenRuntime.resolveDebridForPlayer(
@@ -416,6 +417,142 @@ internal fun PlayerScreenRuntime.playNextEpisode() {
     }
 }
 
+internal fun PlayerScreenRuntime.prepareNextEpisodeStream(force: Boolean = false) {
+    val next = nextEpisodeInfo ?: return
+    if (!next.hasAired) return
+    val nextVideo = playerMetaVideos.firstOrNull { video -> video.id == next.videoId } ?: return
+    if (!force && preloadedNextEpisodeVideoId == next.videoId &&
+        (preloadedNextEpisodeStream != null || nextEpisodeAutoPlayReady)
+    ) {
+        return
+    }
+
+    nextEpisodePreparationJob?.cancel()
+    nextEpisodePreparationJob = null
+    nextEpisodeAutoPlayJob?.cancel()
+    nextEpisodeAutoPlaySearching = true
+    nextEpisodeAutoPlayReady = false
+    nextEpisodeAutoPlaySourceName = null
+    nextEpisodeAutoPlayCountdown = null
+    preloadedNextEpisodeVideoId = next.videoId
+    preloadedNextEpisodeStream = null
+
+    nextEpisodePreparationJob = scope.launchPlayerNextEpisodeAutoPlay(
+        previousJob = null,
+        nextEpisodeInfo = next,
+        allEpisodes = playerMetaVideos,
+        parentMetaId = parentMetaId,
+        parentMetaType = parentMetaType,
+        contentType = contentType,
+        settings = playerSettingsUiState,
+        currentProviderAddonId = activeProviderAddonId,
+        currentProviderName = activeProviderName,
+        currentStreamBingeGroup = currentStreamBingeGroup,
+        onDownloadedEpisodeSelected = { _, _ -> },
+        onEpisodeStreamSelected = { _, _ -> },
+        onManualSelectionRequired = { },
+        onSearchingChanged = { nextEpisodeAutoPlaySearching = it },
+        onSourceNameChanged = { nextEpisodeAutoPlaySourceName = it },
+        onCountdownChanged = { nextEpisodeAutoPlayCountdown = it },
+        onNextEpisodeCardVisibleChanged = { },
+        prepareOnly = true,
+        onPrepared = { stream, episode ->
+            nextEpisodePreparationJob = null
+            nextEpisodeAutoPlaySearching = false
+            nextEpisodeAutoPlayCountdown = null
+            preloadedNextEpisodeStream = stream
+            val downloaded = DownloadsRepository.findPlayableDownload(
+                parentMetaId = parentMetaId,
+                seasonNumber = episode.season,
+                episodeNumber = episode.episode,
+                videoId = episode.id,
+            )
+            nextEpisodeAutoPlayReady = stream != null || downloaded != null
+            if (downloaded != null && stream == null) {
+                nextEpisodeAutoPlaySourceName = downloaded.providerName.ifBlank { "Downloaded" }
+            }
+            if (!nextEpisodeAutoPlayReady) {
+                nextEpisodeAutoPlaySourceName = null
+            }
+            if (pendingNextEpisodeLaunch) {
+                pendingNextEpisodeLaunch = false
+                val withCountdown = pendingNextEpisodeLaunchWithCountdown
+                pendingNextEpisodeLaunchWithCountdown = false
+                if (nextEpisodeAutoPlayReady) {
+                    playPreparedNextEpisode(withCountdown = withCountdown)
+                } else {
+                    playNextEpisode()
+                }
+            }
+        },
+    )
+}
+
+internal fun PlayerScreenRuntime.playPreparedNextEpisode(withCountdown: Boolean = false) {
+    val next = nextEpisodeInfo ?: return
+    val nextVideo = playerMetaVideos.firstOrNull { video -> video.id == next.videoId }
+    if (nextVideo == null) {
+        playNextEpisode()
+        return
+    }
+
+    val downloaded = DownloadsRepository.findPlayableDownload(
+        parentMetaId = parentMetaId,
+        seasonNumber = nextVideo.season,
+        episodeNumber = nextVideo.episode,
+        videoId = nextVideo.id,
+    )
+    val preparedStream = preloadedNextEpisodeStream
+        ?.takeIf { preloadedNextEpisodeVideoId == next.videoId }
+
+    if (downloaded == null && preparedStream == null) {
+        if (nextEpisodeAutoPlaySearching) {
+            pendingNextEpisodeLaunch = true
+            pendingNextEpisodeLaunchWithCountdown = withCountdown
+            return
+        }
+        pendingNextEpisodeLaunch = true
+        pendingNextEpisodeLaunchWithCountdown = withCountdown
+        prepareNextEpisodeStream()
+        return
+    }
+
+    if (withCountdown) {
+        if (nextEpisodeAutoPlayJob != null) return
+        val sourceName = downloaded?.providerName?.ifBlank { "Downloaded" }
+            ?: preparedStream?.addonName
+            ?: nextEpisodeAutoPlaySourceName
+            ?: "Provider"
+        nextEpisodeAutoPlaySourceName = sourceName
+        nextEpisodeAutoPlayJob = scope.launch {
+            for (seconds in 3 downTo 1) {
+                nextEpisodeAutoPlayCountdown = seconds
+                delay(1_000L)
+            }
+            nextEpisodeAutoPlayJob = null
+            playPreparedNextEpisode()
+        }
+        return
+    }
+
+    pendingNextEpisodeLaunch = false
+    pendingNextEpisodeLaunchWithCountdown = false
+    nextEpisodePreparationJob?.cancel()
+    nextEpisodePreparationJob = null
+    nextEpisodeAutoPlayJob?.cancel()
+    nextEpisodeAutoPlaySearching = false
+    nextEpisodeAutoPlayReady = false
+    nextEpisodeAutoPlaySourceName = null
+    nextEpisodeAutoPlayCountdown = null
+    showNextEpisodeCard = false
+
+    if (downloaded != null) {
+        switchToDownloadedEpisode(downloaded, nextVideo)
+    } else {
+        switchToEpisodeStream(preparedStream!!, nextVideo)
+    }
+}
+
 internal fun PlayerScreenRuntime.preloadNextEpisodeStreams() {
     val next = nextEpisodeInfo ?: return
     if (!next.hasAired) return
@@ -506,9 +643,14 @@ private fun PlayerScreenRuntime.resetEpisodePanelAndNextEpisodeState() {
     showEpisodesPanel = false
     episodeStreamsPanelState = EpisodeStreamsPanelState()
     nextEpisodeAutoPlayJob?.cancel()
+    nextEpisodePreparationJob?.cancel()
     nextEpisodeAutoPlaySearching = false
+    nextEpisodeAutoPlayReady = false
     nextEpisodeAutoPlaySourceName = null
     nextEpisodeAutoPlayCountdown = null
+    preloadedNextEpisodeStream = null
+    pendingNextEpisodeLaunch = false
+    pendingNextEpisodeLaunchWithCountdown = false
     PlayerStreamsRepository.clearEpisodeStreams()
 }
 

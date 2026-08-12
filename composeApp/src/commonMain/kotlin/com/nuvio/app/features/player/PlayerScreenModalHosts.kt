@@ -6,6 +6,7 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.p2p.P2pConsentDialog
 import com.nuvio.app.features.p2p.P2pSettingsRepository
+import com.nuvio.app.features.settings.NuvioAudioSelectorStyle
 import com.nuvio.app.features.settings.NuvioSubtitleSelectorStyle
 import com.nuvio.app.features.streams.StreamItem
 import com.nuvio.app.features.streams.StreamsUiState
@@ -23,6 +24,7 @@ internal fun PlayerScreenModalHosts(
     showAudioModal: Boolean,
     audioTracks: List<AudioTrack>,
     selectedAudioIndex: Int,
+    audioSelectorStyle: NuvioAudioSelectorStyle,
     onAudioTrackSelected: (Int) -> Unit,
     onAudioModalDismissed: () -> Unit,
     showSubtitleModal: Boolean,
@@ -130,6 +132,7 @@ internal fun PlayerScreenModalHosts(
         visible = showAudioModal,
         audioTracks = audioTracks,
         selectedIndex = selectedAudioIndex,
+        selectorStyle = audioSelectorStyle,
         onTrackSelected = onAudioTrackSelected,
         onDismiss = onAudioModalDismissed,
     )

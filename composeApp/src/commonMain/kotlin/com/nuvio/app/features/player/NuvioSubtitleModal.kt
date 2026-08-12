@@ -22,12 +22,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.CenterFocusStrong
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,23 +44,39 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.ui.nuvio
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.addon_title
+import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.compose_player_built_in
+import nuvio.composeapp.generated.resources.compose_action_pause
+import nuvio.composeapp.generated.resources.compose_player_auto_sync
+import nuvio.composeapp.generated.resources.compose_player_capture_line
 import nuvio.composeapp.generated.resources.compose_player_fetch_subtitles
 import nuvio.composeapp.generated.resources.compose_player_languages
+import nuvio.composeapp.generated.resources.compose_player_loading_lines
 import nuvio.composeapp.generated.resources.compose_player_none
+import nuvio.composeapp.generated.resources.compose_player_no_subtitle_lines_found
+import nuvio.composeapp.generated.resources.compose_player_reload
+import nuvio.composeapp.generated.resources.compose_player_reset
+import nuvio.composeapp.generated.resources.compose_player_select_addon_subtitle_first
 import nuvio.composeapp.generated.resources.compose_player_style
+import nuvio.composeapp.generated.resources.compose_player_subtitle_delay
 import nuvio.composeapp.generated.resources.compose_player_subtitles
+import nuvio.composeapp.generated.resources.compose_player_sync_short
 import nuvio.composeapp.generated.resources.settings_playback_option_forced
 import nuvio.composeapp.generated.resources.subtitle_language_unknown
 import org.jetbrains.compose.resources.stringResource
@@ -60,6 +84,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun NuvioSubtitleModal(
     visible: Boolean,
+    activeTab: SubtitleTab,
     subtitleTracks: List<SubtitleTrack>,
     selectedSubtitleIndex: Int,
     addonSubtitles: List<AddonSubtitle>,
@@ -68,11 +93,21 @@ internal fun NuvioSubtitleModal(
     preferredSubtitleLanguage: String,
     secondaryPreferredSubtitleLanguage: String?,
     subtitleStyle: SubtitleStyleState,
+    subtitleDelayMs: Int,
     selectedAddonSubtitle: AddonSubtitle?,
+    subtitleAutoSyncState: SubtitleAutoSyncUiState,
     onBuiltInTrackSelected: (Int) -> Unit,
     onAddonSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetchAddonSubtitles: () -> Unit,
     onStyleChanged: (SubtitleStyleState) -> Unit,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
+    onAutoSyncCapture: () -> Unit,
+    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
+    onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
+    currentPlaybackPositionMs: Long,
+    isPlaying: Boolean,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,15 +175,52 @@ internal fun NuvioSubtitleModal(
         visible = visible,
         onDismiss = onDismiss,
         modifier = modifier,
-        contentPadding = PaddingValues(start = 52.dp, end = 52.dp, top = 36.dp, bottom = 76.dp),
+        contentPadding = if (activeTab == SubtitleTab.Sync) {
+            PaddingValues(start = 28.dp, end = 28.dp, top = 18.dp, bottom = 18.dp)
+        } else {
+            PaddingValues(start = 52.dp, end = 52.dp, top = 36.dp, bottom = 76.dp)
+        },
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val availableWidth = maxWidth
             val railMaxHeight = (maxHeight - 72.dp).coerceAtLeast(120.dp)
 
-            Column(
-                modifier = Modifier.align(Alignment.BottomStart),
-                verticalArrangement = Arrangement.Bottom,
-            ) {
+            if (activeTab == SubtitleTab.Sync) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = stringResource(Res.string.compose_player_sync_short),
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.padding(bottom = 12.dp),
+                    )
+                    NuvioSubtitleSyncContent(
+                        availableWidth = availableWidth,
+                        subtitleDelayMs = subtitleDelayMs,
+                        selectedAddonSubtitle = effectiveSelectedAddonSubtitle,
+                        subtitleAutoSyncState = subtitleAutoSyncState,
+                        currentPlaybackPositionMs = currentPlaybackPositionMs,
+                        isCompact = railMaxHeight < 420.dp,
+                        isPlaying = isPlaying,
+                        onSubtitleDelayChanged = onSubtitleDelayChanged,
+                        onSubtitleDelayReset = onSubtitleDelayReset,
+                        onAutoSyncCapture = onAutoSyncCapture,
+                        onAutoSyncCueSelected = onAutoSyncCueSelected,
+                        onAutoSyncReload = onAutoSyncReload,
+                        onTogglePlayback = onTogglePlayback,
+                        railMaxHeight = railMaxHeight,
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
                 Text(
                     text = stringResource(Res.string.compose_player_subtitles),
                     color = Color.White,
@@ -270,6 +342,545 @@ internal fun NuvioSubtitleModal(
             }
         }
     }
+}
+
+
+}
+
+@Composable
+private fun NuvioSubtitleSyncContent(
+    availableWidth: Dp,
+    selectedAddonSubtitle: AddonSubtitle?,
+    subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    currentPlaybackPositionMs: Long,
+    subtitleDelayMs: Int,
+    isCompact: Boolean,
+    isPlaying: Boolean,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
+    onAutoSyncCapture: () -> Unit,
+    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
+    onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
+    railMaxHeight: Dp,
+) {
+    val tokens = MaterialTheme.nuvio
+    val sortedCues = remember(subtitleAutoSyncState.cues) {
+        subtitleAutoSyncState.cues.sortedBy(SubtitleSyncCue::startTimeMs)
+    }
+    val subtitlePositionMs = (currentPlaybackPositionMs - subtitleDelayMs).coerceAtLeast(0L)
+    // Keep the last spoken line highlighted during the gap before the next cue.
+    val activeCue = activeSubtitleSyncCue(sortedCues, subtitlePositionMs)
+        ?: sortedCues.lastOrNull { it.startTimeMs <= subtitlePositionMs }
+    val activeCueIndex = sortedCues.indexOf(activeCue)
+    val cueListState = rememberLazyListState()
+    var followActiveCue by remember { mutableStateOf(true) }
+    var autoScrollInProgress by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cueListState) {
+        snapshotFlow { cueListState.isScrollInProgress }.collect { isScrolling ->
+            if (isScrolling && !autoScrollInProgress) {
+                followActiveCue = false
+            } else if (!isScrolling && !autoScrollInProgress && !followActiveCue) {
+                delay(900)
+                val activeItem = cueListState.layoutInfo.visibleItemsInfo
+                    .firstOrNull { it.index == activeCueIndex }
+                val viewportCenter = (
+                    cueListState.layoutInfo.viewportStartOffset +
+                        cueListState.layoutInfo.viewportEndOffset
+                    ) / 2
+                val itemCenter = activeItem?.let { it.offset + it.size / 2 }
+                if (itemCenter != null && kotlin.math.abs(itemCenter - viewportCenter) <= 96) {
+                    followActiveCue = true
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(sortedCues) {
+        followActiveCue = true
+    }
+
+    LaunchedEffect(activeCueIndex, sortedCues.size, followActiveCue) {
+        if (!followActiveCue || activeCueIndex < 0) return@LaunchedEffect
+        autoScrollInProgress = true
+        try {
+            cueListState.animateSubtitleCueToCenter(activeCueIndex)
+        } finally {
+            autoScrollInProgress = false
+        }
+    }
+
+    val useSideBySideLayout = availableWidth >= 720.dp
+    val contentModifier = Modifier.fillMaxWidth()
+    val contentSpacing = if (useSideBySideLayout) 16.dp else 12.dp
+
+    if (useSideBySideLayout) {
+        Row(
+            modifier = contentModifier,
+            horizontalArrangement = Arrangement.spacedBy(contentSpacing),
+            verticalAlignment = Alignment.Top,
+        ) {
+            SubtitleSyncCueList(
+                modifier = Modifier.weight(1f),
+                isCompact = isCompact,
+                sortedCues = sortedCues,
+                activeCueIndex = activeCueIndex,
+                cueListState = cueListState,
+                selectedAddonSubtitle = selectedAddonSubtitle,
+                subtitleAutoSyncState = subtitleAutoSyncState,
+                onAutoSyncCueSelected = onAutoSyncCueSelected,
+                onManualScrollStarted = { followActiveCue = false },
+                tokens = tokens,
+                railMaxHeight = railMaxHeight,
+            )
+            SubtitleSyncControls(
+                modifier = Modifier.width(if (isCompact) 320.dp else 360.dp),
+                isCompact = isCompact,
+                selectedAddonSubtitle = selectedAddonSubtitle,
+                subtitleAutoSyncState = subtitleAutoSyncState,
+                subtitleDelayMs = subtitleDelayMs,
+                isPlaying = isPlaying,
+                sortedCues = sortedCues,
+                onSubtitleDelayChanged = onSubtitleDelayChanged,
+                onSubtitleDelayReset = onSubtitleDelayReset,
+                onAutoSyncCapture = onAutoSyncCapture,
+                onAutoSyncReload = onAutoSyncReload,
+                onTogglePlayback = onTogglePlayback,
+                tokens = tokens,
+            )
+        }
+    } else {
+        Column(
+            modifier = contentModifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(contentSpacing),
+        ) {
+            SubtitleSyncCueList(
+                modifier = Modifier.fillMaxWidth(),
+                isCompact = isCompact,
+                sortedCues = sortedCues,
+                activeCueIndex = activeCueIndex,
+                cueListState = cueListState,
+                selectedAddonSubtitle = selectedAddonSubtitle,
+                subtitleAutoSyncState = subtitleAutoSyncState,
+                onAutoSyncCueSelected = onAutoSyncCueSelected,
+                onManualScrollStarted = { followActiveCue = false },
+                tokens = tokens,
+                railMaxHeight = (railMaxHeight * 0.52f).coerceAtLeast(180.dp),
+            )
+            SubtitleSyncControls(
+                modifier = Modifier.fillMaxWidth(),
+                isCompact = isCompact,
+                selectedAddonSubtitle = selectedAddonSubtitle,
+                subtitleAutoSyncState = subtitleAutoSyncState,
+                subtitleDelayMs = subtitleDelayMs,
+                isPlaying = isPlaying,
+                sortedCues = sortedCues,
+                onSubtitleDelayChanged = onSubtitleDelayChanged,
+                onSubtitleDelayReset = onSubtitleDelayReset,
+                onAutoSyncCapture = onAutoSyncCapture,
+                onAutoSyncReload = onAutoSyncReload,
+                onTogglePlayback = onTogglePlayback,
+                tokens = tokens,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SubtitleSyncCueList(
+    modifier: Modifier,
+    isCompact: Boolean,
+    sortedCues: List<SubtitleSyncCue>,
+    activeCueIndex: Int,
+    cueListState: androidx.compose.foundation.lazy.LazyListState,
+    selectedAddonSubtitle: AddonSubtitle?,
+    subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    onAutoSyncCueSelected: (SubtitleSyncCue) -> Unit,
+    onManualScrollStarted: () -> Unit,
+    tokens: com.nuvio.app.core.ui.NuvioThemeTokens,
+    railMaxHeight: Dp,
+) {
+    Column(modifier = modifier) {
+            Text(
+                text = stringResource(Res.string.compose_player_subtitles),
+                color = tokens.colors.textMuted,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            when {
+                    selectedAddonSubtitle == null -> {
+                        Text(
+                            text = stringResource(Res.string.compose_player_select_addon_subtitle_first),
+                            color = tokens.colors.textMuted,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 220.dp, max = railMaxHeight)
+                                .padding(24.dp),
+                        )
+                    }
+
+                    subtitleAutoSyncState.isLoading && sortedCues.isEmpty() -> {
+                        Text(
+                            text = stringResource(Res.string.compose_player_loading_lines),
+                            color = tokens.colors.textMuted,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 220.dp, max = railMaxHeight)
+                                .padding(24.dp),
+                        )
+                    }
+
+                    sortedCues.isEmpty() -> {
+                        Text(
+                            text = subtitleAutoSyncState.errorMessage
+                                ?: stringResource(Res.string.compose_player_no_subtitle_lines_found),
+                            color = if (subtitleAutoSyncState.errorMessage != null) {
+                                tokens.colors.danger
+                            } else {
+                                tokens.colors.textMuted
+                            },
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 220.dp, max = railMaxHeight)
+                                .padding(24.dp),
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            state = cueListState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 260.dp, max = railMaxHeight)
+                                .subtitleSyncManualScroll(onManualScrollStarted),
+                            contentPadding = PaddingValues(vertical = railMaxHeight / 2),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            itemsIndexed(sortedCues) { index, cue ->
+                                val isActive = index == activeCueIndex
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(
+                                            if (isActive) tokens.colors.accent.copy(alpha = 0.22f)
+                                            else Color.Transparent,
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isActive) tokens.colors.accent.copy(alpha = 0.72f)
+                                            else Color.Transparent,
+                                            RoundedCornerShape(14.dp),
+                                        )
+                                        .clickable { onAutoSyncCueSelected(cue) }
+                                         .padding(
+                                             horizontal = if (isCompact) 10.dp else 14.dp,
+                                             vertical = if (isActive) {
+                                                 if (isCompact) 10.dp else 14.dp
+                                             } else {
+                                                 if (isCompact) 7.dp else 10.dp
+                                             },
+                                         ),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.Top,
+                                ) {
+                                    Text(
+                                        text = nuvioFormatCueTimestamp(cue.startTimeMs),
+                                        color = if (isActive) tokens.colors.accent else tokens.colors.textMuted,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                         modifier = Modifier.padding(top = 5.dp),
+                                    )
+                                    Text(
+                                        text = cue.text,
+                                        color = if (isActive) tokens.colors.textPrimary else tokens.colors.textSecondary,
+                                         fontSize = if (isActive) {
+                                             if (isCompact) 22.sp else 26.sp
+                                         } else {
+                                             if (isCompact) 17.sp else 20.sp
+                                         },
+                                         lineHeight = if (isActive) {
+                                             if (isCompact) 27.sp else 32.sp
+                                         } else {
+                                             if (isCompact) 22.sp else 26.sp
+                                         },
+                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+    }
+}
+
+@Composable
+private fun SubtitleSyncControls(
+    modifier: Modifier,
+    isCompact: Boolean,
+    selectedAddonSubtitle: AddonSubtitle?,
+    subtitleAutoSyncState: SubtitleAutoSyncUiState,
+    subtitleDelayMs: Int,
+    isPlaying: Boolean,
+    sortedCues: List<SubtitleSyncCue>,
+    onSubtitleDelayChanged: (Int) -> Unit,
+    onSubtitleDelayReset: () -> Unit,
+    onAutoSyncCapture: () -> Unit,
+    onAutoSyncReload: () -> Unit,
+    onTogglePlayback: () -> Unit,
+    tokens: com.nuvio.app.core.ui.NuvioThemeTokens,
+) {
+    Column(
+        modifier = modifier
+                .clip(RoundedCornerShape(18.dp))
+                .background(tokens.colors.surfaceCard.copy(alpha = 0.84f))
+                .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(18.dp))
+                .padding(if (isCompact) 12.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CenterFocusStrong,
+                    contentDescription = null,
+                    tint = tokens.colors.accent,
+                    modifier = Modifier.size(if (isCompact) 16.dp else 18.dp),
+                )
+                Text(
+                    text = stringResource(Res.string.compose_player_auto_sync),
+                    color = tokens.colors.textPrimary,
+                    style = if (isCompact) {
+                        MaterialTheme.typography.labelLarge
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            Text(
+                text = selectedAddonSubtitle?.display
+                    ?: stringResource(Res.string.compose_player_select_addon_subtitle_first),
+                color = tokens.colors.textMuted,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+
+            Text(
+                text = stringResource(Res.string.compose_player_subtitle_delay),
+                color = tokens.colors.textSecondary,
+                style = if (isCompact) {
+                    MaterialTheme.typography.labelLarge
+                } else {
+                    MaterialTheme.typography.titleMedium
+                },
+            )
+            NuvioSyncStepper(
+                isCompact = isCompact,
+                value = nuvioFormatSubtitleDelay(subtitleDelayMs),
+                onMinus = {
+                    onSubtitleDelayChanged(
+                        (subtitleDelayMs - SUBTITLE_DELAY_STEP_MS).coerceAtLeast(SUBTITLE_DELAY_MIN_MS),
+                    )
+                },
+                onPlus = {
+                    onSubtitleDelayChanged(
+                        (subtitleDelayMs + SUBTITLE_DELAY_STEP_MS).coerceAtMost(SUBTITLE_DELAY_MAX_MS),
+                    )
+                },
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                NuvioSyncActionButton(
+                    modifier = Modifier.weight(1f),
+                    isCompact = isCompact,
+                    text = if (isPlaying) stringResource(Res.string.compose_action_pause)
+                    else stringResource(Res.string.action_play),
+                    icon = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    enabled = selectedAddonSubtitle != null,
+                    selected = isPlaying,
+                    onClick = onTogglePlayback,
+                )
+                NuvioSyncActionButton(
+                    modifier = Modifier.weight(1f),
+                    isCompact = isCompact,
+                    text = stringResource(Res.string.compose_player_reload),
+                    icon = Icons.Rounded.Refresh,
+                    enabled = selectedAddonSubtitle != null,
+                    onClick = onAutoSyncReload,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                NuvioSyncActionButton(
+                    modifier = Modifier.weight(1f),
+                    isCompact = isCompact,
+                    text = stringResource(Res.string.compose_player_capture_line),
+                    icon = Icons.Rounded.CenterFocusStrong,
+                    enabled = selectedAddonSubtitle != null,
+                    onClick = onAutoSyncCapture,
+                )
+                NuvioSyncActionButton(
+                    modifier = Modifier.weight(1f),
+                    isCompact = isCompact,
+                    text = stringResource(Res.string.compose_player_reset),
+                    enabled = true,
+                    onClick = onSubtitleDelayReset,
+                )
+            }
+
+            if (subtitleAutoSyncState.isLoading && sortedCues.isNotEmpty()) {
+                Text(
+                    text = stringResource(Res.string.compose_player_loading_lines),
+                    color = tokens.colors.textMuted,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            subtitleAutoSyncState.errorMessage?.let { message ->
+                Text(
+                    text = message,
+                    color = tokens.colors.danger,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+    }
+
+@Composable
+private fun NuvioSyncActionButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    selected: Boolean = false,
+    modifier: Modifier = Modifier,
+    isCompact: Boolean = false,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = modifier
+            .heightIn(min = if (isCompact) 40.dp else 48.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                when {
+                    selected -> tokens.colors.accent
+                    enabled -> tokens.colors.surfaceElevated
+                    else -> tokens.colors.overlayDisabled
+                },
+            )
+            .border(1.dp, tokens.colors.borderSubtle, RoundedCornerShape(10.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(
+                horizontal = if (isCompact) 8.dp else 12.dp,
+                vertical = if (isCompact) 8.dp else 11.dp,
+            ),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon?.let {
+            Icon(
+                imageVector = it,
+                contentDescription = null,
+                tint = if (selected) tokens.colors.onAccent else tokens.colors.textSecondary,
+                modifier = Modifier.size(if (isCompact) 16.dp else 20.dp),
+            )
+        }
+        Text(
+            text = text,
+            color = when {
+                selected -> tokens.colors.onAccent
+                enabled -> tokens.colors.textPrimary
+                else -> tokens.colors.textDisabled
+            },
+            style = if (isCompact) {
+                MaterialTheme.typography.labelMedium
+            } else {
+                MaterialTheme.typography.labelLarge
+            },
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun NuvioSyncStepper(
+    isCompact: Boolean,
+    value: String,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NuvioSyncStepperButton(
+            isCompact = isCompact,
+            icon = Icons.Rounded.KeyboardArrowDown,
+            onClick = onMinus,
+        )
+        Text(
+            text = value,
+            color = tokens.colors.textPrimary,
+            style = MaterialTheme.typography.titleMedium,
+            fontSize = if (isCompact) 18.sp else 22.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        NuvioSyncStepperButton(
+            isCompact = isCompact,
+            icon = Icons.Rounded.KeyboardArrowUp,
+            onClick = onPlus,
+        )
+    }
+}
+
+@Composable
+private fun NuvioSyncStepperButton(
+    isCompact: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val tokens = MaterialTheme.nuvio
+    Box(
+        modifier = Modifier
+            .size(if (isCompact) 38.dp else 50.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(tokens.colors.accent.copy(alpha = 0.18f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tokens.colors.accent,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+private fun nuvioFormatSubtitleDelay(delayMs: Int): String {
+    val sign = if (delayMs >= 0) "+" else "-"
+    val absoluteMs = kotlin.math.abs(delayMs)
+    return "$sign${absoluteMs / 1000}.${(absoluteMs % 1000).toString().padStart(3, '0')}s"
+}
+
+private fun nuvioFormatCueTimestamp(timeMs: Long): String {
+    val totalSeconds = (timeMs / 1000L).coerceAtLeast(0L)
+    return "${totalSeconds / 60L}:${(totalSeconds % 60L).toString().padStart(2, '0')}"
 }
 
 @Composable
