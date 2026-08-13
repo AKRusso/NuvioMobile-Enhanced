@@ -34,6 +34,14 @@ jobs:
     timeout-minutes: 60
     env:
       NUVIO_IOS_DISTRIBUTION: full
+      # The Xcode build script starts Gradle, the Kotlin daemon, and Kotlin/Native together.
+      # Keep their heaps below the hosted runner memory limit to avoid a stalled build.
+      GRADLE_OPTS: >-
+        -Dorg.gradle.jvmargs="-Xmx6g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=1536m"
+        -Dorg.gradle.configuration-cache=false
+        -Pkotlin.daemon.jvmargs=-Xmx4g
+        -Pkotlin.native.jvmArgs=-Xmx4g
+      KOTLIN_DAEMON_JVMARGS: -Xmx4g
 
     steps:
       - name: Check out full history
