@@ -1,4 +1,0 @@
-language = Objective-C
-headers = iosappicon_shim.h
-package = com.nuvio.app.features.settings.iosappicon
-linkerOpts = -framework UIKit

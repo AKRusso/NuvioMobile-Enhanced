@@ -481,8 +481,8 @@ kotlin {
                     defFile(project.file("src/nativeInterop/cinterop/iospowersource.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
                 }
-                create("iosappicon") {
-                    defFile(project.file("src/nativeInterop/cinterop/iosappicon.def"))
+                create("appicon") {
+                    defFile(project.file("src/nativeInterop/cinterop/appicon.def"))
                     compilerOpts("-I${project.projectDir}/src/nativeInterop/cinterop")
                 }
                 if (iosDistribution == "full" && nuvioEngineSliceDirectory.resolve("libCNuvioEngine.a").isFile) {

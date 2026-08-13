@@ -15,7 +15,10 @@ internal actual object PlayerWallClock {
         return PlayerWallClockSnapshot(
             currentTime = formatter.stringFromDate(now),
             endTime = formatter.stringFromDate(
-                NSDate(timeIntervalSinceNow = remainingMs.coerceAtLeast(0L).toDouble() / 1000.0),
+                NSDate(
+                    timeIntervalSinceReferenceDate = now.timeIntervalSinceReferenceDate +
+                        remainingMs.coerceAtLeast(0L).toDouble() / 1000.0,
+                ),
             ),
         )
     }
