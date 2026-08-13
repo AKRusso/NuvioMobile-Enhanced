@@ -70,7 +70,7 @@ internal object TrailerExtractionPlatform {
                     status = response.code,
                     statusText = response.message,
                     url = response.request.url.toString(),
-                    body = response.body?.string().orEmpty(),
+                    body = response.body.string(),
                 )
             }
     }

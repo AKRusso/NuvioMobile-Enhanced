@@ -131,17 +131,19 @@ fun DetailActionButtons(
                         contentDescription = null,
                         modifier = Modifier.size(if (isTablet) 20.dp else 18.dp),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = playLabel,
-                        style = if (isTablet) {
-                            MaterialTheme.typography.titleMedium
-                        } else {
-                            MaterialTheme.typography.titleSmall
-                        },
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (!actionsExpanded && menuProgress < 0.01f) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = playLabel,
+                            style = if (isTablet) {
+                                MaterialTheme.typography.titleMedium
+                            } else {
+                                MaterialTheme.typography.titleSmall
+                            },
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
 

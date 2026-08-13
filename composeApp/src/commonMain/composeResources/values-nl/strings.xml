@@ -1987,4 +1987,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Kies tussen de Enhanced-kiezer gegroepeerd op taal en de nieuwe Nuvio-indeling.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Het getoonde bedrag is voor betalings- en bankkosten, dus het ontvangen bedrag kan lager zijn.</string>
 </resources>

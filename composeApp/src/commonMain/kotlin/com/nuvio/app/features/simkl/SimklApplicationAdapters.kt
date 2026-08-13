@@ -8,6 +8,7 @@ import com.nuvio.app.features.tracking.TrackingProgressProvider
 import com.nuvio.app.features.tracking.TrackingProgressSnapshot
 import com.nuvio.app.features.tracking.TrackingRefreshIntent
 import com.nuvio.app.features.tracking.TrackingWatchedProvider
+import com.nuvio.app.features.tracking.TrackingWatchedSnapshot
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import kotlinx.coroutines.CancellationException
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -58,10 +60,24 @@ object SimklWatchedSyncAdapter : TrackingWatchedProvider {
     }
 
     override fun observeExtraWatchedKeys(profileId: Int): kotlinx.coroutines.flow.Flow<Set<String>> =
+        observeWatchedSnapshot(profileId)
+            .map { snapshot -> snapshot.extraWatchedKeys }
+            .distinctUntilChanged()
+
+    override fun observeWatchedSnapshot(profileId: Int): Flow<TrackingWatchedSnapshot> =
         SimklSyncRepository.state
+            .filter { state ->
+                state.hasLoaded && profileId == ProfileRepository.activeProfileId
+            }
             .map { state ->
                 SimklAnimeWatchedFallback.clearOptimisticRemovals()
-                state.snapshot.animeAlternateWatchedKeys() + state.snapshot.movieAlternateWatchedKeys()
+                val projection = state.snapshot.toSimklWatchedProjection()
+                TrackingWatchedSnapshot(
+                    items = projection.items,
+                    fullyWatchedSeriesKeys = projection.fullyWatchedSeriesKeys,
+                    extraWatchedKeys = state.snapshot.animeAlternateWatchedKeys() +
+                        state.snapshot.movieAlternateWatchedKeys(),
+                )
             }
             .distinctUntilChanged()
 

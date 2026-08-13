@@ -13,6 +13,7 @@ import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal val PlayerScreenRuntime.activePlaybackIdentity: String
     get() = activeTorrentInfoHash
@@ -138,7 +139,6 @@ internal fun PlayerScreenRuntime.currentTrackingMedia(): TrackingMediaReference 
     snapshotTrackingScrobbleItemInputs().buildMedia()
 
 internal fun PlayerScreenRuntime.emitTrackingScrobbleStart() {
-    if (randomEpisodeMode) return
     if (hasRequestedScrobbleStartForCurrentItem) return
     hasRequestedScrobbleStartForCurrentItem = true
     val requestGeneration = scrobbleStartRequestGeneration + 1L
@@ -183,21 +183,22 @@ private fun PlayerScreenRuntime.emitTrackingScrobbleTerminal(
     action: TrackingScrobbleAction,
     progressPercent: Float?,
 ) {
-    if (randomEpisodeMode) return
     val provided = progressPercent
     if (!hasRequestedScrobbleStartForCurrentItem && (provided ?: 0f) < 80f) return
 
     val percent = provided ?: currentPlaybackProgressPercent()
     val mediaSnapshot = currentTrackingMedia
     val inputsSnapshot = snapshotTrackingScrobbleItemInputs()
-    scope.launch(NonCancellable) {
-        val media = mediaSnapshot ?: inputsSnapshot.buildMedia()
-        if (!media.hasResolvableIdentity) return@launch
-        TrackingScrobbleCoordinator.scrobble(
+    scope.launch {
+        withContext(NonCancellable) {
+            val media = mediaSnapshot ?: inputsSnapshot.buildMedia()
+            if (!media.hasResolvableIdentity) return@withContext
+            TrackingScrobbleCoordinator.scrobble(
             profileId = profileId,
             action = action,
             event = TrackingScrobbleEvent(media = media, progressPercent = percent.toDouble()),
-        )
+            )
+        }
     }
     currentTrackingMedia = null
     hasRequestedScrobbleStartForCurrentItem = false
@@ -275,7 +276,6 @@ internal suspend fun PlayerScreenRuntime.resolveParentalGuideImdbId(): String? {
 internal fun PlayerScreenRuntime.flushWatchProgress(
     scrobbleAction: TrackingScrobbleAction = TrackingScrobbleAction.STOP,
 ) {
-    if (randomEpisodeMode) return
     when (scrobbleAction) {
         TrackingScrobbleAction.PAUSE -> emitTrackingScrobblePause()
         TrackingScrobbleAction.STOP -> emitStopScrobbleForCurrentProgress()
@@ -288,7 +288,6 @@ internal fun PlayerScreenRuntime.flushWatchProgress(
 }
 
 internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
-    if (randomEpisodeMode) return
     val shouldRestartScrobbleAfterSeek = shouldPlay || playbackSnapshot.isPlaying
     seekProgressSyncJob?.cancel()
     seekProgressSyncJob = scope.launch {
@@ -338,7 +337,6 @@ internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {
 }
 
 internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
-    if (randomEpisodeMode) return
     val now = WatchProgressClock.nowEpochMs()
     if (now - lastProgressPersistEpochMs < PlaybackProgressPersistIntervalMs) return
     lastProgressPersistEpochMs = now
@@ -350,7 +348,6 @@ internal fun PlayerScreenRuntime.persistPlaybackProgressTick() {
 }
 
 internal fun PlayerScreenRuntime.syncPlaybackProgressTick() {
-    if (randomEpisodeMode) return
     if (isLiveTv) return
     if (playbackSnapshot.isLoading || !playbackSnapshot.isPlaying) return
     val positionMs = playbackSnapshot.positionMs.coerceAtLeast(0L)

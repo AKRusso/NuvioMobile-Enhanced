@@ -32,6 +32,20 @@ object DownloadsRepository {
         loadFromDisk()
     }
 
+    fun removeMissingCompletedDownloads() {
+        ensureLoaded()
+        val remaining = _uiState.value.items.filter { item ->
+            item.status != DownloadStatus.Completed ||
+                DownloadsPlatformDownloader.resolveLocalFileUri(
+                    localFileUri = item.localFileUri,
+                    destinationFileName = item.fileName,
+                ) != null
+        }
+        if (remaining.size == _uiState.value.items.size) return
+        publish(remaining)
+        persist()
+    }
+
     fun clearLocalState() {
         activeHandles.values.forEach(DownloadsTaskHandle::cancel)
         activeHandles.clear()
@@ -264,7 +278,10 @@ object DownloadsRepository {
         DownloadsPlatformDownloader.removeFile(playableLocalFileUri(item) ?: item.localFileUri)
         DownloadsPlatformDownloader.removePartialFile(item.fileName)
         item.externalSubtitles.forEach { subtitle ->
-            val subtitleUri = subtitle.url.takeIf { it.startsWith("file:", ignoreCase = true) }
+            val subtitleUri = subtitle.url.takeIf {
+                it.startsWith("file:", ignoreCase = true) ||
+                    it.startsWith("content:", ignoreCase = true)
+            }
                 ?: return@forEach
             DownloadsPlatformDownloader.removeFile(subtitleUri)
         }
@@ -307,7 +324,8 @@ object DownloadsRepository {
         }
 
         var shouldPersistNormalized = false
-        val normalized = DownloadsCodec.decodeItems(payload)
+        val decodedItems = DownloadsCodec.decodeItems(payload)
+        val normalized = decodedItems
             .map { item ->
                 val statusNormalized = if (item.status == DownloadStatus.Downloading) {
                     item.copy(
@@ -325,6 +343,16 @@ object DownloadsRepository {
                 }
                 localUriNormalized
             }
+            .filter { item ->
+                item.status != DownloadStatus.Completed ||
+                    DownloadsPlatformDownloader.resolveLocalFileUri(
+                        localFileUri = item.localFileUri,
+                        destinationFileName = item.fileName,
+                    ) != null
+            }
+        if (normalized.size != decodedItems.size) {
+            shouldPersistNormalized = true
+        }
 
         _uiState.value = DownloadsUiState(normalized)
         notifyLiveStatusPlatform()

@@ -78,7 +78,7 @@ object AndroidAppUpdaterPlatform {
                     error(runBlocking { getString(Res.string.updates_download_failed_http, response.code) })
                 }
 
-                val body = response.body ?: error(runBlocking { getString(Res.string.updates_empty_download_body) })
+                val body = response.body
                 val totalBytes = body.contentLength().takeIf { it > 0L }
                 body.byteStream().use { input ->
                     FileOutputStream(destination).use { output ->

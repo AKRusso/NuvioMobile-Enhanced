@@ -1968,4 +1968,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Scegli tra il selettore Enhanced raggruppato per lingua e il nuovo layout di Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+  <string name="community_donation_progress_fee_notice">L'importo mostrato è al lordo delle commissioni di pagamento e bancarie, quindi l'importo ricevuto potrebbe essere inferiore.</string>
 </resources>

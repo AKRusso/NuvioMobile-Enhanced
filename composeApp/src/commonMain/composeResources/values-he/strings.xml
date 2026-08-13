@@ -741,4 +741,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">בחרו בין בורר Enhanced המקובץ לפי שפה לבין הפריסה החדשה של Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">הסכום המוצג הוא לפני עמלות תשלום ובנק, לכן הסכום המתקבל עשוי להיות נמוך יותר.</string>
 </resources>

@@ -2390,4 +2390,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">اختر بين محدد Enhanced المجمع حسب اللغة وتخطيط Nuvio الجديد.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">المبلغ المعروض قبل رسوم الدفع والبنوك، لذلك قد يكون المبلغ المستلم أقل.</string>
 </resources>

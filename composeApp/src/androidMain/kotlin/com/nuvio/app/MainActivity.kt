@@ -26,7 +26,9 @@ import com.nuvio.app.features.collection.CollectionStorage
 import com.nuvio.app.features.cloudstream.CloudStreamPlatformStorage
 import com.nuvio.app.features.debrid.DebridSettingsStorage
 import com.nuvio.app.features.downloads.DownloadsLiveStatusPlatform
+import com.nuvio.app.features.downloads.DownloadsExternalFolderPlatform
 import com.nuvio.app.features.downloads.DownloadsPlatformDownloader
+import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsStorage
 import com.nuvio.app.features.library.LibraryDisplaySettingsStorage
 import com.nuvio.app.features.library.LibraryStorage
@@ -148,9 +150,11 @@ class MainActivity : AppCompatActivity() {
         CollectionMobileSettingsStorage.initialize(applicationContext)
         CollectionStorage.initialize(applicationContext)
         DownloadsStorage.initialize(applicationContext)
+        DownloadsExternalFolderPlatform.initialize(applicationContext)
         DownloadsPlatformDownloader.initialize(applicationContext)
         DownloadsLiveStatusPlatform.initialize(applicationContext)
         DownloadsLiveStatusPlatform.bindActivity(this)
+        DownloadsExternalFolderPlatform.bindActivity(this)
         AndroidAppUpdaterPlatform.initialize(applicationContext)
         PlatformLocalAccountDataCleaner.initialize(applicationContext)
         EpisodeReleaseNotificationPlatform.initialize(applicationContext)
@@ -171,6 +175,11 @@ class MainActivity : AppCompatActivity() {
         handleIncomingAppIntent(intent)
     }
 
+    override fun onResume() {
+        super.onResume()
+        DownloadsRepository.removeMissingCompletedDownloads()
+    }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         PlayerPictureInPictureManager.onUserLeaveHint(this)
@@ -187,6 +196,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         EpisodeReleaseNotificationPlatform.unbindActivity(this)
         DownloadsLiveStatusPlatform.unbindActivity(this)
+        DownloadsExternalFolderPlatform.unbindActivity(this)
         NuvioEnhancedBackupFileBridge.unbindActivity(this)
         SubtitleFontFileBridge.unbindActivity(this)
         AppSystemUiController.unbind(this)
@@ -196,6 +206,9 @@ class MainActivity : AppCompatActivity() {
     @Deprecated("Deprecated in Android platform APIs, still used for Storage Access Framework callbacks here.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (NuvioEnhancedBackupFileBridge.handleActivityResult(requestCode, resultCode, data)) {
+            return
+        }
+        if (DownloadsExternalFolderPlatform.handleActivityResult(requestCode, resultCode, data)) {
             return
         }
         if (SubtitleFontFileBridge.handleActivityResult(requestCode, resultCode, data)) {
@@ -236,7 +249,7 @@ class MainActivity : AppCompatActivity() {
                     LiveTvIncomingSourceRepository.submitText(sharedText)
                     return true
                 }
-                val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                val uri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
                 if (uri != null && submitPlaylistUri(uri)) {
                     return true
                 }

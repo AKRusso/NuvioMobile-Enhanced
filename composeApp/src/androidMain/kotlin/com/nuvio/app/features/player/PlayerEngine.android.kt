@@ -434,7 +434,7 @@ private fun ExoPlayerSurface(
     }
 
     LaunchedEffect(exoPlayer, resolvedMediaItem, initialPositionRequestKey) {
-        val mediaItem = resolvedMediaItem ?: return@LaunchedEffect
+        val mediaItem = resolvedMediaItem
         val requestedStartPositionMs = fallbackStartPositionMs
             ?: initialPositionMs?.takeIf { it > 0L }
         playbackDiagnostics.attempt += 1
@@ -2029,7 +2029,11 @@ private fun SubtitleStyleState.toMpvSubtitleFont(): String =
         SubtitleFontFamily.Serif -> "serif"
         SubtitleFontFamily.Monospace -> "monospace"
         SubtitleFontFamily.Rounded -> "sans-serif-rounded"
-        SubtitleFontFamily.Custom -> customFontName?.takeIf { it.isNotBlank() } ?: "sans-serif"
+        SubtitleFontFamily.Custom -> customFontPath
+            ?.takeIf(String::isNotBlank)
+            ?.let(::subtitleFontFamilyName)
+            ?: customFontName?.takeIf { it.isNotBlank() }
+            ?: "sans-serif"
     }
 
 private fun SubtitleStyleState.customFontDirectory(): String? =
@@ -2213,12 +2217,14 @@ private class CueNormalizingTextOutput(
     private val shouldNormalizeCuePositionProvider: () -> Boolean,
     private val videoBoundsFractionProvider: () -> RectF?,
 ) : TextOutput {
+    @Deprecated("Required by the current Media3 TextOutput interface.")
     override fun onCues(cueGroup: CueGroup) {
         val processed = cueGroup.cues.map(::processCue)
         delegate.onCues(CueGroup(processed, cueGroup.presentationTimeUs))
     }
 
-    @Deprecated("Uses the deprecated Media3 callback for text outputs.")
+    @Deprecated("Required by the current Media3 TextOutput interface.")
+    @Suppress("DEPRECATION")
     override fun onCues(cues: List<Cue>) {
         delegate.onCues(cues.map(::processCue))
     }

@@ -25,7 +25,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.GpsFixed
 import androidx.compose.material.icons.rounded.PlayCircleOutline
 import androidx.compose.material.icons.rounded.Replay
-import androidx.compose.material.icons.rounded.Send
+import androidx.compose.material.icons.automirrored.rounded.SendAndArchive
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material3.BasicAlertDialog
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
@@ -237,7 +237,7 @@ fun SubmitIntroDialog(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Icon(Icons.Rounded.Send, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.AutoMirrored.Rounded.SendAndArchive, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                                 Text(
                                     text = stringResource(Res.string.submit_intro_button_submit),
                                     color = MaterialTheme.colorScheme.onPrimary,

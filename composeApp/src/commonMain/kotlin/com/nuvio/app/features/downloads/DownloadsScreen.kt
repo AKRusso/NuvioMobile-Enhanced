@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,9 @@ fun DownloadsScreen(
         DownloadsRepository.ensureLoaded()
         DownloadsRepository.uiState
     }.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        DownloadsRepository.removeMissingCompletedDownloads()
+    }
 
     var selectedShowId by rememberSaveable(initialShowId) { mutableStateOf(initialShowId) }
     val openDownloadsDirectoryFailedText = stringResource(Res.string.downloads_open_directory_failed)
@@ -430,7 +434,7 @@ private fun DownloadRow(
             if (item.status == DownloadStatus.Downloading) {
                 if (item.totalBytes != null && item.totalBytes > 0L) {
                     LinearProgressIndicator(
-                        progress = item.progressFraction,
+                        progress = { item.progressFraction },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 } else {

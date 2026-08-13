@@ -353,7 +353,7 @@ private fun MetaSectionRow(
                                 .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
                         )
                         Text(
-                            text = stringResource(Res.string.settings_meta_tab_group_format, item.tabGroup ?: 0),
+                            text = stringResource(Res.string.settings_meta_tab_group_format, item.tabGroup),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium,

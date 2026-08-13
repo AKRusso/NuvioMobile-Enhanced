@@ -400,9 +400,14 @@ internal actual object DownloadsLiveStatusPlatform {
         } else {
             DownloadsForegroundService.stop(context)
             foregroundServiceRequested = false
-            runCatching {
-                NotificationManagerCompat.from(context).cancel(foregroundNotificationId)
-            }
+            clearForegroundNotification(context)
+        }
+    }
+
+    internal fun clearForegroundNotification(context: Context? = null) {
+        val resolvedContext = context ?: appContext ?: return
+        runCatching {
+            NotificationManagerCompat.from(resolvedContext).cancel(foregroundNotificationId)
         }
     }
 

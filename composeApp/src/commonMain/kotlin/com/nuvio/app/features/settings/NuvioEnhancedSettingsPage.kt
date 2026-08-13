@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // LocalClipboardManager is the clipboard API exposed by this Compose dependency.
+
 package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.BorderStroke
@@ -25,8 +27,9 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Backup
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Email
+import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Restore
 import androidx.compose.material3.AlertDialog
@@ -68,6 +71,7 @@ import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
+import com.nuvio.app.features.downloads.DownloadsExternalFolderPlatform
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.player.AndroidPlaybackEngine
 import com.nuvio.app.features.player.PlayerSettingsRepository
@@ -129,6 +133,7 @@ private fun NuvioEnhancedSettingsPageContent(
         PlayerSettingsRepository.ensureLoaded()
         PlayerSettingsRepository.uiState
     }.collectAsStateWithLifecycle()
+    val externalFolderState by DownloadsExternalFolderPlatform.state.collectAsStateWithLifecycle()
     val lastCrashReport by remember {
         CrashDiagnostics.lastReport
     }.collectAsStateWithLifecycle()
@@ -160,7 +165,7 @@ private fun NuvioEnhancedSettingsPageContent(
     val backupImportFailedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_import_failed)
     val backupCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_copied)
     val crashCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_crash_copied)
-    val noEmailAppMessage = stringResource(Res.string.nuvio_enhanced_toast_no_email_app)
+    val externalFolderFailedMessage = stringResource(Res.string.nuvio_enhanced_external_folder_failed)
     val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
     val detailHeroTrailerPlaybackSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
@@ -956,26 +961,48 @@ private fun NuvioEnhancedSettingsPageContent(
             }
         }
 
-        SettingsSection(
-            title = stringResource(Res.string.nuvio_enhanced_section_feedback),
-            isTablet = isTablet,
-        ) {
-            SettingsGroup(isTablet = isTablet) {
-                SettingsNavigationRow(
-                    title = stringResource(Res.string.nuvio_enhanced_feedback_title),
-                    description = stringResource(Res.string.nuvio_enhanced_feedback_desc),
-                    icon = Icons.Rounded.Email,
-                    isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.ContactSupport),
-                    onClick = {
-                        markSeen(NuvioEnhancedFeature.ContactSupport)
-                        runCatching {
-                            uriHandler.openUri("mailto:alisyr01@icloud.com?subject=Nuvio%20Feedback")
-                        }.onFailure {
-                            NuvioToastController.show(noEmailAppMessage)
-                        }
-                    },
-                )
+        if (!isIos) {
+            SettingsSection(
+                title = stringResource(Res.string.nuvio_enhanced_section_downloads),
+                isTablet = isTablet,
+            ) {
+                SettingsGroup(isTablet = isTablet) {
+                    SettingsNavigationRow(
+                        title = stringResource(
+                            if (externalFolderState.uri.isNullOrBlank()) {
+                                Res.string.nuvio_enhanced_external_folder_choose_title
+                            } else {
+                                Res.string.nuvio_enhanced_external_folder_change_title
+                            },
+                        ),
+                        description = when {
+                            externalFolderState.unavailable -> stringResource(
+                                Res.string.nuvio_enhanced_external_folder_unavailable_description,
+                            )
+                            !externalFolderState.displayName.isNullOrBlank() -> externalFolderState.displayName.orEmpty()
+                            else -> stringResource(Res.string.nuvio_enhanced_external_folder_description)
+                        },
+                        icon = Icons.Rounded.Folder,
+                        isTablet = isTablet,
+                        onClick = {
+                            DownloadsExternalFolderPlatform.chooseFolder { result ->
+                                result.onFailure { error ->
+                                    NuvioToastController.show(error.message ?: externalFolderFailedMessage)
+                                }
+                            }
+                        },
+                    )
+                    if (!externalFolderState.uri.isNullOrBlank()) {
+                        SettingsGroupDivider(isTablet = isTablet)
+                        SettingsNavigationRow(
+                            title = stringResource(Res.string.nuvio_enhanced_external_folder_remove_title),
+                            description = stringResource(Res.string.nuvio_enhanced_external_folder_remove_description),
+                            icon = Icons.Rounded.Delete,
+                            isTablet = isTablet,
+                            onClick = DownloadsExternalFolderPlatform::clearFolder,
+                        )
+                    }
+                }
             }
         }
 

@@ -1925,4 +1925,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Dile göre gruplandırılmış Enhanced seçici ile yeni Nuvio düzeni arasında seçim yapın.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Gösterilen tutar ödeme ve banka ücretlerinden öncedir; bu nedenle alınan tutar daha düşük olabilir.</string>
 </resources>

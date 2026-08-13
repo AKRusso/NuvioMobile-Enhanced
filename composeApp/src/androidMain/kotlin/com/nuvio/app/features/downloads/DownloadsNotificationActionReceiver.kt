@@ -11,6 +11,7 @@ class DownloadsNotificationActionReceiver : BroadcastReceiver() {
         if (downloadId.isBlank()) return
 
         DownloadsStorage.initialize(context.applicationContext)
+        DownloadsExternalFolderPlatform.initialize(context.applicationContext)
         DownloadsPlatformDownloader.initialize(context.applicationContext)
         DownloadsLiveStatusPlatform.initialize(context.applicationContext)
         DownloadsRepository.ensureLoaded()

@@ -25,7 +25,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.LocalRippleConfiguration
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -254,7 +254,7 @@ private fun TabbedGridContent(
     Column(modifier = modifier.fillMaxSize()) {
         if (uiState.tabs.size > 1) {
             CompositionLocalProvider(LocalRippleConfiguration provides null) {
-                ScrollableTabRow(
+                PrimaryScrollableTabRow(
                     selectedTabIndex = uiState.selectedTabIndex,
                     modifier = Modifier.fillMaxWidth(),
                     edgePadding = 16.dp,

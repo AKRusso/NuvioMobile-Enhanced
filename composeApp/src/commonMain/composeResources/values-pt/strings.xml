@@ -1932,4 +1932,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Escolhe entre o seletor Enhanced agrupado por idioma e o novo layout do Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">O valor apresentado é anterior às taxas de pagamento e bancárias, pelo que o montante recebido pode ser inferior.</string>
 </resources>

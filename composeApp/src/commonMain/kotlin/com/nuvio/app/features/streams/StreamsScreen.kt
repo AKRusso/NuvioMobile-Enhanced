@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION") // LocalClipboardManager is the clipboard API exposed by this Compose dependency.
+
 package com.nuvio.app.features.streams
 
 import androidx.compose.animation.AnimatedVisibility

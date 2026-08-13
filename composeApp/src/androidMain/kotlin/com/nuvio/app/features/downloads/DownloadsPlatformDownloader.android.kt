@@ -2,6 +2,8 @@ package com.nuvio.app.features.downloads
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import com.nuvio.app.features.streams.StreamSubtitle
 import kotlinx.coroutines.CancellationException
@@ -67,6 +69,7 @@ internal actual object DownloadsPlatformDownloader {
             val downloadsDir = File(context.filesDir, "downloads").apply { mkdirs() }
             val destination = File(downloadsDir, request.destinationFileName)
             val tempFile = File(downloadsDir, "${request.destinationFileName}.part")
+            val externalFolderUri = DownloadsExternalFolderPlatform.selectedFolderUri()
 
             try {
                 var lastFailure: Throwable? = null
@@ -79,7 +82,20 @@ internal actual object DownloadsPlatformDownloader {
                             tempFile = tempFile,
                             onCall = { call = it },
                             onProgress = onProgress,
-                            onSuccess = onSuccess,
+                            onSuccess = { localFileUri, totalBytes ->
+                                if (externalFolderUri.isNullOrBlank()) {
+                                    onSuccess(localFileUri, totalBytes)
+                                } else {
+                                    val externalUri = copyToExternalFolder(
+                                        context = context,
+                                        treeUri = Uri.parse(externalFolderUri),
+                                        source = destination,
+                                        fileName = request.destinationFileName,
+                                    )
+                                    destination.delete()
+                                    onSuccess(externalUri, totalBytes)
+                                }
+                            },
                         )
                         return@launch
                     } catch (error: Throwable) {
@@ -110,6 +126,17 @@ internal actual object DownloadsPlatformDownloader {
 
     actual fun removeFile(localFileUri: String?): Boolean {
         if (localFileUri.isNullOrBlank()) return false
+        val context = appContext
+        val parsedUri = Uri.parse(localFileUri)
+        if (parsedUri.scheme.equals("content", ignoreCase = true)) {
+            return context?.contentResolver?.let { resolver ->
+                val deleted = runCatching {
+                    DocumentsContract.deleteDocument(resolver, parsedUri)
+                }
+                    .getOrDefault(false)
+                deleted || runCatching { resolver.delete(parsedUri, null, null) > 0 }.getOrDefault(false)
+            } ?: false
+        }
         val file = localFileUri.toLocalFileOrNull() ?: return false
         return runCatching { file.delete() }.getOrDefault(false)
     }
@@ -123,6 +150,16 @@ internal actual object DownloadsPlatformDownloader {
     }
 
     actual fun resolveLocalFileUri(localFileUri: String?, destinationFileName: String): String? {
+        localFileUri
+            ?.takeIf { it.startsWith("content:", ignoreCase = true) }
+            ?.let { contentUri ->
+                val context = appContext
+                if (context != null && contentUri.isReadableContentUri(context, Uri.parse(contentUri))) {
+                    return contentUri
+                }
+                return null
+            }
+
         localFileUri
             ?.toLocalFileOrNull()
             ?.takeIf { it.exists() }
@@ -187,7 +224,7 @@ internal actual object DownloadsPlatformDownloader {
             runCatching {
                 downloadHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) return@runCatching null
-                    val body = response.body ?: return@runCatching null
+                    val body = response.body
                     destination.outputStream().use { output ->
                         body.byteStream().copyTo(output)
                     }
@@ -202,6 +239,20 @@ internal actual object DownloadsPlatformDownloader {
 
     actual fun openDownloadsDirectory(): Boolean {
         val context = appContext ?: return false
+        val externalFolderUri = DownloadsExternalFolderPlatform.selectedFolderUri()
+        if (!externalFolderUri.isNullOrBlank()) {
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(Uri.parse(externalFolderUri), "vnd.android.document/directory")
+                addCategory(Intent.CATEGORY_DEFAULT)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }
+            return runCatching {
+                context.startActivity(intent)
+                true
+            }.getOrDefault(false)
+        }
         val downloadsDir = File(context.filesDir, "downloads").apply { mkdirs() }
         val uri = runCatching {
             FileProvider.getUriForFile(
@@ -288,9 +339,7 @@ private suspend fun downloadAttempt(
             tempFile.delete()
         }
 
-        val body = response.body ?: error(
-            runBlocking { getString(Res.string.downloads_error_empty_body) },
-        )
+        val body = response.body
         val totalBytes = resolveTotalBytes(
             startingBytes = startingBytes,
             isPartialResume = isPartialResume,
@@ -349,6 +398,65 @@ private suspend fun downloadAttempt(
     }
 }
 
+private fun copyToExternalFolder(
+    context: Context,
+    treeUri: Uri,
+    source: File,
+    fileName: String,
+): String {
+    return try {
+        val resolver = context.contentResolver
+        val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
+        val parentDocumentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocumentId)
+
+        val documentUri = DocumentsContract.createDocument(
+            resolver,
+            parentDocumentUri,
+            fileName.mimeTypeFromFileName(),
+            fileName,
+        ) ?: throw IllegalStateException("Could not create the download file.")
+
+        try {
+            source.inputStream().use { input ->
+                resolver.openOutputStream(documentUri, "w")?.use { output ->
+                    input.copyTo(output)
+                } ?: throw IllegalStateException("Could not open the download file.")
+            }
+        } catch (error: Throwable) {
+            runCatching { DocumentsContract.deleteDocument(resolver, documentUri) }
+                .getOrElse { resolver.delete(documentUri, null, null) }
+            throw error
+        }
+
+        documentUri.toString()
+    } catch (error: Throwable) {
+        if (error is CancellationException) throw error
+        DownloadsExternalFolderPlatform.markUnavailable()
+        throw ExternalFolderDownloadException()
+    }
+}
+
+private fun String.mimeTypeFromFileName(): String {
+    val normalized = substringBefore('?').substringBefore('#').lowercase()
+    return when {
+        normalized.endsWith(".mkv") -> "video/x-matroska"
+        normalized.endsWith(".webm") -> "video/webm"
+        normalized.endsWith(".avi") -> "video/x-msvideo"
+        normalized.endsWith(".mov") -> "video/quicktime"
+        normalized.endsWith(".ts") -> "video/mp2t"
+        else -> "video/mp4"
+    }
+}
+
+private fun String.isReadableContentUri(context: Context, uri: Uri): Boolean =
+    runCatching {
+        context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { true } ?: false
+    }.getOrDefault(false)
+
+private class ExternalFolderDownloadException : IOException(
+    runBlocking { getString(Res.string.downloads_error_external_folder_unavailable) },
+)
+
 private class HttpDownloadException(
     val code: Int,
 ) : IOException(
@@ -357,6 +465,7 @@ private class HttpDownloadException(
 
 private fun Throwable.isRetryableDownloadError(): Boolean = when (this) {
     is CancellationException -> false
+    is ExternalFolderDownloadException -> false
     is EOFException -> true
     is java.net.SocketTimeoutException -> true
     is java.net.SocketException -> true

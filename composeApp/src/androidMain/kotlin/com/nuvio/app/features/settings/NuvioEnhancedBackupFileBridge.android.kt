@@ -24,6 +24,8 @@ internal actual object NuvioEnhancedBackupFileBridge {
         }
     }
 
+    // Activity results are routed through MainActivity to preserve the shared bridge contract.
+    @Suppress("DEPRECATION")
     actual fun exportBackup(
         fileName: String,
         payload: String,
@@ -50,6 +52,7 @@ internal actual object NuvioEnhancedBackupFileBridge {
         }
     }
 
+    @Suppress("DEPRECATION")
     actual fun importBackup(
         onResult: (Result<String>) -> Unit,
     ) {

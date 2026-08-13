@@ -1993,4 +1993,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">言語別にグループ化された Enhanced セレクターと新しい Nuvio レイアウトを選択します。</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">表示額は決済手数料および銀行手数料を差し引く前の金額のため、受取額はこれより少なくなる場合があります。</string>
 </resources>

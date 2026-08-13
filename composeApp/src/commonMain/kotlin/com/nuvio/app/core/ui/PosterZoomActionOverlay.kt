@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import coil3.compose.AsyncImage
 import dev.chrisbanes.haze.HazeInputScale
+import dev.chrisbanes.haze.ExperimentalHazeApi
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import kotlinx.coroutines.coroutineScope
@@ -125,6 +126,7 @@ private val PosterZoomMenuSpring = spring<Float>(
  * dimmed, and an action menu cascades in underneath. Destructive actions burn
  * the centred poster away with [DisintegratingContainer] instead of zooming back.
  */
+@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun NuvioPosterZoomActionOverlay(
     imageUrl: String?,

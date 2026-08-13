@@ -1989,4 +1989,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Chọn giữa trình chọn Enhanced được nhóm theo ngôn ngữ và bố cục Nuvio mới.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Số tiền hiển thị là trước phí thanh toán và ngân hàng, nên số tiền nhận được có thể thấp hơn.</string>
 </resources>

@@ -23,6 +23,8 @@ internal actual object SubtitleFontFileBridge {
         }
     }
 
+    // Activity results are routed through MainActivity to preserve the shared bridge contract.
+    @Suppress("DEPRECATION")
     actual fun importFont(onResult: (Result<SubtitleFontImportResult>) -> Unit) {
         val activity = activityRef?.get()
         if (activity == null) {
@@ -84,8 +86,9 @@ internal actual object SubtitleFontFileBridge {
         resolver.openInputStream(uri)?.use { input ->
             destination.outputStream().use { output -> input.copyTo(output) }
         } ?: error("Could not read font file.")
+        val embeddedFamily = subtitleFontFamilyName(destination.absolutePath)
         SubtitleFontImportResult(
-            displayName = displayName.substringBeforeLast('.').ifBlank { displayName },
+            displayName = embeddedFamily ?: displayName.substringBeforeLast('.').ifBlank { displayName },
             path = destination.absolutePath,
         )
     }

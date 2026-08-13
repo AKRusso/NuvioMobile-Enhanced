@@ -24,12 +24,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -37,7 +39,9 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.GridView
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
@@ -45,6 +49,7 @@ import androidx.compose.material.icons.rounded.ViewAgenda
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,20 +70,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.i18n.localizedMonthName
-import com.nuvio.app.core.i18n.localizedShortMonthName
 import com.nuvio.app.core.i18n.localizedSeasonEpisodeCode
 import com.nuvio.app.core.format.formatReleaseDateForDisplay
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
+import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
+import com.nuvio.app.core.ui.NuvioMediaActionOverlay
+import com.nuvio.app.core.ui.PosterLandscapeAspectRatio
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
+import com.nuvio.app.core.ui.dismissNuvioBottomSheet
+import com.nuvio.app.core.ui.nuvioSafeBottomPadding
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
@@ -102,8 +113,10 @@ import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.downloads.DownloadItem
+import com.nuvio.app.features.downloads.DownloadStatus
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsUiState
+import com.nuvio.app.features.downloads.downloadSizeLabel
 import com.nuvio.app.features.downloads.sortedForSeriesDownloads
 import com.nuvio.app.features.home.libraryItemKeyForHomeRadar
 import com.nuvio.app.features.home.homeRadarDetailsRequestKey
@@ -164,11 +177,19 @@ fun LibraryScreen(
         DownloadsRepository.ensureLoaded()
         DownloadsRepository.uiState
     }.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        DownloadsRepository.removeMissingCompletedDownloads()
+    }
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var observedOfflineState by remember { mutableStateOf(false) }
     var sourceModeName by rememberSaveable { mutableStateOf(LibraryViewMode.Saved.name) }
     val sourceMode = remember(sourceModeName) {
         runCatching { LibraryViewMode.valueOf(sourceModeName) }.getOrDefault(LibraryViewMode.Saved)
+    }
+    var downloadsFilterName by rememberSaveable { mutableStateOf(LibraryDownloadsFilter.All.name) }
+    val downloadsFilter = remember(downloadsFilterName) {
+        runCatching { LibraryDownloadsFilter.valueOf(downloadsFilterName) }
+            .getOrDefault(LibraryDownloadsFilter.All)
     }
     var selectedProviderId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTypeName by rememberSaveable { mutableStateOf<String?>(null) }
@@ -177,6 +198,7 @@ fun LibraryScreen(
         selectedTypeName?.let { runCatching { CloudLibraryItemType.valueOf(it) }.getOrNull() }
     }
     var selectedCloudItemKey by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedDownloadId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedLibrarySectionKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedLibraryType by rememberSaveable { mutableStateOf<String?>(null) }
     var showReleaseCalendar by rememberSaveable { mutableStateOf(false) }
@@ -480,8 +502,11 @@ fun LibraryScreen(
                 downloadsLibraryContent(
                     uiState = downloadsUiState,
                     showHeaderAccent = true,
+                    selectedFilter = downloadsFilter,
+                    onFilterSelected = { downloadsFilterName = it.name },
                     onOpenDownload = onOpenDownload,
                     onDownloadsClick = onDownloadsClick,
+                    onSelectDownload = { selectedDownloadId = it.id },
                 )
             } else {
                 when {
@@ -604,13 +629,34 @@ fun LibraryScreen(
             onPosterClick = onPosterClick,
         )
     }
+
+    val selectedDownload = selectedDownloadId?.let { downloadId ->
+        downloadsUiState.items.firstOrNull { it.id == downloadId }
+    }
+    if (selectedDownload != null) {
+        LibraryDownloadActionSheet(
+            item = selectedDownload,
+            onDismiss = { selectedDownloadId = null },
+            onPlay = {
+                onOpenDownload?.invoke(selectedDownload)
+                selectedDownloadId = null
+            },
+            onRemove = {
+                DownloadsRepository.cancelDownload(selectedDownload.id)
+                selectedDownloadId = null
+            },
+        )
+    }
 }
 
 private fun LazyListScope.downloadsLibraryContent(
     uiState: DownloadsUiState,
     showHeaderAccent: Boolean,
+    selectedFilter: LibraryDownloadsFilter,
+    onFilterSelected: (LibraryDownloadsFilter) -> Unit,
     onOpenDownload: ((DownloadItem) -> Unit)?,
     onDownloadsClick: (() -> Unit)?,
+    onSelectDownload: (DownloadItem) -> Unit,
 ) {
     val activeItems = uiState.activeItems.sortedByDescending { it.updatedAtEpochMs }
     val completedMovies = uiState.completedItems
@@ -625,6 +671,14 @@ private fun LazyListScope.downloadsLibraryContent(
             }
         }
         .sortedBy { it.representative.title.lowercase() }
+    val movieEntries = completedMovies.map { LibraryDownloadDisplayEntry.Movie(it) }
+    val showEntries = completedShows.map { LibraryDownloadDisplayEntry.Show(it) }
+    val allEntries = (movieEntries + showEntries).sortedByDescending { it.sortEpochMs }
+    val visibleEntries = when (selectedFilter) {
+        LibraryDownloadsFilter.All -> allEntries
+        LibraryDownloadsFilter.Movies -> movieEntries
+        LibraryDownloadsFilter.Shows -> showEntries
+    }
 
     if (uiState.items.isEmpty()) {
         item(key = "library-downloads-empty") {
@@ -636,80 +690,168 @@ private fun LazyListScope.downloadsLibraryContent(
         return
     }
 
-    item(key = "library-downloads-overview") {
-        LibraryDownloadsOverview(
-            activeCount = activeItems.size,
-            movieCount = completedMovies.size,
-            showCount = completedShows.size,
-            onManageClick = onDownloadsClick,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-        )
-    }
-
     if (activeItems.isNotEmpty()) {
         item(key = "library-downloads-active") {
             NuvioShelfSection(
-                title = stringResource(Res.string.downloads_section_active),
+                title = stringResource(Res.string.downloads_section_downloading),
                 entries = activeItems.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
                 headerHorizontalPadding = 16.dp,
                 rowContentPadding = PaddingValues(horizontal = 16.dp),
                 showHeaderAccent = showHeaderAccent,
-                onViewAllClick = onDownloadsClick,
+                onViewAllClick = null,
                 viewAllPillSize = NuvioViewAllPillSize.Compact,
                 key = { item -> item.id },
             ) { item ->
                 LibraryActiveDownloadCard(
                     item = item,
                     onClick = {
-                        if (item.isPlayable) onOpenDownload?.invoke(item) else onDownloadsClick?.invoke()
+                        onSelectDownload(item)
                     },
                 )
             }
         }
     }
 
-    if (completedMovies.isNotEmpty()) {
-        item(key = "library-downloads-movies") {
+    item(key = "library-downloads-filters") {
+        LibraryDownloadsFilterRow(
+            selectedFilter = selectedFilter,
+            allCount = allEntries.size,
+            movieCount = movieEntries.size,
+            showCount = showEntries.size,
+            onFilterSelected = onFilterSelected,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        )
+    }
+
+    if (visibleEntries.isNotEmpty()) {
+        item(key = "library-downloads-${selectedFilter.name}") {
             NuvioShelfSection(
-                title = stringResource(Res.string.downloads_section_movies),
-                entries = completedMovies.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
+                title = when (selectedFilter) {
+                    LibraryDownloadsFilter.All -> stringResource(Res.string.downloads_section_all)
+                    LibraryDownloadsFilter.Movies -> stringResource(Res.string.downloads_section_movies)
+                    LibraryDownloadsFilter.Shows -> stringResource(Res.string.downloads_section_shows)
+                },
+                entries = visibleEntries,
                 headerHorizontalPadding = 16.dp,
                 rowContentPadding = PaddingValues(horizontal = 16.dp),
                 showHeaderAccent = showHeaderAccent,
-                onViewAllClick = onDownloadsClick,
+                onViewAllClick = null,
                 viewAllPillSize = NuvioViewAllPillSize.Compact,
-                key = { item -> item.id },
-            ) { item ->
+                key = { entry -> entry.key },
+            ) { group ->
+                val representative = group.representative
+                val libraryItem = when (group) {
+                    is LibraryDownloadDisplayEntry.Movie -> representative.toDownloadedLibraryItem()
+                    is LibraryDownloadDisplayEntry.Show -> representative.toDownloadedLibraryItem().copy(
+                        releaseInfo = stringResource(Res.string.downloads_episode_count, group.group.episodes.size),
+                    )
+                }
                 HomePosterCard(
-                    item = item.toDownloadedLibraryItem().toMetaPreview(),
+                    item = libraryItem.toMetaPreview(),
                     isWatched = false,
-                    onClick = { onOpenDownload?.invoke(item) },
+                    onClick = {
+                        onSelectDownload(representative)
+                    },
                 )
             }
         }
+    } else if (allEntries.isNotEmpty()) {
+        item(key = "library-downloads-filter-empty") {
+            Text(
+                text = stringResource(Res.string.downloads_filter_empty),
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
 
-    if (completedShows.isNotEmpty()) {
-        item(key = "library-downloads-shows") {
-            NuvioShelfSection(
-                title = stringResource(Res.string.downloads_section_shows),
-                entries = completedShows.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
-                headerHorizontalPadding = 16.dp,
-                rowContentPadding = PaddingValues(horizontal = 16.dp),
-                showHeaderAccent = showHeaderAccent,
-                onViewAllClick = onDownloadsClick,
-                viewAllPillSize = NuvioViewAllPillSize.Compact,
-                key = { group -> group.representative.parentMetaId },
-            ) { group ->
-                val representative = group.representative
-                HomePosterCard(
-                    item = representative.toDownloadedLibraryItem().copy(
-                        releaseInfo = stringResource(Res.string.downloads_episode_count, group.episodes.size),
-                    ).toMetaPreview(),
-                    isWatched = false,
-                    onClick = onDownloadsClick,
-                )
-            }
+@Composable
+private fun LibraryDownloadsFilterRow(
+    selectedFilter: LibraryDownloadsFilter,
+    allCount: Int,
+    movieCount: Int,
+    showCount: Int,
+    onFilterSelected: (LibraryDownloadsFilter) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        LibraryDownloadFilterChip(
+            label = stringResource(Res.string.downloads_filter_all),
+            value = allCount.toString(),
+            selected = selectedFilter == LibraryDownloadsFilter.All,
+            onClick = { onFilterSelected(LibraryDownloadsFilter.All) },
+        )
+        LibraryDownloadFilterChip(
+            label = stringResource(Res.string.downloads_section_movies),
+            value = movieCount.toString(),
+            selected = selectedFilter == LibraryDownloadsFilter.Movies,
+            onClick = { onFilterSelected(LibraryDownloadsFilter.Movies) },
+        )
+        LibraryDownloadFilterChip(
+            label = stringResource(Res.string.downloads_section_shows),
+            value = showCount.toString(),
+            selected = selectedFilter == LibraryDownloadsFilter.Shows,
+            onClick = { onFilterSelected(LibraryDownloadsFilter.Shows) },
+        )
+    }
+}
+
+@Composable
+private fun LibraryDownloadFilterChip(
+    label: String,
+    value: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Surface(
+        modifier = Modifier
+            .clip(shape)
+            .clickable(onClick = onClick),
+        shape = shape,
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.74f)
+        },
+        border = BorderStroke(
+            1.dp,
+            if (selected) {
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+            },
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            )
         }
     }
 }
@@ -755,68 +897,343 @@ private fun LibraryDownloadsEmptyState(
 }
 
 @Composable
-private fun LibraryDownloadsOverview(
-    activeCount: Int,
-    movieCount: Int,
-    showCount: Int,
-    onManageClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
+private fun LibraryDownloadActionSheet(
+    item: DownloadItem,
+    onDismiss: () -> Unit,
+    onPlay: () -> Unit,
+    onRemove: () -> Unit,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val artwork = item.detailsSnapshot?.poster?.takeIf { it.isNotBlank() }
+        ?: item.poster?.takeIf { it.isNotBlank() }
+        ?: item.episodeThumbnail?.takeIf { it.isNotBlank() }
+        ?: item.background?.takeIf { it.isNotBlank() }
+    val title = item.downloadDisplayTitle()
+    val status = when (item.status) {
+        DownloadStatus.Downloading -> stringResource(
+            Res.string.downloads_status_downloading,
+            item.downloadSizeLabel(),
+        )
+        DownloadStatus.Paused -> stringResource(
+            Res.string.downloads_status_paused,
+            item.downloadSizeLabel(),
+        )
+        DownloadStatus.Completed -> stringResource(
+            Res.string.downloads_status_completed,
+            item.downloadSizeLabel(),
+        )
+        DownloadStatus.Failed -> item.errorMessage ?: stringResource(Res.string.downloads_status_failed)
+    }
+
+    fun dismissAfter(action: () -> Unit) {
+        action()
+        onDismiss()
+    }
+
+    NuvioMediaActionOverlay(
+        artworkUrl = artwork,
+        contentDescription = title,
+        onDismissRequest = onDismiss,
     ) {
-        listOf(
-            stringResource(Res.string.downloads_section_active) to activeCount,
-            stringResource(Res.string.downloads_section_movies) to movieCount,
-            stringResource(Res.string.downloads_section_shows) to showCount,
-        ).forEach { (label, value) ->
-            Surface(
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(18.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 430.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(274.dp)
+                    .aspectRatio(0.675f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF1E1E1E)),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(value.toString(), fontWeight = FontWeight.Bold)
-                    Text(label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (!artwork.isNullOrBlank()) {
+                    AsyncImage(
+                        model = artwork,
+                        contentDescription = title,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Text(
+                        text = title.take(1).uppercase(),
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
-        }
-        if (onManageClick != null) {
-            IconButton(onClick = onManageClick) {
-                Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null)
+            Text(
+                text = title,
+                modifier = Modifier.padding(top = 16.dp, start = 20.dp, end = 20.dp),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = status,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.66f),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            LibraryDownloadInfoCard(item = item)
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.86f)
+                    .widthIn(max = 360.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF19191F).copy(alpha = 0.97f),
+                shadowElevation = 16.dp,
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    when (item.status) {
+                        DownloadStatus.Downloading -> LibraryDownloadActionRow(
+                            icon = Icons.Rounded.Pause,
+                            title = stringResource(Res.string.downloads_action_pause),
+                            onClick = { dismissAfter { DownloadsRepository.pauseDownload(item.id) } },
+                        )
+                        DownloadStatus.Paused -> LibraryDownloadActionRow(
+                            icon = Icons.Rounded.PlayArrow,
+                            title = stringResource(Res.string.downloads_action_resume),
+                            onClick = { dismissAfter { DownloadsRepository.resumeDownload(item.id) } },
+                        )
+                        DownloadStatus.Failed -> LibraryDownloadActionRow(
+                            icon = Icons.Rounded.Refresh,
+                            title = stringResource(Res.string.action_retry),
+                            onClick = { dismissAfter { DownloadsRepository.retryDownload(item.id) } },
+                        )
+                        DownloadStatus.Completed -> if (item.isPlayable) {
+                            LibraryDownloadActionRow(
+                                icon = Icons.Rounded.PlayArrow,
+                                title = stringResource(Res.string.action_play),
+                                onClick = { dismissAfter(onPlay) },
+                            )
+                        }
+                    }
+                    HorizontalDivider(color = Color.White.copy(alpha = 0.07f))
+                    LibraryDownloadActionRow(
+                        icon = Icons.Rounded.Delete,
+                        title = stringResource(
+                            if (item.status == DownloadStatus.Downloading) {
+                                Res.string.downloads_action_cancel_download
+                            } else {
+                                Res.string.downloads_action_remove_download
+                            },
+                        ),
+                        destructive = true,
+                        onClick = { dismissAfter(onRemove) },
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
+private fun LibraryDownloadInfoCard(item: DownloadItem) {
+    val description = item.downloadMetadataLabel()
+    if (description.isBlank()) return
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth(0.86f)
+            .widthIn(max = 360.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFF1D1D23).copy(alpha = 0.94f),
+    ) {
+        Text(
+            text = description,
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 13.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.68f),
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun LibraryDownloadActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    destructive: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val color = if (destructive) Color(0xFFFF6E95) else Color.White
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+private fun DownloadItem.downloadMetadataLabel(): String = listOfNotNull(
+    localizedSeasonEpisodeCode(seasonNumber, episodeNumber),
+    providerName.takeIf { it.isNotBlank() },
+    streamTitle.takeIf { it.isNotBlank() },
+    streamSubtitle?.takeIf { it.isNotBlank() },
+).joinToString(" • ")
+
+@Composable
 private fun LibraryActiveDownloadCard(
     item: DownloadItem,
     onClick: () -> Unit,
 ) {
-    Surface(
+    val artwork = item.detailsSnapshot?.poster?.takeIf { it.isNotBlank() }
+        ?: item.poster?.takeIf { it.isNotBlank() }
+        ?: item.episodeThumbnail?.takeIf { it.isNotBlank() }
+        ?: item.background?.takeIf { it.isNotBlank() }
+    val progress = item.progressFraction.coerceIn(0f, 1f)
+
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .width(150.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(item.episodeTitle ?: item.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(item.providerName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            LinearProgressIndicator(
-                progress = { item.progressFraction },
-                modifier = Modifier.fillMaxWidth(),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.675f)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!artwork.isNullOrBlank()) {
+                AsyncImage(
+                    model = artwork,
+                    contentDescription = item.downloadDisplayTitle(),
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(
+                    text = item.downloadDisplayTitle().take(1).uppercase(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(9.dp),
+                shape = RoundedCornerShape(999.dp),
+                color = Color.Black.copy(alpha = 0.86f),
+                contentColor = Color.White,
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.82f)),
+                shadowElevation = 6.dp,
+            ) {
+                Text(
+                    text = "${(progress * 100f).toInt().coerceIn(0, 100)}%",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+        LinearProgressIndicator(
+            progress = { progress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+        )
+        Column(
+            modifier = Modifier.padding(horizontal = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = item.downloadParentTitle(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = item.downloadSecondaryLabel(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
 }
+
+private sealed class LibraryDownloadDisplayEntry {
+    abstract val key: String
+    abstract val representative: DownloadItem
+    abstract val sortEpochMs: Long
+
+    data class Movie(
+        val download: DownloadItem,
+    ) : LibraryDownloadDisplayEntry() {
+        override val key: String = "movie-${download.id}"
+        override val representative: DownloadItem = download
+        override val sortEpochMs: Long = download.updatedAtEpochMs
+    }
+
+    data class Show(
+        val group: LibraryDownloadShowGroup,
+    ) : LibraryDownloadDisplayEntry() {
+        override val key: String = "show-${group.representative.parentMetaId}"
+        override val representative: DownloadItem = group.representative
+        override val sortEpochMs: Long = group.episodes.maxOfOrNull { it.updatedAtEpochMs }
+            ?: group.representative.updatedAtEpochMs
+    }
+}
+
+private enum class LibraryDownloadsFilter {
+    All,
+    Movies,
+    Shows,
+}
+
+private fun DownloadItem.downloadDisplayTitle(): String =
+    if (isEpisode) {
+        episodeTitle?.trim()?.takeIf { it.isNotBlank() } ?: title
+    } else {
+        title
+    }
+
+private fun DownloadItem.downloadParentTitle(): String = title.trim().ifBlank { downloadDisplayTitle() }
+
+private fun DownloadItem.downloadSecondaryLabel(): String =
+    if (isEpisode) {
+        listOfNotNull(
+            localizedSeasonEpisodeCode(seasonNumber, episodeNumber),
+            episodeTitle?.trim()?.takeIf { it.isNotBlank() && it != downloadParentTitle() },
+        ).joinToString(" • ")
+    } else {
+        streamTitle.takeIf { it.isNotBlank() && it != downloadParentTitle() }
+            ?: providerName
+    }
 
 private data class LibraryDownloadShowGroup(
     val representative: DownloadItem,
@@ -925,15 +1342,10 @@ private fun LibraryReleaseCalendarSheet(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(
-                                text = "${event.date.day} ${localizedShortMonthName(event.date.month)}",
-                                modifier = Modifier.width(44.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                            )
                             Box(
                                 modifier = Modifier
-                                    .size(width = 56.dp, height = 76.dp)
+                                    .width(120.dp)
+                                    .aspectRatio(PosterLandscapeAspectRatio)
                                     .clip(RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -942,7 +1354,7 @@ private fun LibraryReleaseCalendarSheet(
                                         model = artwork,
                                         contentDescription = event.displayTitle,
                                         modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
+                                        contentScale = ContentScale.Fit,
                                     )
                                 }
                             }
@@ -1037,7 +1449,7 @@ private data class LibraryCalendarEvent(
     val rawReleaseInfo: String,
     val item: LibraryItem,
     val displayTitle: String = item.name,
-    val artwork: String? = item.poster ?: item.banner,
+    val artwork: String? = item.banner ?: item.poster,
     val season: Int? = null,
     val episode: Int? = null,
 ) {

@@ -1967,4 +1967,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Изберете между селектора Enhanced, групиран по език, и новия изглед на Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Показаната сума е преди таксите за плащане и банките, така че получената сума може да е по-ниска.</string>
 </resources>

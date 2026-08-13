@@ -1955,4 +1955,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Alege între selectorul Enhanced grupat după limbă și noul aspect Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Suma afișată este înainte de taxele de plată și bancare, astfel că suma primită poate fi mai mică.</string>
 </resources>

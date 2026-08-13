@@ -72,7 +72,7 @@ internal fun parseAppDeepLink(url: String): AppDeepLink? {
     if (scheme != "nuvio") return null
 
     val host = parsedUrl.host.lowercase()
-    val pathSegments = parsedUrl.pathSegments.map(String::trim).filter(String::isNotBlank)
+    val pathSegments = parsedUrl.encodedPath.split('/').map(String::trim).filter(String::isNotBlank)
     return when (host) {
         "meta" -> {
             parseMetaFromParameters(parsedUrl)

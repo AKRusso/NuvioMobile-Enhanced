@@ -60,6 +60,7 @@ internal class AndroidPlayerNowPlayingController(
     }
     private val artworkGeneration = AtomicInteger(0)
     private val mediaSession = MediaSession(appContext, NOW_PLAYING_TAG).apply {
+        @Suppress("DEPRECATION")
         setFlags(
             MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or
                 MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS,
@@ -378,6 +379,8 @@ private fun createNotificationChannel(context: Context) {
     manager.createNotificationChannel(channel)
 }
 
+// Platform MediaSession and Notification APIs are required for this legacy-compatible player service.
+@Suppress("DEPRECATION")
 private fun buildNotification(
     context: Context,
     sessionToken: MediaSession.Token,

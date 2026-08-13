@@ -1521,4 +1521,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Pilih antara pemilih Enhanced yang dikelompokkan berdasarkan bahasa dan tata letak Nuvio terbaru.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Jumlah yang ditampilkan adalah sebelum biaya pembayaran dan bank, sehingga jumlah yang diterima mungkin lebih kecil.</string>
 </resources>

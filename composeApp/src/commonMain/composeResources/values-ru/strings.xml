@@ -2390,4 +2390,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Выберите селектор Enhanced с группировкой по языку или новый интерфейс Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Указанная сумма приведена до вычета платежных и банковских комиссий, поэтому полученная сумма может быть меньше.</string>
 </resources>

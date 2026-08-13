@@ -1454,4 +1454,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Velg mellom Enhanced-velgeren gruppert etter språk og det nye Nuvio-oppsettet.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Beløpet som vises er før betalings- og bankgebyrer, så mottatt beløp kan være lavere.</string>
 </resources>

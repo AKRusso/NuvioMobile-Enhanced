@@ -711,7 +711,9 @@ fun HomeScreen(
         effectiveWatchProgressSource,
         cwCacheGeneration,
     ) {
-        if (!shouldValidateMissingNextUpSeeds) {
+        // Do not wait for remote history when playback has already recorded a local completion.
+        // The later remote validation still removes stale results once both snapshots are ready.
+        if (!shouldValidateMissingNextUpSeeds && completedSeriesCandidates.isEmpty()) {
             return@LaunchedEffect
         }
 
@@ -727,10 +729,6 @@ fun HomeScreen(
                 todayIsoDate = CurrentDateProvider.todayIsoDate(),
                 seedLastWatchedMap = emptyMap(),
             )
-            return@LaunchedEffect
-        }
-
-        if (isRefreshingEnabledAddons) {
             return@LaunchedEffect
         }
 
@@ -798,11 +796,14 @@ fun HomeScreen(
                     break
                 }
                 attemptedFreshContentIds += batch.map { candidate -> candidate.content.id }
-                val batchResults = batch.map { completedEntry ->
-                    async {
-                        try {
+                val batchResults = kotlinx.coroutines.channels.Channel<
+                    Pair<CompletedSeriesCandidate, HomeNextUpResolutionAttempt>,
+                >(batch.size)
+                batch.forEach { completedEntry ->
+                    launch {
+                        val result = try {
                             semaphore.withPermit {
-                                resolveHomeNextUpCandidate(
+                                completedEntry to resolveHomeNextUpCandidate(
                                     completedEntry = completedEntry,
                                     watchProgressEntries = watchProgressUiState.entries,
                                     watchedItems = nextUpWatchedItems,
@@ -816,33 +817,35 @@ fun HomeScreen(
                             }
                         } catch (error: Throwable) {
                             if (error is CancellationException) throw error
-                            HomeNextUpResolutionAttempt.transientFailure()
+                            completedEntry to HomeNextUpResolutionAttempt.transientFailure()
+                        }
+                        batchResults.send(result)
+                    }
+                }
+                repeat(batch.size) {
+                    val (candidate, attempt) = batchResults.receive()
+                    if (attempt.isConclusive) processedFreshContentIds += candidate.content.id
+
+                    val resolvedBeforeCandidate = freshResults.size
+                    attempt.resolved?.let { (contentId, item) ->
+                        if (cachedResolvedNextUpItems.size + freshResults.size < HomeContinueWatchingMaxRecentProgressItems) {
+                            freshResults[contentId] = item
                         }
                     }
-                }.awaitAll()
-                batch.zip(batchResults).forEach { (candidate, attempt) ->
-                    if (attempt.isConclusive) processedFreshContentIds += candidate.content.id
-                }
-
-                val resolvedBeforeBatch = freshResults.size
-                batchResults.mapNotNull(HomeNextUpResolutionAttempt::resolved).forEach { (contentId, item) ->
-                    if (cachedResolvedNextUpItems.size + freshResults.size < HomeContinueWatchingMaxRecentProgressItems) {
-                        freshResults[contentId] = item
+                    if (freshResults.size > resolvedBeforeCandidate || attempt.isConclusive) {
+                        val conclusiveContentIds = cachedResolvedNextUpItems.keys + processedFreshContentIds
+                        val progressiveResults = mergeHomeNextUpItemsWithCache(
+                            resolvedItems = cachedResolvedNextUpItems + freshResults,
+                            cachedItems = cachedNextUpItems,
+                            conclusivelyProcessedContentIds = conclusiveContentIds,
+                        )
+                        withContext(Dispatchers.Main) {
+                            nextUpItemsBySeries = progressiveResults
+                            processedNextUpContentIds = conclusiveContentIds
+                        }
                     }
                 }
-                val batchResolvedCount = freshResults.size - resolvedBeforeBatch
-                if (batchResolvedCount > 0 || batchResults.any(HomeNextUpResolutionAttempt::isConclusive)) {
-                    val conclusiveContentIds = cachedResolvedNextUpItems.keys + processedFreshContentIds
-                    val progressiveResults = mergeHomeNextUpItemsWithCache(
-                        resolvedItems = cachedResolvedNextUpItems + freshResults,
-                        cachedItems = cachedNextUpItems,
-                        conclusivelyProcessedContentIds = conclusiveContentIds,
-                    )
-                    withContext(Dispatchers.Main) {
-                        nextUpItemsBySeries = progressiveResults
-                        processedNextUpContentIds = conclusiveContentIds
-                    }
-                }
+                batchResults.close()
             }
 
             val conclusiveContentIds = cachedResolvedNextUpItems.keys + processedFreshContentIds
@@ -872,11 +875,14 @@ fun HomeScreen(
                     break
                 }
                 attemptedFreshContentIds += batch.map { candidate -> candidate.content.id }
-                val batchResults = batch.map { completedEntry ->
-                    async {
-                        try {
+                val batchResults = kotlinx.coroutines.channels.Channel<
+                    Pair<CompletedSeriesCandidate, HomeNextUpResolutionAttempt>,
+                >(batch.size)
+                batch.forEach { completedEntry ->
+                    launch {
+                        val result = try {
                             semaphore.withPermit {
-                                resolveHomeNextUpCandidate(
+                                completedEntry to resolveHomeNextUpCandidate(
                                     completedEntry = completedEntry,
                                     watchProgressEntries = watchProgressUiState.entries,
                                     watchedItems = nextUpWatchedItems,
@@ -890,42 +896,45 @@ fun HomeScreen(
                             }
                         } catch (error: Throwable) {
                             if (error is CancellationException) throw error
-                            HomeNextUpResolutionAttempt.transientFailure()
+                            completedEntry to HomeNextUpResolutionAttempt.transientFailure()
+                        }
+                        batchResults.send(result)
+                    }
+                }
+                repeat(batch.size) {
+                    val (candidate, attempt) = batchResults.receive()
+                    if (attempt.isConclusive) processedFreshContentIds += candidate.content.id
+
+                    val resolvedBeforeCandidate = freshResults.size
+                    attempt.resolved?.let { (contentId, item) ->
+                        if (cachedResolvedNextUpItems.size + freshResults.size < HomeContinueWatchingMaxRecentProgressItems) {
+                            freshResults[contentId] = item
                         }
                     }
-                }.awaitAll()
-                batch.zip(batchResults).forEach { (candidate, attempt) ->
-                    if (attempt.isConclusive) processedFreshContentIds += candidate.content.id
-                }
-
-                val resolvedBeforeBatch = freshResults.size
-                batchResults.mapNotNull(HomeNextUpResolutionAttempt::resolved).forEach { (contentId, item) ->
-                    if (cachedResolvedNextUpItems.size + freshResults.size < HomeContinueWatchingMaxRecentProgressItems) {
-                        freshResults[contentId] = item
+                    if (freshResults.size > resolvedBeforeCandidate || attempt.isConclusive) {
+                        val deferredConclusiveContentIds = cachedResolvedNextUpItems.keys + processedFreshContentIds
+                        val progressiveResults = mergeHomeNextUpItemsWithCache(
+                            resolvedItems = cachedResolvedNextUpItems + freshResults,
+                            cachedItems = cachedNextUpItems,
+                            conclusivelyProcessedContentIds = deferredConclusiveContentIds,
+                        )
+                        withContext(Dispatchers.Main) {
+                            nextUpItemsBySeries = progressiveResults
+                            processedNextUpContentIds = deferredConclusiveContentIds
+                        }
+                        saveContinueWatchingSnapshots(
+                            profileId = activeProfileId,
+                            source = effectiveWatchProgressSource,
+                            cacheGeneration = cwCacheGeneration,
+                            nextUpItemsBySeries = progressiveResults,
+                            visibleContinueWatchingEntries = visibleContinueWatchingEntries,
+                            todayIsoDate = todayIsoDate,
+                            seedLastWatchedMap = seedLastWatchedMap,
+                        )
                     }
+                    yield()
                 }
-                if (freshResults.size > resolvedBeforeBatch || batchResults.any(HomeNextUpResolutionAttempt::isConclusive)) {
-                    val deferredConclusiveContentIds = cachedResolvedNextUpItems.keys + processedFreshContentIds
-                    val progressiveResults = mergeHomeNextUpItemsWithCache(
-                        resolvedItems = cachedResolvedNextUpItems + freshResults,
-                        cachedItems = cachedNextUpItems,
-                        conclusivelyProcessedContentIds = deferredConclusiveContentIds,
-                    )
-                    withContext(Dispatchers.Main) {
-                        nextUpItemsBySeries = progressiveResults
-                        processedNextUpContentIds = deferredConclusiveContentIds
-                    }
-                    saveContinueWatchingSnapshots(
-                        profileId = activeProfileId,
-                        source = effectiveWatchProgressSource,
-                        cacheGeneration = cwCacheGeneration,
-                        nextUpItemsBySeries = progressiveResults,
-                        visibleContinueWatchingEntries = visibleContinueWatchingEntries,
-                        todayIsoDate = todayIsoDate,
-                        seedLastWatchedMap = seedLastWatchedMap,
-                    )
-                }
-                yield()
+                batchResults.close()
             }
 
             val transientContentIds = attemptedFreshContentIds

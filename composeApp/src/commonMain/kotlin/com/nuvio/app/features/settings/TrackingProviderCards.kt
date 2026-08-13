@@ -32,6 +32,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -82,6 +83,7 @@ import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_donate
 import nuvio.composeapp.generated.resources.action_cancel
+import nuvio.composeapp.generated.resources.community_donation_progress_fee_notice
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_expired
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_revoked
 import nuvio.composeapp.generated.resources.settings_simkl_connect
@@ -272,6 +274,7 @@ private fun TraktProviderCard(
         unavailableActionUrl = CommunityConfig.DONATIONS_DONATE_URL.ifBlank { KOFI_DONATE_URL },
         unavailableSupporters = supportersResult?.supporters.orEmpty(),
         unavailableSupporterCount = supportersResult?.supporterCount ?: 0,
+        unavailableDonationProgress = supportersResult?.progress,
         onUnavailableSupportersClick = onSupportersClick,
         statusMessage = uiState.statusMessage.takeUnless {
             uiState.mode == TraktConnectionMode.CONNECTED
@@ -362,6 +365,7 @@ private fun TrackingProviderCard(
     unavailableActionUrl: String? = null,
     unavailableSupporters: List<SupporterDonation> = emptyList(),
     unavailableSupporterCount: Int = 0,
+    unavailableDonationProgress: DonationProgress? = null,
     onUnavailableSupportersClick: (() -> Unit)? = null,
     onConnectRequested: () -> String?,
     onResumeAuthorization: () -> String?,
@@ -491,6 +495,7 @@ private fun TrackingProviderCard(
                             onAction = { openUrl(unavailableActionUrl) },
                             supporters = unavailableSupporters,
                             supporterCount = unavailableSupporterCount,
+                            donationProgress = unavailableDonationProgress,
                             onSupportersClick = onUnavailableSupportersClick,
                         )
                     } else {
@@ -601,6 +606,7 @@ private fun TrackingUnavailableSupport(
     onAction: () -> Unit,
     supporters: List<SupporterDonation>,
     supporterCount: Int,
+    donationProgress: DonationProgress?,
     onSupportersClick: (() -> Unit)?,
 ) {
     Surface(
@@ -655,6 +661,7 @@ private fun TrackingUnavailableSupport(
                     )
                 }
             }
+            donationProgress?.let { progress -> TraktMaintenanceProgress(progress) }
             OutlinedButton(
                 onClick = onAction,
                 modifier = Modifier
@@ -665,6 +672,64 @@ private fun TrackingUnavailableSupport(
             ) {
                 Text(actionLabel)
             }
+        }
+    }
+}
+
+@Composable
+private fun TraktMaintenanceProgress(
+    progress: DonationProgress,
+) {
+    val fraction = (progress.progressPercent / 100f).coerceIn(0f, 1f)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Trakt maintenance",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "${progress.progressPercent}%",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        LinearProgressIndicator(
+            progress = { fraction },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            color = Color.White,
+            trackColor = Color.White.copy(alpha = 0.24f),
+        )
+        if (progress.currentCents != null && progress.targetCents != null) {
+            Text(
+                text = "${formatEuroAmount(progress.currentCents)} / ${formatEuroAmount(progress.targetCents)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.78f),
+            )
+            Text(
+                text = stringResource(Res.string.community_donation_progress_fee_notice),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.78f),
+            )
+        }
+        progress.nextResetDate?.takeIf(String::isNotBlank)?.let { resetDate ->
+            Text(
+                text = "Resets on ${formatDonationDate(resetDate)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.78f),
+            )
         }
     }
 }

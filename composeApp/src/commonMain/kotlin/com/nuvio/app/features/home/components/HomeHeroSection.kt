@@ -44,8 +44,8 @@ import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shield
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeMute
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -826,7 +826,7 @@ private fun StreamingShowcaseHeroPage(
         heroTrailerPlaybackSource = null
         heroTrailerReady = false
         heroTrailerFinished = false
-        if (!shouldResolveHeroTrailer || heroTrailerCandidate == null) {
+        if (!shouldResolveHeroTrailer) {
             return@LaunchedEffect
         }
         val resolvedSource = runCatching {
@@ -1010,7 +1010,7 @@ private fun StreamingShowcaseHeroPage(
 
         if (videoPreviewEnabled && videoPreviewSupported) {
             StreamingShowcaseSoundButton(
-                imageVector = if (videoPreviewSoundEnabled) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff,
+                imageVector = if (videoPreviewSoundEnabled) Icons.AutoMirrored.Rounded.VolumeDown else Icons.AutoMirrored.Rounded.VolumeMute,
                 contentDescription = stringResource(
                     if (videoPreviewSoundEnabled) {
                         Res.string.home_hero_preview_mute

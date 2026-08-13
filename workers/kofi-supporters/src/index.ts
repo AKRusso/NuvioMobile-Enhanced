@@ -12,6 +12,8 @@ interface KofiPayload {
   is_public?: unknown;
   from_name?: unknown;
   message?: unknown;
+  amount?: unknown;
+  currency?: unknown;
 }
 
 interface DonationRow {
@@ -33,6 +35,8 @@ interface GitHubContributor {
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_RECENT_DONATIONS = 50;
+const MONTHLY_GOAL_CENTS = 1_000;
+const MONTHLY_GOAL_CURRENCY = "EUR";
 const CONTRIBUTIONS_URL =
   "https://api.github.com/repos/AKRusso/NuvioMobile-Enhanced/contributors?per_page=100";
 const APPROVED_AVATAR_HOSTS = new Set([
@@ -125,32 +129,52 @@ async function receiveKofiWebhook(request: Request, env: Env): Promise<Response>
     return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
-  const isPublic = payload.is_public === true || payload.is_public === "true";
-  if (payload.type !== "Donation" || !isPublic) {
+  if (payload.type !== "Donation") {
     return jsonResponse({ ok: true }, 200, { "Cache-Control": "no-store" });
   }
 
   const id = boundedRequiredString(payload.message_id, 128);
-  const name = boundedRequiredString(payload.from_name, 200);
   const timestamp = normalizeTimestamp(payload.timestamp);
-  const message = boundedOptionalString(payload.message, 1000);
-  if (!id || !name || !timestamp || message === undefined) {
+  const amountCents = donationAmountCents(payload.amount);
+  const currency = normalizedCurrency(payload.currency);
+  if (!id || !timestamp || amountCents === null || !currency) {
     return jsonResponse({ error: "Invalid donation payload" }, 400);
   }
 
-  await env.DB.prepare(
-    `INSERT INTO donations (id, name, donated_at, message)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO NOTHING`,
-  )
-    .bind(id, name, timestamp, message)
-    .run();
+  const isPublic = payload.is_public === true || payload.is_public === "true";
+  const name = boundedRequiredString(payload.from_name, 200);
+  const message = boundedOptionalString(payload.message, 1000);
+  if (isPublic && (!name || message === undefined)) {
+    return jsonResponse({ error: "Invalid donation payload" }, 400);
+  }
+
+  const monthKey = timestamp.substring(0, 7);
+  const statements = [
+    env.DB.prepare(
+      "INSERT OR IGNORE INTO donation_receipts (id, month_key, currency, amount_cents) VALUES (?, ?, ?, ?)",
+    ).bind(id, monthKey, currency, amountCents),
+  ];
+  if (isPublic) {
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO donations (id, name, donated_at, message)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(id) DO NOTHING`,
+      ).bind(id, name, timestamp, message),
+    );
+  }
+  await env.DB.batch(statements);
 
   return jsonResponse({ ok: true }, 200, { "Cache-Control": "no-store" });
 }
 
 async function getDonations(env: Env): Promise<Response> {
-  const [recent, count] = await Promise.all([
+  const now = new Date();
+  const currentMonth = now.toISOString().substring(0, 7);
+  const nextResetDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
+    .toISOString()
+    .substring(0, 10);
+  const [recent, count, monthlyTotal] = await Promise.all([
     env.DB.prepare(
       `SELECT id, name, donated_at, message, avatar, profile
        FROM donations
@@ -162,6 +186,11 @@ async function getDonations(env: Env): Promise<Response> {
     env.DB.prepare(
       "SELECT COUNT(DISTINCT lower(name)) AS supporter_count FROM donations",
     ).first<{ supporter_count: number }>(),
+    env.DB.prepare(
+      "SELECT amount_cents FROM donation_monthly_totals WHERE month_key = ? AND currency = ?",
+    )
+      .bind(currentMonth, MONTHLY_GOAL_CURRENCY)
+      .first<{ amount_cents: number }>(),
   ]);
 
   const donations = recent.results.map((row) => ({
@@ -176,8 +205,13 @@ async function getDonations(env: Env): Promise<Response> {
 
   return jsonResponse(
     {
-      currency: null,
-      monthlyGoal: null,
+      currency: MONTHLY_GOAL_CURRENCY,
+      monthlyGoal: {
+        currentCents: monthlyTotal?.amount_cents ?? 0,
+        targetCents: MONTHLY_GOAL_CENTS,
+        progressPercent: ((monthlyTotal?.amount_cents ?? 0) / MONTHLY_GOAL_CENTS) * 100,
+        nextResetDate,
+      },
       supporterCount: count?.supporter_count ?? donations.length,
       donations,
     },
@@ -353,6 +387,18 @@ function normalizeTimestamp(value: unknown): string | null {
   if (Number.isNaN(parsed.getTime())) return null;
   if (parsed.getTime() > Date.now() + 5 * 60 * 1000) return null;
   return parsed.toISOString();
+}
+
+function donationAmountCents(value: unknown): number | null {
+  const raw = stringValue(value)?.trim();
+  if (!raw || !/^\d+(?:\.\d{1,2})?$/.test(raw)) return null;
+  const cents = Math.round(Number(raw) * 100);
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+}
+
+function normalizedCurrency(value: unknown): string | null {
+  const currency = stringValue(value)?.trim().toUpperCase();
+  return currency && /^[A-Z]{3}$/.test(currency) ? currency : null;
 }
 
 function safeHttpsUrl(value: unknown): string | null | undefined {

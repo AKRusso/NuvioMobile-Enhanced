@@ -82,6 +82,7 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
 import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
 import coil3.compose.setSingletonImageLoaderFactory
 import coil3.request.CachePolicy
 import coil3.request.crossfade
@@ -433,7 +434,7 @@ private object NativeAppGateRequests {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalCoilApi::class)
 @Composable
 @Preview
 fun App(
@@ -2000,7 +2001,10 @@ private fun MainAppContent(
                     )
 
                     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                        val isTabletLayout = useTabletFloatingTabBar || maxWidth >= 768.dp
+                        // A tablet in portrait needs the bottom navigation; only use the
+                        // floating top bar when the available window is actually wide.
+                        val isTabletLayout = useTabletFloatingTabBar ||
+                            (maxWidth >= 768.dp && maxWidth > maxHeight)
                         val useNativeBottomTabs = if (useNativeNavigation) {
                             useNativeTabBar
                         } else {
@@ -2516,7 +2520,7 @@ private fun MainAppContent(
 
                         hasResolvedVideoId = false
                         val metaType = launch.parentMetaType ?: launch.type
-                        val metaId = launch.parentMetaId ?: return@LaunchedEffect
+                        val metaId = launch.parentMetaId
                         val resolvedVideoId = runCatching {
                             MetaDetailsRepository.fetch(metaType, metaId)
                         }.getOrNull()
@@ -3850,7 +3854,7 @@ private fun MainAppContent(
 
             NuvioToastHost(
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.BottomCenter)
                     .zIndex(20f),
             )
 

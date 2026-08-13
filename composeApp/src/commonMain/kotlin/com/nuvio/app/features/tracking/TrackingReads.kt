@@ -6,6 +6,7 @@ import com.nuvio.app.features.watching.sync.WatchedSyncAdapter
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.shouldUseAsCompletedSeedForContinueWatching
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 enum class TrackingLibraryTabKind {
     WATCHLIST,
@@ -103,9 +104,19 @@ interface TrackingLibraryProvider {
     ): TrackingMembershipResolution?
 }
 
+/** A provider-owned watched projection that can be applied without a network refresh. */
+data class TrackingWatchedSnapshot(
+    val items: List<com.nuvio.app.features.watched.WatchedItem>,
+    val fullyWatchedSeriesKeys: Set<String>? = null,
+    val extraWatchedKeys: Set<String> = emptySet(),
+)
+
 /** Provider adapter for watched-history projection and explicit history mutations. */
 interface TrackingWatchedProvider : WatchedSyncAdapter {
     val providerId: TrackingProviderId
+
+    /** Emits cached watched-history changes made by the provider, such as a completed scrobble. */
+    fun observeWatchedSnapshot(profileId: Int): Flow<TrackingWatchedSnapshot> = emptyFlow()
 }
 
 data class TrackingProgressSnapshot(

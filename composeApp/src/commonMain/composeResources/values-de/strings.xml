@@ -1298,4 +1298,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Wähle zwischen der nach Sprache gruppierten Enhanced-Auswahl und dem neuen Nuvio-Layout.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Der angezeigte Betrag ist vor Zahlungs- und Bankgebühren, daher kann der erhaltene Betrag niedriger sein.</string>
 </resources>

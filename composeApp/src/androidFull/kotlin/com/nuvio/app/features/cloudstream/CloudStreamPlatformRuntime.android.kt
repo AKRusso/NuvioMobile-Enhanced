@@ -305,7 +305,7 @@ private class AndroidDexCloudStreamProvider(
                 }
             }
         }
-        if (sections.isEmpty() && lastError != null) throw lastError as Throwable
+        if (sections.isEmpty()) throw lastError ?: return@withContext emptyList()
         synchronized(sections) { sections.toList() }
     }
 
@@ -329,7 +329,7 @@ private class AndroidDexCloudStreamProvider(
                     log.w(error) { "CloudStream search failed api=${api.name}" }
                 }
         }
-        if (results.isEmpty() && lastError != null) throw lastError as Throwable
+        if (results.isEmpty()) throw lastError ?: return@withContext emptyList()
         results.distinctBy { it.data }
     }
 

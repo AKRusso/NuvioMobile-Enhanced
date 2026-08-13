@@ -10,6 +10,7 @@ import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.tracking.TrackingProviderRegistry
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
+import com.nuvio.app.features.tracking.TrackingWatchedSnapshot
 import com.nuvio.app.features.tracking.WatchProgressSource
 import com.nuvio.app.features.tracking.effectiveWatchProgressSource
 import com.nuvio.app.features.tracking.providerId
@@ -153,7 +154,7 @@ object WatchedRepository {
     private var deltaCursorEventId: Long = 0L
     private var deltaInitialized: Boolean = false
     internal var syncAdapter: WatchedSyncAdapter = SupabaseWatchedSyncAdapter
-    private var extraKeysObserverJob: Job? = null
+    private var providerSnapshotObserverJob: Job? = null
 
     fun ensureLoaded() {
         ensureTrackingProvidersRegistered()
@@ -168,7 +169,7 @@ object WatchedRepository {
                 ),
             )
         }
-        startExtraKeysObserverIfNeeded()
+        startProviderSnapshotObserverIfNeeded()
     }
 
     fun onProfileChanged(profileId: Int) {
@@ -184,7 +185,7 @@ object WatchedRepository {
             }
         }
         previousAccountJob.cancel()
-        extraKeysObserverJob = null
+        providerSnapshotObserverJob = null
         hasLoaded = false
         currentProfileId = 1
         profileGeneration += 1L
@@ -299,13 +300,13 @@ object WatchedRepository {
         val previousSource = activeSource
         activeSource = source
         sourceGeneration += 1L
-        stopExtraKeysObserver()
+        stopProviderSnapshotObserver()
         log.i {
             "Watched source activated previous=$previousSource current=$source generation=$sourceGeneration " +
                 "provider=${source.providerId?.storageId}"
         }
         publish()
-        startExtraKeysObserverIfNeeded()
+        startProviderSnapshotObserverIfNeeded()
         return source
     }
 
@@ -1124,61 +1125,58 @@ object WatchedRepository {
         }
 
     /**
-     * Observes provider extra watched keys (e.g. Simkl anime alternate IDs).
-     * When the provider's snapshot changes (after mutations, syncs), recomputes
-     * extra keys, re-pulls watched items, and re-publishes so watchedKeys and
-     * items stay reactive and current.
+     * Applies provider snapshot changes that have already been committed locally.
+     * This keeps Home's watched input current after playback completion without
+     * scheduling an additional provider request.
      */
-    private fun startExtraKeysObserverIfNeeded() {
-        if (extraKeysObserverJob != null) return
+    private fun startProviderSnapshotObserverIfNeeded() {
+        if (providerSnapshotObserverJob != null) return
         val providerId = activeSource.providerId ?: return
         val adapter = TrackingProviderRegistry.connectedWatchedProviders()
             .firstOrNull { it.providerId == providerId } ?: return
-        extraKeysObserverJob = accountScopeSnapshot().launch {
-            adapter.observeExtraWatchedKeys(currentProfileId)
-                .distinctUntilChanged()
-                .collectLatest { extraKeys ->
-                    val keysChanged = extraWatchedKeysChanged(
-                        previous = providerExtraWatchedKeys[providerId],
-                        current = extraKeys,
-                    )
-                    if (keysChanged) {
-                        val freshItems = watchedProviderRefreshOrNull(
-                            refresh = {
-                                adapter.pull(
-                                    profileId = currentProfileId,
-                                    pageSize = watchedItemsPageSize,
-                                )
-                            },
-                            onFailure = { error ->
-                                log.w(error) { "Failed to refresh watched items from ${providerId.storageId}" }
-                            },
-                        ) ?: return@collectLatest
-                        providerExtraWatchedKeys[providerId] = extraKeys
-                        itemsStore.update { _, providerItems, _, dirtyProviderKeys ->
-                            val dirtyKeys = dirtyProviderKeys.getOrPut(providerId, ::mutableSetOf)
-                            val merged = mergeWatchedSnapshot(
-                                serverItems = freshItems,
-                                localItems = providerItems[providerId]?.values.orEmpty().toList(),
-                                dirtyKeys = dirtyKeys,
-                                acknowledgeDirtyByPresence = true,
-                            )
-                            providerItems[providerId] = merged.items.toMutableMap()
-                            dirtyKeys.clear()
-                            dirtyKeys += merged.dirtyKeys
-                        }
-                        loadedProviders += providerId
-                        providersLoadedFromRemote += providerId
-                        publish()
-                        persist()
-                    }
+        val profileId = currentProfileId
+        providerSnapshotObserverJob = accountScopeSnapshot().launch {
+            adapter.observeWatchedSnapshot(profileId).collectLatest { snapshot ->
+                if (
+                    activeSource.providerId != providerId ||
+                    currentProfileId != profileId ||
+                    ProfileRepository.activeProfileId != profileId
+                ) {
+                    return@collectLatest
                 }
+                applyProviderWatchedSnapshot(providerId, snapshot)
+            }
         }
     }
 
-    private fun stopExtraKeysObserver() {
-        extraKeysObserverJob?.cancel()
-        extraKeysObserverJob = null
+    private fun applyProviderWatchedSnapshot(
+        providerId: TrackingProviderId,
+        snapshot: TrackingWatchedSnapshot,
+    ) {
+        itemsStore.update { _, providerItems, _, dirtyProviderKeys ->
+            val dirtyKeys = dirtyProviderKeys.getOrPut(providerId, ::mutableSetOf)
+            val merged = mergeWatchedSnapshot(
+                serverItems = snapshot.items,
+                localItems = providerItems[providerId]?.values.orEmpty().toList(),
+                dirtyKeys = dirtyKeys,
+                acknowledgeDirtyByPresence = true,
+            )
+            providerItems[providerId] = merged.items.toMutableMap()
+            dirtyKeys.clear()
+            dirtyKeys += merged.dirtyKeys
+        }
+        snapshot.fullyWatchedSeriesKeys?.let { keys ->
+            providerFullyWatchedSeriesKeys[providerId] = keys
+        }
+        providerExtraWatchedKeys[providerId] = snapshot.extraWatchedKeys
+        loadedProviders += providerId
+        publish()
+        persist()
+    }
+
+    private fun stopProviderSnapshotObserver() {
+        providerSnapshotObserverJob?.cancel()
+        providerSnapshotObserverJob = null
     }
 
     private fun persist() {

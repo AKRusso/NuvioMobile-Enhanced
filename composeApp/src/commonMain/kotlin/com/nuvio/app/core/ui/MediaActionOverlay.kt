@@ -99,7 +99,7 @@ fun NuvioMediaActionOverlay(
                         ),
                     ),
             )
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable(
@@ -107,10 +107,6 @@ fun NuvioMediaActionOverlay(
                         indication = null,
                         onClick = onDismissRequest,
                     )
-            )
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {

@@ -1987,4 +1987,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Επιλέξτε ανάμεσα στον επιλογέα Enhanced με ομαδοποίηση ανά γλώσσα και τη νέα διάταξη Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Το εμφανιζόμενο ποσό είναι πριν από χρεώσεις πληρωμών και τραπεζών, επομένως το ποσό που λαμβάνεται μπορεί να είναι μικρότερο.</string>
 </resources>

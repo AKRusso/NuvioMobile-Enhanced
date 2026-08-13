@@ -896,6 +896,7 @@
     <string name="community_donation_progress_title">This month&apos;s server &amp; maintenance</string>
     <string name="community_donation_progress_complete">Covered. Additional support now goes to development.</string>
     <string name="community_donation_progress_remaining">After 100%, additional support goes to development.</string>
+    <string name="community_donation_progress_resets">Resets on %1$s</string>
     <string name="community_loading_donation_progress">Loading funding progress...</string>
     <string name="community_supporters_not_configured">Supporters API is not configured. Add DONATIONS_BASE_URL to local.properties.</string>
     <string name="community_tab_contributors">Contributors</string>
@@ -1717,6 +1718,7 @@
     <string name="downloads_error_open_partial_failed">Failed to open partial download file</string>
     <string name="downloads_error_partial_not_open">Partial download file is not open</string>
     <string name="downloads_error_request_failed">Download request failed</string>
+    <string name="downloads_error_external_folder_unavailable">The external download folder is unavailable. Choose another folder in settings.</string>
     <string name="downloads_error_write_partial_failed">Failed to write partial download file</string>
     <string name="home_catalog_default_title">%1$s - %2$s</string>
     <string name="library_empty_message">Saved titles will appear here after you tap Save on a details screen.</string>
@@ -2428,6 +2430,7 @@
     <string name="downloads_action_pause">Pause</string>
     <string name="downloads_action_resume">Resume</string>
     <string name="downloads_action_cancel_download">Cancel download</string>
+    <string name="downloads_action_remove_download">Remove from downloads</string>
     <string name="library_calendar_empty_message">Saved movies and series episodes with exact dates will appear here.</string>
     <string name="library_calendar_empty_title">No calendar dates found</string>
     <string name="library_calendar_exact_dates_only">Shows saved titles and episode releases with exact dates.</string>
@@ -2488,6 +2491,14 @@
     <string name="nuvio_enhanced_section_release_radar">Release Radar</string>
     <string name="nuvio_enhanced_section_details_experience">Details Experience</string>
     <string name="nuvio_enhanced_section_network">Network</string>
+    <string name="nuvio_enhanced_section_downloads">Downloads</string>
+    <string name="nuvio_enhanced_external_folder_choose_title">External Download Folder</string>
+    <string name="nuvio_enhanced_external_folder_change_title">Change External Download Folder</string>
+    <string name="nuvio_enhanced_external_folder_description">Keep completed downloads in a folder you choose so other apps can access them.</string>
+    <string name="nuvio_enhanced_external_folder_unavailable_description">This folder is no longer available. Choose another folder before starting downloads.</string>
+    <string name="nuvio_enhanced_external_folder_remove_title">Remove External Download Folder</string>
+    <string name="nuvio_enhanced_external_folder_remove_description">Use Nuvio&apos;s private storage for new downloads.</string>
+    <string name="nuvio_enhanced_external_folder_failed">Couldn&apos;t select the external download folder.</string>
     <string name="nuvio_enhanced_section_backup_import">Backup &amp; Import</string>
     <string name="nuvio_enhanced_section_feedback">Feedback</string>
     <string name="nuvio_enhanced_section_discovery">Discovery</string>
@@ -2670,4 +2681,5 @@
     <string name="nuvio_enhanced_audio_selector_desc">Choose between the Enhanced audio selector and the latest Nuvio layout.</string>
     <string name="nuvio_enhanced_next_episode_button_title">Next Ep button</string>
     <string name="nuvio_enhanced_next_episode_button_desc">Show a Next Ep button when an aired episode is available. This only controls button visibility; provider choice remains linked to Playback &gt; Stream Auto-play, including source scope, allowed addons/plugins, timeout and binge-group rules.</string>
+    <string name="community_donation_progress_fee_notice">The displayed amount is before payment and bank fees, so the amount received may be lower.</string>
 </resources>

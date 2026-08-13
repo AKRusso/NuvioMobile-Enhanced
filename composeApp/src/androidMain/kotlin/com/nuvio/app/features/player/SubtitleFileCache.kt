@@ -86,7 +86,7 @@ object SubtitleFileCache {
                         return@withContext null
                     }
 
-                    val body = response.body ?: return@withContext null
+                    val body = response.body
                     file.outputStream().use { output ->
                         body.byteStream().copyTo(output)
                     }

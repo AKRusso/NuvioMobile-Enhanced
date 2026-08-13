@@ -1997,4 +1997,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Vyberte medzi výberom Enhanced zoskupeným podľa jazyka a novým rozložením Nuvio.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">Zobrazená suma je pred poplatkami za platbu a bankovými poplatkami, takže prijatá suma môže byť nižšia.</string>
 </resources>

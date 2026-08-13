@@ -107,6 +107,9 @@ private data class DonationsResponseDto(
 private data class DonationMonthlyGoalDto(
     val progressPercent: Double? = null,
     val monthLabel: String? = null,
+    val currentCents: Long? = null,
+    val targetCents: Long? = null,
+    val nextResetDate: String? = null,
 )
 
 @Serializable
@@ -139,6 +142,9 @@ internal data class SupporterDonation(
 
 internal data class DonationProgress(
     val progressPercent: Int,
+    val currentCents: Long? = null,
+    val targetCents: Long? = null,
+    val nextResetDate: String? = null,
 )
 
 internal data class SupportersResult(
@@ -218,7 +224,14 @@ internal object SupportersContributorsRepository {
         val progress = donationsResponse.monthlyGoal
             ?.progressPercent
             ?.toDonationProgressPercent()
-            ?.let { percent -> DonationProgress(progressPercent = percent) }
+            ?.let { percent ->
+                DonationProgress(
+                    progressPercent = percent,
+                    currentCents = donationsResponse.monthlyGoal.currentCents,
+                    targetCents = donationsResponse.monthlyGoal.targetCents,
+                    nextResetDate = donationsResponse.monthlyGoal.nextResetDate,
+                )
+            }
 
         SupportersResult(
             supporters = supporters,
@@ -384,12 +397,6 @@ private fun SupportersContributorsBody(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            uiState.donationProgress?.let { progress ->
-                Spacer(modifier = Modifier.height(16.dp))
-                DonationProgressSection(
-                    progress = progress,
-                )
-            }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = { if (donateConfigured) uriHandler.openUri(donateUrl) },
@@ -403,6 +410,10 @@ private fun SupportersContributorsBody(
                 )
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(stringResource(Res.string.action_donate))
+            }
+            uiState.donationProgress?.let { progress ->
+                Spacer(modifier = Modifier.height(16.dp))
+                DonationProgressSection(progress = progress)
             }
             if (!donationsConfigured) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -667,6 +678,22 @@ private fun DonationProgressSection(
                 .clip(RoundedCornerShape(999.dp)),
         )
 
+        if (progress.currentCents != null && progress.targetCents != null) {
+            Text(
+                text = "${formatEuroAmount(progress.currentCents)} / ${formatEuroAmount(progress.targetCents)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        progress.nextResetDate?.takeIf(String::isNotBlank)?.let { resetDate ->
+            Text(
+                text = "Resets on ${formatDonationDate(resetDate)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
         Text(
             text = when {
                 percent >= 100 -> stringResource(Res.string.community_donation_progress_complete)
@@ -813,6 +840,11 @@ private fun NameAvatar(
     CommunityAvatar(label = label, imageUrl = imageUrl, modifier = modifier)
 }
 
+internal fun formatEuroAmount(cents: Long): String {
+    val normalized = cents.coerceAtLeast(0L)
+    return "EUR ${normalized / 100}.${(normalized % 100).toString().padStart(2, '0')}"
+}
+
 @Composable
 private fun LoadingState(
     label: String,
@@ -949,7 +981,7 @@ private fun contributorSupportLink(login: String): String? = when (login.lowerca
 }
 
 @Composable
-private fun formatDonationDate(rawDate: String): String {
+internal fun formatDonationDate(rawDate: String): String {
     val datePart = rawDate.substringBefore('T')
     val parts = datePart.split('-')
     if (parts.size != 3) return rawDate

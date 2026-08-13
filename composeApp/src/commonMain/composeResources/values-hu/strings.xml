@@ -1993,4 +1993,5 @@
     <string name="nuvio_enhanced_subtitle_selector_desc">Válassz a nyelv szerint csoportosított Enhanced választó és az új Nuvio elrendezés között.</string>
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
+    <string name="community_donation_progress_fee_notice">A megjelenített összeg a fizetési és banki díjak előtti összeg, ezért a beérkező összeg alacsonyabb lehet.</string>
 </resources>
