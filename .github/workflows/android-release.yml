@@ -30,7 +30,8 @@ jobs:
   build-ios:
     name: Build sideload iOS IPA
     if: inputs.mode == 'build' || inputs.mode == 'draft' || inputs.mode == 'publish'
-    runs-on: macos-15
+    runs-on: macos-15-intel
+    timeout-minutes: 60
     env:
       NUVIO_IOS_DISTRIBUTION: full
 
