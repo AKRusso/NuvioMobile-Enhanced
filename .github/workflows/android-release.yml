@@ -36,11 +36,7 @@ jobs:
       NUVIO_IOS_DISTRIBUTION: full
       # The Xcode build script starts Gradle, the Kotlin daemon, and Kotlin/Native together.
       # Keep their heaps below the hosted runner memory limit to avoid a stalled build.
-      GRADLE_OPTS: >-
-        -Dorg.gradle.jvmargs="-Xmx6g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=1536m"
-        -Dorg.gradle.configuration-cache=false
-        -Pkotlin.daemon.jvmargs=-Xmx4g
-        -Pkotlin.native.jvmArgs=-Xmx4g
+      GRADLE_OPTS: -Xmx6g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=1536m
       KOTLIN_DAEMON_JVMARGS: -Xmx4g
 
     steps:
@@ -106,6 +102,12 @@ jobs:
         run: |
           cat > local.properties <<EOF
           NUVIO_IOS_DISTRIBUTION=${NUVIO_IOS_DISTRIBUTION}
+          EOF
+          cat >> gradle.properties <<EOF
+          org.gradle.jvmargs=-Xmx6g -Dfile.encoding=UTF-8 -XX:MaxMetaspaceSize=1536m
+          org.gradle.configuration-cache=false
+          kotlin.daemon.jvmargs=-Xmx4g
+          kotlin.native.jvmArgs=-Xmx4g
           EOF
 
       - name: Build unsigned full iOS app
