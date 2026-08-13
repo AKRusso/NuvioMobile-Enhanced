@@ -1,14 +1,15 @@
-name: Build Android Release
+name: Build Nuvio Release
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: Build only, create, publish, or attach the universal APK
+        description: Validate metadata, build artifacts, create or publish a release, or attach the universal APK
         required: true
         type: choice
         options:
           - dry-run
+          - build
           - draft
           - publish
           - attach-universal
@@ -22,12 +23,140 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-release-${{ github.ref }}
+  group: nuvio-release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  build-ios:
+    name: Build sideload iOS IPA
+    if: inputs.mode == 'build' || inputs.mode == 'draft' || inputs.mode == 'publish'
+    runs-on: macos-15
+    env:
+      NUVIO_IOS_DISTRIBUTION: full
+
+    steps:
+      - name: Check out full history and submodules
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+          submodules: recursive
+
+      - name: Read release metadata
+        id: release
+        run: ./scripts/release-metadata.sh "${GITHUB_SHA}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Download Nuvio Engine Apple XCFramework
+        env:
+          NUVIO_ENGINE_VERSION: 0.1.1
+        run: |
+          set -euo pipefail
+
+          engine_root="../nuvio-engine/platform/apple"
+          engine_destination="${engine_root}/NuvioEngine.xcframework"
+          archive="${RUNNER_TEMP}/nuvio-engine-apple-${NUVIO_ENGINE_VERSION}.zip"
+          extract_directory="${RUNNER_TEMP}/nuvio-engine-apple-${NUVIO_ENGINE_VERSION}"
+
+          rm -rf "${engine_root}" "${extract_directory}" "${archive}"
+          mkdir -p "${engine_root}" "${extract_directory}"
+
+          curl \
+            --fail \
+            --location \
+            --retry 5 \
+            --retry-all-errors \
+            "https://github.com/NuvioMedia/nuvio-engine/releases/download/v${NUVIO_ENGINE_VERSION}/nuvio-engine-apple-${NUVIO_ENGINE_VERSION}.zip" \
+            --output "${archive}"
+          ditto -x -k "${archive}" "${extract_directory}"
+
+          xcframework="$(find "${extract_directory}" -type d -name NuvioEngine.xcframework -print -quit)"
+          if [[ -z "${xcframework}" ]]; then
+            echo "NuvioEngine.xcframework was not found in the downloaded archive." >&2
+            exit 1
+          fi
+          ditto "${xcframework}" "${engine_destination}"
+
+          for slice in ios-arm64 ios-arm64_x86_64-simulator; do
+            slice_directory="${engine_destination}/${slice}"
+            test -f "${slice_directory}/libCNuvioEngine.a"
+            test -f "${slice_directory}/Headers/nuvio_engine/nuvio_engine.h"
+          done
+
+      - name: Configure full iOS build
+        run: |
+          cat > local.properties <<EOF
+          NUVIO_IOS_DISTRIBUTION=${NUVIO_IOS_DISTRIBUTION}
+          EOF
+
+      - name: Build unsigned full iOS app
+        run: |
+          xcodebuild \
+            -project iosApp/iosApp.xcodeproj \
+            -scheme iosApp \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath iosApp/build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package sideload IPA
+        id: package
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          products_directory="iosApp/build/Build/Products/Release-iphoneos"
+          app_directory="$(find "${products_directory}" -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [[ -z "${app_directory}" || ! -f "${app_directory}/Info.plist" ]]; then
+            echo "The unsigned iOS app was not produced." >&2
+            exit 1
+          fi
+
+          app_version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "${app_directory}/Info.plist")"
+          if [[ "${app_version}" != "${RELEASE_VERSION}" ]]; then
+            echo "IPA version ${app_version} does not match release version ${RELEASE_VERSION}." >&2
+            exit 1
+          fi
+
+          staging_directory="${RUNNER_TEMP}/nuvio-ipa-staging"
+          output_directory="${GITHUB_WORKSPACE}/iosApp/build/ipa"
+          ipa_name="Nuvio-Enhanced-v${app_version}-Full-unsigned.ipa"
+          rm -rf "${staging_directory}" "${output_directory}"
+          mkdir -p "${staging_directory}/Payload" "${output_directory}"
+          ditto "${app_directory}" "${staging_directory}/Payload/$(basename "${app_directory}")"
+          (
+            cd "${staging_directory}"
+            /usr/bin/zip -qry "${output_directory}/${ipa_name}" Payload
+          )
+
+          test -f "${output_directory}/${ipa_name}"
+          unzip -l "${output_directory}/${ipa_name}" | grep -q 'Payload/.*\.app/Info.plist'
+          echo "ipa_name=${ipa_name}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload sideload IPA artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: nuvio-${{ steps.release.outputs.version }}-ios-full-unsigned
+          path: iosApp/build/ipa/${{ steps.package.outputs.ipa_name }}
+          if-no-files-found: error
+
   release:
-    name: ${{ inputs.mode }} Android release
+    name: ${{ inputs.mode }} Nuvio release
+    needs: build-ios
+    if: ${{ always() && (inputs.mode == 'dry-run' || inputs.mode == 'attach-universal' || needs.build-ios.result == 'success') }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -62,7 +191,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "${RELEASE_MODE}" != "attach-universal" ]]; then
+          if [[ "${RELEASE_MODE}" == "draft" || "${RELEASE_MODE}" == "publish" ]]; then
             if git rev-parse --verify --quiet "refs/tags/${RELEASE_TAG}"; then
               echo "Tag ${RELEASE_TAG} already exists." >&2
               exit 1
@@ -138,6 +267,11 @@ jobs:
             echo
             echo "## Commits"
             cat release-commits.md
+            echo
+            echo "## iOS and iPadOS"
+            echo
+            echo "Published releases include the Full sideload variant as an unsigned IPA."
+            echo "Install it with AltStore or SideStore, which signs it with your own Apple account."
           } > release-notes.md
 
           {
@@ -270,6 +404,13 @@ jobs:
           path: androidApp/build/outputs/apk/full/release/*.apk
           if-no-files-found: error
 
+      - name: Download sideload IPA artifact
+        if: inputs.mode == 'draft' || inputs.mode == 'publish'
+        uses: actions/download-artifact@v7
+        with:
+          name: nuvio-${{ steps.release.outputs.version }}-ios-full-unsigned
+          path: ios-release
+
       - name: Create GitHub release
         if: inputs.mode == 'draft' || inputs.mode == 'publish'
         env:
@@ -283,6 +424,11 @@ jobs:
             echo "No release APKs were produced." >&2
             exit 1
           fi
+          mapfile -t release_ipas < <(find ios-release -maxdepth 1 -type f -name '*.ipa' -print | sort)
+          if (( ${#release_ipas[@]} != 1 )); then
+            echo "Expected exactly one sideload IPA, found ${#release_ipas[@]}." >&2
+            exit 1
+          fi
 
           release_args=(
             "${RELEASE_TAG}"
@@ -293,7 +439,7 @@ jobs:
           if [[ "${RELEASE_MODE}" == "draft" ]]; then
             release_args+=(--draft)
           fi
-          gh release create "${release_args[@]}" "${release_apks[@]}"
+          gh release create "${release_args[@]}" "${release_apks[@]}" "${release_ipas[@]}"
 
       - name: Attach universal APK to existing release
         if: inputs.mode == 'attach-universal'

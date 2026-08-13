@@ -32,12 +32,12 @@
 
 This repository is maintained by **AKRusso** as an independent continuation of
 NuvioMobile Enhanced. The goal is to keep the fork aligned with the original
-project, fix bugs, improve the Android experience, and provide easy-to-install
-release builds.
+project, fix bugs, improve Android and iOS, and provide easy-to-install release
+builds.
 
 | Track | Version |
 | --- | --- |
-| Nuvio Enhanced | `0.4.7 (111)` |
+| Nuvio Enhanced | `0.4.8 (112)` |
 | Official NuvioMobile base | `0.4.4` |
 | Fork main branch | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
 | Maintainer | [AKRusso](https://github.com/AKRusso) |
@@ -52,15 +52,15 @@ fork.
 
 Always download from the official fork release:
 
-**[Download Nuvio Enhanced 0.4.7](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/tag/0.4.7)**
+**[Download the latest Nuvio Enhanced release](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/latest)**
 
 For most Android phones, choose:
 
-**[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.7/androidApp-full-arm64-v8a-release.apk)**
+**[ARM64-v8a - recommended](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/latest/download/androidApp-full-arm64-v8a-release.apk)**
 
 If you are unsure which architecture your device uses, download the universal APK:
 
-**[Universal APK - easiest option](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/download/0.4.7/androidApp-full-universal-release.apk)**
+**[Universal APK - easiest option](https://github.com/AKRusso/NuvioMobile-Enhanced/releases/latest/download/androidApp-full-universal-release.apk)**
 
 Other architectures are available on the release page:
 
@@ -71,12 +71,23 @@ Other architectures are available on the release page:
 Release APKs are built by GitHub Actions, use the update-compatible certificate
 from previous Enhanced builds, and include SHA-256 hashes in the release notes.
 
+### iOS and iPadOS
+
+Future published releases build the Full iOS variant and attach
+`Nuvio-Enhanced-v<version>-Full-unsigned.ipa` to the same GitHub release as the
+Android APKs. The Full variant retains sideload-only functionality such as P2P,
+plugins, and in-app trailers.
+
+The IPA is intentionally unsigned. Install it with AltStore or SideStore, which
+signs it using your own Apple account. It cannot be installed by opening the
+file directly, and it is not intended for the App Store.
+
 ## What I Maintain
 
 - Keeping this fork aligned with stable NuvioMobile releases.
-- Fixing bugs and regressions found on Android.
-- Building and publishing signed Android releases through GitHub Actions.
-- Improving navigation, playback, library, Live TV, and tracking.
+- Fixing bugs and regressions found on Android and iOS.
+- Building and publishing signed Android APKs and sideload-ready iOS IPAs through GitHub Actions.
+- Improving navigation, playback, library, Live TV, and tracking across both platforms.
 - Maintaining clear documentation, changelogs, and release notes.
 - Supporting the community through Ko-fi without storing private payment data.
 
