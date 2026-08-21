@@ -254,11 +254,23 @@ object ProfileSettingsSync {
             features = MobileProfileSettingsFeatures(
                 themeSettings = ThemeSettingsStorage.exportToSyncPayload(),
                 posterCardStyleSettingsPayload = PosterCardStyleStorage.loadPayload().orEmpty().trim(),
-                playerSettings = PlayerSettingsStorage.exportToSyncPayload(),
+                playerSettings = withoutProfileCredentials(
+                    PROFILE_PLAYER_SETTINGS_FEATURE,
+                    PlayerSettingsStorage.exportToSyncPayload(),
+                ),
                 streamBadgeSettings = StreamBadgeSettingsStorage.exportToSyncPayload(),
-                debridSettings = DebridSettingsStorage.exportToSyncPayload(),
-                tmdbSettings = TmdbSettingsStorage.exportToSyncPayload(),
-                mdbListSettings = MdbListSettingsStorage.exportToSyncPayload(),
+                debridSettings = withoutProfileCredentials(
+                    PROFILE_DEBRID_SETTINGS_FEATURE,
+                    DebridSettingsStorage.exportToSyncPayload(),
+                ),
+                tmdbSettings = withoutProfileCredentials(
+                    PROFILE_TMDB_SETTINGS_FEATURE,
+                    TmdbSettingsStorage.exportToSyncPayload(),
+                ),
+                mdbListSettings = withoutProfileCredentials(
+                    PROFILE_MDBLIST_SETTINGS_FEATURE,
+                    MdbListSettingsStorage.exportToSyncPayload(),
+                ),
                 metaScreenSettingsPayload = MetaScreenSettingsStorage.loadPayload().orEmpty().trim(),
                 collectionMobileSettingsPayload = CollectionMobileSettingsStorage.loadPayload().orEmpty().trim(),
                 continueWatchingSettingsPayload = ContinueWatchingPreferencesStorage.loadPayload().orEmpty().trim(),
@@ -268,7 +280,10 @@ object ProfileSettingsSync {
                     episodeReleaseAlertsEnabled = EpisodeReleaseNotificationsRepository.uiState.value.isEnabled,
                 ),
                 nuvioEnhancedSettingsPayload = NuvioEnhancedSettingsRepository.exportPayload(),
-                aiAssistantSettings = exportAiAssistantSettingsPayload(),
+                aiAssistantSettings = withoutProfileCredentials(
+                    PROFILE_AI_ASSISTANT_SETTINGS_FEATURE,
+                    exportAiAssistantSettingsPayload(),
+                ),
             ),
         )
     }
@@ -280,19 +295,43 @@ object ProfileSettingsSync {
         PosterCardStyleStorage.savePayload(blob.features.posterCardStyleSettingsPayload)
         PosterCardStyleRepository.onProfileChanged()
 
-        PlayerSettingsStorage.replaceFromSyncPayload(blob.features.playerSettings)
+        PlayerSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_PLAYER_SETTINGS_FEATURE,
+                blob.features.playerSettings,
+                PlayerSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         PlayerSettingsRepository.onProfileChanged()
 
         StreamBadgeSettingsStorage.replaceFromSyncPayload(blob.features.streamBadgeSettings)
         StreamBadgeSettingsRepository.onProfileChanged()
 
-        DebridSettingsStorage.replaceFromSyncPayload(blob.features.debridSettings)
+        DebridSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_DEBRID_SETTINGS_FEATURE,
+                blob.features.debridSettings,
+                DebridSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         DebridSettingsRepository.onProfileChanged()
 
-        TmdbSettingsStorage.replaceFromSyncPayload(blob.features.tmdbSettings)
+        TmdbSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_TMDB_SETTINGS_FEATURE,
+                blob.features.tmdbSettings,
+                TmdbSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         TmdbSettingsRepository.onProfileChanged()
 
-        MdbListSettingsStorage.replaceFromSyncPayload(blob.features.mdbListSettings)
+        MdbListSettingsStorage.replaceFromSyncPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_MDBLIST_SETTINGS_FEATURE,
+                blob.features.mdbListSettings,
+                MdbListSettingsStorage.exportToSyncPayload(),
+            ),
+        )
         MdbListMetadataService.clearCache()
         MdbListSettingsRepository.onProfileChanged()
 
@@ -317,7 +356,13 @@ object ProfileSettingsSync {
             .takeIf { it.isNotBlank() }
             ?.let(NuvioEnhancedSettingsRepository::replacePayload)
 
-        applyAiAssistantSettingsPayload(blob.features.aiAssistantSettings)
+        applyAiAssistantSettingsPayload(
+            preservingLocalProfileCredentials(
+                PROFILE_AI_ASSISTANT_SETTINGS_FEATURE,
+                blob.features.aiAssistantSettings,
+                exportAiAssistantSettingsPayload(),
+            ),
+        )
     }
 
     private fun ensureRepositoriesLoaded() {

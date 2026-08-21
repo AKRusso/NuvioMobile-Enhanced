@@ -27,7 +27,10 @@ internal data class NuvioEnhancedSettingsUiState(
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroRatings: Boolean = true,
+    val ratingsAboveMetadata: Boolean = false,
     val showHeroOverview: Boolean = false,
+    val showHeroDetailsButton: Boolean = true,
+    val originalNuvioHeroBannerEnabled: Boolean = false,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
     val releaseRadarDigestEnabled: Boolean = false,
@@ -82,6 +85,8 @@ internal enum class NuvioAudioSelectorStyle {
 
 internal enum class NuvioEnhancedFeature(val id: String) {
     HomeExperienceControls("home_experience_controls"),
+    HeroControlsV2("hero_controls_v2"),
+    DetailPresentationControlsV2("detail_presentation_controls_v2"),
     SmartResume2("smart_resume_2"),
     BackupImport("backup_import"),
     FeatureHighlights("feature_highlights"),
@@ -110,6 +115,15 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     ContentWarnings("content_warnings"),
 }
 
+private val latestReleaseFeatureIds = setOf(
+    NuvioEnhancedFeature.HeroControlsV2.id,
+    NuvioEnhancedFeature.DetailPresentationControlsV2.id,
+)
+
+private val previouslyReleasedFeatureIds = NuvioEnhancedFeature.entries
+    .mapTo(mutableSetOf()) { it.id }
+    .apply { removeAll(latestReleaseFeatureIds) }
+
 @Serializable
 private data class StoredNuvioEnhancedSettings(
     val enhancedHomeFeaturesEnabled: Boolean = true,
@@ -128,7 +142,10 @@ private data class StoredNuvioEnhancedSettings(
     val streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     val compactHeroMetadata: Boolean = true,
     val showHeroRatings: Boolean = true,
+    val ratingsAboveMetadata: Boolean = false,
     val showHeroOverview: Boolean = false,
+    val showHeroDetailsButton: Boolean = true,
+    val originalNuvioHeroBannerEnabled: Boolean = false,
     val heroOverviewUserConfigured: Boolean = false,
     val heroRefreshHapticsEnabled: Boolean = true,
     val smartShelvesEnabled: Boolean = false,
@@ -146,7 +163,7 @@ private data class StoredNuvioEnhancedSettings(
     val releaseRadarContentFilter: NuvioReleaseRadarContentFilter = NuvioReleaseRadarContentFilter.All,
     val featureHighlightsEnabled: Boolean = true,
     val discordWelcomeSeen: Boolean = false,
-    val seenFeatureIds: Set<String> = emptySet(),
+    val seenFeatureIds: Set<String> = previouslyReleasedFeatureIds,
 )
 
 internal object NuvioEnhancedSettingsRepository {
@@ -169,10 +186,13 @@ internal object NuvioEnhancedSettingsRepository {
             runCatching { json.decodeFromString<StoredNuvioEnhancedSettings>(payload) }
                 .getOrDefault(StoredNuvioEnhancedSettings())
                 .let { decoded ->
-                    if (decoded.heroOverviewUserConfigured) {
-                        decoded
+                    val normalized = decoded.copy(
+                        seenFeatureIds = decoded.seenFeatureIds + previouslyReleasedFeatureIds,
+                    )
+                    if (normalized.heroOverviewUserConfigured) {
+                        normalized
                     } else {
-                        decoded.copy(showHeroOverview = false)
+                        normalized.copy(showHeroOverview = false)
                     }
                 }
         } else {
@@ -197,7 +217,9 @@ internal object NuvioEnhancedSettingsRepository {
             .takeIf { it.isNotBlank() }
             ?.let { runCatching { json.decodeFromString<StoredNuvioEnhancedSettings>(it) }.getOrNull() }
             ?: return
-        stored = decoded
+        stored = decoded.copy(
+            seenFeatureIds = decoded.seenFeatureIds + previouslyReleasedFeatureIds,
+        )
         hasLoaded = true
         publish()
         persist()
@@ -273,11 +295,23 @@ internal object NuvioEnhancedSettingsRepository {
         copy(showHeroRatings = enabled)
     }
 
+    fun setRatingsAboveMetadata(enabled: Boolean) = update {
+        copy(ratingsAboveMetadata = enabled)
+    }
+
     fun setShowHeroOverview(enabled: Boolean) = update {
         copy(
             showHeroOverview = enabled,
             heroOverviewUserConfigured = true,
         )
+    }
+
+    fun setShowHeroDetailsButton(enabled: Boolean) = update {
+        copy(showHeroDetailsButton = enabled)
+    }
+
+    fun setOriginalNuvioHeroBannerEnabled(enabled: Boolean) = update {
+        copy(originalNuvioHeroBannerEnabled = enabled)
     }
 
     fun setHeroRefreshHapticsEnabled(enabled: Boolean) = update {
@@ -386,7 +420,10 @@ internal object NuvioEnhancedSettingsRepository {
             streamingShowcaseVideoPreviewSoundEnabled = stored.streamingShowcaseVideoPreviewSoundEnabled,
             compactHeroMetadata = stored.compactHeroMetadata,
             showHeroRatings = stored.showHeroRatings,
+            ratingsAboveMetadata = stored.ratingsAboveMetadata,
             showHeroOverview = stored.showHeroOverview,
+            showHeroDetailsButton = stored.showHeroDetailsButton,
+            originalNuvioHeroBannerEnabled = stored.originalNuvioHeroBannerEnabled,
             heroRefreshHapticsEnabled = stored.heroRefreshHapticsEnabled,
             smartShelvesEnabled = stored.smartShelvesEnabled,
             releaseRadarDigestEnabled = stored.releaseRadarDigestEnabled,

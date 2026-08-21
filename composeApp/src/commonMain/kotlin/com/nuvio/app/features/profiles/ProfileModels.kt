@@ -141,7 +141,7 @@ fun normalizedAvatarUrl(url: String?): String? =
     normalizedRemoteImageUrl(url)
 
 fun normalizedProfileBackgroundUrl(url: String?): String? =
-    normalizedRemoteImageUrl(url)
+    ProfileBackgroundPreset.fromStoredValue(url)?.storedValue ?: normalizedRemoteImageUrl(url)
 
 private fun normalizedRemoteImageUrl(url: String?): String? =
     url?.trim()?.takeIf { it.isValidRemoteImageUrl() }
@@ -161,4 +161,4 @@ fun profileAvatarImageUrl(profile: NuvioProfile, avatar: AvatarCatalogItem?): St
             ?.let(::avatarStorageUrl)
 
 fun profileBackgroundImageUrl(profile: NuvioProfile): String? =
-    normalizedProfileBackgroundUrl(profile.backgroundUrl)
+    normalizedRemoteImageUrl(profile.backgroundUrl)

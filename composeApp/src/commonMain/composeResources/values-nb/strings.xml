@@ -1455,4 +1455,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Beløpet som vises er før betalings- og bankgebyrer, så mottatt beløp kan være lavere.</string>
+    <string name="downloads_download_settings">Nedlastingsinnstillinger</string>
+    <string name="downloads_auto_select">Automatisk valg</string>
+    <string name="downloads_auto_select_desc">Velger automatisk den beste tilgjengelige kilden for hver episode.</string>
+    <string name="downloads_preferred_quality">Foretrukket kvalitet</string>
+    <string name="downloads_download_mode">Nedlastingsmodus</string>
+    <string name="downloads_download_all_at_once">Alt på en gang</string>
+    <string name="downloads_download_one_at_a_time">Én om gangen</string>
+    <string name="downloads_automatic">Automatisk</string>
+    <string name="downloads_quality_best">Best</string>
+    <string name="downloads_auto_selecting">Velger kilder…</string>
+    <string name="downloads_download_started">Nedlastinger startet</string>
+    <string name="downloads_status_waiting">Venter</string>
 </resources>

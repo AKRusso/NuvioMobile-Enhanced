@@ -749,6 +749,8 @@
     <string name="settings_meta_episode_style_horizontal_description">Cartões em linha com imagem de fundo.</string>
     <string name="settings_meta_episode_style_list">Lista</string>
     <string name="settings_meta_episode_style_list_description">Cartões empilhados com foco nos detalhes.</string>
+    <string name="settings_meta_episode_style_vertical">Cartões verticais</string>
+    <string name="settings_meta_episode_style_vertical_description">Cartões grandes com imagem de fundo numa lista vertical.</string>
     <string name="settings_meta_episodes">Episódios</string>
     <string name="settings_meta_episodes_description">Lista de temporadas e episódios para séries.</string>
     <string name="settings_meta_blur_unwatched_episodes">Desfocar episódios não vistos</string>
@@ -1933,4 +1935,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">O valor apresentado é anterior às taxas de pagamento e bancárias, pelo que o montante recebido pode ser inferior.</string>
+    <string name="downloads_download_settings">Definições de transferência</string>
+    <string name="downloads_auto_select">Seleção automática</string>
+    <string name="downloads_auto_select_desc">Escolhe automaticamente a melhor fonte disponível para cada episódio.</string>
+    <string name="downloads_preferred_quality">Qualidade preferida</string>
+    <string name="downloads_download_mode">Modo de transferência</string>
+    <string name="downloads_download_all_at_once">Tudo de uma vez</string>
+    <string name="downloads_download_one_at_a_time">Um de cada vez</string>
+    <string name="downloads_automatic">Automático</string>
+    <string name="downloads_quality_best">Melhor</string>
+    <string name="downloads_auto_selecting">A selecionar fontes…</string>
+    <string name="downloads_download_started">Transferências iniciadas</string>
+    <string name="downloads_status_waiting">A aguardar</string>
 </resources>

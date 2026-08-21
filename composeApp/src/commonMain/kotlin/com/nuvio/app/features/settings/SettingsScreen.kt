@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.AppTheme
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.PlatformBackHandler
@@ -1034,8 +1035,13 @@ private fun TabletSettingsScreen(
 ) {
     var selectedCategory by rememberSaveable { mutableStateOf(SettingsCategory.General.name) }
     val activeCategory = SettingsCategory.valueOf(selectedCategory)
+    val tvLayout = LocalTvLayoutProfile.current
+    val isTvLayout = tvLayout.enabled
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topOffset = max(statusBarPadding + 24.dp, 48.dp) + 64.dp
+    val topOffset = max(statusBarPadding + if (isTvLayout) 36.dp else 24.dp, if (isTvLayout) 64.dp else 48.dp) + if (isTvLayout) 84.dp else 64.dp
+    val sidebarWidth = if (isTvLayout) 340.dp else 280.dp
+    val contentPadding = if (isTvLayout) 56.dp else 40.dp
+    val sectionGap = if (isTvLayout) 28.dp else 18.dp
 
     LaunchedEffect(page) {
         if (page.opensInlineOnTablet) {
@@ -1053,7 +1059,7 @@ private fun TabletSettingsScreen(
     Row(modifier = Modifier.fillMaxSize()) {
         Surface(
             modifier = Modifier
-                .width(280.dp)
+                .width(sidebarWidth)
                 .fillMaxSize(),
             color = MaterialTheme.colorScheme.surface,
         ) {
@@ -1066,15 +1072,15 @@ private fun TabletSettingsScreen(
                     text = stringResource(Res.string.compose_settings_page_root),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(bottom = 20.dp),
+                        .padding(horizontal = if (isTvLayout) 32.dp else 24.dp)
+                        .padding(bottom = if (isTvLayout) 28.dp else 20.dp),
                     style = MaterialTheme.typography.displayLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(if (isTvLayout) 16.dp else 10.dp))
                 SettingsCategory.entries.forEach { category ->
                     SettingsSidebarItem(
                         label = stringResource(category.labelRes),
@@ -1153,12 +1159,12 @@ private fun TabletSettingsScreen(
                     .fillMaxSize()
                     .nestedScroll(rootSearchRevealConnection),
                 contentPadding = PaddingValues(
-                    start = 40.dp,
+                    start = contentPadding,
                     top = topOffset,
-                    end = 40.dp,
-                    bottom = 40.dp + bottomOverlayPadding,
+                    end = contentPadding,
+                    bottom = contentPadding + bottomOverlayPadding,
                 ),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
+                verticalArrangement = Arrangement.spacedBy(sectionGap),
             ) {
                 if (showInternalHeader) {
                     item {

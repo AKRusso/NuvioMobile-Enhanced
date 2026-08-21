@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCheckCircle
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +50,7 @@ import nuvio.composeapp.generated.resources.episode_mark_season_watched
 import nuvio.composeapp.generated.resources.episode_mark_unwatched
 import nuvio.composeapp.generated.resources.episode_mark_watched
 import nuvio.composeapp.generated.resources.play_manually
+import nuvio.composeapp.generated.resources.streams_download_file
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -63,6 +65,7 @@ fun EpisodeWatchedActionSheet(
     onToggleWatched: () -> Unit,
     onTogglePreviousWatched: () -> Unit,
     onToggleSeasonWatched: () -> Unit,
+    onDownload: (() -> Unit)? = null,
     showPlayManually: Boolean = false,
     onPlayManually: (() -> Unit)? = null,
 ) {
@@ -96,6 +99,15 @@ fun EpisodeWatchedActionSheet(
                 tonalElevation = 6.dp,
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
+                    if (onDownload != null) {
+                        EpisodeSheetActionRow(
+                            icon = Icons.Default.Download,
+                            title = stringResource(Res.string.streams_download_file),
+                            prominent = true,
+                            onClick = { dismissAfter(onDownload) },
+                        )
+                        EpisodeSheetDivider()
+                    }
                     EpisodeSheetActionRow(
                         icon = Icons.Default.CheckCircle,
                         title = if (isEpisodeWatched) {
@@ -302,11 +314,13 @@ private fun episodeActionSheetArtwork(episode: MetaVideo): String? =
 private fun EpisodeSheetActionRow(
     icon: ImageVector,
     title: String,
+    prominent: Boolean = false,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (prominent) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent)
             .height(68.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp),
@@ -317,14 +331,14 @@ private fun EpisodeSheetActionRow(
             text = title,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White.copy(alpha = 0.94f),
+            color = if (prominent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.94f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.94f),
+            tint = if (prominent) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.94f),
             modifier = Modifier.size(24.dp),
         )
     }

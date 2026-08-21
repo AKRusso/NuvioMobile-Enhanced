@@ -6,6 +6,7 @@ import platform.Foundation.NSUserDefaults
 internal actual object DownloadsStorage {
     private const val payloadKey = "downloads_payload"
     private const val externalFolderUriKey = "external_folder_uri"
+    private const val episodeDownloadSettingsKey = "episode_download_settings"
 
     actual fun loadPayload(): String? =
         NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(payloadKey))
@@ -24,5 +25,12 @@ internal actual object DownloadsStorage {
         } else {
             NSUserDefaults.standardUserDefaults.setObject(uri, forKey = key)
         }
+    }
+
+    actual fun loadEpisodeDownloadSettings(): String? =
+        NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(episodeDownloadSettingsKey))
+
+    actual fun saveEpisodeDownloadSettings(payload: String) {
+        NSUserDefaults.standardUserDefaults.setObject(payload, forKey = ProfileScopedKey.of(episodeDownloadSettingsKey))
     }
 }

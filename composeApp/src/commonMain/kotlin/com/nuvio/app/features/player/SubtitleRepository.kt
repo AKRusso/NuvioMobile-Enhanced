@@ -44,9 +44,11 @@ object SubtitleRepository {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     private var activeFetchJob: Job? = null
+    private var fetchGeneration = 0L
 
     fun fetchAddonSubtitles(type: String, videoId: String) {
         activeFetchJob?.cancel()
+        val generation = ++fetchGeneration
         activeFetchJob = scope.launch {
             val requestType = canonicalSubtitleType(type)
             _isLoading.value = true
@@ -104,6 +106,7 @@ object SubtitleRepository {
                 }
             }.awaitAll().flatten()
 
+            if (generation != fetchGeneration) return@launch
             _addonSubtitles.value = allSubs
             if (allSubs.isEmpty() && addons.any { it.manifest?.resources?.any { r -> r.name.isSubtitleResourceName() } == true }) {
                 _error.value = getString(Res.string.compose_player_no_subtitles_found)
@@ -114,6 +117,7 @@ object SubtitleRepository {
 
     fun clear() {
         activeFetchJob?.cancel()
+        fetchGeneration += 1L
         _addonSubtitles.value = emptyList()
         _isLoading.value = false
         _error.value = null

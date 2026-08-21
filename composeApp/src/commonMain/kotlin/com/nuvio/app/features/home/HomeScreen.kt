@@ -32,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
@@ -1075,8 +1076,12 @@ fun HomeScreen(
             .background(Color.Black),
     ) {
         val viewportHeight = maxHeight
-        val homeSectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value)
-        val continueWatchingLayout = rememberContinueWatchingLayout(maxWidth.value)
+        val tvLayout = LocalTvLayoutProfile.current.enabled
+        val homeSectionPadding = if (tvLayout) 0.dp else homeSectionHorizontalPaddingForWidth(maxWidth.value)
+        val continueWatchingLayout = rememberContinueWatchingLayout(
+            maxWidthDp = maxWidth.value,
+            visualScale = if (tvLayout) 1.85f else 1f,
+        )
         val posterCardStyle = rememberPosterCardStyleUiState()
         val continueWatchingCardHeight = remember(posterCardStyle.widthDp) {
             continueWatchingLandscapeCardHeight(posterCardStyle.widthDp)
@@ -1164,10 +1169,12 @@ fun HomeScreen(
                                 viewportHeight = viewportHeight,
                                 mobileBelowSectionHeightHint = mobileHeroBelowSectionHeightHint,
                                 listState = homeListState,
-                                autoScrollEnabled = homeSettingsUiState.heroAutoScrollEnabled &&
+                                autoScrollEnabled = !nuvioEnhancedSettings.originalNuvioHeroBannerEnabled &&
+                                    homeSettingsUiState.heroAutoScrollEnabled &&
                                     heroRefreshVisualProgress <= 0.01f &&
                                     !isHomeRefreshInProgress,
-                                motionPreviewEnabled = homeSettingsUiState.heroMotionPreviewEnabled,
+                                motionPreviewEnabled = !nuvioEnhancedSettings.originalNuvioHeroBannerEnabled &&
+                                    homeSettingsUiState.heroMotionPreviewEnabled,
                                 heroDisplayMode = nuvioEnhancedSettings.heroDisplayMode,
                                 heroArtworkSource = nuvioEnhancedSettings.heroArtworkSource,
                                 posterArtHeroEnabled = nuvioEnhancedSettings.posterArtHeroEnabled,
@@ -1178,11 +1185,14 @@ fun HomeScreen(
                                     nuvioEnhancedSettings.streamingShowcaseVideoPreviewSoundEnabled,
                                 compactMetadata = nuvioEnhancedSettings.compactHeroMetadata,
                                 showRatings = nuvioEnhancedSettings.showHeroRatings,
+                                ratingsAboveMetadata = nuvioEnhancedSettings.ratingsAboveMetadata,
                                 showOverview = nuvioEnhancedSettings.streamingShowcaseHeroEnabled ||
                                     (
                                         nuvioEnhancedSettings.showHeroOverview &&
-                                            !nuvioEnhancedSettings.quietHomeModeEnabled
-                                        ),
+                                        !nuvioEnhancedSettings.quietHomeModeEnabled
+                                    ),
+                                showDetailsButton = nuvioEnhancedSettings.showHeroDetailsButton,
+                                originalNuvioHeroBannerEnabled = nuvioEnhancedSettings.originalNuvioHeroBannerEnabled,
                                 metadataRefreshKey = tmdbSettingsUiState.language,
                                 refreshPullProgress = heroRefreshVisualProgress,
                                 stretchPx = { heroStretchState.stretchPx },

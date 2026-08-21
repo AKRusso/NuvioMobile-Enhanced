@@ -1994,4 +1994,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">表示額は決済手数料および銀行手数料を差し引く前の金額のため、受取額はこれより少なくなる場合があります。</string>
+    <string name="downloads_download_settings">ダウンロード設定</string>
+    <string name="downloads_auto_select">自動選択</string>
+    <string name="downloads_auto_select_desc">各エピソードで利用可能な最適なソースを自動的に選択します。</string>
+    <string name="downloads_preferred_quality">優先画質</string>
+    <string name="downloads_download_mode">ダウンロードモード</string>
+    <string name="downloads_download_all_at_once">すべて一度に</string>
+    <string name="downloads_download_one_at_a_time">1つずつ</string>
+    <string name="downloads_automatic">自動</string>
+    <string name="downloads_quality_best">最高</string>
+    <string name="downloads_auto_selecting">ソースを選択中…</string>
+    <string name="downloads_download_started">ダウンロードを開始しました</string>
+    <string name="downloads_status_waiting">待機中</string>
 </resources>

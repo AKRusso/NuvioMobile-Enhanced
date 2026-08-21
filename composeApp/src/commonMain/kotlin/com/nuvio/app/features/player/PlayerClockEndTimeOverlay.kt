@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import kotlinx.coroutines.delay
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.player_clock_ends_at
@@ -30,7 +31,8 @@ internal fun PlayerClockEndTimeOverlay(playbackSnapshot: PlayerPlaybackSnapshot,
     val duration = playbackSnapshot.durationMs.takeIf { it > 0L } ?: return
     val speed = playbackSnapshot.playbackSpeed.takeIf { it > 0f } ?: 1f
     val remainingMs = ((duration - playbackSnapshot.positionMs).coerceAtLeast(0L) / speed).roundToLong()
-    val shape = RoundedCornerShape(12.dp)
+    val useTvLayout = isTvLayoutProfileEnabled()
+    val shape = RoundedCornerShape(if (useTvLayout) 18.dp else 12.dp)
     var clock by remember(remainingMs) { mutableStateOf(PlayerWallClock.snapshotForRemaining(remainingMs)) }
     LaunchedEffect(remainingMs) {
         while (true) {
@@ -42,15 +44,23 @@ internal fun PlayerClockEndTimeOverlay(playbackSnapshot: PlayerPlaybackSnapshot,
         modifier = modifier
             .background(Color.Black.copy(alpha = 0.58f), shape)
             .border(1.dp, Color.White.copy(alpha = 0.14f), shape)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(
+                horizontal = if (useTvLayout) 22.dp else 14.dp,
+                vertical = if (useTvLayout) 18.dp else 12.dp,
+            ),
         horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(3.dp),
+        verticalArrangement = Arrangement.spacedBy(if (useTvLayout) 6.dp else 3.dp),
     ) {
-        Text(clock.currentTime, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+        Text(
+            clock.currentTime,
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            fontSize = if (useTvLayout) 44.sp else 18.sp,
+        )
         Text(
             text = stringResource(Res.string.player_clock_ends_at, clock.endTime),
             color = Color.White.copy(alpha = 0.9f),
-            fontSize = 11.sp,
+            fontSize = if (useTvLayout) 26.sp else 11.sp,
         )
     }
 }

@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +25,7 @@ import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAnimeIdPreference
+import com.nuvio.app.features.simkl.SimklAuthRepository
 import com.nuvio.app.features.simkl.SimklAuthUiState
 import com.nuvio.app.features.simkl.SimklConnectionMode
 import com.nuvio.app.features.tracking.TrackingProviderId
@@ -41,6 +44,11 @@ import com.nuvio.app.features.watchprogress.WatchProgressSourceCoordinator
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_retry
+import nuvio.composeapp.generated.resources.action_save
+import nuvio.composeapp.generated.resources.settings_simkl_manual_client_id_description
+import nuvio.composeapp.generated.resources.settings_simkl_manual_client_id_label
+import nuvio.composeapp.generated.resources.settings_simkl_manual_client_id_saved
+import nuvio.composeapp.generated.resources.settings_simkl_manual_client_id_title
 import nuvio.composeapp.generated.resources.settings_tracking_connect_first
 import nuvio.composeapp.generated.resources.settings_tracking_data_sources
 import nuvio.composeapp.generated.resources.settings_tracking_nuvio_library_description
@@ -118,6 +126,20 @@ internal fun LazyListScope.trackingSettingsContent(
         }
     }
 
+    if (!simklUiState.credentialsConfigured || simklUiState.manualClientId.isNotBlank()) {
+        item {
+            SettingsSection(
+                title = stringResource(Res.string.settings_simkl_manual_client_id_title),
+                isTablet = isTablet,
+            ) {
+                SimklManualClientIdSettings(
+                    isTablet = isTablet,
+                    simklUiState = simklUiState,
+                )
+            }
+        }
+    }
+
     item {
         SettingsSection(
             title = stringResource(Res.string.settings_tracking_data_sources),
@@ -158,6 +180,62 @@ internal fun LazyListScope.trackingSettingsContent(
                 AnimeIdPreferenceSection(
                     isTablet = isTablet,
                     settingsUiState = settingsUiState,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SimklManualClientIdSettings(
+    isTablet: Boolean,
+    simklUiState: SimklAuthUiState,
+) {
+    var clientId by rememberSaveable { mutableStateOf(simklUiState.manualClientId) }
+    var saved by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(simklUiState.manualClientId) {
+        clientId = simklUiState.manualClientId
+    }
+
+    SettingsGroup(isTablet = isTablet) {
+        Text(
+            text = stringResource(Res.string.settings_simkl_manual_client_id_description),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTablet) 20.dp else 16.dp, vertical = 12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SettingsSecretTextField(
+            value = clientId,
+            onValueChange = {
+                clientId = it
+                saved = false
+            },
+            label = stringResource(Res.string.settings_simkl_manual_client_id_label),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTablet) 20.dp else 16.dp),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = if (isTablet) 20.dp else 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Button(onClick = {
+                SimklAuthRepository.saveManualClientId(clientId)
+                saved = true
+            }) {
+                Text(stringResource(Res.string.action_save))
+            }
+            if (saved) {
+                Text(
+                    text = stringResource(Res.string.settings_simkl_manual_client_id_saved),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
                 )
             }
         }

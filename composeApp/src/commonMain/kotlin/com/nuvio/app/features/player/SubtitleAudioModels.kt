@@ -33,6 +33,9 @@ data class AddonSubtitle(
     val isSelected: Boolean = false,
 )
 
+internal val AddonSubtitle.selectionKey: String
+    get() = "${addonName.orEmpty()}|$id|$url"
+
 enum class SubtitleTab {
     BuiltIn,
     Addons,
@@ -78,6 +81,12 @@ data class SubtitleStyleState(
         val DEFAULT = SubtitleStyleState()
     }
 }
+
+fun SubtitleStyleState.usesCustomFont(): Boolean =
+    fontFamily == SubtitleFontFamily.Custom && !customFontPath.isNullOrBlank()
+
+fun SubtitleStyleState.shouldUseLibass(libassEnabled: Boolean): Boolean =
+    libassEnabled && !usesCustomFont()
 
 data class SubtitleFontImportResult(
     val displayName: String,

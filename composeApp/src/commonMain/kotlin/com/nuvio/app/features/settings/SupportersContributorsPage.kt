@@ -306,9 +306,7 @@ private fun SupportersContributorsBody(
 ) {
     val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
-    val donateUrl = remember { CommunityConfig.DONATIONS_DONATE_URL.trim().removeSuffix("/") }
     val donationsConfigured = remember { CommunityConfig.DONATIONS_BASE_URL.trim().isNotBlank() }
-    val donateConfigured = donateUrl.isNotBlank()
     val contributorsErrorFallback = stringResource(Res.string.community_error_unable_load_contributors)
     val supportersErrorFallback = stringResource(Res.string.community_error_unable_load_supporters)
 
@@ -397,23 +395,17 @@ private fun SupportersContributorsBody(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = { if (donateConfigured) uriHandler.openUri(donateUrl) },
-                enabled = donateConfigured,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Favorite,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(stringResource(Res.string.action_donate))
-            }
             uiState.donationProgress?.let { progress ->
-                Spacer(modifier = Modifier.height(16.dp))
-                DonationProgressSection(progress = progress)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = if (progress.progressPercent >= 100) {
+                        stringResource(Res.string.community_donation_progress_complete)
+                    } else {
+                        stringResource(Res.string.community_donation_progress_remaining)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             if (!donationsConfigured) {
                 Spacer(modifier = Modifier.height(10.dp))
@@ -636,72 +628,6 @@ private fun SupportersCard(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun DonationProgressSection(
-    progress: DonationProgress,
-) {
-    val percent = progress.progressPercent
-    val progressFraction = (percent / 100f).coerceIn(0f, 1f)
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(Res.string.community_donation_progress_title),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "$percent%",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-
-        LinearProgressIndicator(
-            progress = { progressFraction },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(999.dp)),
-        )
-
-        if (progress.currentCents != null && progress.targetCents != null) {
-            Text(
-                text = "${formatEuroAmount(progress.currentCents)} / ${formatEuroAmount(progress.targetCents)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        progress.nextResetDate?.takeIf(String::isNotBlank)?.let { resetDate ->
-            Text(
-                text = "Resets on ${formatDonationDate(resetDate)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        Text(
-            text = when {
-                percent >= 100 -> stringResource(Res.string.community_donation_progress_complete)
-                else -> stringResource(Res.string.community_donation_progress_remaining)
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 

@@ -10,6 +10,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -311,6 +312,7 @@ fun NuvioPrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     onClick: () -> Unit = {},
+    interactionSource: MutableInteractionSource? = null,
 ) {
     val tokens = MaterialTheme.nuvio
     val shape = tokens.shapes.button
@@ -323,6 +325,7 @@ fun NuvioPrimaryButton(
             .clip(shape)
             .then(if (animatedBrush != null) Modifier.background(animatedBrush, shape) else Modifier),
         enabled = enabled,
+        interactionSource = interactionSource ?: remember { MutableInteractionSource() },
         shape = shape,
         colors = ButtonDefaults.buttonColors(
             containerColor = if (animatedBrush != null) Color.Transparent else tokens.colors.accent,

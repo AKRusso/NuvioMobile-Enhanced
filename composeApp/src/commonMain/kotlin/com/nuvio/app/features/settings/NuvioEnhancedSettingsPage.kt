@@ -71,6 +71,7 @@ import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
+import com.nuvio.app.features.details.MetaEpisodeCardStyle
 import com.nuvio.app.features.downloads.DownloadsExternalFolderPlatform
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.player.AndroidPlaybackEngine
@@ -90,7 +91,7 @@ import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import org.jetbrains.compose.resources.stringResource
 
 private const val NuvioEnhancedGithubUrl = "https://github.com/AKRusso/NuvioMobile-Enhanced"
-private const val NuvioEnhancedDiscordUrl = "https://discord.gg/at8xffxuRU"
+internal const val NuvioEnhancedDiscordUrl = "https://discord.gg/at8xffxuRU"
 
 private enum class EnhancedSettingsCategory {
     New,
@@ -143,15 +144,17 @@ private fun NuvioEnhancedSettingsPageContent(
     var showImportDialog by remember { mutableStateOf(false) }
     var importPayload by remember { mutableStateOf("") }
     var importError by remember { mutableStateOf<String?>(null) }
-    val hasNewPlayerTools = settings.isNew(NuvioEnhancedFeature.SubtitleSyncMenu) ||
+    val hasNewFeatures = settings.isNew(NuvioEnhancedFeature.SubtitleSyncMenu) ||
         settings.isNew(NuvioEnhancedFeature.SubtitleSelectorStyle) ||
         settings.isNew(NuvioEnhancedFeature.AudioSelectorStyle) ||
         settings.isNew(NuvioEnhancedFeature.NextEpisodeButton) ||
         settings.isNew(NuvioEnhancedFeature.PlayerTimeOverlay) ||
-        settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle)
+        settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle) ||
+        settings.isNew(NuvioEnhancedFeature.HeroControlsV2) ||
+        settings.isNew(NuvioEnhancedFeature.DetailPresentationControlsV2)
     var selectedCategory by rememberSaveable {
         mutableStateOf(
-            if (hasNewPlayerTools) {
+            if (hasNewFeatures) {
                 EnhancedSettingsCategory.New
             } else {
                 EnhancedSettingsCategory.Core
@@ -168,11 +171,12 @@ private fun NuvioEnhancedSettingsPageContent(
     val externalFolderFailedMessage = stringResource(Res.string.nuvio_enhanced_external_folder_failed)
     val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
+    val heroVisualControlsEnabled = !settings.originalNuvioHeroBannerEnabled
     val detailHeroTrailerPlaybackSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
 
-    LaunchedEffect(hasNewPlayerTools, selectedCategory) {
-        if (!hasNewPlayerTools && selectedCategory == EnhancedSettingsCategory.New) {
+    LaunchedEffect(hasNewFeatures, selectedCategory) {
+        if (!hasNewFeatures && selectedCategory == EnhancedSettingsCategory.New) {
             selectedCategory = EnhancedSettingsCategory.Player
         }
     }
@@ -211,7 +215,7 @@ private fun NuvioEnhancedSettingsPageContent(
 
         EnhancedSettingsCategoryBar(
             selected = selectedCategory,
-            hasNewFeatures = hasNewPlayerTools,
+            hasNewFeatures = hasNewFeatures,
             onSelected = { selectedCategory = it },
         )
 
@@ -582,14 +586,42 @@ private fun NuvioEnhancedSettingsPageContent(
             }
         }
 
-        if (selectedCategory == EnhancedSettingsCategory.All ||
-            selectedCategory == EnhancedSettingsCategory.Home
+        if (selectedCategory == EnhancedSettingsCategory.New ||
+            selectedCategory == EnhancedSettingsCategory.All ||
+            selectedCategory == EnhancedSettingsCategory.Home ||
+            selectedCategory == EnhancedSettingsCategory.Core
         ) {
+        if (selectedCategory != EnhancedSettingsCategory.Core) {
         SettingsSection(
             title = stringResource(Res.string.nuvio_enhanced_section_hero_experience),
             isTablet = isTablet,
         ) {
             SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_original_hero_title),
+                    description = stringResource(Res.string.nuvio_enhanced_original_hero_desc),
+                    checked = settings.originalNuvioHeroBannerEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroControlsV2),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroControlsV2)
+                        NuvioEnhancedSettingsRepository.setOriginalNuvioHeroBannerEnabled(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_hero_details_button_title),
+                    description = stringResource(Res.string.nuvio_enhanced_hero_details_button_desc),
+                    checked = settings.showHeroDetailsButton,
+                    enabled = heroVisualControlsEnabled,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroControlsV2),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroControlsV2)
+                        NuvioEnhancedSettingsRepository.setShowHeroDetailsButton(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
                 EnhancedChoiceRow(
                     title = stringResource(Res.string.nuvio_enhanced_hero_display_title),
                     description = stringResource(Res.string.nuvio_enhanced_hero_display_desc),
@@ -609,6 +641,7 @@ private fun NuvioEnhancedSettingsPageContent(
                         ),
                     ),
                     isTablet = isTablet,
+                    enabled = heroVisualControlsEnabled,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onSelected = {
                         markSeen(NuvioEnhancedFeature.HeroExperienceControls)
@@ -631,6 +664,7 @@ private fun NuvioEnhancedSettingsPageContent(
                         ),
                     ),
                     isTablet = isTablet,
+                    enabled = heroVisualControlsEnabled,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onSelected = {
                         markSeen(NuvioEnhancedFeature.HeroExperienceControls)
@@ -642,10 +676,11 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_poster_hero_title),
                     description = stringResource(Res.string.nuvio_enhanced_poster_hero_desc),
                     checked = settings.posterArtHeroEnabled,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
+                    highlighted = isNew(NuvioEnhancedFeature.HeroControlsV2),
                     onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
+                        markSeen(NuvioEnhancedFeature.HeroControlsV2)
                         NuvioEnhancedSettingsRepository.setPosterArtHeroEnabled(it)
                     },
                 )
@@ -654,6 +689,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_showcase_hero_title),
                     description = stringResource(Res.string.nuvio_enhanced_showcase_hero_desc),
                     checked = settings.streamingShowcaseHeroEnabled,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -666,7 +702,8 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_title),
                     description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_desc),
                     checked = settings.streamingShowcaseVideoPreviewEnabled,
-                    enabled = settings.streamingShowcaseHeroEnabled && homeHeroVideoPreviewSupported,
+                    enabled = heroVisualControlsEnabled &&
+                        settings.streamingShowcaseHeroEnabled && homeHeroVideoPreviewSupported,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -679,7 +716,8 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_title),
                     description = stringResource(Res.string.nuvio_enhanced_showcase_video_preview_sound_desc),
                     checked = settings.streamingShowcaseVideoPreviewSoundEnabled,
-                    enabled = settings.streamingShowcaseHeroEnabled &&
+                    enabled = heroVisualControlsEnabled &&
+                        settings.streamingShowcaseHeroEnabled &&
                         settings.streamingShowcaseVideoPreviewEnabled &&
                         homeHeroVideoPreviewSupported,
                     isTablet = isTablet,
@@ -694,6 +732,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_compact_hero_title),
                     description = stringResource(Res.string.nuvio_enhanced_compact_hero_desc),
                     checked = settings.compactHeroMetadata,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -706,6 +745,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.nuvio_enhanced_hero_ratings_title),
                     description = stringResource(Res.string.nuvio_enhanced_hero_ratings_desc),
                     checked = settings.showHeroRatings,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -715,9 +755,23 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
+                    title = stringResource(Res.string.nuvio_enhanced_ratings_above_metadata_title),
+                    description = stringResource(Res.string.nuvio_enhanced_ratings_above_metadata_desc),
+                    checked = settings.ratingsAboveMetadata,
+                    enabled = heroVisualControlsEnabled && settings.showHeroRatings,
+                    isTablet = isTablet,
+                    highlighted = isNew(NuvioEnhancedFeature.HeroControlsV2),
+                    onCheckedChange = {
+                        markSeen(NuvioEnhancedFeature.HeroControlsV2)
+                        NuvioEnhancedSettingsRepository.setRatingsAboveMetadata(it)
+                    },
+                )
+                SettingsGroupDivider(isTablet = isTablet)
+                SettingsSwitchRow(
                     title = stringResource(Res.string.nuvio_enhanced_hero_overview_title),
                     description = stringResource(Res.string.nuvio_enhanced_hero_overview_desc),
                     checked = settings.showHeroOverview,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -742,6 +796,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.settings_advanced_hero_auto_scroll),
                     description = stringResource(Res.string.settings_advanced_hero_auto_scroll_description),
                     checked = homeSettings.heroAutoScrollEnabled,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -754,6 +809,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     title = stringResource(Res.string.settings_advanced_hero_motion_preview),
                     description = stringResource(Res.string.settings_advanced_hero_motion_preview_description),
                     checked = homeSettings.heroMotionPreviewEnabled,
+                    enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
                     highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
@@ -763,7 +819,62 @@ private fun NuvioEnhancedSettingsPageContent(
                 )
             }
         }
+        }
 
+        if (selectedCategory == EnhancedSettingsCategory.New ||
+            selectedCategory == EnhancedSettingsCategory.All ||
+            selectedCategory == EnhancedSettingsCategory.Core
+        ) {
+            SettingsSection(
+                title = stringResource(Res.string.nuvio_enhanced_detail_presentation_title),
+                isTablet = isTablet,
+            ) {
+                SettingsGroup(isTablet = isTablet) {
+                    EnhancedChoiceRow(
+                        title = stringResource(Res.string.nuvio_enhanced_episode_cards_layout_title),
+                        description = stringResource(Res.string.nuvio_enhanced_episode_cards_layout_desc),
+                        selected = detailSettings.episodeCardStyle,
+                        options = listOf(
+                            EnhancedChoiceOption(
+                                MetaEpisodeCardStyle.Horizontal,
+                                stringResource(Res.string.settings_meta_episode_style_horizontal),
+                            ),
+                            EnhancedChoiceOption(
+                                MetaEpisodeCardStyle.List,
+                                stringResource(Res.string.nuvio_enhanced_episode_cards_layout_compact_list),
+                            ),
+                            EnhancedChoiceOption(
+                                MetaEpisodeCardStyle.VerticalHorizontal,
+                                stringResource(Res.string.nuvio_enhanced_episode_cards_layout_vertical),
+                            ),
+                        ),
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.DetailPresentationControlsV2),
+                        onSelected = {
+                            markSeen(NuvioEnhancedFeature.DetailPresentationControlsV2)
+                            MetaScreenSettingsRepository.setEpisodeCardStyle(it)
+                        },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.nuvio_enhanced_show_download_button_title),
+                        description = stringResource(Res.string.nuvio_enhanced_show_download_button_desc),
+                        checked = detailSettings.showDownloadAction,
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.DetailPresentationControlsV2),
+                        onCheckedChange = {
+                            markSeen(NuvioEnhancedFeature.DetailPresentationControlsV2)
+                            MetaScreenSettingsRepository.setShowDownloadAction(it)
+                        },
+                    )
+                }
+            }
+        }
+
+        if (selectedCategory == EnhancedSettingsCategory.New ||
+            selectedCategory == EnhancedSettingsCategory.All ||
+            selectedCategory == EnhancedSettingsCategory.Home
+        ) {
         SettingsSection(
             title = stringResource(Res.string.nuvio_enhanced_section_release_radar),
             isTablet = isTablet,
@@ -823,6 +934,7 @@ private fun NuvioEnhancedSettingsPageContent(
                     },
                 )
             }
+        }
         }
         }
 
@@ -1208,6 +1320,7 @@ private fun <T> EnhancedChoiceRow(
     selected: T,
     options: List<EnhancedChoiceOption<T>>,
     isTablet: Boolean,
+    enabled: Boolean = true,
     highlighted: Boolean,
     onSelected: (T) -> Unit,
 ) {
@@ -1239,7 +1352,7 @@ private fun <T> EnhancedChoiceRow(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = tokens.colors.textPrimary,
+                    color = if (enabled) tokens.colors.textPrimary else tokens.colors.textMuted,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f),
                 )
@@ -1250,7 +1363,7 @@ private fun <T> EnhancedChoiceRow(
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
-                color = tokens.colors.textMuted,
+                color = tokens.colors.textMuted.copy(alpha = if (enabled) 1f else 0.6f),
             )
         }
         FlowRow(
@@ -1260,11 +1373,11 @@ private fun <T> EnhancedChoiceRow(
             options.forEach { option ->
                 val isSelected = option.value == selected
                 Surface(
-                    modifier = Modifier.clickable { onSelected(option.value) },
+                    modifier = Modifier.clickable(enabled = enabled) { onSelected(option.value) },
                     color = if (isSelected) {
-                        tokens.colors.accent
+                        tokens.colors.accent.copy(alpha = if (enabled) 1f else 0.45f)
                     } else {
-                        tokens.colors.surfaceCard.copy(alpha = 0.72f)
+                        tokens.colors.surfaceCard.copy(alpha = if (enabled) 0.72f else 0.42f)
                     },
                     contentColor = if (isSelected) {
                         tokens.colors.onAccent
@@ -1286,7 +1399,7 @@ private fun <T> EnhancedChoiceRow(
                         modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = if (isSelected) tokens.colors.onAccent else tokens.colors.textPrimary,
+                        color = if (isSelected) tokens.colors.onAccent else tokens.colors.textPrimary.copy(alpha = if (enabled) 1f else 0.52f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,18 +30,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.nuvio.app.core.i18n.localizedByteUnit
 import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioToastController
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
 
@@ -62,11 +67,31 @@ fun DownloadsScreen(
 
     var selectedShowId by rememberSaveable(initialShowId) { mutableStateOf(initialShowId) }
     val openDownloadsDirectoryFailedText = stringResource(Res.string.downloads_open_directory_failed)
+    val pendingCancelledText = stringResource(Res.string.downloads_pending_cancelled)
+    val scope = rememberCoroutineScope()
 
     val completedEpisodes = remember(uiState.items) {
         uiState.completedItems
             .filter { it.isEpisode }
             .sortedForSeriesDownloads()
+    }
+
+    val pendingGroups = remember(uiState.pendingSourceSearches) {
+        uiState.activeSourceSearches.groupByShow()
+    }
+    var pendingChoiceGroupId by rememberSaveable { mutableStateOf<String?>(null) }
+    var dismissedPromptKeys by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
+    val pendingChoiceGroup = remember(pendingChoiceGroupId, pendingGroups) {
+        pendingGroups.firstOrNull { it.parentMetaId == pendingChoiceGroupId }
+    }
+
+    LaunchedEffect(pendingGroups, pendingChoiceGroupId, dismissedPromptKeys) {
+        if (pendingChoiceGroupId != null) return@LaunchedEffect
+        val group = pendingGroups.firstOrNull { group ->
+            group.searches.any { it.manualChoicePrompted } &&
+            group.parentMetaId !in dismissedPromptKeys
+        }
+        pendingChoiceGroupId = group?.parentMetaId
     }
 
     val selectedShowTitle = remember(selectedShowId, completedEpisodes) {
@@ -114,6 +139,20 @@ fun DownloadsScreen(
                 onOpenShow = { showId, title ->
                     onNavigateToShow?.invoke(showId, title) ?: run { selectedShowId = showId }
                 },
+                onOpenPending = { group -> pendingChoiceGroupId = group.parentMetaId },
+                onContinueSearching = { group ->
+                    scope.launch {
+                        coroutineScope {
+                            group.searches.map { search ->
+                                async { EpisodeDownloadCoordinator.retryPending(search.id) }
+                            }.forEach { it.await() }
+                        }
+                    }
+                },
+                onCancelPending = { group ->
+                    group.searches.forEach { DownloadsRepository.removePendingSourceSearch(it.id) }
+                    NuvioToastController.show(pendingCancelledText)
+                },
             )
         } else {
             downloadsShowContent(
@@ -123,15 +162,29 @@ fun DownloadsScreen(
             )
         }
     }
+
+    pendingChoiceGroup?.let { group ->
+        PendingSourceChoiceSheet(
+            group = group,
+            onDismiss = {
+                pendingChoiceGroupId = null
+                dismissedPromptKeys = (dismissedPromptKeys + group.parentMetaId).distinct()
+            },
+        )
+    }
 }
 
 private fun LazyListScope.downloadsRootContent(
     uiState: DownloadsUiState,
     onOpenDownload: (DownloadItem) -> Unit,
     onOpenShow: (showId: String, title: String) -> Unit,
+    onOpenPending: (PendingShowGroup) -> Unit,
+    onContinueSearching: (PendingShowGroup) -> Unit,
+    onCancelPending: (PendingShowGroup) -> Unit,
 ) {
     val activeItems = uiState.activeItems
     val completedMovies = uiState.completedItems.filterNot(DownloadItem::isEpisode)
+    val pendingGroups = uiState.activeSourceSearches.groupByShow()
     val completedShows = uiState.completedItems
         .filter(DownloadItem::isEpisode)
         .groupBy { it.parentMetaId }
@@ -157,6 +210,31 @@ private fun LazyListScope.downloadsRootContent(
                 onResume = { DownloadsRepository.resumeDownload(item.id) },
                 onRetry = { DownloadsRepository.retryDownload(item.id) },
                 onDelete = { DownloadsRepository.cancelDownload(item.id) },
+            )
+        }
+    }
+
+    if (pendingGroups.isNotEmpty()) {
+        item {
+            SectionTitle(stringResource(Res.string.downloads_awaiting_source_section_title))
+        }
+        item {
+            Text(
+                text = stringResource(Res.string.downloads_awaiting_source_section_subtitle),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 2.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items(
+            items = pendingGroups,
+            key = { it.parentMetaId },
+        ) { group ->
+            PendingShowRow(
+                group = group,
+                onChooseSources = { onOpenPending(group) },
+                onContinueSearching = { onContinueSearching(group) },
+                onCancel = { onCancelPending(group) },
             )
         }
     }
@@ -230,7 +308,7 @@ private fun LazyListScope.downloadsRootContent(
         }
     }
 
-    if (uiState.items.isEmpty()) {
+    if (uiState.items.isEmpty() && pendingGroups.isEmpty()) {
         item {
             Box(
                 modifier = Modifier
@@ -397,6 +475,13 @@ private fun DownloadRow(
                                 )
                             }
                         }
+                        DownloadStatus.Waiting -> {
+                            Icon(
+                                imageVector = Icons.Rounded.Schedule,
+                                contentDescription = stringResource(Res.string.downloads_status_waiting),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                         DownloadStatus.Paused -> {
                             IconButton(onClick = onResume) {
                                 Icon(
@@ -455,6 +540,100 @@ private fun DownloadItem.displayTitle(): String =
     }
 
 @Composable
+private fun PendingShowRow(
+    group: PendingShowGroup,
+    onChooseSources: () -> Unit,
+    onContinueSearching: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val first = group.searches.firstOrNull()
+    val episodeCountLabel = stringResource(Res.string.downloads_pending_episode_count, group.searches.size)
+    val providerQuality = first?.let {
+        stringResource(
+            Res.string.downloads_pending_provider_quality,
+            it.providerName,
+            it.qualityKey,
+        )
+    }
+    val chooseSourcesLabel = stringResource(Res.string.downloads_choose_sources)
+    val continueLabel = stringResource(Res.string.downloads_continue_searching)
+    val cancelLabel = stringResource(Res.string.downloads_cancel_pending)
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = group.title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = episodeCountLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            providerQuality?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                PendingRowAction(
+                    label = chooseSourcesLabel,
+                    onClick = onChooseSources,
+                )
+                PendingRowAction(
+                    label = continueLabel,
+                    onClick = onContinueSearching,
+                )
+                PendingRowAction(
+                    label = cancelLabel,
+                    color = MaterialTheme.colorScheme.error,
+                    onClick = onCancel,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingRowAction(
+    label: String,
+    onClick: () -> Unit,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary,
+) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = color,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+    )
+}
+@Composable
 private fun downloadDisplaySubtitle(
     item: DownloadItem,
     displayTitle: String,
@@ -491,32 +670,19 @@ private fun SectionTitle(title: String) {
 @Composable
 private fun statusText(item: DownloadItem): String {
     val size = if (item.totalBytes != null && item.totalBytes > 0L) {
-        "${formatBytes(item.downloadedBytes)} / ${formatBytes(item.totalBytes)}"
+        "${formatDownloadBytes(item.downloadedBytes)} / ${formatDownloadBytes(item.totalBytes)}"
     } else {
-        formatBytes(item.downloadedBytes)
+        formatDownloadBytes(item.downloadedBytes)
     }
 
     return when (item.status) {
         DownloadStatus.Downloading -> stringResource(Res.string.downloads_status_downloading, size)
+        DownloadStatus.Waiting -> stringResource(Res.string.downloads_status_waiting)
         DownloadStatus.Paused -> stringResource(Res.string.downloads_status_paused, size)
         DownloadStatus.Completed -> stringResource(
             Res.string.downloads_status_completed,
-            formatBytes(item.totalBytes ?: item.downloadedBytes),
+            formatDownloadBytes(item.totalBytes ?: item.downloadedBytes),
         )
         DownloadStatus.Failed -> item.errorMessage ?: stringResource(Res.string.downloads_status_failed)
-    }
-}
-
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0L) return "0 ${localizedByteUnit("B")}"
-    val kib = 1024.0
-    val mib = kib * 1024.0
-    val gib = mib * 1024.0
-    val value = bytes.toDouble()
-    return when {
-        value >= gib -> "${((value / gib) * 10.0).toInt() / 10.0} ${localizedByteUnit("GB")}"
-        value >= mib -> "${((value / mib) * 10.0).toInt() / 10.0} ${localizedByteUnit("MB")}"
-        value >= kib -> "${((value / kib) * 10.0).toInt() / 10.0} ${localizedByteUnit("KB")}"
-        else -> "$bytes ${localizedByteUnit("B")}"
     }
 }

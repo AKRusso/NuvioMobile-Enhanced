@@ -58,6 +58,30 @@ object TmdbService {
         return imdbId
     }
 
+    suspend fun getEpisodeRatings(
+        tmdbId: Int,
+        seasons: Collection<Int>,
+    ): Map<Pair<Int, Int>, Double> {
+        val apiKey = currentApiKey() ?: return emptyMap()
+        // TMDB uses season 0 for specials, which do not belong in the regular episode matrix.
+        val seasonNumbers = seasons.filter { it > 0 }.distinct().sorted()
+        if (tmdbId <= 0 || seasonNumbers.isEmpty()) return emptyMap()
+
+        return buildMap {
+            seasonNumbers.forEach { season ->
+                val details = fetch<TmdbSeasonRatingsResponse>(
+                    endpoint = "tv/$tmdbId/season/$season",
+                    apiKey = apiKey,
+                ) ?: return@forEach
+                details.episodes.forEach { episode ->
+                    val number = episode.episodeNumber ?: return@forEach
+                    val rating = episode.voteAverage?.takeIf { it > 0.0 } ?: return@forEach
+                    put(season to number, rating)
+                }
+            }
+        }
+    }
+
     suspend fun search(query: String, limit: Int = 24): List<MetaPreview> {
         val apiKey = currentApiKey() ?: return emptyList()
         val normalizedQuery = query.trim().takeIf { it.isNotBlank() } ?: return emptyList()
@@ -209,6 +233,17 @@ private data class TmdbExternalResult(
 @Serializable
 private data class TmdbExternalIdsResponse(
     @SerialName("imdb_id") val imdbId: String? = null,
+)
+
+@Serializable
+private data class TmdbSeasonRatingsResponse(
+    val episodes: List<TmdbEpisodeRatingResponse> = emptyList(),
+)
+
+@Serializable
+private data class TmdbEpisodeRatingResponse(
+    @SerialName("episode_number") val episodeNumber: Int? = null,
+    @SerialName("vote_average") val voteAverage: Double? = null,
 )
 
 @Serializable

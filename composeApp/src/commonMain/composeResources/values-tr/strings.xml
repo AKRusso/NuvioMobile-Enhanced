@@ -1926,4 +1926,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Gösterilen tutar ödeme ve banka ücretlerinden öncedir; bu nedenle alınan tutar daha düşük olabilir.</string>
+    <string name="downloads_download_settings">İndirme ayarları</string>
+    <string name="downloads_auto_select">Otomatik seçim</string>
+    <string name="downloads_auto_select_desc">Her bölüm için otomatik olarak en iyi mevcut kaynağı seçer.</string>
+    <string name="downloads_preferred_quality">Tercih edilen kalite</string>
+    <string name="downloads_download_mode">İndirme modu</string>
+    <string name="downloads_download_all_at_once">Hepsi aynı anda</string>
+    <string name="downloads_download_one_at_a_time">Tek tek</string>
+    <string name="downloads_automatic">Otomatik</string>
+    <string name="downloads_quality_best">En iyi</string>
+    <string name="downloads_auto_selecting">Kaynaklar seçiliyor…</string>
+    <string name="downloads_download_started">İndirmeler başladı</string>
+    <string name="downloads_status_waiting">Bekleniyor</string>
 </resources>

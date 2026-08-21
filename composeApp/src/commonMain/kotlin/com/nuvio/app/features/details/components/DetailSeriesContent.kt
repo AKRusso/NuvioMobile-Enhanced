@@ -17,6 +17,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,8 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +69,9 @@ import com.nuvio.app.core.i18n.localizedSeasonEpisodeCode
 import com.nuvio.app.core.ui.NuvioAnimatedWatchedBadge
 import com.nuvio.app.core.ui.NuvioCardDepthSurface
 import com.nuvio.app.core.ui.NuvioProgressBar
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
+import com.nuvio.app.core.ui.TvLayoutProfile
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.core.ui.posterCardClickable
@@ -289,8 +295,8 @@ fun DetailSeriesContent(
                         title = sectionTitle,
                     )
                     val seasonEpisodes = groupedEpisodes.getValue(seasonForContent)
-                    if (episodeCardStyle == MetaEpisodeCardStyle.Horizontal) {
-                        EpisodeHorizontalRow(
+                    when (episodeCardStyle) {
+                        MetaEpisodeCardStyle.Horizontal -> EpisodeHorizontalRow(
                             episodes = seasonEpisodes,
                             maxWidthDp = containerWidthDp,
                             horizontalScrollPadding = horizontalScrollPadding,
@@ -306,8 +312,21 @@ fun DetailSeriesContent(
                             onEpisodeClick = onEpisodeClick,
                             onEpisodeLongPress = onEpisodeLongPress,
                         )
-                    } else {
-                        Column(
+                        MetaEpisodeCardStyle.VerticalHorizontal -> EpisodeHorizontalColumn(
+                            episodes = seasonEpisodes,
+                            maxWidthDp = containerWidthDp,
+                            parentMetaId = meta.id,
+                            metaType = meta.type,
+                            watchedKeys = watchedKeys,
+                            fallbackImage = meta.background ?: meta.poster,
+                            progressByVideoId = progressByVideoId,
+                            episodeRatings = episodeRatings,
+                            blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                            showEpisodeRatings = showEpisodeRatings,
+                            onEpisodeClick = onEpisodeClick,
+                            onEpisodeLongPress = onEpisodeLongPress,
+                        )
+                        MetaEpisodeCardStyle.List -> Column(
                             verticalArrangement = Arrangement.spacedBy(sizing.cardGap),
                         ) {
                             seasonEpisodes.forEach { episode ->
@@ -328,7 +347,7 @@ fun DetailSeriesContent(
                                             metaType = meta.type,
                                             metaId = meta.id,
                                             episode = episode,
-                                    ),
+                                        ),
                                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                                     showEpisodeRatings = showEpisodeRatings,
                                     sizing = sizing,
@@ -610,7 +629,13 @@ private fun EpisodeHorizontalRow(
     onEpisodeClick: ((MetaVideo) -> Unit)?,
     onEpisodeLongPress: ((MetaVideo) -> Unit)?,
 ) {
-    val rowMetrics = rememberEpisodeHorizontalCardMetrics(maxWidthDp)
+    val inheritedTvLayout = LocalTvLayoutProfile.current
+    val tvLayout = if (inheritedTvLayout.enabled) {
+        inheritedTvLayout
+    } else {
+        TvLayoutProfile(enabled = isTvLayoutProfileEnabled(), uiScale = 1.35f)
+    }
+    val rowMetrics = rememberEpisodeHorizontalCardMetrics(maxWidthDp, tvLayout)
     val listState = rememberLazyListState()
     var hasPositioned by remember(episodes) { mutableStateOf(false) }
 
@@ -634,6 +659,48 @@ private fun EpisodeHorizontalRow(
         state = listState,
         modifier = Modifier
             .nuvioHorizontalScrollBleed(horizontalScrollPadding)
+            .pointerInput(listState) {
+                awaitPointerEventScope {
+                    var draggingHorizontally = false
+                    var totalDx = 0f
+                    var totalDy = 0f
+                    while (true) {
+                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull() ?: continue
+                        // DeX mice send a vertical wheel delta over horizontal episode rails.
+                        val wheelDelta = change.scrollDelta.y
+                        if (wheelDelta != 0f) {
+                            listState.dispatchRawDelta(wheelDelta * 72f)
+                        }
+
+                        if (change.pressed && !change.previousPressed) {
+                            draggingHorizontally = false
+                            totalDx = 0f
+                            totalDy = 0f
+                        }
+                        if (change.pressed) {
+                            val delta = change.position - change.previousPosition
+                            totalDx += delta.x
+                            totalDy += delta.y
+                            if (
+                                !draggingHorizontally &&
+                                kotlin.math.abs(totalDx) > viewConfiguration.touchSlop &&
+                                kotlin.math.abs(totalDx) > kotlin.math.abs(totalDy)
+                            ) {
+                                draggingHorizontally = true
+                            }
+                            if (draggingHorizontally && delta.x != 0f) {
+                                listState.dispatchRawDelta(-delta.x)
+                                change.consume()
+                            }
+                        } else if (change.previousPressed) {
+                            draggingHorizontally = false
+                            totalDx = 0f
+                            totalDy = 0f
+                        }
+                    }
+                }
+            }
             .fillMaxWidth(),
         contentPadding = PaddingValues(
             horizontal = horizontalScrollPadding + rowMetrics.rowHorizontalPadding,
@@ -673,6 +740,62 @@ private fun EpisodeHorizontalRow(
     }
 }
 
+@Composable
+private fun EpisodeHorizontalColumn(
+    episodes: List<MetaVideo>,
+    maxWidthDp: Float,
+    parentMetaId: String,
+    metaType: String,
+    watchedKeys: Set<String>,
+    fallbackImage: String?,
+    progressByVideoId: Map<String, WatchProgressEntry>,
+    episodeRatings: Map<Pair<Int, Int>, Double>,
+    blurUnwatchedEpisodes: Boolean,
+    showEpisodeRatings: Boolean,
+    onEpisodeClick: ((MetaVideo) -> Unit)?,
+    onEpisodeLongPress: ((MetaVideo) -> Unit)?,
+) {
+    val inheritedTvLayout = LocalTvLayoutProfile.current
+    val tvLayout = if (inheritedTvLayout.enabled) {
+        inheritedTvLayout
+    } else {
+        TvLayoutProfile(enabled = isTvLayoutProfileEnabled(), uiScale = 1.35f)
+    }
+    val metrics = rememberEpisodeHorizontalCardMetrics(maxWidthDp, tvLayout)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        episodes.forEach { episode ->
+            val episodeVideoId = buildPlaybackVideoId(
+                parentMetaId = parentMetaId,
+                seasonNumber = episode.season,
+                episodeNumber = episode.episode,
+                fallbackVideoId = episode.id,
+            )
+            EpisodeHorizontalCard(
+                video = episode,
+                fallbackImage = fallbackImage,
+                progressEntry = progressByVideoId[episodeVideoId],
+                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] },
+                isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
+                    WatchingState.isEpisodeWatched(
+                        watchedKeys = watchedKeys,
+                        metaType = metaType,
+                        metaId = parentMetaId,
+                        episode = episode,
+                    ),
+                blurUnwatchedEpisodes = blurUnwatchedEpisodes,
+                showEpisodeRatings = showEpisodeRatings,
+                metrics = metrics,
+                fullWidth = true,
+                onClick = { onEpisodeClick?.invoke(episode) },
+                onLongPress = { onEpisodeLongPress?.invoke(episode) },
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EpisodeHorizontalCard(
@@ -684,6 +807,7 @@ private fun EpisodeHorizontalCard(
     blurUnwatchedEpisodes: Boolean,
     showEpisodeRatings: Boolean,
     metrics: EpisodeHorizontalCardMetrics,
+    fullWidth: Boolean = false,
     onClick: (() -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
@@ -694,10 +818,17 @@ private fun EpisodeHorizontalCard(
     val formattedDate = remember(video.released) { video.released?.let { formatReleaseDateForDisplay(it) } }
     val runtimeLabel = remember(video.runtime) { video.runtime?.takeIf { it > 0 }?.let(::formatEpisodeRuntime) }
     val imageUrl = video.thumbnail ?: fallbackImage
-    Box(
-        modifier = Modifier
+    val sizeModifier = if (fullWidth) {
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9.2f)
+    } else {
+        Modifier
             .width(metrics.cardWidth)
             .height(metrics.cardHeight)
+    }
+    Box(
+        modifier = sizeModifier
             .clip(cardShape)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
             .nuvioCardDepth(
@@ -870,8 +1001,35 @@ private data class EpisodeHorizontalCardMetrics(
 )
 
 @Composable
-private fun rememberEpisodeHorizontalCardMetrics(maxWidthDp: Float): EpisodeHorizontalCardMetrics {
-    return remember(maxWidthDp) {
+private fun rememberEpisodeHorizontalCardMetrics(
+    maxWidthDp: Float,
+    tvLayout: TvLayoutProfile = TvLayoutProfile(),
+): EpisodeHorizontalCardMetrics {
+    return remember(maxWidthDp, tvLayout) {
+        if (tvLayout.enabled) {
+            return@remember EpisodeHorizontalCardMetrics(
+                rowHorizontalPadding = 0.dp,
+                rowVerticalPadding = 0.dp,
+                itemSpacing = 24.dp,
+                cardWidth = 520.dp,
+                cardHeight = 316.dp,
+                cornerRadius = 22.dp,
+                contentPadding = 22.dp,
+                contentBottomPadding = 24.dp,
+                titleTextSize = 24.sp,
+                titleLineHeight = 31.sp,
+                bodyTextSize = 18.sp,
+                bodyLineHeight = 26.sp,
+                overviewMaxLines = 3,
+                metaTextSize = 16.sp,
+                badgeTextSize = 14.sp,
+                badgeRadius = 10.dp,
+                badgeHorizontalPadding = 12.dp,
+                badgeVerticalPadding = 7.dp,
+                imdbLogoWidth = 34.dp,
+                imdbLogoHeight = 17.dp,
+            )
+        }
         when {
             maxWidthDp >= 1300f -> EpisodeHorizontalCardMetrics(
                 rowHorizontalPadding = 0.dp,

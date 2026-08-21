@@ -21,6 +21,7 @@ enum class SimklAuthError {
 data class SimklAuthUiState(
     val mode: SimklConnectionMode = SimklConnectionMode.DISCONNECTED,
     val credentialsConfigured: Boolean = false,
+    val manualClientId: String = "",
     val isLoading: Boolean = false,
     val username: String? = null,
     val accountId: Long? = null,

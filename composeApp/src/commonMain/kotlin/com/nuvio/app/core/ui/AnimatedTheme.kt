@@ -1,7 +1,14 @@
 package com.nuvio.app.core.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Brush
@@ -201,3 +208,48 @@ internal fun rememberAnimatedSelectionBrush(): Brush? = currentAnimatedThemeVisu
 
 @Composable
 internal fun rememberAnimatedSoftBrush(): Brush? = currentAnimatedThemeVisuals?.softBrush
+
+/**
+ * An always-animated gradient brush (plus a glow color) used for the "Automatic"
+ * download button. Unlike [rememberAnimatedAccentBrush], whose gradient is static, this
+ * cycles through the theme palette over time for a smooth, subtle RGB flow. Returns null
+ * for non-enhanced themes, which should fall back to the standard accent styling.
+ */
+internal data class AutomaticActionBrush(
+    val brush: Brush,
+    val glowColor: Color,
+)
+
+@Composable
+internal fun rememberAutomaticActionBrush(): AutomaticActionBrush? {
+    val theme = LocalAppTheme.current
+    if (!theme.isEnhanced) return null
+    val palette = remember(theme) {
+        stylePalette(
+            ThemeColors.animatedColors(theme).map { it.copy(alpha = 1f) },
+            theme,
+        )
+    }
+    if (palette.size <= 1) return null
+
+    val transition = rememberInfiniteTransition(label = "automaticActionBrush")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 9_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "automaticActionBrushPhase",
+    )
+
+    val glowColor = sampleLoop(palette, phase)
+    val brush = Brush.linearGradient(
+        listOf(
+            sampleLoop(palette, phase),
+            sampleLoop(palette, normalizedPhase(phase + 0.33f)),
+            sampleLoop(palette, normalizedPhase(phase + 0.66f)),
+        ),
+    )
+    return AutomaticActionBrush(brush = brush, glowColor = glowColor)
+}

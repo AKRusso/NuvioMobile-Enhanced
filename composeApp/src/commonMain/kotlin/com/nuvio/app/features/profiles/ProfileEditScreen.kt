@@ -66,6 +66,7 @@ import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
@@ -88,11 +89,15 @@ fun ProfileEditScreen(
         }
     }
     val fallbackColorHex = currentProfile?.avatarColorHex ?: PROFILE_COLORS.first()
+    val initialBackgroundPreset = ProfileBackgroundPreset.fromStoredValue(currentProfile?.backgroundUrl)
 
     var name by rememberSaveable { mutableStateOf(currentProfile?.name ?: "") }
     var selectedAvatarId by rememberSaveable { mutableStateOf(currentProfile?.avatarId) }
     var avatarUrl by rememberSaveable { mutableStateOf(currentProfile?.avatarUrl.orEmpty()) }
-    var backgroundUrl by rememberSaveable { mutableStateOf(currentProfile?.backgroundUrl.orEmpty()) }
+    var backgroundUrl by rememberSaveable {
+        mutableStateOf(currentProfile?.backgroundUrl.orEmpty().takeIf { initialBackgroundPreset == null }.orEmpty())
+    }
+    var selectedBackgroundPresetKey by rememberSaveable { mutableStateOf(initialBackgroundPreset?.key) }
     var usesPrimaryAddons by rememberSaveable { mutableStateOf(currentProfile?.usesPrimaryAddons ?: false) }
     var isSaving by remember { mutableStateOf(false) }
     var saveErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -159,6 +164,50 @@ fun ProfileEditScreen(
                 accentColor = previewAccent,
                 hasAvatarChoices = avatars.isNotEmpty(),
             )
+        }
+
+        item {
+            NuvioSurfaceCard {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(
+                        text = stringResource(Res.string.profile_choose_background),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = stringResource(Res.string.profile_choose_background_description),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        BackgroundPresetChoice(
+                            label = stringResource(Res.string.profile_background_normal),
+                            preset = null,
+                            fallbackColor = parseHexColor(fallbackColorHex),
+                            selected = selectedBackgroundPresetKey == null && backgroundUrl.isBlank(),
+                            onClick = {
+                                selectedBackgroundPresetKey = null
+                                backgroundUrl = ""
+                            },
+                        )
+                        ProfileBackgroundPreset.entries.forEach { preset ->
+                            BackgroundPresetChoice(
+                                label = stringResource(preset.labelRes),
+                                preset = preset,
+                                fallbackColor = parseHexColor(fallbackColorHex),
+                                selected = selectedBackgroundPresetKey == preset.key && backgroundUrl.isBlank(),
+                                onClick = {
+                                    selectedBackgroundPresetKey = preset.key
+                                    backgroundUrl = ""
+                                },
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         item {
@@ -236,7 +285,10 @@ fun ProfileEditScreen(
                     )
                     NuvioInputField(
                         value = backgroundUrl,
-                        onValueChange = { backgroundUrl = it },
+                        onValueChange = { value ->
+                            backgroundUrl = value
+                            if (value.isNotBlank()) selectedBackgroundPresetKey = null
+                        },
                         placeholder = stringResource(Res.string.profile_custom_background_url_placeholder),
                     )
                     if (backgroundUrlIsInvalid) {
@@ -359,13 +411,17 @@ fun ProfileEditScreen(
                     isSaving = true
                     scope.launch {
                         val avatarColorHex = visibleAvatarItem?.bgColor ?: fallbackColorHex
+                        val selectedBackground = customBackgroundUrl
+                            ?: ProfileBackgroundPreset.entries
+                                .firstOrNull { it.key == selectedBackgroundPresetKey }
+                                ?.storedValue
                         val result = if (isNew) {
                             ProfileRepository.createProfile(
                                 name = name,
                                 avatarColorHex = avatarColorHex,
                                 avatarId = if (customAvatarUrl == null) selectedAvatarId else null,
                                 avatarUrl = customAvatarUrl,
-                                backgroundUrl = customBackgroundUrl,
+                                backgroundUrl = selectedBackground,
                                 usesPrimaryAddons = usesPrimaryAddons,
                             )
                         } else {
@@ -375,7 +431,7 @@ fun ProfileEditScreen(
                                 avatarColorHex = avatarColorHex,
                                 avatarId = if (customAvatarUrl == null) selectedAvatarId else null,
                                 avatarUrl = customAvatarUrl,
-                                backgroundUrl = customBackgroundUrl,
+                                backgroundUrl = selectedBackground,
                                 usesPrimaryAddons = usesPrimaryAddons,
                             )
                         }
@@ -471,6 +527,67 @@ fun ProfileEditScreen(
                 showGifSearch = false
             },
             onDismiss = { showGifSearch = false },
+        )
+    }
+}
+
+@Composable
+private fun BackgroundPresetChoice(
+    label: String,
+    preset: ProfileBackgroundPreset?,
+    fallbackColor: Color,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .width(112.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .then(
+                    if (selected) {
+                        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                    } else {
+                        Modifier.border(
+                            1.dp,
+                            MaterialTheme.colorScheme.outlineVariant,
+                            RoundedCornerShape(12.dp),
+                        )
+                    },
+                ),
+        ) {
+            ProfileMeshBackground(
+                profileColor = preset?.primary ?: fallbackColor,
+                secondaryColor = preset?.secondary,
+                tertiaryColor = preset?.tertiary,
+            )
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(18.dp),
+                )
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

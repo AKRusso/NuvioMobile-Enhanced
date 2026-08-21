@@ -148,7 +148,7 @@ android {
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
         val debugApplicationId = providers.gradleProperty("nuvioDebugApplicationId")
-            .orElse("com.nuvio.enhanced")
+            .orElse("com.nuvio.enhanced.debug")
         variant.applicationId.set(debugApplicationId)
     }
 }

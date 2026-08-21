@@ -87,6 +87,7 @@ import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.extractReleaseYearForDisplay
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.rememberAnimatedLineBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.core.ui.heroStretchHeight
@@ -105,6 +106,7 @@ import com.nuvio.app.features.mdblist.MdbListMetadataService
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_AUDIENCE
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_IMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_LETTERBOXD
+import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_MAL
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_METACRITIC
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TMDB
 import com.nuvio.app.features.mdblist.MdbListMetadataService.PROVIDER_TOMATOES
@@ -191,7 +193,10 @@ internal fun HomeHeroSection(
     streamingShowcaseVideoPreviewSoundEnabled: Boolean = true,
     compactMetadata: Boolean = true,
     showRatings: Boolean = true,
+    ratingsAboveMetadata: Boolean = false,
     showOverview: Boolean = true,
+    showDetailsButton: Boolean = true,
+    originalNuvioHeroBannerEnabled: Boolean = false,
     metadataRefreshKey: String? = null,
     refreshPullProgress: Float = 0f,
     stretchPx: () -> Float = { 0f },
@@ -241,12 +246,21 @@ internal fun HomeHeroSection(
             viewportHeightDp = viewportHeight?.value,
             mobileBelowSectionHeightHintDp = mobileBelowSectionHeightHint?.value,
         )
-        val heroVisualStyle = when {
-            streamingShowcaseHeroEnabled -> HomeHeroVisualStyle.StreamingShowcase
-            posterArtHeroEnabled -> HomeHeroVisualStyle.PosterArt
-            else -> HomeHeroVisualStyle.Default
+        val effectiveHeroDisplayMode = if (originalNuvioHeroBannerEnabled) {
+            NuvioHeroDisplayMode.Balanced
+        } else {
+            heroDisplayMode
         }
-        val activeHeroHeight = when (heroVisualStyle) {
+        val heroVisualStyle = if (originalNuvioHeroBannerEnabled) {
+            HomeHeroVisualStyle.Default
+        } else {
+            when {
+                streamingShowcaseHeroEnabled -> HomeHeroVisualStyle.StreamingShowcase
+                posterArtHeroEnabled -> HomeHeroVisualStyle.PosterArt
+                else -> HomeHeroVisualStyle.Default
+            }
+        }
+        val baseHeroHeight = when (heroVisualStyle) {
             HomeHeroVisualStyle.StreamingShowcase -> streamingShowcaseHeroHeight(
                 maxWidthDp = maxWidth.value,
                 viewportHeightDp = viewportHeight?.value,
@@ -258,6 +272,14 @@ internal fun HomeHeroSection(
                 layout = layout,
             )
             HomeHeroVisualStyle.Default -> layout.heroHeight
+        }
+        val activeHeroHeight = if (LocalTvLayoutProfile.current.enabled) {
+            maxOf(
+                baseHeroHeight,
+                ((viewportHeight?.value ?: 900f) * 0.78f).dp.coerceIn(640.dp, 840.dp),
+            )
+        } else {
+            baseHeroHeight
         }
         val density = LocalDensity.current
         val heroWidthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
@@ -316,7 +338,11 @@ internal fun HomeHeroSection(
         val currentArtworkSource = when (heroVisualStyle) {
             HomeHeroVisualStyle.StreamingShowcase,
             HomeHeroVisualStyle.PosterArt -> NuvioHeroArtworkSource.Backdrop
-            HomeHeroVisualStyle.Default -> heroArtworkSource
+            HomeHeroVisualStyle.Default -> if (originalNuvioHeroBannerEnabled) {
+                NuvioHeroArtworkSource.Backdrop
+            } else {
+                heroArtworkSource
+            }
         }
         val currentArtworkUrl = currentItem.heroArtworkUrl(
             source = currentArtworkSource,
@@ -325,7 +351,7 @@ internal fun HomeHeroSection(
         )
         val heroRefreshProgress = homeHeroRefreshEase(refreshPullProgress)
         val backgroundColor = MaterialTheme.colorScheme.background
-        val mainOverlayStops = when (heroDisplayMode) {
+        val mainOverlayStops = when (effectiveHeroDisplayMode) {
             NuvioHeroDisplayMode.Cinematic -> arrayOf(
                 0f to backgroundColor.copy(alpha = 0.01f),
                 0.36f to backgroundColor.copy(alpha = 0.04f),
@@ -345,7 +371,7 @@ internal fun HomeHeroSection(
                 1f to backgroundColor.copy(alpha = 0.82f),
             )
         }
-        val bottomOverlayStops = when (heroDisplayMode) {
+        val bottomOverlayStops = when (effectiveHeroDisplayMode) {
             NuvioHeroDisplayMode.Cinematic -> arrayOf(
                 0f to Color.Transparent,
                 0.48f to backgroundColor.copy(alpha = 0.24f),
@@ -578,17 +604,19 @@ internal fun HomeHeroSection(
                                             item = layerItem,
                                             layout = layout,
                                             detailMeta = layerDetailMeta,
-                                            heroDisplayMode = heroDisplayMode,
-                                            compactMetadata = compactMetadata,
+                                            heroDisplayMode = effectiveHeroDisplayMode,
+                                            compactMetadata = if (originalNuvioHeroBannerEnabled) true else compactMetadata,
                                             showRatings = showRatings,
+                                            ratingsAboveMetadata = ratingsAboveMetadata,
                                             showOverview = showOverview,
+                                            originalNuvioHeroBannerEnabled = originalNuvioHeroBannerEnabled,
                                             onItemClick = onItemClick,
                                         )
                                     }
                                 }
                             }
 
-                            if (!layout.isTablet) {
+                            if (showDetailsButton && !originalNuvioHeroBannerEnabled && !layout.isTablet) {
                                 Spacer(modifier = Modifier.height(14.dp))
                                 HeroCtaButton(
                                     text = stringResource(Res.string.home_view_details),
@@ -669,7 +697,7 @@ fun HomeHeroReservedSpace(
             viewportHeightDp = viewportHeight?.value,
             mobileBelowSectionHeightHintDp = mobileBelowSectionHeightHint?.value,
         )
-        val heroHeight = when {
+        val baseHeroHeight = when {
             streamingShowcaseHeroEnabled -> streamingShowcaseHeroHeight(
                 maxWidthDp = maxWidth.value,
                 viewportHeightDp = viewportHeight?.value,
@@ -681,6 +709,14 @@ fun HomeHeroReservedSpace(
                 layout = layout,
             )
             else -> layout.heroHeight
+        }
+        val heroHeight = if (LocalTvLayoutProfile.current.enabled) {
+            maxOf(
+                baseHeroHeight,
+                ((viewportHeight?.value ?: 900f) * 0.78f).dp.coerceIn(640.dp, 840.dp),
+            )
+        } else {
+            baseHeroHeight
         }
 
         Spacer(
@@ -1517,6 +1553,14 @@ private val streamingShowcaseRatingVisuals = listOf(
         valueColor = Color(0xFFED1C24),
         format = ::formatShowcaseWhole,
     ),
+    StreamingShowcaseRatingVisuals(
+        source = PROVIDER_MAL,
+        displayName = "MyAnimeList",
+        logo = Res.drawable.rating_mal,
+        logoWidth = 15.dp,
+        valueColor = Color(0xFF2E51A2),
+        format = ::formatShowcaseOneDecimal,
+    ),
 )
 
 private fun buildStreamingShowcaseRatings(
@@ -1560,6 +1604,17 @@ private fun formatShowcaseOneDecimal(value: Double): String {
 private fun formatShowcaseWhole(value: Double): String = value.roundToInt().toString()
 
 private fun formatShowcasePercent(value: Double): String = "${value.roundToInt()}%"
+
+private fun formatHeroImdbRating(raw: String?): String? {
+    val value = raw
+        ?.replace("IMDb", "", ignoreCase = true)
+        ?.substringBefore("/")
+        ?.trim()
+        ?.toDoubleOrNull()
+        ?.takeIf { it > 0.0 }
+        ?: return null
+    return formatShowcaseOneDecimal(value)
+}
 
 @Composable
 private fun StreamingShowcaseSoundButton(
@@ -2270,7 +2325,9 @@ private fun HeroContentBlock(
     heroDisplayMode: NuvioHeroDisplayMode,
     compactMetadata: Boolean,
     showRatings: Boolean,
+    ratingsAboveMetadata: Boolean,
     showOverview: Boolean,
+    originalNuvioHeroBannerEnabled: Boolean,
     onItemClick: ((MetaPreview) -> Unit)?,
 ) {
     val logoUrl = detailMeta?.logo?.takeIf { it.isNotBlank() } ?: item.logo?.takeIf { it.isNotBlank() }
@@ -2293,12 +2350,14 @@ private fun HeroContentBlock(
     val displayGenres = detailGenres.ifEmpty { fallbackGenres }.take(maxGenres)
     val displayRelease = detailMeta?.releaseInfo?.takeIf { it.isNotBlank() } ?: item.releaseInfo
     val seasonCountLabel = heroSeasonCountLabel(detailMeta)
-    val displayImdb = if (showRatings) {
-        (detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating)
-            ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
-    } else {
-        null
-    }
+    val rawImdbRating = detailMeta?.imdbRating?.takeIf { it.isNotBlank() } ?: item.imdbRating
+    val fallbackImdbRating = rawImdbRating
+        ?.replace("IMDb", "", ignoreCase = true)
+        ?.substringBefore("/")
+        ?.trim()
+        ?.toDoubleOrNull()
+        ?.takeIf { it > 0.0 }
+    val displayImdb = if (showRatings) null else formatHeroImdbRating(rawImdbRating)
     val displaySummary = detailMeta?.description
         ?.trim()
         ?.takeIf { it.isNotBlank() }
@@ -2334,6 +2393,18 @@ private fun HeroContentBlock(
         NuvioHeroDisplayMode.Balanced -> if (compactMetadata) 0.12f else 0.16f
         NuvioHeroDisplayMode.InfoRich -> 0.18f
     }
+    val ratings = remember(showRatings, detailMeta?.externalRatings, fallbackImdbRating, layout.isTablet) {
+        if (showRatings) {
+            buildStreamingShowcaseRatings(
+                externalRatings = detailMeta?.externalRatings.orEmpty(),
+                fallbackImdbRating = fallbackImdbRating,
+                maxItems = if (layout.isTablet) 8 else 6,
+            )
+        } else {
+            emptyList()
+        }
+    }
+    val showRatingsAboveMetadata = ratingsAboveMetadata && !originalNuvioHeroBannerEnabled
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -2396,13 +2467,40 @@ private fun HeroContentBlock(
             }
         }
 
+        if (showRatingsAboveMetadata && ratings.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            HeroRatingsRail(ratings = ratings, centered = !layout.isTablet)
+        }
+
         Spacer(modifier = Modifier.height(10.dp))
-        HeroMetaGlassRail(
-            items = heroMetaItems,
-            layout = layout,
-            heroDisplayMode = heroDisplayMode,
-            compact = compactMetadata,
-        )
+        if (originalNuvioHeroBannerEnabled) {
+            val subtitle = heroMetaItems.joinToString(" • ") { it.text }
+            if (subtitle.isNotBlank()) {
+                Text(
+                    text = subtitle,
+                    modifier = Modifier.fillMaxWidth(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        } else {
+            HeroMetaGlassRail(
+                items = heroMetaItems,
+                layout = layout,
+                heroDisplayMode = heroDisplayMode,
+                compact = compactMetadata,
+            )
+        }
+
+        if (!showRatingsAboveMetadata && ratings.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            HeroRatingsRail(
+                ratings = ratings,
+                centered = !layout.isTablet || originalNuvioHeroBannerEnabled,
+            )
+        }
 
         if (showOverview) displaySummary?.let { summary ->
             Spacer(modifier = Modifier.height(if (compactMetadata || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 9.dp else 12.dp))
@@ -2412,6 +2510,43 @@ private fun HeroContentBlock(
                 heroDisplayMode = heroDisplayMode,
                 compact = compactMetadata,
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun HeroRatingsRail(
+    ratings: List<StreamingShowcaseRatingItem>,
+    centered: Boolean,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = if (centered) Arrangement.Center else Arrangement.Start,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        ratings.forEach { rating ->
+            Row(
+                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(rating.logo),
+                    contentDescription = rating.displayName,
+                    modifier = Modifier
+                        .height(16.dp)
+                        .widthIn(max = rating.logoWidth),
+                    contentScale = ContentScale.Fit,
+                )
+                Text(
+                    text = rating.text,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = rating.valueColor,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }

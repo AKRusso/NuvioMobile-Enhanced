@@ -6,6 +6,7 @@ import kotlinx.cinterop.convert
 import kotlinx.cinterop.usePinned
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSHomeDirectory
+import platform.Foundation.NSUUID
 import platform.Foundation.NSURL
 import platform.UIKit.UIApplication
 import platform.UIKit.UIDocumentPickerDelegateProtocol
@@ -89,7 +90,16 @@ internal actual object SubtitleFontFileBridge {
                 val extension = displayName.substringAfterLast('.', "ttf").lowercase().let { ext ->
                     if (ext in setOf("ttf", "otf")) ext else "ttf"
                 }
-                val destinationPath = "$destinationDir/custom-subtitle-font.$extension"
+                // Keep a custom font in its own directory so the native renderer cannot
+                // resolve a stale import with the same embedded family name.
+                val importDirectory = "$destinationDir/${NSUUID.UUID().UUIDString}"
+                NSFileManager.defaultManager.createDirectoryAtPath(
+                    path = importDirectory,
+                    withIntermediateDirectories = true,
+                    attributes = null,
+                    error = null,
+                )
+                val destinationPath = "$importDirectory/custom-subtitle-font.$extension"
                 if (!bytes.writeToFile(destinationPath)) {
                     error("Could not save font file.")
                 }

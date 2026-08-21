@@ -171,11 +171,6 @@ internal fun TrackingProviderCards(
     }.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var showSyncInfo by rememberSaveable { mutableStateOf(false) }
-    var supportersResult by remember { mutableStateOf<SupportersResult?>(null) }
-    LaunchedEffect(Unit) {
-        SupportersContributorsRepository.getSupporters()
-            .onSuccess { supportersResult = it }
-    }
     val onSimklSyncRequested: () -> Unit = {
         scope.launch {
             WatchProgressSourceCoordinator.refreshProviderAndActiveSource(
@@ -199,8 +194,6 @@ internal fun TrackingProviderCards(
             ) {
                 TraktProviderCard(
                     uiState = traktUiState,
-                    supportersResult = supportersResult,
-                    onSupportersClick = onSupportersClick,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -223,8 +216,6 @@ internal fun TrackingProviderCards(
             ) {
                 TraktProviderCard(
                     uiState = traktUiState,
-                    supportersResult = supportersResult,
-                    onSupportersClick = onSupportersClick,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 SimklProviderCard(
@@ -247,8 +238,6 @@ internal fun TrackingProviderCards(
 @Composable
 private fun TraktProviderCard(
     uiState: TraktAuthUiState,
-    supportersResult: SupportersResult?,
-    onSupportersClick: () -> Unit,
     modifier: Modifier,
 ) {
     TrackingProviderCard(
@@ -270,12 +259,6 @@ private fun TraktProviderCard(
         missingCredentialsMessage = stringResource(Res.string.settings_trakt_missing_credentials),
         unavailableTitle = stringResource(Res.string.settings_trakt_vip_unavailable_title),
         unavailableDescription = stringResource(Res.string.settings_trakt_vip_unavailable_description),
-        unavailableActionLabel = stringResource(Res.string.action_donate),
-        unavailableActionUrl = CommunityConfig.DONATIONS_DONATE_URL.ifBlank { KOFI_DONATE_URL },
-        unavailableSupporters = supportersResult?.supporters.orEmpty(),
-        unavailableSupporterCount = supportersResult?.supporterCount ?: 0,
-        unavailableDonationProgress = supportersResult?.progress,
-        onUnavailableSupportersClick = onSupportersClick,
         statusMessage = uiState.statusMessage.takeUnless {
             uiState.mode == TraktConnectionMode.CONNECTED
         },
@@ -361,12 +344,6 @@ private fun TrackingProviderCard(
     websiteUrl: String? = null,
     unavailableTitle: String? = null,
     unavailableDescription: String? = null,
-    unavailableActionLabel: String? = null,
-    unavailableActionUrl: String? = null,
-    unavailableSupporters: List<SupporterDonation> = emptyList(),
-    unavailableSupporterCount: Int = 0,
-    unavailableDonationProgress: DonationProgress? = null,
-    onUnavailableSupportersClick: (() -> Unit)? = null,
     onConnectRequested: () -> String?,
     onResumeAuthorization: () -> String?,
     onCancelAuthorization: () -> Unit,
@@ -484,19 +461,11 @@ private fun TrackingProviderCard(
                         )
                     } else if (
                         unavailableTitle != null &&
-                        unavailableDescription != null &&
-                        unavailableActionLabel != null &&
-                        unavailableActionUrl != null
+                        unavailableDescription != null
                     ) {
                         TrackingUnavailableSupport(
                             title = unavailableTitle,
                             description = unavailableDescription,
-                            actionLabel = unavailableActionLabel,
-                            onAction = { openUrl(unavailableActionUrl) },
-                            supporters = unavailableSupporters,
-                            supporterCount = unavailableSupporterCount,
-                            donationProgress = unavailableDonationProgress,
-                            onSupportersClick = onUnavailableSupportersClick,
                         )
                     } else {
                         TrackingBrandMessage(
@@ -602,12 +571,6 @@ private fun TrackingProviderCard(
 private fun TrackingUnavailableSupport(
     title: String,
     description: String,
-    actionLabel: String,
-    onAction: () -> Unit,
-    supporters: List<SupporterDonation>,
-    supporterCount: Int,
-    donationProgress: DonationProgress?,
-    onSupportersClick: (() -> Unit)?,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -629,136 +592,6 @@ private fun TrackingUnavailableSupport(
                 text = description,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.8f),
-            )
-            if (supporters.isNotEmpty() && onSupportersClick != null) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .clickable(onClick = onSupportersClick)
-                        .padding(horizontal = 2.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-                        supporters
-                            .distinctBy { it.name.lowercase() }
-                            .take(4)
-                            .forEach { supporter ->
-                                TrackingSupporterAvatar(
-                                    supporter = supporter,
-                                    modifier = Modifier.size(34.dp),
-                                )
-                            }
-                    }
-                    Text(
-                        text = stringResource(
-                            Res.string.settings_trakt_supporters_count,
-                            supporterCount.coerceAtLeast(supporters.distinctBy { it.name.lowercase() }.size),
-                        ),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-            donationProgress?.let { progress -> TraktMaintenanceProgress(progress) }
-            OutlinedButton(
-                onClick = onAction,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 44.dp),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.48f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-            ) {
-                Text(actionLabel)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TraktMaintenanceProgress(
-    progress: DonationProgress,
-) {
-    val fraction = (progress.progressPercent / 100f).coerceIn(0f, 1f)
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Trakt maintenance",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "${progress.progressPercent}%",
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        LinearProgressIndicator(
-            progress = { fraction },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(7.dp)
-                .clip(RoundedCornerShape(999.dp)),
-            color = Color.White,
-            trackColor = Color.White.copy(alpha = 0.24f),
-        )
-        if (progress.currentCents != null && progress.targetCents != null) {
-            Text(
-                text = "${formatEuroAmount(progress.currentCents)} / ${formatEuroAmount(progress.targetCents)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.78f),
-            )
-            Text(
-                text = stringResource(Res.string.community_donation_progress_fee_notice),
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.78f),
-            )
-        }
-        progress.nextResetDate?.takeIf(String::isNotBlank)?.let { resetDate ->
-            Text(
-                text = "Resets on ${formatDonationDate(resetDate)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.78f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun TrackingSupporterAvatar(
-    supporter: SupporterDonation,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(Color(0xFF2B202D))
-            .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (supporter.avatarUrl.isNullOrBlank()) {
-            Text(
-                text = supporter.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-            )
-        } else {
-            AsyncImage(
-                model = supporter.avatarUrl,
-                contentDescription = supporter.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
             )
         }
     }

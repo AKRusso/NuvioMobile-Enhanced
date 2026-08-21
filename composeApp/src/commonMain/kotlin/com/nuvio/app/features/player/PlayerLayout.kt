@@ -33,10 +33,61 @@ internal data class PlayerLayoutMetrics(
     val sideIconSize: Dp,
     val playButtonPadding: Dp,
     val playIconSize: Dp,
+    val topGradientHeight: Dp = 160.dp,
+    val bottomGradientHeight: Dp = 220.dp,
+    val actionIconSize: Dp = 18.dp,
+    val actionTextSize: TextUnit = 12.sp,
+    val actionHorizontalPadding: Dp = 12.dp,
+    val actionVerticalPadding: Dp = 12.dp,
+    val actionGap: Dp = 8.dp,
+    val actionCornerRadius: Dp = 22.dp,
+    val actionGroupHorizontalPadding: Dp = 4.dp,
+    val actionGroupVerticalPadding: Dp = 2.dp,
+    val timeRowHorizontalPadding: Dp = 14.dp,
+    val timeRowTopPadding: Dp = 4.dp,
+    val timeRowBottomPadding: Dp = 8.dp,
 ) {
     companion object {
-        fun fromWidth(width: Dp): PlayerLayoutMetrics =
-            when {
+        fun fromWidth(width: Dp, tvLayout: Boolean = false, height: Dp = 0.dp): PlayerLayoutMetrics {
+            if (tvLayout) {
+                val scale = when {
+                    width >= 1440.dp || height >= 900.dp -> 1.65f
+                    width >= 1024.dp || height >= 720.dp -> 1.5f
+                    else -> 1.35f
+                }
+                return PlayerLayoutMetrics(
+                    horizontalPadding = 52.dp * scale,
+                    verticalPadding = 36.dp * scale,
+                    titleSize = (28f * scale).sp,
+                    episodeInfoSize = (18f * scale).sp,
+                    metadataSize = (16f * scale).sp,
+                    centerGap = 104.dp * scale,
+                    centerLift = 30.dp * scale,
+                    sliderBottomOffset = 40.dp * scale,
+                    sliderTouchHeight = 36.dp * scale,
+                    sliderScaleY = 0.92f,
+                    timeSize = (16f * scale).sp,
+                    headerIconSize = 30.dp * scale,
+                    sideButtonPadding = 18.dp * scale,
+                    sideIconSize = 52.dp * scale,
+                    playButtonPadding = 24.dp * scale,
+                    playIconSize = 64.dp * scale,
+                    topGradientHeight = 180.dp * scale,
+                    bottomGradientHeight = 260.dp * scale,
+                    actionIconSize = 22.dp * scale,
+                    actionTextSize = (14f * scale).sp,
+                    actionHorizontalPadding = 14.dp * scale,
+                    actionVerticalPadding = 14.dp * scale,
+                    actionGap = 10.dp * scale,
+                    actionCornerRadius = 26.dp * scale,
+                    actionGroupHorizontalPadding = 6.dp * scale,
+                    actionGroupVerticalPadding = 4.dp * scale,
+                    timeRowHorizontalPadding = 18.dp * scale,
+                    timeRowTopPadding = 8.dp * scale,
+                    timeRowBottomPadding = 12.dp * scale,
+                )
+            }
+            return when {
                 width >= 1440.dp -> PlayerLayoutMetrics(
                     horizontalPadding = 28.dp,
                     verticalPadding = 24.dp,
@@ -110,6 +161,7 @@ internal data class PlayerLayoutMetrics(
                     playIconSize = 34.dp,
                 )
             }
+        }
     }
 }
 

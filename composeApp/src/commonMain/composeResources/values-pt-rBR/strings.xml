@@ -655,6 +655,8 @@
     <string name="settings_meta_episode_style_horizontal_description">Cards de linha estilo backdrop</string>
     <string name="settings_meta_episode_style_list">Lista</string>
     <string name="settings_meta_episode_style_list_description">Cards empilhados com foco em detalhes</string>
+    <string name="settings_meta_episode_style_vertical">Cards verticais</string>
+    <string name="settings_meta_episode_style_vertical_description">Cards grandes com imagem de fundo em uma lista vertical</string>
     <string name="settings_meta_episodes">Episódios</string>
     <string name="settings_meta_episodes_description">Temporadas e lista de episódios para séries.</string>
     <string name="settings_meta_blur_unwatched_episodes">Desfocar Episódios Não Assistidos</string>
@@ -1435,4 +1437,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">O valor exibido é anterior às taxas de pagamento e bancárias, portanto o valor recebido pode ser menor.</string>
+    <string name="downloads_download_settings">Configurações de download</string>
+    <string name="downloads_auto_select">Seleção automática</string>
+    <string name="downloads_auto_select_desc">Escolhe automaticamente a melhor fonte disponível para cada episódio.</string>
+    <string name="downloads_preferred_quality">Qualidade preferida</string>
+    <string name="downloads_download_mode">Modo de download</string>
+    <string name="downloads_download_all_at_once">Todos de uma vez</string>
+    <string name="downloads_download_one_at_a_time">Um de cada vez</string>
+    <string name="downloads_automatic">Automático</string>
+    <string name="downloads_quality_best">Melhor</string>
+    <string name="downloads_auto_selecting">Selecionando fontes…</string>
+    <string name="downloads_download_started">Downloads iniciados</string>
+    <string name="downloads_status_waiting">Aguardando</string>
 </resources>

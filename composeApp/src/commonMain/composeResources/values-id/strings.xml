@@ -1522,4 +1522,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Jumlah yang ditampilkan adalah sebelum biaya pembayaran dan bank, sehingga jumlah yang diterima mungkin lebih kecil.</string>
+    <string name="downloads_download_settings">Pengaturan unduhan</string>
+    <string name="downloads_auto_select">Pilih Otomatis</string>
+    <string name="downloads_auto_select_desc">Memilih sumber terbaik yang tersedia untuk setiap episode secara otomatis.</string>
+    <string name="downloads_preferred_quality">Kualitas yang diinginkan</string>
+    <string name="downloads_download_mode">Mode unduhan</string>
+    <string name="downloads_download_all_at_once">Semua sekaligus</string>
+    <string name="downloads_download_one_at_a_time">Satu per satu</string>
+    <string name="downloads_automatic">Otomatis</string>
+    <string name="downloads_quality_best">Terbaik</string>
+    <string name="downloads_auto_selecting">Memilih sumber…</string>
+    <string name="downloads_download_started">Unduhan dimulai</string>
+    <string name="downloads_status_waiting">Menunggu</string>
 </resources>

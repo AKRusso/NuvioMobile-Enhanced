@@ -55,4 +55,15 @@ class ProfilePayloadTest {
         assertEquals("https://example.com/background.jpg", preserved.single().backgroundUrl)
         assertNull(cleared.single().backgroundUrl)
     }
+
+    @Test
+    fun `predefined background round trips locally without becoming an image URL`() {
+        val stored = ProfileBackgroundPreset.ARCTIC_BLUE.storedValue
+        val profile = NuvioProfile(profileIndex = 2, backgroundUrl = stored)
+
+        assertEquals(stored, normalizedProfileBackgroundUrl(stored))
+        assertEquals(ProfileBackgroundPreset.ARCTIC_BLUE, profileBackgroundPreset(profile))
+        assertNull(profileBackgroundImageUrl(profile))
+        assertFalse(Json.encodeToString(profile.toProfilePushPayload().toUpstreamProfilePushPayload()).contains("background_url"))
+    }
 }

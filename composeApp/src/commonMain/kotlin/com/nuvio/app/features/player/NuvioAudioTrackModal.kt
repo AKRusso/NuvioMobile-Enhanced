@@ -6,13 +6,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,40 +48,45 @@ internal fun NuvioAudioTrackModal(
         visible = visible,
         onDismiss = onDismiss,
         modifier = modifier,
-        contentPadding = PaddingValues(start = 52.dp, end = 52.dp, top = 36.dp, bottom = 76.dp),
+        contentPadding = PaddingValues(start = 44.dp, end = 44.dp, top = 28.dp, bottom = 64.dp),
     ) {
-        BoxWithConstraints {
-            val railMaxHeight = (maxHeight - 72.dp).coerceAtLeast(120.dp)
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val railWidth = minOf(maxWidth, 444.dp)
+            val railMaxHeight = (maxHeight - 64.dp).coerceAtLeast(120.dp).coerceAtMost(620.dp)
+
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .width(320.dp)
-                    .padding(bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .width(railWidth)
+                    .fillMaxHeight()
+                    .align(Alignment.BottomStart),
+                verticalArrangement = Arrangement.Bottom,
             ) {
                 Text(
                     text = stringResource(Res.string.compose_player_audio_tracks),
                     color = Color.White,
                     style = MaterialTheme.typography.headlineMedium,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = railMaxHeight)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (audioTracks.isEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.compose_player_no_audio_tracks_available),
-                            color = MaterialTheme.nuvio.colors.textMuted,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(vertical = 20.dp),
-                        )
-                    } else {
-                        audioTracks.forEach { track ->
+
+                if (audioTracks.isEmpty()) {
+                    Text(
+                        text = stringResource(Res.string.compose_player_no_audio_tracks_available),
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = railMaxHeight),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                    ) {
+                        items(audioTracks, key = { "${it.index}:${it.id}" }) { track ->
                             NuvioAudioTrackRow(
                                 track = track,
-                                selected = track.index == selectedIndex,
+                                isSelected = track.index == selectedIndex,
                                 onClick = { onTrackSelected(track.index) },
                             )
                         }
@@ -88,32 +100,56 @@ internal fun NuvioAudioTrackModal(
 @Composable
 private fun NuvioAudioTrackRow(
     track: AudioTrack,
-    selected: Boolean,
+    isSelected: Boolean,
     onClick: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
-    Column(
+    val primaryColor = if (isSelected) tokens.colors.onAccent else Color.White
+    val secondaryColor = if (isSelected) {
+        tokens.colors.onAccent.copy(alpha = 0.82f)
+    } else {
+        Color.White.copy(alpha = 0.72f)
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) tokens.colors.accent else Color.Transparent)
+            .background(if (isSelected) tokens.colors.accent else Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = localizedTrackDisplayName(track.label, track.language, track.index),
-            color = if (selected) tokens.colors.onAccent else Color.White,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        track.language?.takeIf { it.isNotBlank() }?.let { language ->
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
-                text = language,
-                color = if (selected) tokens.colors.onAccent.copy(alpha = 0.78f) else tokens.colors.textMuted,
-                style = MaterialTheme.typography.bodySmall,
+                text = localizedTrackDisplayName(track.label, track.language, track.index),
+                color = primaryColor,
+                style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+            track.language?.takeIf { it.isNotBlank() && it != "und" }?.let { language ->
+                Text(
+                    text = languageLabelForCode(language),
+                    color = secondaryColor,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = tokens.colors.onAccent,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .size(20.dp),
             )
         }
     }

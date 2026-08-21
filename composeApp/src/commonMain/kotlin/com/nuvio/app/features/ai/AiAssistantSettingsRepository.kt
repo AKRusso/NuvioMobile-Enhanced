@@ -45,6 +45,11 @@ object AiAssistantSettingsRepository {
         )
     }
 
+    fun onProfileChanged() {
+        hasLoaded = false
+        ensureLoaded()
+    }
+
     fun setEnabled(value: Boolean) = update { copy(enabled = value) }
 
     fun setWebSearchEnabled(value: Boolean) = update { copy(webSearchEnabled = value) }

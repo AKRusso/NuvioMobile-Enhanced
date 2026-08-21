@@ -27,7 +27,7 @@ internal fun SubtitleModal(
     onBuiltInTrackSelected: (Int) -> Unit,
     onAddonSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetchAddonSubtitles: () -> Unit,
-    onStyleChanged: (SubtitleStyleState) -> Unit,
+    onStyleChanged: ((SubtitleStyleState) -> SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,

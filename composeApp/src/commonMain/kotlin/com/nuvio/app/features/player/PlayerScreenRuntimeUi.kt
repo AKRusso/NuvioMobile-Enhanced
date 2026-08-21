@@ -236,8 +236,8 @@ private fun p2pConnectingPhaseLabel(phase: String): String = when (phase) {
 }
 
 private fun PlayerScreenRuntime.currentInitialPositionRequestKey(): String? {
-    val positionMs = activeInitialPositionMs.takeIf { it > 0L } ?: return null
-    return "$activePlaybackIdentity:${activeVideoId.orEmpty()}:$positionMs"
+    val itemIdentity = "$activePlaybackIdentity:${activeVideoId.orEmpty()}"
+    return "$itemIdentity:${activeInitialPositionMs.coerceAtLeast(0L)}"
 }
 
 @Composable
@@ -631,9 +631,10 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
         isPlaying = playbackSnapshot.isPlaying,
          onBuiltInSubtitleTrackSelected = { index ->
              val wasCustom = useCustomSubtitles
-             selectedSubtitleIndex = index
-             selectedAddonSubtitleId = null
-             useCustomSubtitles = false
+              selectedSubtitleIndex = index
+              selectedAddonSubtitleId = null
+              useCustomSubtitles = false
+              autoAddonFallbackPending = false
              manualSubtitleSelectionLocked = true
              // A manual choice must survive track refreshes caused by seeking.
              trackPreferenceRestoreApplied = true
@@ -646,9 +647,10 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             }
         },
          onAddonSubtitleSelected = { addon ->
-             selectedAddonSubtitleId = addon.id
-             selectedSubtitleIndex = -1
-             useCustomSubtitles = true
+              selectedAddonSubtitleId = addon.selectionKey
+              selectedSubtitleIndex = -1
+              useCustomSubtitles = true
+              autoAddonFallbackPending = false
              manualSubtitleSelectionLocked = true
              // Do not let the next player refresh replace a manual addon choice.
              trackPreferenceRestoreApplied = true
@@ -657,7 +659,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
              playerController?.setSubtitleUri(addon.url)
         },
         onFetchAddonSubtitles = { fetchAddonSubtitlesForActiveItem() },
-        onSubtitleStyleChanged = PlayerSettingsRepository::setSubtitleStyle,
+        onSubtitleStyleChanged = PlayerSettingsRepository::updateSubtitleStyle,
         onSubtitleDelayChanged = { delayMs -> setSubtitleDelay(delayMs) },
         onSubtitleDelayReset = { setSubtitleDelay(0) },
         onAutoSyncCapture = { captureSubtitleAutoSyncTime() },

@@ -1994,4 +1994,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">A megjelenített összeg a fizetési és banki díjak előtti összeg, ezért a beérkező összeg alacsonyabb lehet.</string>
+    <string name="downloads_download_settings">Letöltési beállítások</string>
+    <string name="downloads_auto_select">Automatikus kiválasztás</string>
+    <string name="downloads_auto_select_desc">Automatikusan a legjobb elérhető forrást választja minden epizódhoz.</string>
+    <string name="downloads_preferred_quality">Előnyben részesített minőség</string>
+    <string name="downloads_download_mode">Letöltési mód</string>
+    <string name="downloads_download_all_at_once">Mindet egyszerre</string>
+    <string name="downloads_download_one_at_a_time">Egyszerre egyet</string>
+    <string name="downloads_automatic">Automatikus</string>
+    <string name="downloads_quality_best">Legjobb</string>
+    <string name="downloads_auto_selecting">Források kiválasztása…</string>
+    <string name="downloads_download_started">Letöltések elindítva</string>
+    <string name="downloads_status_waiting">Várakozás</string>
 </resources>

@@ -1956,4 +1956,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Suma afișată este înainte de taxele de plată și bancare, astfel că suma primită poate fi mai mică.</string>
+    <string name="downloads_download_settings">Setări de descărcare</string>
+    <string name="downloads_auto_select">Selectare automată</string>
+    <string name="downloads_auto_select_desc">Alege automat cea mai bună sursă disponibilă pentru fiecare episod.</string>
+    <string name="downloads_preferred_quality">Calitate preferată</string>
+    <string name="downloads_download_mode">Mod de descărcare</string>
+    <string name="downloads_download_all_at_once">Toate deodată</string>
+    <string name="downloads_download_one_at_a_time">Câte unul pe rând</string>
+    <string name="downloads_automatic">Automat</string>
+    <string name="downloads_quality_best">Cel mai bun</string>
+    <string name="downloads_auto_selecting">Se selectează sursele…</string>
+    <string name="downloads_download_started">Descărcările au început</string>
+    <string name="downloads_status_waiting">În așteptare</string>
 </resources>

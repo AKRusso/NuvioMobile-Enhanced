@@ -1,6 +1,7 @@
 package com.nuvio.app.features.streams
 
 import com.nuvio.app.core.build.AppFeaturePolicy
+import io.ktor.http.Url
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import nuvio.composeapp.generated.resources.*
@@ -101,10 +102,16 @@ data class StreamItem(
         get() = fileIdx ?: torrentSchemeUri.extractTorrentSchemeFileIdx()
 
     val p2pTrackers: List<String>
-        get() = sources
+        get() = (sources + clientResolve?.sources.orEmpty())
             .asSequence()
             .filter { it.startsWith("tracker:") }
             .map { it.removePrefix("tracker:").trim() }
+            .plus(
+                torrentMagnetUri
+                    ?.let { magnet -> runCatching { Url(magnet).parameters.getAll("tr") }.getOrNull() }
+                    .orEmpty()
+                    .asSequence(),
+            )
             .filter { it.isNotEmpty() }
             .distinct()
             .toList()

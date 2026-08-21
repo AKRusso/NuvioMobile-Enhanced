@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.DisintegratingContainer
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioProgressBar
 import com.nuvio.app.core.ui.NuvioShelfSection
 import com.nuvio.app.core.ui.NuvioTokens
@@ -281,7 +282,10 @@ internal fun HomeContinueWatchingSection(
                 showReadyBadge = showReadyBadge,
                 modifier = Modifier.fillMaxWidth(),
                 sectionPadding = homeSectionHorizontalPaddingForWidth(maxWidth.value),
-                layout = rememberContinueWatchingLayout(maxWidth.value),
+                layout = rememberContinueWatchingLayout(
+                    maxWidthDp = maxWidth.value,
+                    visualScale = if (LocalTvLayoutProfile.current.enabled) 1.85f else 1f,
+                ),
                 listState = listState,
                 onItemClick = onItemClick,
                 onItemLongPress = onItemLongPress,
@@ -1267,8 +1271,11 @@ internal data class ContinueWatchingLayout(
     val posterBadgeTextSize: androidx.compose.ui.unit.TextUnit,
 )
 
-internal fun rememberContinueWatchingLayout(maxWidthDp: Float): ContinueWatchingLayout =
-    when {
+internal fun rememberContinueWatchingLayout(
+    maxWidthDp: Float,
+    visualScale: Float = 1f,
+): ContinueWatchingLayout {
+    val base = when {
         maxWidthDp >= 1440f -> ContinueWatchingLayout(
             itemGap = 20.dp,
             wideCardWidth = 400.dp,
@@ -1346,3 +1353,17 @@ internal fun rememberContinueWatchingLayout(maxWidthDp: Float): ContinueWatching
             posterBadgeTextSize = 10.sp,
         )
     }
+    if (visualScale == 1f) return base
+    return base.copy(
+        itemGap = base.itemGap * 1.5f,
+        wideCardWidth = base.wideCardWidth * visualScale,
+        wideCardHeight = base.wideCardHeight * visualScale,
+        widePosterStripWidth = base.widePosterStripWidth * visualScale,
+        wideContentPadding = base.wideContentPadding * 1.4f,
+        posterCardWidth = base.posterCardWidth * visualScale,
+        posterCardHeight = base.posterCardHeight * visualScale,
+        cardRadius = base.cardRadius * 1.4f,
+        progressHeight = base.progressHeight * 1.5f,
+        posterTitleBlockHeight = base.posterTitleBlockHeight * 1.5f,
+    )
+}

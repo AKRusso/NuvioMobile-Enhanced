@@ -75,6 +75,8 @@ import nuvio.composeapp.generated.resources.settings_meta_episode_style_horizont
 import nuvio.composeapp.generated.resources.settings_meta_episode_style_horizontal_description
 import nuvio.composeapp.generated.resources.settings_meta_episode_style_list
 import nuvio.composeapp.generated.resources.settings_meta_episode_style_list_description
+import nuvio.composeapp.generated.resources.settings_meta_episode_style_vertical
+import nuvio.composeapp.generated.resources.settings_meta_episode_style_vertical_description
 import nuvio.composeapp.generated.resources.settings_meta_episodes
 import nuvio.composeapp.generated.resources.settings_meta_episodes_description
 import nuvio.composeapp.generated.resources.settings_meta_blur_unwatched_episodes
@@ -102,6 +104,7 @@ import nuvio.composeapp.generated.resources.settings_meta_tab_layout
 import nuvio.composeapp.generated.resources.settings_meta_tab_layout_description
 import nuvio.composeapp.generated.resources.settings_meta_trailers
 import nuvio.composeapp.generated.resources.settings_meta_trailers_description
+import nuvio.composeapp.generated.resources.streams_download_file
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import sh.calvin.reorderable.ReorderableCollectionItemScope
@@ -130,12 +133,6 @@ internal fun LazyListScope.metaScreenSettingsContent(
                     checked = uiState.tabLayout,
                     isTablet = isTablet,
                     onCheckedChange = { MetaScreenSettingsRepository.setTabLayout(it) },
-                )
-                SettingsGroupDivider(isTablet = isTablet)
-                MetaEpisodeCardStyleSelector(
-                    isTablet = isTablet,
-                    selectedStyle = uiState.episodeCardStyle,
-                    onStyleSelected = MetaScreenSettingsRepository::setEpisodeCardStyle,
                 )
                 SettingsGroupDivider(isTablet = isTablet)
                 SettingsSwitchRow(
@@ -563,12 +560,14 @@ private val MetaEpisodeCardStyle.labelRes: StringResource
     get() = when (this) {
         MetaEpisodeCardStyle.Horizontal -> Res.string.settings_meta_episode_style_horizontal
         MetaEpisodeCardStyle.List -> Res.string.settings_meta_episode_style_list
+        MetaEpisodeCardStyle.VerticalHorizontal -> Res.string.settings_meta_episode_style_vertical
     }
 
 private val MetaEpisodeCardStyle.descriptionRes: StringResource
     get() = when (this) {
         MetaEpisodeCardStyle.Horizontal -> Res.string.settings_meta_episode_style_horizontal_description
         MetaEpisodeCardStyle.List -> Res.string.settings_meta_episode_style_list_description
+        MetaEpisodeCardStyle.VerticalHorizontal -> Res.string.settings_meta_episode_style_vertical_description
     }
 
 private val MetaScreenSectionKey.titleRes: StringResource
@@ -625,7 +624,7 @@ private fun MetaEpisodeCardStylePreview(
         verticalArrangement = Arrangement.Center,
     ) {
         when (style) {
-            MetaEpisodeCardStyle.Horizontal -> {
+            MetaEpisodeCardStyle.Horizontal, MetaEpisodeCardStyle.VerticalHorizontal -> {
                 Box(
                     modifier = Modifier
                         .width(128.dp)

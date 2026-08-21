@@ -34,12 +34,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
+import com.nuvio.app.core.ui.NuvioToastController
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
@@ -93,6 +95,7 @@ import com.nuvio.app.features.details.components.DetailPosterRailSection
 import com.nuvio.app.features.details.components.DetailProductionSection
 import com.nuvio.app.features.details.components.DetailSeriesContent
 import com.nuvio.app.features.details.components.DetailTrailersSection
+import com.nuvio.app.features.details.components.EpisodeDownloadFlowSheet
 import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.SeasonWatchedActionSheet
 import com.nuvio.app.features.details.components.TrailerPlayerPopup
@@ -136,6 +139,11 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 private const val RANDOM_EPISODE_HISTORY_LIMIT = 8
+
+private data class EpisodeDownloadRequest(
+    val initialEpisodes: List<MetaVideo>,
+    val showStartPrompt: Boolean,
+)
 
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -217,6 +225,7 @@ fun MetaDetailsScreen(
     var observedOfflineState by remember(type, id) { mutableStateOf(false) }
     var selectedEpisodeForActions by remember(type, id) { mutableStateOf<MetaVideo?>(null) }
     var selectedSeasonForActions by remember(type, id) { mutableStateOf<Int?>(null) }
+    var episodeDownloadRequest by remember(type, id) { mutableStateOf<EpisodeDownloadRequest?>(null) }
     val commentsEnabled by remember {
         TraktCommentsSettings.ensureLoaded()
         TraktCommentsSettings.enabled
@@ -235,6 +244,7 @@ fun MetaDetailsScreen(
     var pickerPending by remember(type, id) { mutableStateOf(false) }
     var pickerError by remember(type, id) { mutableStateOf<String?>(null) }
     var episodeImdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
+    var episodeTmdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
     var showAiAssistant by remember(type, id) { mutableStateOf(false) }
 
@@ -281,11 +291,13 @@ fun MetaDetailsScreen(
         val metaForRatings = displayedMeta
         if (offlineDetailsAvailable) {
             episodeImdbRatings = emptyMap()
+            episodeTmdbRatings = emptyMap()
             return@LaunchedEffect
         }
         if (!deferredMetaWorkAllowed) return@LaunchedEffect
         if (metaForRatings == null || !metaForRatings.isSeriesLikeForEpisodeRatings()) {
             episodeImdbRatings = emptyMap()
+            episodeTmdbRatings = emptyMap()
             return@LaunchedEffect
         }
 
@@ -297,6 +309,7 @@ fun MetaDetailsScreen(
 
         if (imdbId == null && tmdbId == null) {
             episodeImdbRatings = emptyMap()
+            episodeTmdbRatings = emptyMap()
             return@LaunchedEffect
         }
 
@@ -304,6 +317,12 @@ fun MetaDetailsScreen(
             imdbId = imdbId,
             tmdbId = tmdbId,
         )
+        episodeTmdbRatings = tmdbId?.let { resolvedTmdbId ->
+            TmdbService.getEpisodeRatings(
+                tmdbId = resolvedTmdbId,
+                seasons = metaForRatings.videos.mapNotNull { it.season },
+            )
+        }.orEmpty()
     }
 
     LaunchedEffect(type, id, offlineDetailsAvailable, displayedMeta, uiState.isLoading, autoLoadAttempted) {
@@ -669,6 +688,31 @@ fun MetaDetailsScreen(
                     null
                 }
                 val hasEpisodes = meta.videos.any { it.season != null || it.episode != null }
+                val downloadAction = if (metaScreenSettingsUiState.showDownloadAction && hasEpisodes) {
+                    DetailSecondaryAction(
+                        label = stringResource(Res.string.streams_download_file),
+                        icon = Icons.Default.Download,
+                        onClick = {
+                            episodeDownloadRequest = EpisodeDownloadRequest(
+                                initialEpisodes = emptyList(),
+                                showStartPrompt = true,
+                            )
+                        },
+                    )
+                } else if (metaScreenSettingsUiState.showDownloadAction && meta.type == "movie") {
+                    DetailSecondaryAction(
+                        label = stringResource(Res.string.streams_download_file),
+                        icon = Icons.Default.Download,
+                        onClick = {
+                            episodeDownloadRequest = EpisodeDownloadRequest(
+                                initialEpisodes = emptyList(),
+                                showStartPrompt = false,
+                            )
+                        },
+                    )
+                } else {
+                    null
+                }
                 val hasProductionSection = remember(meta) {
                     meta.productionCompanies.isNotEmpty() || meta.networks.isNotEmpty()
                 }
@@ -1138,6 +1182,7 @@ fun MetaDetailsScreen(
                                 onPrimaryPlayClick = onPrimaryPlayClick,
                                 onPrimaryPlayLongClick = onPrimaryPlayLongClick,
                                 featuredAction = randomEpisodeAction,
+                                downloadAction = downloadAction,
                                 onSaveClick = toggleSaved,
                                 onSaveLongClick = openLibraryListPicker,
                                 onWatchedClick = toggleWatched,
@@ -1158,6 +1203,7 @@ fun MetaDetailsScreen(
                                 commentsPageCount = commentsPageCount,
                                 commentsError = commentsError,
                                 episodeImdbRatings = episodeImdbRatings,
+                                episodeTmdbRatings = episodeTmdbRatings,
                                 onRetryComments = {
                                     detailsScope.launch {
                                         isCommentsLoading = true
@@ -1356,10 +1402,26 @@ fun MetaDetailsScreen(
                                         areCurrentlyWatched = isSeasonWatched,
                                     )
                                 },
+                                onDownload = {
+                                    episodeDownloadRequest = EpisodeDownloadRequest(
+                                        initialEpisodes = listOf(selectedEpisode),
+                                        showStartPrompt = false,
+                                    )
+                                },
                                 showPlayManually = showManualPlayOption,
                                 onPlayManually = {
                                     onEpisodeManualPlayClick(selectedEpisode)
                                 },
+                            )
+                        }
+
+                        episodeDownloadRequest?.let { request ->
+                            EpisodeDownloadFlowSheet(
+                                meta = meta,
+                                defaultEpisode = seriesActionVideo,
+                                initialEpisodes = request.initialEpisodes,
+                                showStartPrompt = request.showStartPrompt,
+                                onDismiss = { episodeDownloadRequest = null },
                             )
                         }
 
@@ -1628,6 +1690,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     onPrimaryPlayClick: () -> Unit,
     onPrimaryPlayLongClick: (() -> Unit)?,
     featuredAction: DetailSecondaryAction? = null,
+    downloadAction: DetailSecondaryAction? = null,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
@@ -1648,6 +1711,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     commentsPageCount: Int,
     commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
+    episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -1713,6 +1777,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     onPrimaryPlayClick = onPrimaryPlayClick,
                     onPrimaryPlayLongClick = onPrimaryPlayLongClick,
                     featuredAction = featuredAction,
+                    downloadAction = downloadAction,
                     onSaveClick = onSaveClick,
                     onSaveLongClick = onSaveLongClick,
                     onWatchedClick = onWatchedClick,
@@ -1733,6 +1798,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     commentsPageCount = commentsPageCount,
                     commentsError = commentsError,
                     episodeImdbRatings = episodeImdbRatings,
+                    episodeTmdbRatings = episodeTmdbRatings,
                     onRetryComments = onRetryComments,
                     onLoadMoreComments = onLoadMoreComments,
                     onCommentClick = onCommentClick,
@@ -1863,6 +1929,7 @@ private fun ConfiguredMetaSections(
     onPrimaryPlayClick: () -> Unit,
     onPrimaryPlayLongClick: (() -> Unit)?,
     featuredAction: DetailSecondaryAction? = null,
+    downloadAction: DetailSecondaryAction? = null,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
@@ -1883,6 +1950,7 @@ private fun ConfiguredMetaSections(
     commentsPageCount: Int,
     commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
+    episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -1924,8 +1992,9 @@ private fun ConfiguredMetaSections(
             MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
                     playLabel = playButtonLabel,
-                    featuredAction = featuredAction,
-                    secondaryActions = listOf(
+                    featuredAction = downloadAction,
+                    secondaryActions = listOfNotNull(
+                        featuredAction,
                         DetailSecondaryAction(
                             label = if (isWatched) {
                                 stringResource(Res.string.hero_mark_unwatched)
@@ -1962,7 +2031,11 @@ private fun ConfiguredMetaSections(
                 )
             }
             MetaScreenSectionKey.OVERVIEW -> {
-                DetailMetaInfo(meta = meta)
+                DetailMetaInfo(
+                    meta = meta,
+                    episodeImdbRatings = episodeImdbRatings,
+                    episodeTmdbRatings = episodeTmdbRatings,
+                )
             }
             MetaScreenSectionKey.PRODUCTION -> {
                 if (hasProductionSection) {

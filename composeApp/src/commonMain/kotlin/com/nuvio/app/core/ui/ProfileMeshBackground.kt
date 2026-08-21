@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.lerp
 fun ProfileMeshBackground(
     profileColor: Color,
     modifier: Modifier = Modifier,
+    secondaryColor: Color? = null,
+    tertiaryColor: Color? = null,
 ) {
     val animatedProfileColor by animateColorAsState(
         targetValue = profileColor,
@@ -26,8 +28,10 @@ fun ProfileMeshBackground(
     )
     val baseColor = Color.Black
     val primaryMeshColor = lerp(baseColor, animatedProfileColor, 0.58f)
-    val secondaryMeshColor = lerp(animatedProfileColor, MaterialTheme.colorScheme.secondary, 0.32f)
-    val tertiaryMeshColor = lerp(animatedProfileColor, MaterialTheme.colorScheme.tertiary, 0.28f)
+    val secondaryMeshColor = secondaryColor
+        ?: lerp(animatedProfileColor, MaterialTheme.colorScheme.secondary, 0.32f)
+    val tertiaryMeshColor = tertiaryColor
+        ?: lerp(animatedProfileColor, MaterialTheme.colorScheme.tertiary, 0.28f)
 
     Box(
         modifier = modifier

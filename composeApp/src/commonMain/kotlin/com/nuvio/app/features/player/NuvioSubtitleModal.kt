@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import nuvio.composeapp.generated.resources.Res
@@ -99,7 +100,7 @@ internal fun NuvioSubtitleModal(
     onBuiltInTrackSelected: (Int) -> Unit,
     onAddonSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetchAddonSubtitles: () -> Unit,
-    onStyleChanged: (SubtitleStyleState) -> Unit,
+    onStyleChanged: ((SubtitleStyleState) -> SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,
@@ -111,8 +112,10 @@ internal fun NuvioSubtitleModal(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val useTvLayout = isTvLayoutProfileEnabled()
+    val uiScale = if (useTvLayout) 1.8f else 1f
     val effectiveSelectedAddonSubtitle = selectedAddonSubtitle ?: addonSubtitles.firstOrNull { subtitle ->
-        subtitle.id == selectedAddonSubtitleId || subtitle.url == selectedAddonSubtitleId
+        subtitle.selectionKey == selectedAddonSubtitleId || subtitle.url == selectedAddonSubtitleId
     }
     val playbackLanguageKey = selectedSubtitleLanguageKey(
         subtitleTracks = subtitleTracks,
@@ -176,14 +179,14 @@ internal fun NuvioSubtitleModal(
         onDismiss = onDismiss,
         modifier = modifier,
         contentPadding = if (activeTab == SubtitleTab.Sync) {
-            PaddingValues(start = 28.dp, end = 28.dp, top = 18.dp, bottom = 18.dp)
+            PaddingValues(start = 28.dp * uiScale, end = 28.dp * uiScale, top = 18.dp * uiScale, bottom = 18.dp * uiScale)
         } else {
-            PaddingValues(start = 52.dp, end = 52.dp, top = 36.dp, bottom = 76.dp)
+            PaddingValues(start = 52.dp * uiScale, end = 52.dp * uiScale, top = 36.dp * uiScale, bottom = 76.dp * uiScale)
         },
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val availableWidth = maxWidth
-            val railMaxHeight = (maxHeight - 72.dp).coerceAtLeast(120.dp)
+            val railMaxHeight = (maxHeight - 72.dp * uiScale).coerceAtLeast(120.dp)
 
             if (activeTab == SubtitleTab.Sync) {
                 Column(
@@ -235,7 +238,7 @@ internal fun NuvioSubtitleModal(
                 ) {
                     SubtitleRail(
                         title = stringResource(Res.string.compose_player_languages),
-                        width = 200.dp,
+                        width = 200.dp * uiScale,
                     ) {
                         LazyColumn(
                             modifier = Modifier.heightIn(max = railMaxHeight),
@@ -256,8 +259,15 @@ internal fun NuvioSubtitleModal(
                                         pendingOptionId = playbackOptionId?.takeIf { id ->
                                             availableOptions.any { it.id == id }
                                         }
-                                        if (item.key == SubtitleOffLanguageKey) {
-                                            onBuiltInTrackSelected(-1)
+                                        when {
+                                            item.key == SubtitleOffLanguageKey -> onBuiltInTrackSelected(-1)
+                                            availableOptions.size == 1 -> {
+                                                pendingOptionId = availableOptions.single().id
+                                                when (val option = availableOptions.single()) {
+                                                    is SubtitleSelectionOption.BuiltIn -> onBuiltInTrackSelected(option.track.index)
+                                                    is SubtitleSelectionOption.Addon -> onAddonSubtitleSelected(option.subtitle)
+                                                }
+                                            }
                                         }
                                     },
                                 )
@@ -272,7 +282,7 @@ internal fun NuvioSubtitleModal(
                     ) {
                         SubtitleRail(
                             title = stringResource(Res.string.compose_player_subtitles),
-                            width = 300.dp,
+                            width = 300.dp * uiScale,
                         ) {
                             when {
                                 options.isEmpty() && isLoadingAddonSubtitles -> {
@@ -323,7 +333,7 @@ internal fun NuvioSubtitleModal(
                     ) {
                         SubtitleRail(
                             title = stringResource(Res.string.compose_player_style),
-                            width = 280.dp,
+                            width = 280.dp * uiScale,
                         ) {
                             Column(
                                 modifier = Modifier

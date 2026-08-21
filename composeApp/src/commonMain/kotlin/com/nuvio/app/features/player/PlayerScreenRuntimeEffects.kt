@@ -226,6 +226,17 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         subtitleAutoSyncState = SubtitleAutoSyncUiState()
     }
 
+    LaunchedEffect(activeVideoId) {
+        // External add-on tracks are tied to one episode and must not leak into the next
+        // one, even when a provider reuses the same playback URL.
+        if (useCustomSubtitles) playerController?.clearExternalSubtitle()
+        selectedAddonSubtitleId = null
+        selectedSubtitleIndex = -1
+        useCustomSubtitles = false
+        manualSubtitleSelectionLocked = false
+        autoAddonFallbackPending = false
+    }
+
     LaunchedEffect(playerController, subtitleDelayMs) {
         playerController?.setSubtitleDelayMs(subtitleDelayMs)
     }
@@ -278,6 +289,26 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         if (autoFetchedAddonSubtitlesForKey == fetchKey) return@LaunchedEffect
         autoFetchedAddonSubtitlesForKey = fetchKey
         fetchAddonSubtitlesForActiveItem()
+    }
+
+    LaunchedEffect(autoAddonFallbackPending, visibleAddonSubtitles, activeVideoId) {
+        if (!autoAddonFallbackPending || useCustomSubtitles || manualSubtitleSelectionLocked) {
+            return@LaunchedEffect
+        }
+        val targets = preferredSubtitleTargetsForSettings(playerSettingsUiState)
+        val currentEpisodeSubtitle = targets.firstNotNullOfOrNull { target ->
+            visibleAddonSubtitles.firstOrNull { subtitle ->
+                languageMatchesPreference(subtitle.language, target)
+            }
+        } ?: return@LaunchedEffect
+
+        // visibleAddonSubtitles preserves the installed add-on order. A matching add-on
+        // is selected only after the built-in pass has failed for this episode.
+        selectedAddonSubtitleId = currentEpisodeSubtitle.selectionKey
+        selectedSubtitleIndex = -1
+        useCustomSubtitles = true
+        autoAddonFallbackPending = false
+        playerController?.setSubtitleUri(currentEpisodeSubtitle.url)
     }
 
     LaunchedEffect(playbackSnapshot.isLoading, playerController) {

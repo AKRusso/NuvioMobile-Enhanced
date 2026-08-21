@@ -19,6 +19,21 @@ import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+internal fun p2pPlaybackStreamType(streamType: String?, filename: String?): String? {
+    val declaredType = streamType?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+    if (declaredType != null && declaredType != "direct") return declaredType
+
+    val extension = filename
+        ?.substringBefore('#')
+        ?.substringBefore('?')
+        ?.substringAfterLast('.')
+        ?.lowercase()
+    return when (extension) {
+        "mkv", "mk3d" -> "matroska"
+        else -> declaredType
+    }
+}
+
 internal fun PlayerScreenRuntime.resolveDebridForPlayer(
     stream: StreamItem,
     season: Int?,
@@ -180,7 +195,7 @@ internal fun PlayerScreenRuntime.switchToP2pSourceStream(stream: StreamItem) {
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
     activeExternalSubtitles = stream.externalSubtitles
-    activeStreamType = null
+    activeStreamType = p2pPlaybackStreamType(stream.streamType, stream.behaviorHints.filename)
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename
@@ -225,7 +240,7 @@ internal fun PlayerScreenRuntime.switchToP2pEpisodeStream(
     activeSourceHeaders = emptyMap()
     activeSourceResponseHeaders = emptyMap()
     activeExternalSubtitles = stream.externalSubtitles
-    activeStreamType = null
+    activeStreamType = p2pPlaybackStreamType(stream.streamType, stream.behaviorHints.filename)
     activeTorrentInfoHash = infoHash
     activeTorrentFileIdx = stream.p2pFileIdx
     activeTorrentFilename = stream.behaviorHints.filename

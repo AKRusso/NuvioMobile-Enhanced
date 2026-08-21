@@ -201,8 +201,7 @@ object StreamAutoPlaySelector {
             (
                 AppFeaturePolicy.p2pEnabled &&
                     needsLocalDebridResolve &&
-                    p2pInfoHash != null &&
-                    !isPendingDebridAutoPlay(debridEnabled, activeResolverProviderId)
+                    p2pInfoHash != null
             ) ||
             (debridEnabled && isAddonDebridCandidate && isReadyDebridAutoPlay(activeResolverProviderId))
 

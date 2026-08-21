@@ -97,6 +97,7 @@ import com.nuvio.app.core.ui.DisintegratingContainer
 import com.nuvio.app.core.ui.NuvioDropdownChip
 import com.nuvio.app.core.ui.NuvioDropdownOption
 import com.nuvio.app.core.ui.NuvioScreen
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioViewAllPillSize
@@ -381,7 +382,8 @@ fun LibraryScreen(
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val gridColumns = remember(maxWidth) { posterGridColumnCountForWidth(maxWidth) }
+        val tvLayout = LocalTvLayoutProfile.current.enabled
+        val gridColumns = remember(maxWidth, tvLayout) { posterGridColumnCountForWidth(maxWidth, tvLayout) }
 
         NuvioScreen(
             modifier = Modifier.fillMaxSize(),
@@ -658,7 +660,10 @@ private fun LazyListScope.downloadsLibraryContent(
     onDownloadsClick: (() -> Unit)?,
     onSelectDownload: (DownloadItem) -> Unit,
 ) {
-    val activeItems = uiState.activeItems.sortedByDescending { it.updatedAtEpochMs }
+    // Progress callbacks update updatedAtEpochMs several times per second. Ordering the
+    // horizontal rail by that field makes cards jump below the user's finger and looks
+    // like progress has moved between series.
+    val activeItems = uiState.activeItems.sortedByDescending { it.createdAtEpochMs }
     val completedMovies = uiState.completedItems
         .filterNot(DownloadItem::isEpisode)
         .sortedByDescending { it.updatedAtEpochMs }
@@ -694,7 +699,7 @@ private fun LazyListScope.downloadsLibraryContent(
         item(key = "library-downloads-active") {
             NuvioShelfSection(
                 title = stringResource(Res.string.downloads_section_downloading),
-                entries = activeItems.take(LIBRARY_DOWNLOADS_PREVIEW_LIMIT),
+                entries = activeItems,
                 headerHorizontalPadding = 16.dp,
                 rowContentPadding = PaddingValues(horizontal = 16.dp),
                 showHeaderAccent = showHeaderAccent,
@@ -913,6 +918,7 @@ private fun LibraryDownloadActionSheet(
             Res.string.downloads_status_downloading,
             item.downloadSizeLabel(),
         )
+        DownloadStatus.Waiting -> stringResource(Res.string.downloads_status_waiting)
         DownloadStatus.Paused -> stringResource(
             Res.string.downloads_status_paused,
             item.downloadSizeLabel(),
@@ -998,6 +1004,9 @@ private fun LibraryDownloadActionSheet(
                             title = stringResource(Res.string.downloads_action_pause),
                             onClick = { dismissAfter { DownloadsRepository.pauseDownload(item.id) } },
                         )
+                        DownloadStatus.Waiting -> {
+                            // Queued behind an active download; only removal is offered.
+                        }
                         DownloadStatus.Paused -> LibraryDownloadActionRow(
                             icon = Icons.Rounded.PlayArrow,
                             title = stringResource(Res.string.downloads_action_resume),
@@ -1866,7 +1875,9 @@ private fun LibrarySourceSwitch(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         LibraryChip(

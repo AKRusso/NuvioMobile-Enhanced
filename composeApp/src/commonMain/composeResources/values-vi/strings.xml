@@ -1990,4 +1990,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Số tiền hiển thị là trước phí thanh toán và ngân hàng, nên số tiền nhận được có thể thấp hơn.</string>
+    <string name="downloads_download_settings">Cài đặt tải xuống</string>
+    <string name="downloads_auto_select">Tự động chọn</string>
+    <string name="downloads_auto_select_desc">Tự động chọn nguồn tốt nhất có sẵn cho mỗi tập.</string>
+    <string name="downloads_preferred_quality">Chất lượng ưa thích</string>
+    <string name="downloads_download_mode">Chế độ tải xuống</string>
+    <string name="downloads_download_all_at_once">Tất cả cùng lúc</string>
+    <string name="downloads_download_one_at_a_time">Từng tập một</string>
+    <string name="downloads_automatic">Tự động</string>
+    <string name="downloads_quality_best">Tốt nhất</string>
+    <string name="downloads_auto_selecting">Đang chọn nguồn…</string>
+    <string name="downloads_download_started">Đã bắt đầu tải xuống</string>
+    <string name="downloads_status_waiting">Đang chờ</string>
 </resources>

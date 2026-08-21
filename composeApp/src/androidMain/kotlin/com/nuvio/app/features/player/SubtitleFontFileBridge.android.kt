@@ -2,10 +2,12 @@ package com.nuvio.app.features.player
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Typeface
 import android.provider.OpenableColumns
 import androidx.appcompat.app.AppCompatActivity
 import java.io.File
 import java.lang.ref.WeakReference
+import java.util.UUID
 
 internal actual object SubtitleFontFileBridge {
     private const val requestImportFont = 51061
@@ -37,16 +39,6 @@ internal actual object SubtitleFontFileBridge {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
-                putExtra(
-                    Intent.EXTRA_MIME_TYPES,
-                    arrayOf(
-                        "font/ttf",
-                        "font/otf",
-                        "application/font-sfnt",
-                        "application/vnd.ms-opentype",
-                        "application/octet-stream",
-                    ),
-                )
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             activity.startActivityForResult(intent, requestImportFont)
@@ -81,11 +73,25 @@ internal actual object SubtitleFontFileBridge {
         val extension = displayName.substringAfterLast('.', "ttf").lowercase().let { ext ->
             if (ext in setOf("ttf", "otf")) ext else "ttf"
         }
-        val destinationDir = File(activity.filesDir, "subtitle-fonts").apply { mkdirs() }
+        val fontsRoot = File(activity.filesDir, "subtitle-fonts").apply { mkdirs() }
+        check(fontsRoot.isDirectory) { "Could not create the font storage directory." }
+        // libmpv/libass receive only the selected file's parent directory. Keeping each
+        // import isolated prevents an older font with the same embedded family winning.
+        val destinationDir = File(fontsRoot, UUID.randomUUID().toString()).apply { mkdirs() }
+        check(destinationDir.isDirectory) { "Could not create the font storage directory." }
+        val temporary = File(destinationDir, ".font-import.$extension")
         val destination = File(destinationDir, "custom-subtitle-font.$extension")
-        resolver.openInputStream(uri)?.use { input ->
-            destination.outputStream().use { output -> input.copyTo(output) }
-        } ?: error("Could not read font file.")
+        try {
+            resolver.openInputStream(uri)?.use { input ->
+                temporary.outputStream().use { output -> input.copyTo(output) }
+            } ?: error("Could not read font file.")
+            check(temporary.length() > 0L) { "The selected font file is empty." }
+            Typeface.createFromFile(temporary)
+            check(temporary.renameTo(destination)) { "Could not save the selected font file." }
+        } finally {
+            temporary.delete()
+            if (!destination.exists()) destinationDir.delete()
+        }
         val embeddedFamily = subtitleFontFamilyName(destination.absolutePath)
         SubtitleFontImportResult(
             displayName = embeddedFamily ?: displayName.substringBeforeLast('.').ifBlank { displayName },

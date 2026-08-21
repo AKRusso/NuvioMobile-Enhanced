@@ -2391,4 +2391,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">المبلغ المعروض قبل رسوم الدفع والبنوك، لذلك قد يكون المبلغ المستلم أقل.</string>
+    <string name="downloads_download_settings">إعدادات التنزيل</string>
+    <string name="downloads_auto_select">التحديد التلقائي</string>
+    <string name="downloads_auto_select_desc">اختر أفضل مصدر متاح تلقائيًا لكل حلقة.</string>
+    <string name="downloads_preferred_quality">الجودة المفضلة</string>
+    <string name="downloads_download_mode">وضع التنزيل</string>
+    <string name="downloads_download_all_at_once">الكل دفعة واحدة</string>
+    <string name="downloads_download_one_at_a_time">واحد تلو الآخر</string>
+    <string name="downloads_automatic">تلقائي</string>
+    <string name="downloads_quality_best">الأفضل</string>
+    <string name="downloads_auto_selecting">جارٍ تحديد المصادر…</string>
+    <string name="downloads_download_started">بدأ التنزيل</string>
+    <string name="downloads_status_waiting">في الانتظار</string>
 </resources>

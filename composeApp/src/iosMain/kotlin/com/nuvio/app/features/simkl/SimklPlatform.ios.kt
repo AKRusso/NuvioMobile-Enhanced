@@ -69,6 +69,7 @@ internal actual object SimklAuthStorage {
     private const val METADATA_KEY = "simkl_auth_metadata"
     private const val ACCESS_TOKEN_KEY = "simkl_access_token"
     private const val CODE_VERIFIER_KEY = "simkl_code_verifier"
+    private const val MANUAL_CLIENT_ID_KEY = "simkl_manual_client_id"
     private const val KEYCHAIN_SERVICE = "com.nuvio.media.simkl"
 
     actual fun loadMetadataPayload(): String? =
@@ -86,10 +87,15 @@ internal actual object SimklAuthStorage {
 
     actual fun saveCodeVerifier(value: String?) = saveKeychainValue(CODE_VERIFIER_KEY, value)
 
+    actual fun loadManualClientId(): String? = loadKeychainValue(MANUAL_CLIENT_ID_KEY)
+
+    actual fun saveManualClientId(value: String?) = saveKeychainValue(MANUAL_CLIENT_ID_KEY, value)
+
     actual fun removeProfile(profileId: Int) {
         NSUserDefaults.standardUserDefaults.removeObjectForKey(ProfileScopedKey.of(METADATA_KEY, profileId))
         deleteKeychainValue(ACCESS_TOKEN_KEY, profileId)
         deleteKeychainValue(CODE_VERIFIER_KEY, profileId)
+        deleteKeychainValue(MANUAL_CLIENT_ID_KEY, profileId)
     }
 
     @OptIn(ExperimentalForeignApi::class)

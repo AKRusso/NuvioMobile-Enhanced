@@ -9,6 +9,9 @@ internal const val SIMKL_AUTHORIZE_URL = "https://simkl.com/oauth/authorize"
 internal val simklAppVersion: String
     get() = AppVersionConfig.VERSION_NAME.ifBlank { "dev" }
 
+internal val effectiveSimklClientId: String
+    get() = SimklConfig.CLIENT_ID.ifBlank { SimklAuthStorage.loadManualClientId().orEmpty() }.trim()
+
 internal fun buildSimklApiUrl(
     path: String,
     query: Map<String, String> = emptyMap(),
@@ -18,7 +21,7 @@ internal fun buildSimklApiUrl(
     }
     val parameters = linkedMapOf<String, String>().apply {
         putAll(query)
-        put("client_id", SimklConfig.CLIENT_ID)
+        put("client_id", effectiveSimklClientId)
         put("app-name", SimklConfig.APP_NAME)
         put("app-version", simklAppVersion)
     }

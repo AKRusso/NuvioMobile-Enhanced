@@ -1988,4 +1988,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Het getoonde bedrag is voor betalings- en bankkosten, dus het ontvangen bedrag kan lager zijn.</string>
+    <string name="downloads_download_settings">Downloadinstellingen</string>
+    <string name="downloads_auto_select">Automatische selectie</string>
+    <string name="downloads_auto_select_desc">Kiest automatisch de beste beschikbare bron voor elke aflevering.</string>
+    <string name="downloads_preferred_quality">Voorkeurskwaliteit</string>
+    <string name="downloads_download_mode">Downloadmodus</string>
+    <string name="downloads_download_all_at_once">Alles tegelijk</string>
+    <string name="downloads_download_one_at_a_time">Eén voor één</string>
+    <string name="downloads_automatic">Automatisch</string>
+    <string name="downloads_quality_best">Beste</string>
+    <string name="downloads_auto_selecting">Bronnen selecteren…</string>
+    <string name="downloads_download_started">Downloads gestart</string>
+    <string name="downloads_status_waiting">Wachten</string>
 </resources>

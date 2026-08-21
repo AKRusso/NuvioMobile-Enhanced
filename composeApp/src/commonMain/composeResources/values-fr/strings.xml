@@ -2043,4 +2043,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Le montant affiché est avant les frais de paiement et bancaires, le montant reçu peut donc être inférieur.</string>
+    <string name="downloads_download_settings">Paramètres de téléchargement</string>
+    <string name="downloads_auto_select">Sélection automatique</string>
+    <string name="downloads_auto_select_desc">Choisit automatiquement la meilleure source disponible pour chaque épisode.</string>
+    <string name="downloads_preferred_quality">Qualité préférée</string>
+    <string name="downloads_download_mode">Mode de téléchargement</string>
+    <string name="downloads_download_all_at_once">Tout à la fois</string>
+    <string name="downloads_download_one_at_a_time">Un à la fois</string>
+    <string name="downloads_automatic">Automatique</string>
+    <string name="downloads_quality_best">Meilleure</string>
+    <string name="downloads_auto_selecting">Sélection des sources…</string>
+    <string name="downloads_download_started">Téléchargements démarrés</string>
+    <string name="downloads_status_waiting">En attente</string>
 </resources>

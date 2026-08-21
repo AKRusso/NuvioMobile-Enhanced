@@ -2391,4 +2391,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Указанная сумма приведена до вычета платежных и банковских комиссий, поэтому полученная сумма может быть меньше.</string>
+    <string name="downloads_download_settings">Настройки загрузки</string>
+    <string name="downloads_auto_select">Автовыбор</string>
+    <string name="downloads_auto_select_desc">Автоматически выбирает лучший доступный источник для каждой серии.</string>
+    <string name="downloads_preferred_quality">Предпочтительное качество</string>
+    <string name="downloads_download_mode">Режим загрузки</string>
+    <string name="downloads_download_all_at_once">Все сразу</string>
+    <string name="downloads_download_one_at_a_time">По одному</string>
+    <string name="downloads_automatic">Автоматически</string>
+    <string name="downloads_quality_best">Лучшее</string>
+    <string name="downloads_auto_selecting">Выбор источников…</string>
+    <string name="downloads_download_started">Загрузка началась</string>
+    <string name="downloads_status_waiting">Ожидание</string>
 </resources>

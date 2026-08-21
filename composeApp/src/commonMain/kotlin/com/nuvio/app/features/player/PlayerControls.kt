@@ -141,7 +141,7 @@ internal fun PlayerControlsShell(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                .height(metrics.topGradientHeight)
                     .align(Alignment.TopCenter)
                     .background(
                         Brush.verticalGradient(
@@ -155,10 +155,10 @@ internal fun PlayerControlsShell(
         }
 
         if (showPlaybackControls) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(metrics.bottomGradientHeight)
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
@@ -745,7 +745,7 @@ private fun SideControlButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = Color.White,
-            modifier = Modifier.size(metrics.playIconSize),
+            modifier = Modifier.size(metrics.sideIconSize),
         )
     }
 }
@@ -844,8 +844,8 @@ private fun ProgressControls(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp)
-                .padding(top = 4.dp, bottom = 8.dp),
+                .padding(horizontal = metrics.timeRowHorizontalPadding)
+                .padding(top = metrics.timeRowTopPadding, bottom = metrics.timeRowBottomPadding),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -858,31 +858,37 @@ private fun ProgressControls(
         ) {
             Surface(
                 color = Color.Black.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(metrics.actionCornerRadius),
                 modifier = Modifier.border(
                     width = 1.dp,
                     color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(metrics.actionCornerRadius),
                 ),
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                    modifier = Modifier.padding(
+                        horizontal = metrics.actionGroupHorizontalPadding,
+                        vertical = metrics.actionGroupVerticalPadding,
+                    ),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlayerActionPillButton(
                         label = stringResource(resizeMode.labelRes),
+                        metrics = metrics,
                         painter = aspectRatioPainter,
                         onClick = onResizeModeClick,
                     )
                     PlayerActionPillButton(
                         label = formatPlaybackSpeedLabel(playbackSnapshot.playbackSpeed),
+                        metrics = metrics,
                         icon = Icons.Rounded.Speed,
                         onClick = onSpeedClick,
                     )
                     if (onSubtitleClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_subs),
+                            metrics = metrics,
                             painter = subtitlesPainter,
                             onClick = onSubtitleClick,
                         )
@@ -890,6 +896,7 @@ private fun ProgressControls(
                     if (onSubtitleSyncClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_sync_short),
+                            metrics = metrics,
                             icon = Icons.Rounded.Tune,
                             onClick = onSubtitleSyncClick,
                         )
@@ -897,6 +904,7 @@ private fun ProgressControls(
                     if (onAudioClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_audio),
+                            metrics = metrics,
                             painter = audioPainter,
                             onClick = onAudioClick,
                         )
@@ -904,12 +912,14 @@ private fun ProgressControls(
                     if (onQualityClick != null) {
                         PlayerActionPillButton(
                             label = qualityLabel?.takeIf { it.isNotBlank() } ?: "Quality",
+                            metrics = metrics,
                             onClick = onQualityClick,
                         )
                     }
                     if (onChannelsClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.live_tv_player_channels),
+                            metrics = metrics,
                             icon = Icons.Rounded.Tv,
                             onClick = onChannelsClick,
                         )
@@ -917,6 +927,7 @@ private fun ProgressControls(
                     if (onSourcesClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_sources),
+                            metrics = metrics,
                             icon = Icons.Rounded.SwapHoriz,
                             onClick = onSourcesClick,
                         )
@@ -924,6 +935,7 @@ private fun ProgressControls(
                     if (onEpisodesClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_episodes),
+                            metrics = metrics,
                             icon = Icons.Rounded.VideoLibrary,
                             onClick = onEpisodesClick,
                         )
@@ -931,6 +943,7 @@ private fun ProgressControls(
                     if (onNextEpisodeClick != null) {
                         PlayerActionPillButton(
                             label = stringResource(Res.string.compose_player_next_ep),
+                            metrics = metrics,
                             icon = Icons.Filled.SkipNext,
                             onClick = onNextEpisodeClick,
                             statusIndicator = when {
@@ -1020,7 +1033,7 @@ internal fun LockedPlayerOverlay(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .height(metrics.bottomGradientHeight)
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
@@ -1123,6 +1136,7 @@ private fun TimePill(
 @Composable
 private fun PlayerActionPillButton(
     label: String,
+    metrics: PlayerLayoutMetrics,
     onClick: () -> Unit,
     icon: ImageVector? = null,
     painter: Painter? = null,
@@ -1130,10 +1144,10 @@ private fun PlayerActionPillButton(
 ) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(metrics.actionCornerRadius))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = metrics.actionHorizontalPadding, vertical = metrics.actionVerticalPadding),
+        horizontalArrangement = Arrangement.spacedBy(metrics.actionGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {
@@ -1141,19 +1155,19 @@ private fun PlayerActionPillButton(
                 painter = painter,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(metrics.actionIconSize),
             )
 
             icon != null -> Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = Color.White,
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(metrics.actionIconSize),
             )
         }
         Text(
             text = label,
-            style = MaterialTheme.nuvioTypeScale.labelSm,
+            style = MaterialTheme.nuvioTypeScale.labelSm.copy(fontSize = metrics.actionTextSize),
             color = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

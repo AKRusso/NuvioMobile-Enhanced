@@ -742,4 +742,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">הסכום המוצג הוא לפני עמלות תשלום ובנק, לכן הסכום המתקבל עשוי להיות נמוך יותר.</string>
+    <string name="downloads_download_settings">הגדרות הורדה</string>
+    <string name="downloads_auto_select">בחירה אוטומטית</string>
+    <string name="downloads_auto_select_desc">בוחר אוטומטית את המקור הטוב ביותר הזמין לכל פרק.</string>
+    <string name="downloads_preferred_quality">איכות מועדפת</string>
+    <string name="downloads_download_mode">מצב הורדה</string>
+    <string name="downloads_download_all_at_once">בבת אחת</string>
+    <string name="downloads_download_one_at_a_time">אחד בכל פעם</string>
+    <string name="downloads_automatic">אוטומטי</string>
+    <string name="downloads_quality_best">הטוב ביותר</string>
+    <string name="downloads_auto_selecting">בחירת מקורות…</string>
+    <string name="downloads_download_started">ההורדות החלו</string>
+    <string name="downloads_status_waiting">בהמתנה</string>
 </resources>

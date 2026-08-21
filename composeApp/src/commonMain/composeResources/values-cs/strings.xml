@@ -1999,4 +1999,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Zobrazená částka je před poplatky za platbu a bankovními poplatky, takže přijatá částka může být nižší.</string>
+    <string name="downloads_download_settings">Nastavení stahování</string>
+    <string name="downloads_auto_select">Automatický výběr</string>
+    <string name="downloads_auto_select_desc">Automaticky vybere nejlepší dostupný zdroj pro každou epizodu.</string>
+    <string name="downloads_preferred_quality">Preferovaná kvalita</string>
+    <string name="downloads_download_mode">Režim stahování</string>
+    <string name="downloads_download_all_at_once">Vše najednou</string>
+    <string name="downloads_download_one_at_a_time">Postupně</string>
+    <string name="downloads_automatic">Automaticky</string>
+    <string name="downloads_quality_best">Nejlepší</string>
+    <string name="downloads_auto_selecting">Výběr zdrojů…</string>
+    <string name="downloads_download_started">Stahování spuštěno</string>
+    <string name="downloads_status_waiting">Čeká se</string>
 </resources>

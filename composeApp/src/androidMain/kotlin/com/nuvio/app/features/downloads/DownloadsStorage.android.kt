@@ -8,6 +8,7 @@ internal actual object DownloadsStorage {
     private const val preferencesName = "nuvio_downloads"
     private const val payloadKey = "downloads_payload"
     private const val externalFolderUriKey = "external_folder_uri"
+    private const val episodeDownloadSettingsKey = "episode_download_settings"
 
     private var preferences: SharedPreferences? = null
 
@@ -39,5 +40,15 @@ internal actual object DownloadsStorage {
                 }
                 editor.apply()
             }
+    }
+
+    actual fun loadEpisodeDownloadSettings(): String? =
+        preferences?.getString(ProfileScopedKey.of(episodeDownloadSettingsKey), null)
+
+    actual fun saveEpisodeDownloadSettings(payload: String) {
+        preferences
+            ?.edit()
+            ?.putString(ProfileScopedKey.of(episodeDownloadSettingsKey), payload)
+            ?.apply()
     }
 }

@@ -33,6 +33,7 @@ internal actual object SimklAuthStorage {
     private const val METADATA_KEY = "simkl_auth_metadata"
     private const val ACCESS_TOKEN_KEY = "simkl_access_token"
     private const val CODE_VERIFIER_KEY = "simkl_code_verifier"
+    private const val MANUAL_CLIENT_ID_KEY = "simkl_manual_client_id"
     private const val KEYSTORE_PROVIDER = "AndroidKeyStore"
     private const val KEY_ALIAS = "nuvio.simkl.credentials.v1"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
@@ -59,11 +60,16 @@ internal actual object SimklAuthStorage {
 
     actual fun saveCodeVerifier(value: String?) = saveEncrypted(CODE_VERIFIER_KEY, value)
 
+    actual fun loadManualClientId(): String? = loadEncrypted(MANUAL_CLIENT_ID_KEY)
+
+    actual fun saveManualClientId(value: String?) = saveEncrypted(MANUAL_CLIENT_ID_KEY, value)
+
     actual fun removeProfile(profileId: Int) {
         preferences?.edit()
             ?.remove(ProfileScopedKey.of(METADATA_KEY, profileId))
             ?.remove(ProfileScopedKey.of(ACCESS_TOKEN_KEY, profileId))
             ?.remove(ProfileScopedKey.of(CODE_VERIFIER_KEY, profileId))
+            ?.remove(ProfileScopedKey.of(MANUAL_CLIENT_ID_KEY, profileId))
             ?.apply()
     }
 

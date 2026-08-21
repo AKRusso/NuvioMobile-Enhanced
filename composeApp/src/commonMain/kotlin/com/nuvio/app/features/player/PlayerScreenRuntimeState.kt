@@ -118,7 +118,9 @@ internal class PlayerScreenRuntime(
             sourceUrl = sourceUrl,
         ),
     )
-    var activeStreamType by mutableStateOf(streamType)
+    var activeStreamType by mutableStateOf(
+        if (torrentInfoHash != null) p2pPlaybackStreamType(streamType, torrentFilename) else streamType,
+    )
     var activeTorrentInfoHash by mutableStateOf(torrentInfoHash)
     var activeTorrentFileIdx by mutableStateOf(torrentFileIdx)
     var activeTorrentFilename by mutableStateOf(torrentFilename)
@@ -219,6 +221,7 @@ internal class PlayerScreenRuntime(
     var selectedSubtitleIndex by mutableStateOf(-1)
     var selectedAddonSubtitleId by mutableStateOf<String?>(null)
     var useCustomSubtitles by mutableStateOf(false)
+    var autoAddonFallbackPending by mutableStateOf(false)
     var preferredAudioSelectionApplied by mutableStateOf(false)
     var preferredSubtitleSelectionApplied by mutableStateOf(false)
     var manualSubtitleSelectionLocked by mutableStateOf(false)

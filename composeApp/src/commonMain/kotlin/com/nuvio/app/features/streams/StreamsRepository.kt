@@ -421,6 +421,31 @@ object StreamsRepository {
                 ).firstOrNull() ?: badgeGroup
             }
 
+            fun tryAutoSelectAvailableStream() {
+                if (!isDirectAutoPlayFlow || autoSelectTriggered) return
+                val bingeGroupOnly = !timeoutElapsed
+                if (bingeGroupOnly && persistedBingeGroup == null) return
+                val allStreams = _uiState.value.groups.flatMap { it.streams }
+                if (allStreams.isEmpty()) return
+
+                val selected = StreamAutoPlaySelector.selectAutoPlayStream(
+                    streams = allStreams,
+                    mode = autoPlayMode,
+                    regexPattern = playerSettings.streamAutoPlayRegex,
+                    source = playerSettings.streamAutoPlaySource,
+                    installedAddonNames = installedAddonNames,
+                    selectedAddons = playerSettings.streamAutoPlaySelectedAddons,
+                    selectedPlugins = playerSettings.streamAutoPlaySelectedPlugins,
+                    preferredBingeGroup = persistedBingeGroup,
+                    preferBingeGroupInSelection = persistedBingeGroup != null,
+                    bingeGroupOnly = bingeGroupOnly,
+                    debridEnabled = debridSettings.canResolvePlayableLinks,
+                    activeResolverProviderId = debridSettings.activeResolverProviderId,
+                ) ?: return
+                autoSelectTriggered = true
+                _uiState.update { it.copy(autoPlayStream = selected) }
+            }
+
             fun publishAddonGroup(group: AddonStreamGroup) {
                 _uiState.update { current ->
                     val updated = StreamAutoPlaySelector.orderAddonStreams(
@@ -441,6 +466,7 @@ object StreamsRepository {
             fun publishAddonGroupAfterCacheCheck(group: AddonStreamGroup) {
                 if (group.addonId !in installedAddonIds || group.streams.isEmpty()) {
                     publishAddonGroup(presentStreamGroup(group))
+                    tryAutoSelectAvailableStream()
                     return
                 }
 
@@ -451,6 +477,7 @@ object StreamsRepository {
                 )
                 if (!shouldWaitForCacheCheck) {
                     publishAddonGroup(presentStreamGroup(group))
+                    tryAutoSelectAvailableStream()
                     return
                 }
 
@@ -461,6 +488,7 @@ object StreamsRepository {
 
                 // Show network results immediately; cache availability is an enrichment step.
                 publishAddonGroup(presentStreamGroup(checkingGroup))
+                tryAutoSelectAvailableStream()
 
                 val availabilityJob = launch {
                     val availabilityGroup = LocalDebridAvailabilityService.annotateCachedAvailability(
@@ -468,6 +496,7 @@ object StreamsRepository {
                         eligibleGroupIds = eligibleGroupIds,
                     ).firstOrNull() ?: checkingGroup
                     publishAddonGroup(presentStreamGroup(availabilityGroup))
+                    tryAutoSelectAvailableStream()
 
                     // Early binge-group match right after this addon's availability is resolved
                     if (isDirectAutoPlayFlow && !autoSelectTriggered && persistedBingeGroup != null && !timeoutElapsed) {
@@ -777,6 +806,7 @@ object StreamsRepository {
                                 emptyStateReason = updated.toEmptyStateReason(anyLoading),
                             )
                         }
+                        tryAutoSelectAvailableStream()
                     }
 
                 }
@@ -837,6 +867,7 @@ object StreamsRepository {
                             ),
                         )
                     }
+                    tryAutoSelectAvailableStream()
 
                     // Early binge-group match after each debrid-prepared stream
                     if (isDirectAutoPlayFlow && !autoSelectTriggered && persistedBingeGroup != null) {

@@ -1,12 +1,14 @@
 package com.nuvio.app.features.settings
 
 import androidx.compose.foundation.Image
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.app.core.ui.appTheme
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
@@ -20,7 +22,9 @@ internal fun AppBrandWordmark(
         AppIconRepository.state
     }.collectAsStateWithLifecycle()
     Image(
-        painter = painterResource((icon ?: state.selected).wordmarkResource),
+        painter = painterResource(
+            icon?.wordmarkResource ?: MaterialTheme.appTheme.wordmarkResource(state.selected),
+        ),
         contentDescription = contentDescription,
         modifier = modifier,
         contentScale = ContentScale.Fit,

@@ -24,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.action_donate
 import nuvio.composeapp.generated.resources.compose_about_nuvio_version_format
 import nuvio.composeapp.generated.resources.compose_about_version_format
 import nuvio.composeapp.generated.resources.compose_settings_page_account
@@ -55,6 +57,9 @@ import nuvio.composeapp.generated.resources.compose_settings_root_notifications_
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_description
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_section
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
+import nuvio.composeapp.generated.resources.nuvio_enhanced_footer_discord
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_discord_description
+import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_donate_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_privacy_policy_description
@@ -138,6 +143,7 @@ internal fun LazyListScope.settingsRootContent(
     }
     if (showEnhancedSection) {
         item {
+            val uriHandler = LocalUriHandler.current
             val enhancedSettings by remember {
                 NuvioEnhancedSettingsRepository.ensureLoaded()
                 NuvioEnhancedSettingsRepository.uiState
@@ -154,6 +160,26 @@ internal fun LazyListScope.settingsRootContent(
                         isTablet = isTablet,
                         highlighted = enhancedSettings.hasNewFeatures,
                         onClick = onNuvioEnhancedClick,
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.nuvio_enhanced_footer_discord),
+                        description = stringResource(Res.string.settings_nuvio_enhanced_discord_description),
+                        icon = Icons.Rounded.People,
+                        isTablet = isTablet,
+                        onClick = { uriHandler.openUri(NuvioEnhancedDiscordUrl) },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsNavigationRow(
+                        title = stringResource(Res.string.action_donate),
+                        description = stringResource(Res.string.settings_nuvio_enhanced_donate_description),
+                        icon = Icons.Rounded.Favorite,
+                        isTablet = isTablet,
+                        onClick = {
+                            CommunityConfig.DONATIONS_DONATE_URL
+                                .takeIf(String::isNotBlank)
+                                ?.let(uriHandler::openUri)
+                        },
                     )
                 }
             }
@@ -299,12 +325,9 @@ internal fun LazyListScope.settingsRootContent(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = if (isTablet) 20.dp else 16.dp),
         ) {
-            Text(
-                text = "NuvioEnhanced",
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
+            MemberBrandWordmark(
+                height = if (isTablet) 30.dp else 26.dp,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             Text(
                 text = "github.com/AKRusso/NuvioMobile-Enhanced",

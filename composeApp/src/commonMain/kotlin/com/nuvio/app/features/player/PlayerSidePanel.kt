@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.PlatformBackHandler
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import com.nuvio.app.core.ui.nuvio
 
 @Composable
@@ -50,6 +51,7 @@ internal fun PlayerSidePanel(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
+    val useTvLayout = isTvLayoutProfileEnabled()
     val backgroundInteraction = remember { MutableInteractionSource() }
     val panelInteraction = remember { MutableInteractionSource() }
 
@@ -71,8 +73,8 @@ internal fun PlayerSidePanel(
                     onClick = onDismiss,
                 ),
         ) {
-            val resolvedWidth = minOf(maxWidth, width)
-            val shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+            val resolvedWidth = minOf(maxWidth, if (useTvLayout) 900.dp else width)
+            val shape = if (useTvLayout) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
 
             AnimatedVisibility(
                 visible = visible,

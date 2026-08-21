@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="about_supporters_contributors_subtitle">Δημόσια αναγνώριση και συντελεστές του έργου</string>
     <string name="action_back">Πίσω</string>
@@ -1988,4 +1988,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Το εμφανιζόμενο ποσό είναι πριν από χρεώσεις πληρωμών και τραπεζών, επομένως το ποσό που λαμβάνεται μπορεί να είναι μικρότερο.</string>
+    <string name="downloads_download_settings">Ρυθμίσεις λήψης</string>
+    <string name="downloads_auto_select">Αυτόματη επιλογή</string>
+    <string name="downloads_auto_select_desc">Επιλέγει αυτόματα την καλύτερη διαθέσιμη πηγή για κάθε επεισόδιο.</string>
+    <string name="downloads_preferred_quality">Προτιμώμενη ποιότητα</string>
+    <string name="downloads_download_mode">Λειτουργία λήψης</string>
+    <string name="downloads_download_all_at_once">Όλα μαζί</string>
+    <string name="downloads_download_one_at_a_time">Ένα κάθε φορά</string>
+    <string name="downloads_automatic">Αυτόματα</string>
+    <string name="downloads_quality_best">Καλύτερο</string>
+    <string name="downloads_auto_selecting">Επιλογή πηγών…</string>
+    <string name="downloads_download_started">Ξεκίνησαν οι λήψεις</string>
+    <string name="downloads_status_waiting">Αναμονή</string>
 </resources>

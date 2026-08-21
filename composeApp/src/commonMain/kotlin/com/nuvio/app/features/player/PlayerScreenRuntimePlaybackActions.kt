@@ -83,6 +83,7 @@ internal fun PlayerScreenRuntime.resetIdentityStateIfNeeded() {
         preferredAudioSelectionApplied = false
         preferredSubtitleSelectionApplied = false
         manualSubtitleSelectionLocked = false
+        autoAddonFallbackPending = false
     }
 
     val videoIdentity = "$identity:$activeVideoId:$activeSeasonNumber:$activeEpisodeNumber"

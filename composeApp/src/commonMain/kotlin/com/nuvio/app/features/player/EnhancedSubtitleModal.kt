@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CloudDownload
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -78,7 +79,7 @@ internal fun EnhancedSubtitleModal(
     onBuiltInTrackSelected: (Int) -> Unit,
     onAddonSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetchAddonSubtitles: () -> Unit,
-    onStyleChanged: (SubtitleStyleState) -> Unit,
+    onStyleChanged: ((SubtitleStyleState) -> SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,
@@ -89,6 +90,10 @@ internal fun EnhancedSubtitleModal(
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val useTvLayout = isTvLayoutProfileEnabled()
+    val contentPadding = if (useTvLayout) 40.dp else 20.dp
+    val dialogMaxWidth = if (useTvLayout) 900.dp else 420.dp
+    val titleSize = if (useTvLayout) 34.sp else 18.sp
 
     AnimatedVisibility(
         visible = visible,
@@ -123,7 +128,7 @@ internal fun EnhancedSubtitleModal(
             ) {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = 420.dp)
+                        .widthIn(max = dialogMaxWidth)
                         .fillMaxWidth(0.9f)
                         .heightIn(max = maxH * 0.95f)
                         .clip(RoundedCornerShape(24.dp))
@@ -139,7 +144,7 @@ internal fun EnhancedSubtitleModal(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
+                                .padding(contentPadding),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -151,7 +156,7 @@ internal fun EnhancedSubtitleModal(
                                     },
                                 ),
                                 color = colorScheme.onSurface,
-                                fontSize = 18.sp,
+                                fontSize = titleSize,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -167,8 +172,8 @@ internal fun EnhancedSubtitleModal(
                         Column(
                             modifier = Modifier
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp)
-                                .padding(bottom = 20.dp),
+                                .padding(horizontal = contentPadding)
+                                .padding(bottom = contentPadding),
                         ) {
                             when (effectiveActiveTab) {
                                 SubtitleTab.BuiltIn -> BuiltInSubtitleList(
@@ -394,6 +399,9 @@ private fun BuiltInSubtitleLanguageGroups(
     SubtitleLanguageBrowser(
         groups = groups,
         selectedGroupKey = selectedGroupKey,
+        onGroupSelected = { group ->
+            group.items.singleOrNull()?.let { onTrackSelected(it.index) }
+        },
     ) { selectedGroup ->
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             selectedGroup.items.forEach { track ->
@@ -443,16 +451,19 @@ private fun AddonSubtitleLanguageGroups(
             .sortedBy { it.key }
     }
     val selectedGroupKey = addons
-        .firstOrNull { it.id == selectedId }
+        .firstOrNull { it.selectionKey == selectedId }
         ?.subtitleLanguageGroupKey()
 
     SubtitleLanguageBrowser(
         groups = groups,
         selectedGroupKey = selectedGroupKey,
+        onGroupSelected = { group ->
+            group.items.singleOrNull()?.let(onSubtitleSelected)
+        },
     ) { selectedGroup ->
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             selectedGroup.items.forEach { sub ->
-                val isSelected = sub.id == selectedId
+                val isSelected = sub.selectionKey == selectedId
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -516,6 +527,7 @@ private fun AddonSubtitle.subtitleLanguageGroupKey(): String =
 private fun <T> SubtitleLanguageBrowser(
     groups: List<SubtitleLanguageGroup<T>>,
     selectedGroupKey: String?,
+    onGroupSelected: (SubtitleLanguageGroup<T>) -> Unit,
     content: @Composable (SubtitleLanguageGroup<T>) -> Unit,
 ) {
     if (groups.isEmpty()) return
@@ -548,7 +560,10 @@ private fun <T> SubtitleLanguageBrowser(
                     SubtitleLanguageCategory(
                         languageCode = group.key,
                         selected = group.key == activeGroup.key,
-                        onClick = { activeGroupKey = group.key },
+                        onClick = {
+                            activeGroupKey = group.key
+                            onGroupSelected(group)
+                        },
                     )
                 }
             }

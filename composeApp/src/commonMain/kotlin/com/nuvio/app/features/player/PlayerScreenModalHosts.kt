@@ -46,7 +46,7 @@ internal fun PlayerScreenModalHosts(
     onBuiltInSubtitleTrackSelected: (Int) -> Unit,
     onAddonSubtitleSelected: (AddonSubtitle) -> Unit,
     onFetchAddonSubtitles: () -> Unit,
-    onSubtitleStyleChanged: (SubtitleStyleState) -> Unit,
+    onSubtitleStyleChanged: ((SubtitleStyleState) -> SubtitleStyleState) -> Unit,
     onSubtitleDelayChanged: (Int) -> Unit,
     onSubtitleDelayReset: () -> Unit,
     onAutoSyncCapture: () -> Unit,

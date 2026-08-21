@@ -4,12 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.features.addons.AddonRepository
@@ -84,7 +88,16 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
     ) {
         val density = LocalDensity.current
         val horizontalSafePadding = playerHorizontalSafePadding()
-        val metrics = remember(maxWidth) { PlayerLayoutMetrics.fromWidth(maxWidth) }
+        val useTvLayout = isTvLayoutProfileEnabled()
+        val metrics = remember(maxWidth, maxHeight, useTvLayout) {
+            PlayerLayoutMetrics.fromWidth(maxWidth, tvLayout = useTvLayout, height = maxHeight)
+        }
+        val tvTextScale = when {
+            !useTvLayout -> 1f
+            maxWidth >= 1440.dp || maxHeight >= 900.dp -> 1.4f
+            maxWidth >= 1024.dp || maxHeight >= 720.dp -> 1.3f
+            else -> 1.2f
+        }
 
         runtime.scope = rememberCoroutineScope()
         runtime.hapticFeedback = LocalHapticFeedback.current
@@ -147,6 +160,10 @@ internal fun PlayerScreenContent(args: PlayerScreenArgs) {
             videoSize = runtime.layoutSize,
         )
         runtime.BindPlayerRuntimeEffects()
-        runtime.RenderPlayerRuntimeUi()
+        CompositionLocalProvider(
+            LocalDensity provides Density(density.density, density.fontScale * tvTextScale),
+        ) {
+            runtime.RenderPlayerRuntimeUi()
+        }
     }
 }

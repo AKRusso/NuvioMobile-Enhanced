@@ -59,6 +59,7 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.ui.ProfileMeshBackground
+import com.nuvio.app.features.settings.MemberBrandWordmark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
@@ -109,9 +110,15 @@ fun ProfileSelectionScreen(
     }
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val backgroundProfileColor = remember(profileState.activeProfile, profileState.profiles) {
-        val sourceProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
-        sourceProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
+    val backgroundProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
+    val backgroundProfileColor = remember(backgroundProfile) {
+        backgroundProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
+    }
+    val backgroundImageUrl = remember(backgroundProfile?.backgroundUrl) {
+        backgroundProfile?.let(::profileBackgroundImageUrl)
+    }
+    val backgroundPreset = remember(backgroundProfile?.backgroundUrl) {
+        backgroundProfile?.let(::profileBackgroundPreset)
     }
 
     BoxWithConstraints(
@@ -120,7 +127,25 @@ fun ProfileSelectionScreen(
     ) {
         val isTabletLayout = maxWidth >= 768.dp
 
-        ProfileMeshBackground(profileColor = backgroundProfileColor)
+        if (backgroundImageUrl == null) {
+            ProfileMeshBackground(
+                profileColor = backgroundPreset?.primary ?: backgroundProfileColor,
+                secondaryColor = backgroundPreset?.secondary,
+                tertiaryColor = backgroundPreset?.tertiary,
+            )
+        } else {
+            AsyncImage(
+                model = backgroundImageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.28f)),
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -138,6 +163,16 @@ fun ProfileSelectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Spacer(modifier = Modifier.height(if (isTabletLayout) 0.dp else 60.dp))
+
+            MemberBrandWordmark(
+                height = if (isTabletLayout) 42.dp else 34.dp,
+                modifier = Modifier.graphicsLayer {
+                    alpha = titleAlpha.value
+                    translationY = titleOffset.value
+                },
+            )
+
+            Spacer(modifier = Modifier.height(if (isTabletLayout) 22.dp else 18.dp))
 
             Text(
                 text = stringResource(Res.string.profile_who_is_watching),

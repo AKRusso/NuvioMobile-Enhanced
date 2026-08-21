@@ -8,20 +8,78 @@ import com.nuvio.app.features.details.MetaPerson
 import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.streams.StreamSubtitle
 import kotlinx.serialization.Serializable
-import kotlinx.coroutines.runBlocking
-import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.downloads_enqueue_missing_url
-import nuvio.composeapp.generated.resources.downloads_enqueue_replaced
-import nuvio.composeapp.generated.resources.downloads_enqueue_started
-import nuvio.composeapp.generated.resources.downloads_enqueue_unsupported_format
-import org.jetbrains.compose.resources.getString
 
 @Serializable
 enum class DownloadStatus {
     Downloading,
+    Waiting,
     Paused,
     Completed,
     Failed,
+}
+
+/** How a batch of multi-episode downloads is started. */
+enum class DownloadQueueMode {
+    /** Start every selected episode download immediately and concurrently. */
+    AllAtOnce,
+
+    /** Start downloads sequentially: the next one begins after the previous finishes. */
+    OneAtATime,
+}
+
+/** Preferred quality used by the automatic multi-episode source selection. */
+enum class DownloadPreferredQuality(val resolution: Int?) {
+    Best(null),
+    Q2160(2160),
+    Q1080(1080),
+    Q720(720),
+    Q480(480),
+    Q360(360),
+}
+
+@Serializable
+enum class PendingSourceSearchStatus {
+    Searching,
+    Expired,
+}
+
+/**
+ * A selected episode whose chosen provider and quality are temporarily unavailable.
+ * The source identity is deliberately persisted without signed URLs or request headers.
+ */
+@Serializable
+data class PendingEpisodeDownload(
+    val id: String,
+    val contentType: String,
+    val parentMetaId: String,
+    val parentMetaType: String,
+    val videoId: String,
+    val title: String,
+    val logo: String? = null,
+    val poster: String? = null,
+    val background: String? = null,
+    val seasonNumber: Int? = null,
+    val episodeNumber: Int? = null,
+    val episodeTitle: String? = null,
+    val episodeThumbnail: String? = null,
+    val episodeOverview: String? = null,
+    val providerName: String,
+    val providerAddonId: String,
+    val providerManifestUrl: String? = null,
+    val qualityKey: String,
+    val createdAtEpochMs: Long,
+    val nextAttemptAtEpochMs: Long,
+    val expiresAtEpochMs: Long,
+    val attemptCount: Int = 0,
+    val manualChoicePrompted: Boolean = false,
+    val status: PendingSourceSearchStatus = PendingSourceSearchStatus.Searching,
+) {
+    val logicalContentKey: String
+        get() = downloadLogicalContentKey(
+            parentMetaId = parentMetaId,
+            seasonNumber = seasonNumber,
+            episodeNumber = episodeNumber,
+        )
 }
 
 @Serializable
@@ -52,6 +110,7 @@ data class DownloadItem(
     val localFileUri: String? = null,
     val fileName: String,
     val status: DownloadStatus,
+    val queueMode: DownloadQueueMode = DownloadQueueMode.AllAtOnce,
     val downloadedBytes: Long = 0L,
     val totalBytes: Long? = null,
     val downloadSpeedBytesPerSecond: Long = 0L,
@@ -87,7 +146,7 @@ data class DownloadItem(
         }
 
     val logicalContentKey: String
-        get() = if (isEpisode) {
+        get() = if (seasonNumber != null || episodeNumber != null) {
             "${parentMetaId.trim()}|${seasonNumber ?: -1}|${episodeNumber ?: -1}"
         } else {
             "${parentMetaId.trim()}|movie"
@@ -162,12 +221,62 @@ data class DownloadVideoSnapshot(
 
 data class DownloadsUiState(
     val items: List<DownloadItem> = emptyList(),
+    val pendingSourceSearches: List<PendingEpisodeDownload> = emptyList(),
 ) {
     val activeItems: List<DownloadItem>
         get() = items.filter { it.status != DownloadStatus.Completed }
 
     val completedItems: List<DownloadItem>
         get() = items.filter { it.status == DownloadStatus.Completed }
+
+    val activeSourceSearches: List<PendingEpisodeDownload>
+        get() = pendingSourceSearches.filter { it.status == PendingSourceSearchStatus.Searching }
+}
+
+data class PendingShowGroup(
+    val parentMetaId: String,
+    val parentMetaType: String,
+    val title: String,
+    val logo: String? = null,
+    val poster: String? = null,
+    val background: String? = null,
+    val searches: List<PendingEpisodeDownload>,
+) {
+    val contentType: String
+        get() = searches.firstOrNull()?.contentType ?: "movie"
+}
+
+fun List<PendingEpisodeDownload>.groupByShow(): List<PendingShowGroup> =
+    groupBy { it.parentMetaId }
+        .map { (showId, searches) ->
+            val first = searches.first()
+            PendingShowGroup(
+                parentMetaId = showId,
+                parentMetaType = first.parentMetaType,
+                title = first.title,
+                logo = first.logo,
+                poster = first.poster,
+                background = first.background,
+                searches = searches.sortedWith(pendingEpisodeComparator),
+            )
+        }
+        .sortedBy { it.title.lowercase() }
+
+internal val pendingEpisodeComparator: Comparator<PendingEpisodeDownload> =
+    compareBy<PendingEpisodeDownload> { it.seasonNumber ?: Int.MAX_VALUE }
+        .thenBy { it.episodeNumber ?: Int.MAX_VALUE }
+        .thenBy { it.episodeTitle?.trim().orEmpty().lowercase() }
+        .thenBy { it.title.trim().lowercase() }
+        .thenBy { it.id }
+
+internal fun downloadLogicalContentKey(
+    parentMetaId: String,
+    seasonNumber: Int?,
+    episodeNumber: Int?,
+): String = if (seasonNumber != null || episodeNumber != null) {
+    "${parentMetaId.trim()}|${seasonNumber ?: -1}|${episodeNumber ?: -1}"
+} else {
+    "${parentMetaId.trim()}|movie"
 }
 
 enum class DownloadEnqueueResult {
@@ -176,13 +285,13 @@ enum class DownloadEnqueueResult {
     MissingUrl,
     UnsupportedFormat;
 
-    fun toastMessage(): String = runBlocking {
-        when (this@DownloadEnqueueResult) {
-            Started -> getString(Res.string.downloads_enqueue_started)
-            Replaced -> getString(Res.string.downloads_enqueue_replaced)
-            MissingUrl -> getString(Res.string.downloads_enqueue_missing_url)
-            UnsupportedFormat -> getString(Res.string.downloads_enqueue_unsupported_format)
-        }
+    // This result is also emitted from downloader callbacks, where resource lookup is
+    // suspend-only. Keep the fallback synchronous and safe for every caller.
+    fun toastMessage(): String = when (this) {
+        Started -> "Download started"
+        Replaced -> "Replaced previous download"
+        MissingUrl -> "No direct stream link available"
+        UnsupportedFormat -> "Unsupported stream format for downloads"
     }
 }
 

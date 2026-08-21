@@ -1522,4 +1522,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Jumlah yang ditampilkan adalah sebelum biaya pembayaran dan bank, sehingga jumlah yang diterima mungkin lebih kecil.</string>
+    <string name="downloads_download_settings">डाउनलोड सेटिंग्स</string>
+    <string name="downloads_auto_select">ऑटो चयन</string>
+    <string name="downloads_auto_select_desc">हर एपिसोड के लिए स्वचालित रूप से सबसे अच्छा उपलब्ध स्रोत चुनें।</string>
+    <string name="downloads_preferred_quality">पसंदीदा गुणवत्ता</string>
+    <string name="downloads_download_mode">डाउनलोड मोड</string>
+    <string name="downloads_download_all_at_once">एक साथ सभी</string>
+    <string name="downloads_download_one_at_a_time">एक-एक करके</string>
+    <string name="downloads_automatic">स्वचालित</string>
+    <string name="downloads_quality_best">सर्वश्रेष्ठ</string>
+    <string name="downloads_auto_selecting">स्रोत चुन रहे हैं…</string>
+    <string name="downloads_download_started">डाउनलोड शुरू हुए</string>
+    <string name="downloads_status_waiting">प्रतीक्षा में</string>
 </resources>

@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.Dp
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.episodes_cd_watched
@@ -26,17 +27,19 @@ fun NuvioWatchedBadge(
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
+    val palette = ThemeColors.getColorPalette(MaterialTheme.appTheme)
+    val useGradient = palette.accentGradient.size >= 2
     Box(
         modifier = modifier
             .size(NuvioTokens.Icon.md)
             .clip(tokens.shapes.avatar)
-            .background(tokens.colors.accent),
+            .background(if (useGradient) palette.accentBrush() else SolidColor(tokens.colors.accent)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = Icons.Default.Check,
             contentDescription = stringResource(Res.string.episodes_cd_watched),
-            tint = tokens.colors.onAccent,
+            tint = if (useGradient) palette.onSecondary else tokens.colors.onAccent,
             modifier = Modifier.size(NuvioTokens.Icon.xs),
         )
     }

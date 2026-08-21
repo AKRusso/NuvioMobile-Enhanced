@@ -87,7 +87,13 @@ object SimklAuthRepository : TrackingAuthProvider {
         return uiState.value
     }
 
-    fun hasRequiredCredentials(): Boolean = SimklConfig.CLIENT_ID.isNotBlank()
+    fun hasRequiredCredentials(): Boolean = effectiveSimklClientId.isNotBlank()
+
+    fun saveManualClientId(value: String) {
+        ensureLoaded()
+        SimklAuthStorage.saveManualClientId(value.trim().takeIf(String::isNotBlank))
+        publish(error = null)
+    }
 
     fun onConnectRequested(): String? {
         ensureLoaded()
@@ -228,7 +234,7 @@ object SimklAuthRepository : TrackingAuthProvider {
 
             val request = SimklTokenRequest(
                 code = callback.code,
-                clientId = SimklConfig.CLIENT_ID,
+                clientId = effectiveSimklClientId,
                 codeVerifier = verifier,
                 redirectUri = SimklConfig.REDIRECT_URI,
             )
@@ -372,6 +378,7 @@ object SimklAuthRepository : TrackingAuthProvider {
                 else -> SimklConnectionMode.DISCONNECTED
             },
             credentialsConfigured = hasRequiredCredentials(),
+            manualClientId = SimklAuthStorage.loadManualClientId().orEmpty(),
             isLoading = isLoading,
             username = storedState.username,
             accountId = storedState.accountId,
@@ -383,7 +390,7 @@ object SimklAuthRepository : TrackingAuthProvider {
 
     private fun authorizationUrl(material: SimklPkceMaterial): String =
         buildSimklAuthorizationUrl(
-            clientId = SimklConfig.CLIENT_ID,
+            clientId = effectiveSimklClientId,
             redirectUri = SimklConfig.REDIRECT_URI,
             appName = SimklConfig.APP_NAME,
             appVersion = simklAppVersion,

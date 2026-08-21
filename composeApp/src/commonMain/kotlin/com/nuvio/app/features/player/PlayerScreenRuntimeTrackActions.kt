@@ -21,7 +21,7 @@ internal val PlayerScreenRuntime.visibleAddonSubtitles: List<AddonSubtitle>
 
 internal val PlayerScreenRuntime.selectedAddonSubtitle: AddonSubtitle?
     get() = visibleAddonSubtitles.firstOrNull { subtitle ->
-        subtitle.id == selectedAddonSubtitleId || subtitle.url == selectedAddonSubtitleId
+        subtitle.selectionKey == selectedAddonSubtitleId || subtitle.url == selectedAddonSubtitleId
     }
 
 internal fun PlayerScreenRuntime.updateTrackPreference(
@@ -67,8 +67,10 @@ internal fun PlayerScreenRuntime.persistAddonSubtitlePreference(subtitle: AddonS
             subtitleLanguage = subtitle.language,
             subtitleName = subtitle.display,
             subtitleTrackId = null,
-            addonSubtitleId = subtitle.id,
-            addonSubtitleUrl = subtitle.url,
+            addonSubtitleId = subtitle.selectionKey,
+            // Add-on links are episode-scoped and often short-lived. Never restore this
+            // URL for another episode; keep only the user's descriptive preference.
+            addonSubtitleUrl = null,
             addonSubtitleAddonName = subtitle.addonName,
         )
     }
@@ -121,14 +123,10 @@ internal fun PlayerScreenRuntime.restorePersistedTrackPreferenceIfNeeded() {
             }
         }
         PersistedSubtitleSelectionType.ADDON -> {
-            val url = preference.addonSubtitleUrl?.takeIf { it.isNotBlank() }
-            if (url != null) {
-                selectedAddonSubtitleId = preference.addonSubtitleId ?: url
-                selectedSubtitleIndex = -1
-                useCustomSubtitles = true
-                playerController?.setSubtitleUri(url)
-                preferredSubtitleSelectionApplied = true
-            }
+            // Add-on URLs and IDs are episode-scoped. Let the automatic policy evaluate
+            // the current episode instead of reviving a prior episode's selection.
+            selectedAddonSubtitleId = null
+            useCustomSubtitles = false
         }
     }
 
@@ -215,7 +213,8 @@ internal fun PlayerScreenRuntime.refreshTracks() {
         if (selectionPlan.targets.isEmpty()) {
             disableAutomaticSubtitleSelection()
             preferredSubtitleSelectionApplied = true
-        } else if (subtitleTracks.isNotEmpty()) {
+            autoAddonFallbackPending = false
+        } else {
             val preferredSubtitleIndex = findPreferredSubtitleTrackIndex(
                 tracks = subtitleTracks,
                 targets = selectionPlan.targets,
@@ -226,15 +225,17 @@ internal fun PlayerScreenRuntime.refreshTracks() {
                 selectedSubtitleIndex = preferredSubtitleIndex
                 selectedAddonSubtitleId = null
                 useCustomSubtitles = false
+                autoAddonFallbackPending = false
             } else if (preferredSubtitleIndex < 0) {
-                val activeSubtitleTrack = subtitleTracks.firstOrNull { track ->
-                    track.index == selectedSubtitleIndex
-                } ?: subtitleTracks.firstOrNull { it.isSelected }
                 if (
-                    selectionPlan.mode == SubtitleAutoSelectionMode.FORCED_ONLY ||
-                    activeSubtitleTrack?.isForced == true
+                    selectionPlan.mode == SubtitleAutoSelectionMode.FORCED_ONLY
                 ) {
                     disableAutomaticSubtitleSelection()
+                    autoAddonFallbackPending = false
+                } else {
+                    // The player has finished loading tracks and no normal built-in track
+                    // matches. Add-ons are considered only after this point.
+                    autoAddonFallbackPending = true
                 }
             }
             preferredSubtitleSelectionApplied = true
@@ -249,4 +250,5 @@ private fun PlayerScreenRuntime.disableAutomaticSubtitleSelection() {
     selectedSubtitleIndex = -1
     selectedAddonSubtitleId = null
     useCustomSubtitles = false
+    autoAddonFallbackPending = false
 }

@@ -5,4 +5,6 @@ internal expect object DownloadsStorage {
     fun savePayload(payload: String)
     fun loadExternalFolderUri(): String?
     fun saveExternalFolderUri(uri: String?)
+    fun loadEpisodeDownloadSettings(): String?
+    fun saveEpisodeDownloadSettings(payload: String)
 }

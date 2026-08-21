@@ -128,7 +128,7 @@ actual object P2pStreamingEngine {
     private var currentStream: NativeStream? = null
     private var statsJob: Job? = null
     private var generation = 0L
-    private val knownTorrentIds = mutableSetOf<String>()
+    private val knownTorrentIds = mutableMapOf<String, String>()
 
     actual suspend fun startStream(request: P2pStreamRequest): String = lifecycleMutex.withLock {
         stopLocked(shutdownEngine = false)
@@ -150,10 +150,11 @@ actual object P2pStreamingEngine {
 
             phase = "add_magnet"
             val canonicalHash = canonicalP2pInfoHash(request.infoHash)
-            val torrentId = if (canonicalHash in knownTorrentIds) {
-                canonicalHash
+            val cachedTorrentId = knownTorrentIds[canonicalHash]
+            val torrentId = if (cachedTorrentId != null) {
+                cachedTorrentId
             } else {
-                addMagnet(activeEngine, magnet).also(knownTorrentIds::add)
+                addMagnet(activeEngine, magnet).also { knownTorrentIds[canonicalHash] = it }
             }
             currentCoroutineContext().ensureActive()
 

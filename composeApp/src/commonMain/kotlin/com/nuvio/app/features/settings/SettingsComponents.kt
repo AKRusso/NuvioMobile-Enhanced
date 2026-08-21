@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioActionLabel
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
@@ -172,6 +174,7 @@ internal fun SettingsSidebarItem(
     onClick: () -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
+    val tvLayout = LocalTvLayoutProfile.current
     val primary = tokens.colors.accent
     val background = if (selected) primary.copy(alpha = tokens.opacity.hover) else Color.Transparent
     val iconChip = if (selected) primary.copy(alpha = tokens.opacity.selected) else Color.Transparent
@@ -180,14 +183,18 @@ internal fun SettingsSidebarItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = tokens.spacing.listGap, vertical = NuvioTokens.Space.s2)
+            .heightIn(min = if (tvLayout.enabled) 64.dp else 0.dp)
+            .padding(horizontal = if (tvLayout.enabled) 14.dp else tokens.spacing.listGap, vertical = NuvioTokens.Space.s2)
             .background(background, RoundedCornerShape(NuvioTokens.Space.s10))
             .clickable(onClick = onClick)
-            .padding(horizontal = tokens.spacing.screenHorizontal, vertical = tokens.spacing.listGap),
+            .padding(
+                horizontal = if (tvLayout.enabled) 24.dp else tokens.spacing.screenHorizontal,
+                vertical = if (tvLayout.enabled) 14.dp else tokens.spacing.listGap,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
-            modifier = Modifier.size(tokens.icons.xl),
+            modifier = Modifier.size(if (tvLayout.enabled) 36.dp else tokens.icons.xl),
             color = iconChip,
             shape = RoundedCornerShape(NuvioTokens.Radius.md),
         ) {

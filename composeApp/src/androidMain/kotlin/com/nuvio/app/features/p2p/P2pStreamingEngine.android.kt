@@ -124,7 +124,7 @@ actual object P2pStreamingEngine {
     @Volatile
     private var engine: NuvioEngine? = null
     private var engineConfigurationKey: EngineConfigurationKey? = null
-    private val knownTorrentIds = mutableSetOf<String>()
+    private val knownTorrentIds = mutableMapOf<String, String>()
     private var diagnosticRequestSequence = 0L
 
     fun initialize(context: Context) {
@@ -212,16 +212,17 @@ actual object P2pStreamingEngine {
 
             phase.set("add_magnet")
             val canonicalHash = canonicalP2pInfoHash(request.infoHash)
-            val reusedTorrent = canonicalHash in knownTorrentIds
+            val cachedTorrentId = knownTorrentIds[canonicalHash]
+            val reusedTorrent = cachedTorrentId != null
             Log.i(
                 DIAGNOSTIC_TAG,
                 "start request=$requestSequence phase=${phase.get()} begin elapsedMs=${elapsedSince(startedAtMs)} " +
                     "cached=$reusedTorrent hash=${diagnosticId(canonicalHash)}",
             )
-            val torrentId = if (reusedTorrent) {
-                canonicalHash
+            val torrentId = if (cachedTorrentId != null) {
+                cachedTorrentId
             } else {
-                resolvedEngine.addMagnet(magnetUri).also { knownTorrentIds += it }
+                resolvedEngine.addMagnet(magnetUri).also { knownTorrentIds[canonicalHash] = it }
             }
             ensureCurrentGeneration(generation)
             Log.i(

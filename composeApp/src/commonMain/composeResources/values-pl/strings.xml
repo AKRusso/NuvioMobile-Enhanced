@@ -2013,4 +2013,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Wyświetlana kwota jest przed opłatami za płatności i bankowymi, więc otrzymana kwota może być niższa.</string>
+    <string name="downloads_download_settings">Ustawienia pobierania</string>
+    <string name="downloads_auto_select">Wybór automatyczny</string>
+    <string name="downloads_auto_select_desc">Automatycznie wybiera najlepsze dostępne źródło dla każdego odcinka.</string>
+    <string name="downloads_preferred_quality">Preferowana jakość</string>
+    <string name="downloads_download_mode">Tryb pobierania</string>
+    <string name="downloads_download_all_at_once">Wszystkie naraz</string>
+    <string name="downloads_download_one_at_a_time">Jeden po drugim</string>
+    <string name="downloads_automatic">Automatycznie</string>
+    <string name="downloads_quality_best">Najlepsza</string>
+    <string name="downloads_auto_selecting">Wybieranie źródeł…</string>
+    <string name="downloads_download_started">Rozpoczęto pobieranie</string>
+    <string name="downloads_status_waiting">Oczekiwanie</string>
 </resources>

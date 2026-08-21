@@ -1968,4 +1968,16 @@
     <string name="nuvio_enhanced_subtitle_selector_enhanced">Enhanced</string>
     <string name="nuvio_enhanced_subtitle_selector_nuvio">Nuvio</string>
     <string name="community_donation_progress_fee_notice">Показаната сума е преди таксите за плащане и банките, така че получената сума може да е по-ниска.</string>
+    <string name="downloads_download_settings">Настройки за изтегляне</string>
+    <string name="downloads_auto_select">Автоматичен избор</string>
+    <string name="downloads_auto_select_desc">Автоматично избира най-добрия наличен източник за всеки епизод.</string>
+    <string name="downloads_preferred_quality">Предпочитано качество</string>
+    <string name="downloads_download_mode">Режим на изтегляне</string>
+    <string name="downloads_download_all_at_once">Всички наведнъж</string>
+    <string name="downloads_download_one_at_a_time">Един по един</string>
+    <string name="downloads_automatic">Автоматично</string>
+    <string name="downloads_quality_best">Най-добро</string>
+    <string name="downloads_auto_selecting">Избиране на източници…</string>
+    <string name="downloads_download_started">Изтеглянията започнаха</string>
+    <string name="downloads_status_waiting">Изчаква</string>
 </resources>

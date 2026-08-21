@@ -57,6 +57,7 @@ import com.nuvio.app.core.ui.toThemeHex
 import kotlin.math.max
 import kotlin.math.min
 import com.nuvio.app.core.ui.AppTheme
+import com.nuvio.app.core.ui.accentBrush
 import com.nuvio.app.core.ui.NuvioBottomSheetActionRow
 import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
@@ -77,6 +78,7 @@ import nuvio.composeapp.generated.resources.compose_settings_page_meta_screen
 import nuvio.composeapp.generated.resources.compose_settings_page_poster_customization
 import nuvio.composeapp.generated.resources.compose_settings_page_streams
 import nuvio.composeapp.generated.resources.settings_appearance_app_language
+import nuvio.composeapp.generated.resources.settings_appearance_theme_supporter
 import nuvio.composeapp.generated.resources.settings_appearance_app_language_sheet_title
 import nuvio.composeapp.generated.resources.settings_appearance_app_icon
 import nuvio.composeapp.generated.resources.settings_appearance_amoled_black
@@ -163,6 +165,25 @@ internal fun LazyListScope.appearanceSettingsContent(
                             AppTheme.EMERALD,
                             AppTheme.AMBER,
                             AppTheme.ROSE,
+                        ),
+                        selectedTheme = selectedTheme,
+                        customFirst = customFirst,
+                        customSecond = customSecond,
+                        isTablet = isTablet,
+                        spacing = themeSpacing,
+                        onThemeSelected = onThemeSelected,
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.72f))
+
+                    ThemeSectionLabel(stringResource(Res.string.settings_appearance_theme_supporter))
+                    ThemeGrid(
+                        themes = listOf(
+                            AppTheme.GOLD,
+                            AppTheme.JADE,
+                            AppTheme.ROSE_GOLD,
+                            AppTheme.ARCTIC_BLUE,
+                            AppTheme.GRAPHITE,
                         ),
                         selectedTheme = selectedTheme,
                         customFirst = customFirst,
@@ -616,7 +637,7 @@ private fun ThemeChip(
                     if (theme.isEnhanced) {
                         selectedPreviewBrush ?: previewBrush
                     } else {
-                        Brush.linearGradient(listOf(palette.focusRing, palette.secondary))
+                        previewBrush
                     },
                 ),
         )
@@ -629,7 +650,7 @@ private fun AppTheme.previewBrush(
     customSecond: Color,
 ): Brush {
     if (!isEnhanced) {
-        return Brush.linearGradient(listOf(palette.secondary, palette.focusRing))
+        return palette.accentBrush()
     }
 
     val colors = ThemeColors.animatedColors(this, customFirst, customSecond)

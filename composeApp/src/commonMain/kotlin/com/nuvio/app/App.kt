@@ -21,11 +21,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -36,7 +38,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VideoLibrary
 import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.AppSystemUiController
 import androidx.compose.runtime.LaunchedEffect
@@ -64,14 +69,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
@@ -124,11 +132,14 @@ import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.TvLayoutProfile
+import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import com.nuvio.app.features.auth.AuthScreen
 import com.nuvio.app.features.addons.AddAddonResult
 import com.nuvio.app.features.addons.AddonRepository
@@ -2005,7 +2016,17 @@ private fun MainAppContent(
                         // floating top bar when the available window is actually wide.
                         val isTabletLayout = useTabletFloatingTabBar ||
                             (maxWidth >= 768.dp && maxWidth > maxHeight)
-                        val useNativeBottomTabs = if (useNativeNavigation) {
+                        val useTvLayout = isTvLayoutProfileEnabled()
+                        val tvUiScale = when {
+                            !useTvLayout -> 1f
+                            maxWidth >= 1440.dp || maxHeight >= 900.dp -> 1.5f
+                            maxWidth >= 1024.dp || maxHeight >= 720.dp -> 1.35f
+                            else -> 1.25f
+                        }
+                        val density = LocalDensity.current
+                        val useNativeBottomTabs = if (useTvLayout) {
+                            false
+                        } else if (useNativeNavigation) {
                             useNativeTabBar
                         } else {
                             liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
@@ -2023,6 +2044,10 @@ private fun MainAppContent(
                             com.nuvio.app.core.sync.SyncManager.pullAllForProfile(profile.profileIndex)
                         }
 
+                        CompositionLocalProvider(
+                            LocalTvLayoutProfile provides TvLayoutProfile(enabled = useTvLayout, uiScale = tvUiScale),
+                            LocalDensity provides Density(density.density, density.fontScale * tvUiScale),
+                        ) {
                         Scaffold(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -2030,7 +2055,7 @@ private fun MainAppContent(
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
                             bottomBar = {
-                                if (!isTabletLayout && !useNativeBottomTabs && navBarStyleSetting == NavBarStyle.CLASSIC) {
+                                if (!isTabletLayout && !useTvLayout && !useNativeBottomTabs && navBarStyleSetting == NavBarStyle.CLASSIC) {
                                     NuvioClassicNavigationBar {
                                         NavItem(
                                             selected = selectedTab == AppScreenTab.Home,
@@ -2083,7 +2108,8 @@ private fun MainAppContent(
                                             .fillMaxSize()
                                             .then(if (navBarStyleSetting != NavBarStyle.CLASSIC) Modifier.hazeSource(state = navBarHazeState) else Modifier)
                                             .then(if (navBarStyleSetting == NavBarStyle.ADAPTIVE) Modifier.nestedScroll(navBarScrollState.nestedScrollConnection) else Modifier)
-                                            .padding(innerPadding),
+                                            .padding(innerPadding)
+                                            .padding(start = if (useTvLayout) 80.dp else 0.dp),
                                         selectedTab = selectedTab,
                                         searchFocusRequestCount = searchFocusRequestCount,
                                         rootActionsEnabled = tabsRouteActive,
@@ -2238,13 +2264,22 @@ private fun MainAppContent(
                                     )
                                 }
 
-                                if (isTabletLayout && !useNativeBottomTabs) {
+                                if (isTabletLayout && !useNativeBottomTabs && !useTvLayout) {
                                     TabletFloatingTopBar(
                                         selectedTab = selectedTab,
                                         liveTvEnabled = liveTvEnabled,
                                         onTabSelected = ::handleRootTabClick,
                                         onProfileSelected = onProfileSelected,
                                         onAddProfileRequested = onSwitchProfile,
+                                    )
+                                }
+
+                                if (useTvLayout) {
+                                    TvNavigationRail(
+                                        selectedTab = selectedTab,
+                                        liveTvEnabled = liveTvEnabled,
+                                        onTabSelected = ::handleRootTabClick,
+                                        modifier = Modifier.align(Alignment.CenterStart),
                                     )
                                 }
 
@@ -2265,7 +2300,7 @@ private fun MainAppContent(
                                 }
 
                                 // Floating pill navigation bar overlay
-                                if (!isTabletLayout && !useNativeBottomTabs && navBarStyleSetting != NavBarStyle.CLASSIC) {
+                                if (!isTabletLayout && !useTvLayout && !useNativeBottomTabs && navBarStyleSetting != NavBarStyle.CLASSIC) {
                                     // Force expand/collapse for non-adaptive modes
                                     when (navBarStyleSetting) {
                                         NavBarStyle.EXPANDED -> navBarScrollState.expand()
@@ -2322,6 +2357,7 @@ private fun MainAppContent(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -4136,6 +4172,85 @@ private fun TabletFloatingTopBar(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TvNavigationRail(
+    selectedTab: AppScreenTab,
+    liveTvEnabled: Boolean,
+    onTabSelected: (AppScreenTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .width(72.dp)
+            .background(
+                Brush.horizontalGradient(
+                    0f to MaterialTheme.colorScheme.background.copy(alpha = 0.82f),
+                    0.72f to MaterialTheme.colorScheme.background.copy(alpha = 0.24f),
+                    1f to Color.Transparent,
+                ),
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            TvNavigationRailItem(
+                label = stringResource(Res.string.compose_nav_home),
+                selected = selectedTab == AppScreenTab.Home,
+                icon = Icons.Filled.Home,
+                onClick = { onTabSelected(AppScreenTab.Home) },
+            )
+            TvNavigationRailItem(
+                label = stringResource(Res.string.compose_nav_search),
+                selected = selectedTab == AppScreenTab.Search,
+                icon = Icons.Filled.Search,
+                onClick = { onTabSelected(AppScreenTab.Search) },
+            )
+            if (liveTvEnabled) {
+                TvNavigationRailItem(
+                    label = "Live TV",
+                    selected = selectedTab == AppScreenTab.LiveTv,
+                    icon = Icons.Filled.Tv,
+                    onClick = { onTabSelected(AppScreenTab.LiveTv) },
+                )
+            }
+            TvNavigationRailItem(
+                label = "Library",
+                selected = selectedTab == AppScreenTab.Library,
+                icon = Icons.Filled.VideoLibrary,
+                onClick = { onTabSelected(AppScreenTab.Library) },
+            )
+            TvNavigationRailItem(
+                label = stringResource(Res.string.compose_nav_profile),
+                selected = selectedTab == AppScreenTab.Settings,
+                icon = Icons.Filled.Settings,
+                onClick = { onTabSelected(AppScreenTab.Settings) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TvNavigationRailItem(
+    label: String,
+    selected: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    val contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = label, tint = contentColor, modifier = Modifier.size(36.dp))
     }
 }
 

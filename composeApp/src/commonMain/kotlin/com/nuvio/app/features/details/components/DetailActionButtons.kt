@@ -1,8 +1,5 @@
 package com.nuvio.app.features.details.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,6 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.Icon
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -74,12 +73,7 @@ fun DetailActionButtons(
     val iconButtonSize = buttonHeight
     val playShape = RoundedCornerShape(40.dp)
     val hapticFeedback = LocalHapticFeedback.current
-    var actionsExpanded by remember { mutableStateOf(false) }
-    val menuProgress by animateFloatAsState(
-        targetValue = if (actionsExpanded) 1f else 0f,
-        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-        label = "detail_action_menu_progress",
-    )
+    var actionsMenuVisible by remember { mutableStateOf(false) }
     val hasSecondaryActions = secondaryActions.isNotEmpty()
     val playBrush = rememberAnimatedAccentBrush()
 
@@ -131,19 +125,17 @@ fun DetailActionButtons(
                         contentDescription = null,
                         modifier = Modifier.size(if (isTablet) 20.dp else 18.dp),
                     )
-                    if (!actionsExpanded && menuProgress < 0.01f) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = playLabel,
-                            style = if (isTablet) {
-                                MaterialTheme.typography.titleMedium
-                            } else {
-                                MaterialTheme.typography.titleSmall
-                            },
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = playLabel,
+                        style = if (isTablet) {
+                            MaterialTheme.typography.titleMedium
+                        } else {
+                            MaterialTheme.typography.titleSmall
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
 
@@ -168,79 +160,46 @@ fun DetailActionButtons(
 
             if (hasSecondaryActions) {
                 Spacer(modifier = Modifier.width(12.dp))
-                secondaryActions.forEachIndexed { index, action ->
-                    Box(
+                Box {
+                    Surface(
                         modifier = Modifier
-                            .width(iconButtonSize * menuProgress)
-                            .height(iconButtonSize)
-                            .graphicsLayer {
-                                clip = true
-                            },
-                        contentAlignment = Alignment.Center,
+                            .size(iconButtonSize)
+                            .clip(CircleShape),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f),
+                        contentColor = MaterialTheme.colorScheme.onSurface,
                     ) {
-                        if (actionsExpanded || menuProgress > 0.01f) {
-                            DetailIconAction(
-                                label = action.label,
-                                icon = action.icon,
-                                active = action.isActive,
-                                progress = menuProgress,
-                                size = iconButtonSize,
-                                onClick = {
-                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    action.onClick()
+                        Box(
+                            modifier = Modifier
+                                .size(iconButtonSize)
+                                .clickable(role = Role.Button) {
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    actionsMenuVisible = true
                                 },
-                                onLongClick = action.onLongClick?.let { longClick ->
-                                    {
-                                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        longClick()
-                                    }
-                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreHoriz,
+                                contentDescription = actionsMenuLabel,
+                                modifier = Modifier.size(24.dp),
                             )
                         }
                     }
-
-                    if (index != secondaryActions.lastIndex) {
-                        Spacer(modifier = Modifier.width(12.dp * menuProgress))
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp * menuProgress))
-            }
-
-            if (hasSecondaryActions) {
-                Surface(
-                    modifier = Modifier
-                        .size(iconButtonSize)
-                        .clip(CircleShape),
-                    shape = CircleShape,
-                    color = if (actionsExpanded) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.82f)
-                    },
-                    contentColor = if (actionsExpanded) {
-                        MaterialTheme.colorScheme.onPrimary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(iconButtonSize)
-                            .clickable(role = Role.Button) {
-                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                actionsExpanded = !actionsExpanded
-                            },
-                        contentAlignment = Alignment.Center,
+                    DropdownMenu(
+                        expanded = actionsMenuVisible,
+                        onDismissRequest = { actionsMenuVisible = false },
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreHoriz,
-                            contentDescription = actionsMenuLabel,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .graphicsLayer {
-                                    rotationZ = 90f * menuProgress
+                        secondaryActions.forEach { action ->
+                            DropdownMenuItem(
+                                text = { Text(action.label) },
+                                leadingIcon = { Icon(action.icon, contentDescription = null) },
+                                onClick = {
+                                    actionsMenuVisible = false
+                                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    action.onClick()
                                 },
-                        )
+                            )
+                        }
                     }
                 }
             }

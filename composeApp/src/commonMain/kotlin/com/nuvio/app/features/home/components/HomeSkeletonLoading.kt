@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.landscapePosterHeightForWidth
+import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.landscapePosterWidth
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 
@@ -80,7 +81,7 @@ fun HomeSkeletonHero(
             viewportHeightDp = viewportHeight?.value,
             mobileBelowSectionHeightHintDp = mobileBelowSectionHeightHint?.value,
         )
-        val heroHeight = when {
+        val baseHeroHeight = when {
             streamingShowcaseHeroEnabled -> streamingShowcaseHeroHeight(
                 maxWidthDp = maxWidth.value,
                 viewportHeightDp = viewportHeight?.value,
@@ -92,6 +93,14 @@ fun HomeSkeletonHero(
                 layout = layout,
             )
             else -> layout.heroHeight
+        }
+        val heroHeight = if (LocalTvLayoutProfile.current.enabled) {
+            maxOf(
+                baseHeroHeight,
+                ((viewportHeight?.value ?: 900f) * 0.78f).dp.coerceIn(640.dp, 840.dp),
+            )
+        } else {
+            baseHeroHeight
         }
         val containerWidth = maxWidth
 

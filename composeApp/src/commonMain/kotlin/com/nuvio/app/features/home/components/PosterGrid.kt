@@ -34,14 +34,18 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
 import com.nuvio.app.features.watching.application.WatchingState
 
-internal fun posterGridColumnCountForWidth(screenWidth: Dp): Int =
-    when {
+internal fun posterGridColumnCountForWidth(screenWidth: Dp, tvLayout: Boolean = false): Int {
+    if (tvLayout) {
+        return ((screenWidth.value - 96f) / 144f).toInt().coerceIn(5, 10)
+    }
+    return when {
         screenWidth >= 1400.dp -> 7
         screenWidth >= 1200.dp -> 6
         screenWidth >= 1000.dp -> 5
         screenWidth >= 840.dp -> 4
         else -> 3
     }
+}
 
 @Composable
 internal fun PosterGridRow(

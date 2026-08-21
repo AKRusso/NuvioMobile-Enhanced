@@ -30,6 +30,7 @@ import com.nuvio.app.features.downloads.DownloadsExternalFolderPlatform
 import com.nuvio.app.features.downloads.DownloadsPlatformDownloader
 import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.downloads.DownloadsStorage
+import com.nuvio.app.features.downloads.PendingDownloadSourceSearchPlatform
 import com.nuvio.app.features.library.LibraryDisplaySettingsStorage
 import com.nuvio.app.features.library.LibraryStorage
 import com.nuvio.app.features.livetv.LiveTvIncomingSourceRepository
@@ -153,6 +154,7 @@ class MainActivity : AppCompatActivity() {
         DownloadsExternalFolderPlatform.initialize(applicationContext)
         DownloadsPlatformDownloader.initialize(applicationContext)
         DownloadsLiveStatusPlatform.initialize(applicationContext)
+        PendingDownloadSourceSearchPlatform.initialize(applicationContext)
         DownloadsLiveStatusPlatform.bindActivity(this)
         DownloadsExternalFolderPlatform.bindActivity(this)
         AndroidAppUpdaterPlatform.initialize(applicationContext)

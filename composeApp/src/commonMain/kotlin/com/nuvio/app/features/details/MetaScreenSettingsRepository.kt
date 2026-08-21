@@ -50,6 +50,7 @@ data class MetaScreenSettingsUiState(
     val episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
     val blurUnwatchedEpisodes: Boolean = false,
     val showEpisodeRatings: Boolean = true,
+    val showDownloadAction: Boolean = false,
 )
 
 enum class MetaScreenBackgroundMode {
@@ -83,18 +84,21 @@ enum class MetaScreenBackgroundMode {
 enum class MetaEpisodeCardStyle {
     Horizontal,
     List,
+    VerticalHorizontal,
     ;
 
     companion object {
         fun parse(raw: String?): MetaEpisodeCardStyle? = when (raw?.lowercase()) {
             "horizontal" -> Horizontal
             "list" -> List
+            "vertical_horizontal", "verticalhorizontal", "vertical_cards" -> VerticalHorizontal
             else -> null
         }
 
         fun persist(style: MetaEpisodeCardStyle): String = when (style) {
             Horizontal -> "horizontal"
             List -> "list"
+            VerticalHorizontal -> "vertical_horizontal"
         }
     }
 }
@@ -124,6 +128,8 @@ private data class StoredMetaScreenSettingsPayload(
     val blurUnwatchedEpisodes: Boolean = false,
     @SerialName("show_episode_ratings")
     val showEpisodeRatings: Boolean = true,
+    @SerialName("show_download_action")
+    val showDownloadAction: Boolean = false,
 )
 
 private data class MetaScreenSectionDefinition(
@@ -203,6 +209,7 @@ object MetaScreenSettingsRepository {
     private var episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal
     private var blurUnwatchedEpisodes: Boolean = false
     private var showEpisodeRatings: Boolean = true
+    private var showDownloadAction: Boolean = false
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 
     fun ensureLoaded() {
@@ -224,6 +231,7 @@ object MetaScreenSettingsRepository {
                     ?: MetaEpisodeCardStyle.Horizontal
                 blurUnwatchedEpisodes = parsed.blurUnwatchedEpisodes
                 showEpisodeRatings = parsed.showEpisodeRatings
+                showDownloadAction = parsed.showDownloadAction
                 preferences = parsed.items.mapNotNull { item ->
                     val key = runCatching { MetaScreenSectionKey.valueOf(item.key) }.getOrNull() ?: return@mapNotNull null
                     key to item
@@ -246,6 +254,7 @@ object MetaScreenSettingsRepository {
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
+        showDownloadAction = false
         _uiState.value = MetaScreenSettingsUiState()
         ensureLoaded()
     }
@@ -303,6 +312,13 @@ object MetaScreenSettingsRepository {
         persist()
     }
 
+    fun setShowDownloadAction(enabled: Boolean) {
+        ensureLoaded()
+        showDownloadAction = enabled
+        publish()
+        persist()
+    }
+
     fun setTabGroup(key: MetaScreenSectionKey, groupId: Int?) {
         ensureLoaded()
         if (!key.canBeTabbed) return
@@ -326,6 +342,7 @@ object MetaScreenSettingsRepository {
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
+        showDownloadAction = false
         _uiState.value = MetaScreenSettingsUiState()
     }
 
@@ -338,6 +355,7 @@ object MetaScreenSettingsRepository {
         episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
         blurUnwatchedEpisodes: Boolean = false,
         showEpisodeRatings: Boolean = true,
+        showDownloadAction: Boolean = false,
         backgroundMode: MetaScreenBackgroundMode? = null,
     ) {
         ensureLoaded()
@@ -348,6 +366,7 @@ object MetaScreenSettingsRepository {
         this.episodeCardStyle = episodeCardStyle
         this.blurUnwatchedEpisodes = blurUnwatchedEpisodes
         this.showEpisodeRatings = showEpisodeRatings
+        this.showDownloadAction = showDownloadAction
         preferences = items.associate { item ->
             item.key to StoredMetaScreenSectionPreference(
                 key = item.key.name,
@@ -377,6 +396,7 @@ object MetaScreenSettingsRepository {
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
+        showDownloadAction = false
         normalizePreferences()
         publish()
         persist()
@@ -448,6 +468,7 @@ object MetaScreenSettingsRepository {
             episodeCardStyle = episodeCardStyle,
             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
             showEpisodeRatings = showEpisodeRatings,
+            showDownloadAction = showDownloadAction,
         )
     }
 
@@ -464,6 +485,7 @@ object MetaScreenSettingsRepository {
                     episodeCardStyle = MetaEpisodeCardStyle.persist(episodeCardStyle),
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     showEpisodeRatings = showEpisodeRatings,
+                    showDownloadAction = showDownloadAction,
                 ),
             ),
         )
