@@ -3,6 +3,41 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.10 - 2026-08-21
+
+### Added
+
+- Added new Enhanced visual themes: Gold, Jade, Rose Gold, Arctic Blue, and
+  Graphite.
+- Added Enhanced supporter badge visuals, themed wordmarks, visual accents, and
+  offline profile background presets.
+- Added Simkl fallback support for local and debug builds compiled without
+  `SIMKL_CLIENT_ID`; release builds with the GitHub secret continue to work
+  normally.
+- Added improved download source search and batch download flow support.
+
+### Improved
+
+- Improved DeX, TV, and external display readability, scaling, and navigation
+  behavior.
+- Improved audio track selection and Android/libmpv audio labels with richer
+  codec, language, channel, bitrate, and sample-rate details.
+- Improved P2P tracker extraction from stream sources, resolved client sources,
+  and magnet tracker parameters.
+- Local P2P streams can now be auto-selected without being blocked by
+  debrid/cache pending states.
+- Stream autoplay now re-evaluates as new stream groups and results arrive.
+
+### Credits
+
+- Credits to EaZy for authorizing the implementation of his new visual changes
+  in Nuvio Enhanced.
+
+### Release
+
+- This release is based on official NuvioMobile `0.4.7` and is versioned
+  independently as Nuvio Enhanced `0.4.10 (114)`.
+
 ## 0.4.8 - 2026-08-13
 
 ### Added
