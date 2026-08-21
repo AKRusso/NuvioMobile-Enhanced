@@ -3,7 +3,7 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
-## 0.4.10 - 2026-08-21
+## 0.4.11 - 2026-08-21
 
 ### Added
 
@@ -36,7 +36,7 @@ same user-facing summary so the in-app updater can display it before download.
 ### Release
 
 - This release is based on official NuvioMobile `0.4.7` and is versioned
-  independently as Nuvio Enhanced `0.4.10 (114)`.
+  independently as Nuvio Enhanced `0.4.11 (115)`.
 
 ## 0.4.8 - 2026-08-13
 
