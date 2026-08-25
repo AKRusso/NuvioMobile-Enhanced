@@ -2785,4 +2785,16 @@
     <string name="settings_anime_visit">Visit %1$s</string>
     <string name="settings_anime_automatic_scrobble">Update automatically after watching</string>
     <string name="settings_anime_explicit_watched_sync">Sync manual watched changes</string>
+    <string name="anime_tracking_editor_title">Anime tracking</string>
+    <string name="anime_tracking_action">Anime tracking</string>
+    <string name="anime_tracking_link_title">Link on %1$s</string>
+    <string name="anime_tracking_no_accounts">Connect AniList or MyAnimeList in Settings to edit tracking.</string>
+    <string name="anime_tracking_season_all">Series default</string>
+    <string name="anime_tracking_season_label">Season %1$d</string>
+    <string name="anime_tracking_progress">Watched episodes</string>
+    <string name="anime_tracking_change_mapping">Find or change title</string>
+    <string name="anime_tracking_remove_mapping">Do not track</string>
+    <string name="anime_tracking_automatic_mapping">Use automatic matching</string>
+    <string name="anime_tracking_search_hint">Search anime title</string>
+    <string name="anime_tracking_update_failed">Could not update this service.</string>
 </resources>
