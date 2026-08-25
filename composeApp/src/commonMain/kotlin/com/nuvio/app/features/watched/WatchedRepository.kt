@@ -1382,8 +1382,7 @@ object WatchedRepository {
             .mapNotNull { remaining -> remaining.episode }
             .filter { number -> number > 0 }
             .toSet()
-        val continuousProgress = generateSequence(1) { number -> number + 1 }
-            .first { number -> number !in remainingEpisodes } - 1
+        val continuousProgress = continuousWatchedProgress(remainingEpisodes)
         media.copy(
             episode = episodeInfo.copy(continuousProgressAfterRemoval = continuousProgress),
         )
@@ -1398,6 +1397,10 @@ object WatchedRepository {
         TrackingProviderRegistry.connectedWatchedProviders()
             .mapTo(linkedSetOf()) { provider -> provider.providerId }
 }
+
+internal fun continuousWatchedProgress(watchedEpisodes: Set<Int>): Int =
+    generateSequence(1) { number -> number + 1 }
+        .first { number -> number !in watchedEpisodes } - 1
 
 internal data class WatchedSnapshotMerge(
     val items: Map<String, WatchedItem>,

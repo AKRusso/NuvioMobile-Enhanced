@@ -15,6 +15,13 @@ import kotlin.test.assertTrue
 
 class WatchedRepositoryTest {
     @Test
+    fun continuousProgressStopsAtFirstUnwatchedEpisode() {
+        assertEquals(3, continuousWatchedProgress(setOf(1, 2, 3, 5)))
+        assertEquals(5, continuousWatchedProgress(setOf(1, 2, 3, 4, 5)))
+        assertEquals(0, continuousWatchedProgress(setOf(2, 3)))
+    }
+
+    @Test
     fun oversizedLegacyPayload_isNotRestored() {
         assertTrue(shouldRestoreWatchedPayload(4 * 1024 * 1024))
         assertFalse(shouldRestoreWatchedPayload(4 * 1024 * 1024 + 1))

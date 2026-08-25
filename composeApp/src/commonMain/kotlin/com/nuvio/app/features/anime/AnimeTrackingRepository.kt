@@ -66,6 +66,7 @@ abstract class AnimeTrackingRepository(
     private val log = Logger.withTag(animeProvider.displayName)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val authorizationMutex = Mutex()
+    private val tokenRefreshMutex = Mutex()
     private val json = Json { ignoreUnknownKeys = true }
     private val _isAuthenticated = MutableStateFlow(false)
     final override val isAuthenticated: StateFlow<Boolean> = _isAuthenticated.asStateFlow()
@@ -160,7 +161,7 @@ abstract class AnimeTrackingRepository(
     final override fun handleAuthCallback(url: String): Boolean {
         ensureLoaded()
         val redirect = redirectUri()
-        if (!url.startsWith(redirect, ignoreCase = true)) return false
+        if (!isExpectedAnimeAuthCallback(url, redirect)) return false
         scope.launch { completeAuthorization(url) }
         return true
     }
@@ -284,24 +285,24 @@ abstract class AnimeTrackingRepository(
         publish(isLoading = false)
     }
 
-    private suspend fun validAccessToken(): String? {
+    private suspend fun validAccessToken(): String? = tokenRefreshMutex.withLock {
         ensureLoaded()
-        var token = AnimeTrackingAuthStorage.loadSecret(animeProvider, ACCESS_TOKEN_KEY) ?: return null
-        val expiresAt = metadata.tokenExpiresAtMs ?: return token
-        if (SimklPlatformClock.nowEpochMs() < expiresAt - TOKEN_EXPIRY_SKEW_MS) return token
+        var token = AnimeTrackingAuthStorage.loadSecret(animeProvider, ACCESS_TOKEN_KEY) ?: return@withLock null
+        val expiresAt = metadata.tokenExpiresAtMs ?: return@withLock token
+        if (SimklPlatformClock.nowEpochMs() < expiresAt - TOKEN_EXPIRY_SKEW_MS) return@withLock token
         if (animeProvider == AnimeTrackingProvider.ANILIST) {
             onDisconnectRequested()
-            return null
+            return@withLock null
         }
-        val refresh = AnimeTrackingAuthStorage.loadSecret(animeProvider, REFRESH_TOKEN_KEY) ?: return null
-        val refreshed = AnimeTrackingApi.refreshMalToken(refresh) ?: return null
+        val refresh = AnimeTrackingAuthStorage.loadSecret(animeProvider, REFRESH_TOKEN_KEY) ?: return@withLock null
+        val refreshed = AnimeTrackingApi.refreshMalToken(refresh) ?: return@withLock null
         token = refreshed.accessToken
         AnimeTrackingAuthStorage.saveSecret(animeProvider, ACCESS_TOKEN_KEY, token)
         AnimeTrackingAuthStorage.saveSecret(animeProvider, REFRESH_TOKEN_KEY, refreshed.refreshToken ?: refresh)
         metadata = metadata.copy(tokenExpiresAtMs = SimklPlatformClock.nowEpochMs() + refreshed.expiresIn * 1_000L)
         persistMetadata()
         publish()
-        return token
+        token
     }
 
     private suspend fun updateHistoryProgress(
@@ -469,6 +470,15 @@ abstract class AnimeTrackingRepository(
         const val TOKEN_EXPIRY_SKEW_MS = 60_000L
         const val DEFAULT_ANILIST_EXPIRY_SECONDS = 365L * 24L * 60L * 60L
     }
+}
+
+internal fun isExpectedAnimeAuthCallback(callbackUrl: String, redirectUri: String): Boolean {
+    val callback = runCatching { Url(callbackUrl) }.getOrNull() ?: return false
+    val redirect = runCatching { Url(redirectUri) }.getOrNull() ?: return false
+    return callback.protocol.name.equals(redirect.protocol.name, ignoreCase = true) &&
+        callback.host.equals(redirect.host, ignoreCase = true) &&
+        callback.port == redirect.port &&
+        callback.encodedPath.trimEnd('/') == redirect.encodedPath.trimEnd('/')
 }
 
 @Serializable
