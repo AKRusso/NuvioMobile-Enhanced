@@ -86,12 +86,14 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
 import com.nuvio.app.core.format.extractReleaseYearForDisplay
-import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.rememberActionAccentStyle
 import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.rememberAnimatedLineBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
 import com.nuvio.app.core.ui.heroStretchHeight
 import com.nuvio.app.core.ui.heroStretchZoom
+import com.nuvio.app.core.ui.nuvioExcludeFromKeyboardFocus
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaDetailsRepository
 import com.nuvio.app.features.details.MetaExternalRating
@@ -952,11 +954,13 @@ private fun StreamingShowcaseHeroPage(
         else -> 13.dp
     }
     val compactControls = !layout.isTablet || landscapeCompact
+    val themedBackground = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(themedBackground)
+            .nuvioExcludeFromKeyboardFocus()
             .clickable(enabled = onItemClick != null) {
                 onItemClick?.invoke(item)
             },
@@ -1038,7 +1042,7 @@ private fun StreamingShowcaseHeroPage(
                             0f to Color.Black.copy(alpha = 0.18f),
                             0.48f to Color.Transparent,
                             0.80f to Color.Black.copy(alpha = 0.58f),
-                            1f to Color.Black.copy(alpha = 0.96f),
+                            1f to themedBackground,
                         ),
                     ),
                 ),
@@ -1083,6 +1087,7 @@ private fun StreamingShowcaseHeroPage(
                         .fillMaxWidth(logoWidthFraction)
                         .widthIn(max = logoMaxWidth)
                         .height(logoHeight)
+                        .nuvioExcludeFromKeyboardFocus()
                         .clickable(enabled = onItemClick != null) {
                             onItemClick?.invoke(item)
                         },
@@ -1642,6 +1647,7 @@ private fun StreamingShowcaseSoundButton(
                 color = Color.White.copy(alpha = if (enabled) 0.20f else 0.11f),
                 shape = shape,
             )
+            .nuvioKeyboardFocusIndicator(shape, enabled)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -1705,11 +1711,9 @@ private fun StreamingShowcaseNetflixButton(
     val height = if (compact) 42.dp else 48.dp
     val iconSize = if (compact) 19.dp else 22.dp
     val textStyle = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium
-    val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
-    val foregroundColor = if (accentBrush != null) {
-        MaterialTheme.colorScheme.onPrimary
-    } else if (primary) {
-        Color.Black.copy(alpha = if (enabled) 0.90f else 0.50f)
+    val actionAccent = rememberActionAccentStyle(enabled = enabled)
+    val foregroundColor = if (primary) {
+        actionAccent.contentColor
     } else {
         Color.White.copy(alpha = if (enabled) 0.94f else 0.48f)
     }
@@ -1719,28 +1723,23 @@ private fun StreamingShowcaseNetflixButton(
             .clip(shape)
             .then(
                 when {
-                    accentBrush != null -> Modifier.background(accentBrush, shape)
+                    primary -> Modifier.background(actionAccent.brush, shape)
                     else -> Modifier.background(
-                        if (primary) {
-                            Color.White.copy(alpha = if (enabled) 0.96f else 0.54f)
-                        } else {
-                            Color(0xFF2B2D34).copy(alpha = if (enabled) 0.72f else 0.38f)
-                        },
+                        Color(0xFF2B2D34).copy(alpha = if (enabled) 0.72f else 0.38f),
                         shape,
                     )
                 },
             )
             .border(
                 width = 1.dp,
-                color = if (accentBrush != null) {
+                color = if (primary) {
                     MaterialTheme.colorScheme.primary.copy(alpha = if (enabled) 0.34f else 0.16f)
-                } else if (primary) {
-                    Color.White.copy(alpha = 0.36f)
                 } else {
                     Color.White.copy(alpha = 0.14f)
                 },
                 shape = shape,
             )
+            .nuvioKeyboardFocusIndicator(shape, enabled)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = if (compact) 12.dp else 16.dp),
         horizontalArrangement = Arrangement.Center,
@@ -1757,77 +1756,6 @@ private fun StreamingShowcaseNetflixButton(
             text = text,
             style = textStyle,
             color = foregroundColor,
-            fontWeight = FontWeight.Black,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-@Composable
-private fun StreamingShowcaseButton(
-    text: String,
-    imageVector: ImageVector,
-    primary: Boolean,
-    compact: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(if (compact) 10.dp else 12.dp)
-    val horizontalPadding = if (compact) 12.dp else 20.dp
-    val verticalPadding = if (compact) 9.dp else 12.dp
-    val iconSize = if (compact) 18.dp else 21.dp
-    val itemSpacing = if (compact) 7.dp else 10.dp
-    val accentBrush = rememberAnimatedAccentBrush().takeIf { primary && enabled }
-    val contentColor = if (accentBrush != null) {
-        MaterialTheme.colorScheme.onPrimary
-    } else if (primary) {
-        Color.Black.copy(alpha = 0.92f)
-    } else {
-        Color.White.copy(alpha = 0.92f)
-    }
-    Row(
-        modifier = Modifier
-            .clip(shape)
-            .then(
-                when {
-                    accentBrush != null -> Modifier.background(accentBrush, shape)
-                    else -> Modifier.background(
-                        if (primary) {
-                            Color.White.copy(alpha = if (enabled) 0.96f else 0.56f)
-                        } else {
-                            Color.White.copy(alpha = if (enabled) 0.13f else 0.07f)
-                        },
-                        shape,
-                    )
-                },
-            )
-            .border(
-                width = 1.dp,
-                color = if (accentBrush != null) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.28f)
-                } else if (primary) {
-                    Color.Black.copy(alpha = 0.14f)
-                } else {
-                    Color.White.copy(alpha = 0.20f)
-                },
-                shape = shape,
-            )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
-        horizontalArrangement = Arrangement.spacedBy(itemSpacing),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = imageVector,
-            contentDescription = null,
-            modifier = Modifier.size(iconSize),
-            tint = contentColor,
-        )
-        Text(
-            text = text,
-            style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleMedium,
-            color = contentColor,
             fontWeight = FontWeight.Black,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1995,11 +1923,12 @@ private fun PosterArtHeroPage(
         else -> 22.dp
     }
     val contentBottomPadding = actionRailBottomPadding + actionRailHeight + actionRailClearance
+    val themedBackground = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(themedBackground)
             .clickable(enabled = onItemClick != null) {
                 onItemClick?.invoke(item)
             },
@@ -2046,7 +1975,7 @@ private fun PosterArtHeroPage(
                             0.28f to Color.Black.copy(alpha = 0.02f),
                             0.58f to Color.Black.copy(alpha = 0.18f),
                             0.82f to Color.Black.copy(alpha = 0.78f),
-                            1f to Color.Black.copy(alpha = 0.98f),
+                            1f to themedBackground,
                         ),
                     ),
                 ),
@@ -2255,16 +2184,14 @@ private fun PosterHeroRoundActionButton(
 ) {
     val buttonSize = if (primary) 62.dp else 54.dp
     val iconSize = if (primary) 32.dp else 25.dp
+    val actionAccent = rememberActionAccentStyle(enabled = enabled)
     Box(
         modifier = Modifier
             .size(buttonSize)
             .clip(CircleShape)
-            .background(
-                if (primary) {
-                    Color.White.copy(alpha = if (enabled) 0.95f else 0.56f)
-                } else {
-                    Color.White.copy(alpha = if (enabled) 0.14f else 0.07f)
-                },
+            .then(
+                if (primary) Modifier.background(actionAccent.brush)
+                else Modifier.background(Color.White.copy(alpha = if (enabled) 0.14f else 0.07f)),
             )
             .border(
                 width = 1.dp,
@@ -2278,7 +2205,7 @@ private fun PosterHeroRoundActionButton(
             imageVector = imageVector,
             contentDescription = contentDescription,
             modifier = Modifier.size(iconSize),
-            tint = if (primary) Color.Black.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.94f),
+            tint = if (primary) actionAccent.contentColor else Color.White.copy(alpha = 0.94f),
         )
     }
 }
@@ -2831,7 +2758,7 @@ private fun HeroCtaButton(
     onClick: () -> Unit,
 ) {
     val shape = RoundedCornerShape(44.dp)
-    val accentBrush = rememberAnimatedAccentBrush()
+    val actionAccent = rememberActionAccentStyle(enabled = enabled)
     val softBrush = rememberAnimatedSoftBrush()
     Box(
         modifier = Modifier
@@ -2856,15 +2783,12 @@ private fun HeroCtaButton(
         Surface(
             modifier = Modifier
                 .then(
-                    if (accentBrush != null) {
-                        Modifier.background(accentBrush, RoundedCornerShape(40.dp))
-                    } else {
-                        Modifier
-                    },
+                    Modifier.background(actionAccent.brush, RoundedCornerShape(40.dp)),
                 )
+                .nuvioKeyboardFocusIndicator(RoundedCornerShape(40.dp), enabled)
                 .clickable(enabled = enabled, onClick = onClick),
-            color = if (accentBrush != null) Color.Transparent else MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+            color = Color.Transparent,
+            contentColor = actionAccent.contentColor,
             shape = RoundedCornerShape(40.dp),
             shadowElevation = 10.dp,
         ) {
@@ -2891,6 +2815,7 @@ private fun HeroPageIndicator(
             .height(8.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.26f))
+            .nuvioKeyboardFocusIndicator(CircleShape)
             .clickable(onClick = onClick),
     ) {
         if (progress > 0.02f) {

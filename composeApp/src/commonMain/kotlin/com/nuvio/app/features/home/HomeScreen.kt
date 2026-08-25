@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -72,6 +73,7 @@ import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepositor
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingSortMode
 import com.nuvio.app.features.watchprogress.isMalformedNextUpSeedContentId
+import com.nuvio.app.features.watchprogress.isRawMetadataTitle
 import com.nuvio.app.features.watchprogress.isSeriesTypeForContinueWatching
 import com.nuvio.app.features.watchprogress.nextUpDismissKey
 import com.nuvio.app.features.watchprogress.parseReleaseDateToEpochMs
@@ -469,11 +471,33 @@ fun HomeScreen(
     var resolvedInProgressItems by remember(activeProfileId, effectiveWatchProgressSource) {
         mutableStateOf<Map<String, ContinueWatchingItem>>(emptyMap())
     }
+    val enabledAddons = remember(addonsUiState.addons) {
+        addonsUiState.addons.enabledAddons()
+    }
+    val availableManifests = remember(enabledAddons) {
+        enabledAddons.mapNotNull { addon -> addon.manifest }
+    }
+    val metaProviderKey = remember(availableManifests) {
+        availableManifests
+            .filter { manifest -> manifest.resources.any { resource -> resource.name == "meta" } }
+            .map { manifest -> manifest.transportUrl }
+            .sorted()
+    }
+    val metaProviderReadinessKey = remember(enabledAddons) {
+        enabledAddons
+            .sortedBy { addon -> addon.manifestUrl }
+            .joinToString(separator = "|") { addon ->
+                "${addon.manifestUrl}:${addon.manifest != null}:${addon.isRefreshing}:${addon.errorMessage.orEmpty()}"
+            }
+    }
 
     LaunchedEffect(
         activeProfileId,
         effectiveWatchProgressSource,
         visibleContinueWatchingEntries,
+        metaProviderKey,
+        metaProviderReadinessKey,
+        networkStatusUiState.condition,
     ) {
         if (visibleContinueWatchingEntries.isEmpty()) {
             resolvedInProgressItems = emptyMap()
@@ -624,9 +648,6 @@ fun HomeScreen(
             }
         }
     }
-    val enabledAddons = remember(addonsUiState.addons) {
-        addonsUiState.addons.enabledAddons()
-    }
     val isRefreshingEnabledAddons = remember(enabledAddons) {
         enabledAddons.any { addon -> addon.isRefreshing }
     }
@@ -634,23 +655,6 @@ fun HomeScreen(
         if (!homeUiState.isLoading && !isRefreshingEnabledAddons) {
             manualRefreshRequested = false
         }
-    }
-    val availableManifests = remember(enabledAddons) {
-        enabledAddons.mapNotNull { addon -> addon.manifest }
-    }
-
-    val metaProviderKey = remember(availableManifests) {
-        availableManifests
-            .filter { manifest -> manifest.resources.any { resource -> resource.name == "meta" } }
-            .map { manifest -> manifest.transportUrl }
-            .sorted()
-    }
-    val metaProviderReadinessKey = remember(enabledAddons) {
-        enabledAddons
-            .sortedBy { addon -> addon.manifestUrl }
-            .joinToString(separator = "|") { addon ->
-                "${addon.manifestUrl}:${addon.manifest != null}:${addon.isRefreshing}:${addon.errorMessage.orEmpty()}"
-            }
     }
     var nextUpResolutionRetryAttempt by remember(
         activeProfileId,
@@ -1046,25 +1050,6 @@ fun HomeScreen(
             heroRefreshPullProgress = 0f
         }
     }
-    LaunchedEffect(
-        heroRefreshPullProgress,
-        nuvioEnhancedSettings.heroRefreshHapticsEnabled,
-    ) {
-        if (!nuvioEnhancedSettings.heroRefreshHapticsEnabled) {
-            heroRefreshHapticArmed = true
-            return@LaunchedEffect
-        }
-        when {
-            heroRefreshPullProgress >= HOME_HERO_REFRESH_HAPTIC_THRESHOLD &&
-                heroRefreshHapticArmed -> {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                heroRefreshHapticArmed = false
-            }
-            heroRefreshPullProgress < HOME_HERO_REFRESH_HAPTIC_RESET_THRESHOLD -> {
-                heroRefreshHapticArmed = true
-            }
-        }
-    }
     val heroRefreshVisualProgress by animateFloatAsState(
         targetValue = heroRefreshPullProgress.coerceIn(0f, 1f),
         animationSpec = tween(durationMillis = 150),
@@ -1073,7 +1058,7 @@ fun HomeScreen(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         val viewportHeight = maxHeight
         val tvLayout = LocalTvLayoutProfile.current.enabled
@@ -1136,6 +1121,15 @@ fun HomeScreen(
                     },
                     onPullProgressChange = { progress ->
                         heroRefreshPullProgress = progress
+                        val hapticDecision = heroRefreshHapticDecision(
+                            progress = progress,
+                            enabled = nuvioEnhancedSettings.heroRefreshHapticsEnabled,
+                            armed = heroRefreshHapticArmed,
+                        )
+                        heroRefreshHapticArmed = hapticDecision.armed
+                        if (hapticDecision.shouldPerform) {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
                     },
                     onRefresh = {
                         coroutineScope.launch {
@@ -1383,6 +1377,24 @@ private const val HOME_UPCOMING_SECTION_KEY = "home_upcoming"
 private const val HOME_SMART_SHELVES_SECTION_KEY = "home_smart_shelves"
 private const val HOME_HERO_REFRESH_HAPTIC_THRESHOLD = 1f
 private const val HOME_HERO_REFRESH_HAPTIC_RESET_THRESHOLD = 0.22f
+
+internal data class HeroRefreshHapticDecision(
+    val armed: Boolean,
+    val shouldPerform: Boolean,
+)
+
+internal fun heroRefreshHapticDecision(
+    progress: Float,
+    enabled: Boolean,
+    armed: Boolean,
+): HeroRefreshHapticDecision = when {
+    !enabled -> HeroRefreshHapticDecision(armed = true, shouldPerform = false)
+    progress >= HOME_HERO_REFRESH_HAPTIC_THRESHOLD && armed ->
+        HeroRefreshHapticDecision(armed = false, shouldPerform = true)
+    progress < HOME_HERO_REFRESH_HAPTIC_RESET_THRESHOLD ->
+        HeroRefreshHapticDecision(armed = true, shouldPerform = false)
+    else -> HeroRefreshHapticDecision(armed = armed, shouldPerform = false)
+}
 private val HOME_PREMIUM_REFRESH_TRIGGER_DISTANCE = 96.dp
 private val HOME_PREMIUM_REFRESH_MAX_PULL_DISTANCE = 168.dp
 private val HOME_STREAMING_SHOWCASE_HERO_TO_CONTINUE_WATCHING_GAP = 0.dp
@@ -1684,6 +1696,7 @@ internal fun hasHomeNextUpSeedChangedFromCache(
 
 internal fun hasUsableHomeNextUpMetadata(item: ContinueWatchingItem): Boolean {
     val hasResolvedTitle = item.title.isNotBlank() &&
+        !item.title.isRawMetadataTitle() &&
         !item.title.equals(item.parentMetaId, ignoreCase = true)
     val hasArtwork = listOf(
         item.imageUrl,
@@ -2137,7 +2150,7 @@ private fun CompletedSeriesCandidate.toContinueWatchingSeed(meta: com.nuvio.app.
     )
 
 private fun ContinueWatchingItem.shouldDisplayInContinueWatching(): Boolean =
-    isNextUp || progressFraction < 0.995f
+    !title.isRawMetadataTitle() && (isNextUp || progressFraction < 0.995f)
 
 private fun CachedNextUpItem.toContinueWatchingItem(): ContinueWatchingItem? {
     val alertState = com.nuvio.app.features.watchprogress.calculateReleaseAlertState(
@@ -2293,15 +2306,6 @@ private fun ContinueWatchingItem.hasPlaceholderProgressTitle(): Boolean {
         normalizedTitle.equals(videoId.trim(), ignoreCase = true)
 }
 
-private fun String.isRawMetadataTitle(): Boolean {
-    val value = trim()
-    if (value.isEmpty()) return true
-    val lower = value.lowercase()
-    return Regex("^tt\\d{5,}$").matches(lower) ||
-        Regex("^(imdb|tmdb|trakt)[:_-]?\\d+$").matches(lower) ||
-        Regex("^\\d{6,}$").matches(lower)
-}
-
 private fun WatchProgressEntry.continueWatchingFallbackKeys(): List<String> =
     buildList {
         resolvedProgressKey().takeIf(String::isNotBlank)?.let(::add)
@@ -2365,7 +2369,7 @@ private fun WatchProgressEntry.needsContinueWatchingMetadataResolution(): Boolea
 
 private suspend fun resolveContinueWatchingEntryMetadata(entry: WatchProgressEntry): ContinueWatchingItem? {
     if (!entry.needsContinueWatchingMetadataResolution()) return null
-    val meta = MetaDetailsRepository.fetch(type = entry.parentMetaType, id = entry.parentMetaId)
+    val meta = MetaDetailsRepository.fetchBase(type = entry.parentMetaType, id = entry.parentMetaId)
         ?: return null
     return entry.toContinueWatchingItem().withMetaDetailsMetadata(meta)
 }

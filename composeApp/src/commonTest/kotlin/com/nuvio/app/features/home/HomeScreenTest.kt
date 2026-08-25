@@ -305,6 +305,56 @@ class HomeScreenTest {
     }
 
     @Test
+    fun `home never displays an unresolved raw imdb id as a title`() {
+        val progress = progressEntry(
+            videoId = "tt283472349",
+            title = "tt283472349",
+            lastUpdatedEpochMs = 500L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).copy(parentMetaId = "tt283472349")
+
+        val result = buildHomeContinueWatchingItems(
+            visibleEntries = listOf(progress),
+            nextUpItemsBySeries = emptyMap(),
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `home preserves rich cached metadata over an incomplete remote row`() {
+        val progress = progressEntry(
+            videoId = "tt283472349",
+            title = "tt283472349",
+            lastUpdatedEpochMs = 500L,
+            seasonNumber = null,
+            episodeNumber = null,
+            episodeTitle = null,
+        ).copy(
+            parentMetaId = "tt283472349",
+            poster = null,
+            background = null,
+        )
+        val cached = progress.toContinueWatchingItem().copy(
+            title = "Resolved cached title",
+            imageUrl = "https://example.test/cached.jpg",
+            poster = "https://example.test/cached.jpg",
+        )
+
+        val result = buildHomeContinueWatchingItems(
+            visibleEntries = listOf(progress),
+            cachedInProgressByVideoId = mapOf(progress.resolvedProgressKey() to cached),
+            nextUpItemsBySeries = emptyMap(),
+        ).single()
+
+        assertEquals("Resolved cached title", result.title)
+        assertEquals("https://example.test/cached.jpg", result.imageUrl)
+        assertEquals("https://example.test/cached.jpg", result.poster)
+    }
+
+    @Test
     fun `continue watching artwork selection skips blank values`() {
         val progress = progressEntry(
             videoId = "show:1:4",

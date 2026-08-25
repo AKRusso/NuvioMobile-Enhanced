@@ -32,7 +32,7 @@ internal fun enrichWatchProgressEntry(
         } else {
             current.videoId
         },
-        title = meta.name.takeIf(String::isNotBlank) ?: current.title,
+        title = meta.name.takeIf { name -> !name.isRawMetadataTitle() } ?: current.title,
         poster = meta.poster?.takeIf(String::isNotBlank) ?: current.poster,
         background = meta.background?.takeIf(String::isNotBlank) ?: current.background,
         logo = meta.logo?.takeIf(String::isNotBlank) ?: current.logo,
@@ -45,10 +45,19 @@ internal fun enrichWatchProgressEntry(
 }
 
 internal fun WatchProgressEntry.needsRemoteMetadataEnrichment(): Boolean =
-    title.isBlank() ||
+    title.isRawMetadataTitle() ||
         title.equals(parentMetaId, ignoreCase = true) ||
         poster.isNullOrBlank() ||
         background.isNullOrBlank()
+
+internal fun String.isRawMetadataTitle(): Boolean {
+    val value = trim()
+    if (value.isEmpty()) return true
+    val lower = value.lowercase()
+    return Regex("^tt\\d{5,}$").matches(lower) ||
+        Regex("^(imdb|tmdb|trakt)[:_-]?\\d+$").matches(lower) ||
+        Regex("^\\d{6,}$").matches(lower)
+}
 
 internal class ProviderProgressMetadataOverlay {
     private val lock = SynchronizedObject()

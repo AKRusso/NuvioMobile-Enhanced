@@ -6,6 +6,7 @@ import com.nuvio.app.features.tracking.WatchProgressSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class WatchProgressMetadataProjectionTest {
     @Test
@@ -54,6 +55,31 @@ class WatchProgressMetadataProjectionTest {
         assertEquals(raw, projected)
         assertNull(projected.background)
         assertNull(projected.episodeThumbnail)
+    }
+
+    @Test
+    fun `raw imdb metadata title does not replace a resolved progress title`() {
+        val current = entry(source = WatchProgressSourceSimklPlayback).copy(title = "Resolved title")
+
+        val enriched = enrichWatchProgressEntry(
+            current = current,
+            meta = metadata().copy(name = "tt283472349"),
+        )
+
+        assertEquals("Resolved title", enriched.title)
+        assertEquals("addon-poster", enriched.poster)
+    }
+
+    @Test
+    fun `raw imdb title requires metadata enrichment even when it differs from content id`() {
+        val raw = entry(source = WatchProgressSourceSimklPlayback).copy(
+            parentMetaId = "trakt:42",
+            title = "tt283472349",
+            poster = "poster",
+            background = "background",
+        )
+
+        assertTrue(raw.needsRemoteMetadataEnrichment())
     }
 
     private fun entry(source: String): WatchProgressEntry = WatchProgressEntry(

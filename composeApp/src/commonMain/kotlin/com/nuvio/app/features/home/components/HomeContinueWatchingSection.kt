@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.DisintegratingContainer
 import com.nuvio.app.core.ui.LocalTvLayoutProfile
+import com.nuvio.app.core.ui.NuvioCardDepthSurface
 import com.nuvio.app.core.ui.NuvioProgressBar
 import com.nuvio.app.core.ui.NuvioShelfSection
 import com.nuvio.app.core.ui.NuvioTokens
@@ -59,6 +60,8 @@ import com.nuvio.app.core.ui.PosterLandscapeAspectRatio
 import com.nuvio.app.core.ui.ScopedDisintegrationTracker
 import com.nuvio.app.core.ui.landscapePosterHeightForWidth
 import com.nuvio.app.core.ui.landscapePosterWidth
+import com.nuvio.app.core.ui.nuvioCardDepth
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.cloud.CloudLibraryContentType
@@ -702,6 +705,10 @@ private fun ContinueWatchingCard(
             .aspectRatio(PosterLandscapeAspectRatio)
             .clip(RoundedCornerShape(cardMetrics.cornerRadius))
             .background(MaterialTheme.colorScheme.surfaceVariant)
+            .nuvioCardDepth(
+                shape = RoundedCornerShape(cardMetrics.cornerRadius),
+                surface = NuvioCardDepthSurface.ContinueWatching,
+            )
             .posterCardClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -891,6 +898,10 @@ private fun ContinueWatchingWideCard(
                 color = Color.White.copy(alpha = 0.15f),
                 shape = RoundedCornerShape(layout.cardRadius),
             )
+            .nuvioKeyboardFocusIndicator(
+                RoundedCornerShape(layout.cardRadius),
+                onClick != null || onLongClick != null,
+            )
             .combinedClickable(
                 enabled = onClick != null || onLongClick != null,
                 onClick = { onClick?.invoke() },
@@ -1025,6 +1036,10 @@ private fun ContinueWatchingPosterCard(
                 .height(layout.posterCardHeight)
                 .clip(RoundedCornerShape(layout.cardRadius))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                .nuvioCardDepth(
+                    shape = RoundedCornerShape(layout.cardRadius),
+                    surface = NuvioCardDepthSurface.ContinueWatching,
+                )
                 .posterCardClickable(
                     onClick = onClick,
                     onLongClick = onLongClick,
