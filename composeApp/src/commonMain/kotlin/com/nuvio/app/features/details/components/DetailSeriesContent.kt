@@ -52,8 +52,6 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +72,7 @@ import com.nuvio.app.core.ui.TvLayoutProfile
 import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
 import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.posterCardClickable
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaEpisodeCardStyle
@@ -385,6 +384,7 @@ private fun SeasonViewModeToggle(
                 color = Color.White.copy(alpha = if (isPosters) 0.2f else 0.3f),
                 shape = RoundedCornerShape(8.dp),
             )
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
@@ -453,6 +453,7 @@ private fun SeasonTextChipScrollRow(
                             Color.Transparent
                         },
                     )
+                    .nuvioKeyboardFocusIndicator(RoundedCornerShape(sizing.seasonChipRadius))
                     .combinedClickable(
                         onClick = { onSelect(season) },
                         onLongClick = onLongPress?.let { handler -> { handler(season) } },
@@ -544,6 +545,7 @@ private fun SeasonPosterButton(
     Column(
         modifier = Modifier
             .width(sizing.seasonPosterWidth)
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(sizing.seasonPosterRadius))
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick,
@@ -659,48 +661,6 @@ private fun EpisodeHorizontalRow(
         state = listState,
         modifier = Modifier
             .nuvioHorizontalScrollBleed(horizontalScrollPadding)
-            .pointerInput(listState) {
-                awaitPointerEventScope {
-                    var draggingHorizontally = false
-                    var totalDx = 0f
-                    var totalDy = 0f
-                    while (true) {
-                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                        val change = event.changes.firstOrNull() ?: continue
-                        // DeX mice send a vertical wheel delta over horizontal episode rails.
-                        val wheelDelta = change.scrollDelta.y
-                        if (wheelDelta != 0f) {
-                            listState.dispatchRawDelta(wheelDelta * 72f)
-                        }
-
-                        if (change.pressed && !change.previousPressed) {
-                            draggingHorizontally = false
-                            totalDx = 0f
-                            totalDy = 0f
-                        }
-                        if (change.pressed) {
-                            val delta = change.position - change.previousPosition
-                            totalDx += delta.x
-                            totalDy += delta.y
-                            if (
-                                !draggingHorizontally &&
-                                kotlin.math.abs(totalDx) > viewConfiguration.touchSlop &&
-                                kotlin.math.abs(totalDx) > kotlin.math.abs(totalDy)
-                            ) {
-                                draggingHorizontally = true
-                            }
-                            if (draggingHorizontally && delta.x != 0f) {
-                                listState.dispatchRawDelta(-delta.x)
-                                change.consume()
-                            }
-                        } else if (change.previousPressed) {
-                            draggingHorizontally = false
-                            totalDx = 0f
-                            totalDy = 0f
-                        }
-                    }
-                }
-            }
             .fillMaxWidth(),
         contentPadding = PaddingValues(
             horizontal = horizontalScrollPadding + rowMetrics.rowHorizontalPadding,
@@ -1233,6 +1193,10 @@ private fun EpisodeListCard(
                 width = 1.dp,
                 color = Color.White.copy(alpha = 0.1f),
                 shape = cardShape,
+            )
+            .nuvioKeyboardFocusIndicator(
+                shape = cardShape,
+                enabled = onClick != null || onLongPress != null,
             )
             .combinedClickable(
                 enabled = onClick != null || onLongPress != null,

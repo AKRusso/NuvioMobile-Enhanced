@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
@@ -57,12 +58,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -79,8 +86,12 @@ import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.rememberHeroStretchState
 import com.nuvio.app.features.ai.AiAssistantSettingsRepository
+import com.nuvio.app.features.anime.AnimeTrackingEditorSheet
+import com.nuvio.app.features.anime.AniListTrackingRepository
+import com.nuvio.app.features.anime.MyAnimeListTrackingRepository
 import com.nuvio.app.features.details.components.AiAssistantSheet
 import com.nuvio.app.features.details.components.DetailActionButtons
 import com.nuvio.app.features.details.components.DetailSecondaryAction
@@ -130,6 +141,7 @@ import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
 import com.nuvio.app.features.watchprogress.ContinueWatchingPreferencesRepository
 import com.nuvio.app.features.watching.application.WatchingActions
 import com.nuvio.app.features.watching.application.WatchingState
+import nuvio.composeapp.generated.resources.anime_tracking_action
 import com.kmpalette.rememberDominantColorState
 import com.kmpalette.extensions.painter.rememberPainterDominantColorState
 import kotlinx.coroutines.delay
@@ -247,6 +259,15 @@ fun MetaDetailsScreen(
     var episodeTmdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
     var showAiAssistant by remember(type, id) { mutableStateOf(false) }
+    var showAnimeTrackingEditor by remember(type, id) { mutableStateOf(false) }
+    val aniListConnected by remember {
+        AniListTrackingRepository.ensureLoaded()
+        AniListTrackingRepository.isAuthenticated
+    }.collectAsStateWithLifecycle()
+    val malConnected by remember {
+        MyAnimeListTrackingRepository.ensureLoaded()
+        MyAnimeListTrackingRepository.isAuthenticated
+    }.collectAsStateWithLifecycle()
 
     val shouldShowComments = !offlineDetailsAvailable &&
         commentsEnabled &&
@@ -256,6 +277,15 @@ fun MetaDetailsScreen(
     val supportsAiAssistant = displayedMeta?.type
         ?.lowercase()
         ?.let { it in setOf("movie", "film", "series", "show", "tv", "tvshow") } == true
+    val supportsAnimeTracking = displayedMeta?.let { meta ->
+        (aniListConnected || malConnected) && (
+            meta.type.equals("anime", ignoreCase = true) ||
+                listOf("anilist:", "mal:", "kitsu:", "anidb:").any { prefix ->
+                    meta.id.startsWith(prefix, ignoreCase = true) ||
+                        meta.videos.any { video -> video.id.startsWith(prefix, ignoreCase = true) }
+                }
+            )
+    } == true
 
     LaunchedEffect(displayedMeta?.id) {
         deferredMetaWorkAllowed = false
@@ -341,9 +371,7 @@ fun MetaDetailsScreen(
         id,
         traktSettingsUiState.moreLikeThisSource,
         traktAuthUiState.mode,
-        tmdbSettingsUiState.enabled,
-        tmdbSettingsUiState.useMoreLikeThis,
-        tmdbSettingsUiState.language,
+        tmdbSettingsUiState,
         offlineDetailsAvailable,
     ) {
         if (offlineDetailsAvailable) return@LaunchedEffect
@@ -414,7 +442,7 @@ fun MetaDetailsScreen(
                     Button(
                         onClick = {
                             NetworkStatusRepository.requestRefresh(force = true)
-                            MetaDetailsRepository.load(type, id)
+                            MetaDetailsRepository.retry(type, id)
                         },
                     ) {
                         Text(stringResource(Res.string.action_retry))
@@ -968,6 +996,7 @@ fun MetaDetailsScreen(
                     )
                 }
                 val listState = rememberLazyListState()
+                val playFocusRequester = remember(meta.id) { FocusRequester() }
                 val heroStretchState = rememberHeroStretchState(listState)
                 val density = LocalDensity.current
                 val safeAreaTopPx = with(density) {
@@ -1176,7 +1205,8 @@ fun MetaDetailsScreen(
                                 isTablet = isTablet,
                                 contentHorizontalPadding = contentHorizontalPadding,
                                 contentMaxWidth = if (isTablet) contentMaxWidth else Dp.Unspecified,
-                                playButtonLabel = playButtonLabel,
+                                 playButtonLabel = playButtonLabel,
+                                 playFocusRequester = playFocusRequester,
                                 isSaved = isSaved,
                                 isWatched = isWatched,
                                 onPrimaryPlayClick = onPrimaryPlayClick,
@@ -1185,7 +1215,12 @@ fun MetaDetailsScreen(
                                 downloadAction = downloadAction,
                                 onSaveClick = toggleSaved,
                                 onSaveLongClick = openLibraryListPicker,
-                                onWatchedClick = toggleWatched,
+                                 onWatchedClick = toggleWatched,
+                                 onOpenAnimeTracking = if (supportsAnimeTracking) {
+                                     { showAnimeTrackingEditor = true }
+                                 } else {
+                                     null
+                                 },
                                 showManualPlayOption = showManualPlayOption,
                                 preferredEpisodeSeasonNumber = seriesAction?.seasonNumber,
                                 preferredEpisodeNumber = seriesAction?.episodeNumber,
@@ -1285,10 +1320,22 @@ fun MetaDetailsScreen(
                         if (showHeroBackButton) {
                             NuvioBackButton(
                                 onClick = onBackFromDetails,
-                                modifier = Modifier.padding(
-                                    start = 12.dp,
-                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
-                                ).zIndex(2f),
+                                modifier = Modifier
+                                    .padding(
+                                        start = 12.dp,
+                                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                                    )
+                                    .zIndex(2f)
+                                    .onPreviewKeyEvent { event ->
+                                        if (
+                                            event.type == KeyEventType.KeyDown &&
+                                            event.key == Key.DirectionDown
+                                        ) {
+                                            playFocusRequester.requestFocus()
+                                        } else {
+                                            false
+                                        }
+                                    },
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onBackground,
                             )
@@ -1412,6 +1459,13 @@ fun MetaDetailsScreen(
                                 onPlayManually = {
                                     onEpisodeManualPlayClick(selectedEpisode)
                                 },
+                            )
+                        }
+
+                        if (showAnimeTrackingEditor) {
+                            AnimeTrackingEditorSheet(
+                                meta = meta,
+                                onDismiss = { showAnimeTrackingEditor = false },
                             )
                         }
 
@@ -1685,6 +1739,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     contentHorizontalPadding: Dp,
     contentMaxWidth: Dp,
     playButtonLabel: String,
+    playFocusRequester: FocusRequester,
     isSaved: Boolean,
     isWatched: Boolean,
     onPrimaryPlayClick: () -> Unit,
@@ -1694,6 +1749,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
+    onOpenAnimeTracking: (() -> Unit)?,
     showManualPlayOption: Boolean,
     preferredEpisodeSeasonNumber: Int?,
     preferredEpisodeNumber: Int?,
@@ -1772,6 +1828,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     meta = meta,
                     isTablet = isTablet,
                     playButtonLabel = playButtonLabel,
+                    playFocusRequester = playFocusRequester,
                     isSaved = isSaved,
                     isWatched = isWatched,
                     onPrimaryPlayClick = onPrimaryPlayClick,
@@ -1781,6 +1838,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     onSaveClick = onSaveClick,
                     onSaveLongClick = onSaveLongClick,
                     onWatchedClick = onWatchedClick,
+                    onOpenAnimeTracking = onOpenAnimeTracking,
                     showManualPlayOption = showManualPlayOption,
                     preferredEpisodeSeasonNumber = preferredEpisodeSeasonNumber,
                     preferredEpisodeNumber = preferredEpisodeNumber,
@@ -1917,6 +1975,45 @@ private fun metaSectionHasContent(
         MetaScreenSectionKey.MORE_LIKE_THIS -> hasMoreLikeThisSection
     }
 
+internal fun detailActionSectionLazyListIndex(
+    settings: MetaScreenSettingsUiState,
+    sectionHasContent: (MetaScreenSectionKey) -> Boolean,
+): Int? {
+    val enabledItems = settings.items.filter { it.enabled }
+    var lazyListIndex = 1 // The hero is always the first item.
+
+    if (!settings.tabLayout) {
+        enabledItems.forEach { section ->
+            if (sectionHasContent(section.key)) {
+                if (section.key == MetaScreenSectionKey.ACTIONS) return lazyListIndex
+                lazyListIndex++
+            }
+        }
+        return null
+    }
+
+    val processedGroups = mutableSetOf<Int>()
+    enabledItems.forEach { section ->
+        val groupId = section.tabGroup
+        if (groupId == null) {
+            if (sectionHasContent(section.key)) {
+                if (section.key == MetaScreenSectionKey.ACTIONS) return lazyListIndex
+                lazyListIndex++
+            }
+        } else if (groupId !in processedGroups) {
+            processedGroups.add(groupId)
+            val groupMembers = enabledItems.filter { item ->
+                item.tabGroup == groupId && sectionHasContent(item.key)
+            }
+            if (groupMembers.isNotEmpty()) {
+                if (groupMembers.any { it.key == MetaScreenSectionKey.ACTIONS }) return lazyListIndex
+                lazyListIndex++
+            }
+        }
+    }
+    return null
+}
+
 @Composable
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun ConfiguredMetaSections(
@@ -1924,6 +2021,7 @@ private fun ConfiguredMetaSections(
     meta: MetaDetails,
     isTablet: Boolean,
     playButtonLabel: String,
+    playFocusRequester: FocusRequester,
     isSaved: Boolean,
     isWatched: Boolean,
     onPrimaryPlayClick: () -> Unit,
@@ -1933,6 +2031,7 @@ private fun ConfiguredMetaSections(
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
     onWatchedClick: () -> Unit,
+    onOpenAnimeTracking: (() -> Unit)?,
     showManualPlayOption: Boolean,
     preferredEpisodeSeasonNumber: Int?,
     preferredEpisodeNumber: Int?,
@@ -1992,9 +2091,10 @@ private fun ConfiguredMetaSections(
             MetaScreenSectionKey.ACTIONS -> {
                 DetailActionButtons(
                     playLabel = playButtonLabel,
-                    featuredAction = downloadAction,
+                    playFocusRequester = playFocusRequester,
+                    downloadAction = downloadAction,
+                    playSideAction = featuredAction,
                     secondaryActions = listOfNotNull(
-                        featuredAction,
                         DetailSecondaryAction(
                             label = if (isWatched) {
                                 stringResource(Res.string.hero_mark_unwatched)
@@ -2024,6 +2124,13 @@ private fun ConfiguredMetaSections(
                             onClick = onSaveClick,
                             onLongClick = onSaveLongClick,
                         ),
+                        onOpenAnimeTracking?.let { onOpen ->
+                            DetailSecondaryAction(
+                                label = stringResource(Res.string.anime_tracking_action),
+                                icon = Icons.Default.Edit,
+                                onClick = onOpen,
+                            )
+                        },
                     ),
                     isTablet = isTablet,
                     onPlayClick = onPrimaryPlayClick,
@@ -2206,6 +2313,7 @@ private fun TabbedSectionGroup(
                         },
                         maxLines = 1,
                         modifier = Modifier
+                            .nuvioKeyboardFocusIndicator(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,

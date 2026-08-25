@@ -42,6 +42,7 @@ import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioCardDepthSurface
 import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.details.MetaTrailer
 import nuvio.composeapp.generated.resources.*
 import nuvio.composeapp.generated.resources.detail_tab_trailer
@@ -106,6 +107,7 @@ fun DetailTrailersSection(
                         tonalElevation = 0.dp,
                         modifier = Modifier
                             .clip(RoundedCornerShape(sizing.selectorRadius))
+                            .nuvioKeyboardFocusIndicator(RoundedCornerShape(sizing.selectorRadius))
                             .clickable { menuExpanded = true },
                     ) {
                         Row(
@@ -141,6 +143,7 @@ fun DetailTrailersSection(
                         grouped.keys.forEach { category ->
                             val count = grouped[category]?.size ?: 0
                             DropdownMenuItem(
+                                modifier = Modifier.nuvioKeyboardFocusIndicator(RoundedCornerShape(8.dp)),
                                 text = {
                                     Text(
                                         text = stringResource(Res.string.detail_trailer_category_count, category, count),
@@ -206,6 +209,7 @@ private fun TrailerCard(
                     shape = RoundedCornerShape(cornerRadius),
                     surface = NuvioCardDepthSurface.Trailers,
                 )
+                .nuvioKeyboardFocusIndicator(RoundedCornerShape(cornerRadius))
                 .clickable(onClick = onClick),
         ) {
             AsyncImage(

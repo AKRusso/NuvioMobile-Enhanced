@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.details.MetaCompany
 import com.nuvio.app.features.details.MetaDetails
 import nuvio.composeapp.generated.resources.*
@@ -113,6 +114,7 @@ private fun ProductionChip(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .background(color = ProductionChipBackground)
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp), onClick != null)
             .then(
                 if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
             )

@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.trakt.TraktCommentReview
 import kotlinx.coroutines.flow.distinctUntilChanged
 import nuvio.composeapp.generated.resources.*
@@ -195,6 +196,7 @@ private fun CommentCard(
             modifier = modifier
                 .width(cardWidth)
                 .height(cardHeight)
+                .nuvioKeyboardFocusIndicator(RoundedCornerShape(16.dp))
                 .clickable(onClick = onClick),
             shape = RoundedCornerShape(16.dp),
             color = if (isAmoled) Color(0xFF121212) else colorScheme.surfaceVariant.copy(alpha = 0.5f),

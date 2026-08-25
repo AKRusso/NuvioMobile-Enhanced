@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaExternalRating
@@ -276,6 +277,7 @@ private fun DetailRatingsRow(
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = horizontalScrollPadding)
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -377,7 +379,7 @@ private fun DetailRatingsSheet(
             RatingSheetHeader(meta = meta)
 
             if (availableSources.isNotEmpty()) {
-                Text(text = "Rating source", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(text = stringResource(Res.string.details_rating_source), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -411,7 +413,7 @@ private fun DetailRatingsSheet(
 
             RatingScale()
 
-            Text(text = "Episode ratings", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(text = stringResource(Res.string.details_episode_ratings), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             if (selectedEpisodeRatings.isNotEmpty()) {
                 EpisodeRatingsMatrix(
                     seasons = seasons,
@@ -420,7 +422,7 @@ private fun DetailRatingsSheet(
                 )
             } else {
                 Text(
-                    text = "Episode ratings are not available.",
+                    text = stringResource(Res.string.details_episode_ratings_unavailable),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -449,7 +451,11 @@ private fun RatingSheetHeader(meta: MetaDetails) {
             }
             meta.mainSeriesStats()?.let { stats ->
                 Text(
-                    text = "${stats.seasonCount} seasons - ${stats.episodeCount} episodes",
+                    text = if (stats.seasonCount == 1) {
+                        stringResource(Res.string.details_series_counts_one_season, stats.episodeCount)
+                    } else {
+                        stringResource(Res.string.details_series_counts, stats.seasonCount, stats.episodeCount)
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.SemiBold,
@@ -461,7 +467,7 @@ private fun RatingSheetHeader(meta: MetaDetails) {
 
 @Composable
 private fun RatingScale() {
-    Text(text = "Rating scale", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(text = stringResource(Res.string.details_rating_scale), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -471,17 +477,17 @@ private fun RatingScale() {
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            RatingScaleItem("Awesome (9.0+)", EpisodeRatingAwesome)
-            RatingScaleItem("Good (7.5-7.9)", EpisodeRatingGood)
-            RatingScaleItem("Bad (6.0-6.9)", EpisodeRatingBad)
+            RatingScaleItem(stringResource(Res.string.details_rating_awesome), EpisodeRatingAwesome)
+            RatingScaleItem(stringResource(Res.string.details_rating_good), EpisodeRatingGood)
+            RatingScaleItem(stringResource(Res.string.details_rating_bad), EpisodeRatingBad)
         }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            RatingScaleItem("Great (8.0-8.9)", EpisodeRatingGreat)
-            RatingScaleItem("Regular (7.0-7.4)", EpisodeRatingRegular)
-            RatingScaleItem("Garbage (<6.0)", EpisodeRatingGarbage)
+            RatingScaleItem(stringResource(Res.string.details_rating_great), EpisodeRatingGreat)
+            RatingScaleItem(stringResource(Res.string.details_rating_regular), EpisodeRatingRegular)
+            RatingScaleItem(stringResource(Res.string.details_rating_garbage), EpisodeRatingGarbage)
         }
     }
 }
