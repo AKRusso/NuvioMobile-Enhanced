@@ -90,7 +90,11 @@ internal object AnimeTrackingApi {
         }.getOrNull()
     }
 
-    suspend fun saveAniListProgress(accessToken: String, mediaId: Int, progress: Int): Boolean {
+    suspend fun saveAniListProgress(
+        accessToken: String,
+        mediaId: Int,
+        progress: Int,
+    ): AnimeTrackingMutationStatus {
         val variables = buildJsonObject {
             put("mediaId", JsonPrimitive(mediaId))
             put("progress", JsonPrimitive(progress))
@@ -101,11 +105,20 @@ internal object AnimeTrackingApi {
             "mutation (${ '$' }mediaId: Int, ${ '$' }progress: Int, ${ '$' }status: MediaListStatus) { " +
                 "SaveMediaListEntry(mediaId: ${ '$' }mediaId, progress: ${ '$' }progress, status: ${ '$' }status) { id } }",
             variables,
-        ) ?: return false
+        ) ?: return AnimeTrackingMutationStatus.FAILED
         return runCatching {
             val root = json.parseToJsonElement(response).jsonObject
-            root["errors"] == null && root["data"] !is JsonNull && root["data"] != null
-        }.getOrDefault(false)
+            val errorText = root["errors"]?.toString().orEmpty()
+            when {
+                errorText.contains("invalid token", ignoreCase = true) ||
+                    errorText.contains("unauthenticated", ignoreCase = true) ||
+                    errorText.contains("unauthorized", ignoreCase = true) -> AnimeTrackingMutationStatus.UNAUTHORIZED
+                root["errors"] == null && root["data"] !is JsonNull && root["data"] != null -> {
+                    AnimeTrackingMutationStatus.SUCCESS
+                }
+                else -> AnimeTrackingMutationStatus.FAILED
+            }
+        }.getOrDefault(AnimeTrackingMutationStatus.FAILED)
     }
 
     suspend fun malViewer(accessToken: String): AnimeTrackingViewer? = requestCatching {
@@ -164,12 +177,16 @@ internal object AnimeTrackingApi {
             "&grant_type=refresh_token",
     )
 
-    suspend fun saveMalProgress(accessToken: String, animeId: Int, progress: Int): Boolean = requestCatching {
+    suspend fun saveMalProgress(
+        accessToken: String,
+        animeId: Int,
+        progress: Int,
+    ): AnimeTrackingMutationStatus = requestCatching {
         val body = buildString {
             append("num_watched_episodes=$progress")
             if (progress > 0) append("&status=watching")
         }
-        httpRequestRaw(
+        val status = httpRequestRaw(
             "PATCH",
             "$MAL_API/anime/$animeId/my_list_status",
             mapOf(
@@ -178,8 +195,13 @@ internal object AnimeTrackingApi {
                 "Accept" to "application/json",
             ),
             body,
-        ).status in 200..299
-    } ?: false
+        ).status
+        when {
+            status in 200..299 -> AnimeTrackingMutationStatus.SUCCESS
+            status == 401 || status == 403 -> AnimeTrackingMutationStatus.UNAUTHORIZED
+            else -> AnimeTrackingMutationStatus.FAILED
+        }
+    } ?: AnimeTrackingMutationStatus.FAILED
 
     private suspend fun aniListQuery(
         accessToken: String?,
@@ -215,6 +237,12 @@ internal object AnimeTrackingApi {
 }
 
 internal data class AnimeTrackingViewer(val id: Int?, val name: String?)
+
+internal enum class AnimeTrackingMutationStatus {
+    SUCCESS,
+    FAILED,
+    UNAUTHORIZED,
+}
 
 data class AnimeTrackingSearchResult(
     val id: Int,

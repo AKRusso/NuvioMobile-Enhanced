@@ -152,10 +152,12 @@ abstract class AnimeTrackingRepository(
     suspend fun saveProgress(media: TrackingMediaReference, progress: Int): Boolean {
         val token = validAccessToken() ?: return false
         val mediaId = resolvedMediaId(media) ?: return false
-        return when (animeProvider) {
+        val status = when (animeProvider) {
             AnimeTrackingProvider.ANILIST -> AnimeTrackingApi.saveAniListProgress(token, mediaId, progress.coerceAtLeast(0))
             AnimeTrackingProvider.MY_ANIME_LIST -> AnimeTrackingApi.saveMalProgress(token, mediaId, progress.coerceAtLeast(0))
         }
+        handleMutationStatus(status)
+        return status == AnimeTrackingMutationStatus.SUCCESS
     }
 
     final override fun handleAuthCallback(url: String): Boolean {
@@ -175,15 +177,16 @@ abstract class AnimeTrackingRepository(
         if (!AnimeTrackingSettingsRepository.preferences(animeProvider).automaticScrobble) return
         val token = validAccessToken() ?: return
         val progress = event.media.episode?.number ?: 1
-        val success = when (animeProvider) {
+        val status = when (animeProvider) {
             AnimeTrackingProvider.ANILIST -> resolveAniListId(event.media)?.let {
                 AnimeTrackingApi.saveAniListProgress(token, it, progress)
             }
             AnimeTrackingProvider.MY_ANIME_LIST -> resolveMalId(event.media)?.let {
                 AnimeTrackingApi.saveMalProgress(token, it, progress)
             }
-        } ?: false
-        if (!success) log.w { "Não foi possível atualizar o progresso." }
+        } ?: AnimeTrackingMutationStatus.FAILED
+        handleMutationStatus(status)
+        if (status != AnimeTrackingMutationStatus.SUCCESS) log.w { "Não foi possível atualizar o progresso." }
     }
 
     final override suspend fun addToHistory(
@@ -314,15 +317,16 @@ abstract class AnimeTrackingRepository(
         )
         var notFound = 0
         updates.forEach { (media, progress) ->
-            val success = when (animeProvider) {
+            val status = when (animeProvider) {
                 AnimeTrackingProvider.ANILIST -> resolveAniListId(media)?.let { mediaId ->
                     AnimeTrackingApi.saveAniListProgress(token, mediaId, progress)
                 }
                 AnimeTrackingProvider.MY_ANIME_LIST -> resolveMalId(media)?.let { animeId ->
                     AnimeTrackingApi.saveMalProgress(token, animeId, progress)
                 }
-            } ?: false
-            if (!success) notFound += 1
+            } ?: AnimeTrackingMutationStatus.FAILED
+            handleMutationStatus(status)
+            if (status != AnimeTrackingMutationStatus.SUCCESS) notFound += 1
         }
         return TrackingMutationResult(attemptedCount = updates.size, notFoundCount = notFound)
     }
@@ -384,6 +388,13 @@ abstract class AnimeTrackingRepository(
             episode = media.episode?.number,
         ) ?: return null
         return ManualResolution(mapping.id(animeProvider))
+    }
+
+    private fun handleMutationStatus(status: AnimeTrackingMutationStatus) {
+        if (status == AnimeTrackingMutationStatus.UNAUTHORIZED) {
+            onDisconnectRequested()
+            publish(errorMessage = "A autorização de ${animeProvider.displayName} foi revogada.")
+        }
     }
 
     private fun parseCallback(url: String): AuthCallback {
