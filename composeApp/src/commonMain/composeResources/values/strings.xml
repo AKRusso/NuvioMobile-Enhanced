@@ -1278,6 +1278,8 @@
     <string name="profile_choose_background">Choose a background</string>
     <string name="profile_choose_background_description">Free Nuvio Enhanced Supporter backgrounds. Select a preset or use your own image URL below.</string>
     <string name="profile_background_normal">Normal</string>
+    <string name="details_nuvio_read_subtitle">A quick, spoiler-free read before you press play.</string>
+    <string name="details_nuvio_read_story_label">STORY OVERVIEW</string>
     <string name="settings_nuvio_enhanced_discord_description">Get support, report issues, and share feedback in the Nuvio Enhanced Discord.</string>
     <string name="settings_nuvio_enhanced_donate_description">Support my work and the continued development of Nuvio Enhanced on Ko-fi.</string>
     <string name="player_next_episode">Next Episode</string>

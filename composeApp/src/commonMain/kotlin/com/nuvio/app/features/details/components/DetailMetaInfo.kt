@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -89,7 +91,6 @@ fun DetailMetaInfo(
     episodeImdbRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     episodeTmdbRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     modifier: Modifier = Modifier,
-    horizontalScrollPadding: Dp = 0.dp,
 ) {
     var showRatings by remember { mutableStateOf(false) }
     Column(
@@ -119,72 +120,22 @@ fun DetailMetaInfo(
             seriesCountText != null ||
             ageBadge != null ||
             (validImdbRating != null && !hasMdbImdbRating)
-        if (hasMetaRow) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                releaseLine?.let { line ->
-                    Text(
-                        text = line,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                runtimeText?.let { rt ->
-                    Text(
-                        text = rt,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-                seriesCountText?.let { counts ->
-                    Text(
-                        text = counts,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                ageBadge?.let { badge ->
-                    DetailHeroMetaBadge(text = badge)
-                }
-                if (validImdbRating != null && !hasMdbImdbRating) {
-                    val imdbTextStyle = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.sp,
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ImdbRatingSourceLabel(
-                            storeTextStyle = imdbTextStyle,
-                            storeTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(modifier = Modifier.width(5.dp))
-                        Text(
-                            text = validImdbRating,
-                            style = imdbTextStyle,
-                            color = ImdbYellow,
-                        )
-                    }
-                }
+        val imdbLabel = stringResource(Res.string.source_imdb)
+        val overviewPills = buildList {
+            releaseLine?.let(::add)
+            runtimeText?.let(::add)
+            seriesCountText?.let(::add)
+            ageBadge?.let(::add)
+            if (validImdbRating != null && !hasMdbImdbRating) {
+                add("$imdbLabel $validImdbRating")
             }
         }
-
-        AnimatedVisibility(
-            visible = meta.externalRatings.isNotEmpty(),
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            DetailRatingsRow(
+        if (hasMetaRow || meta.externalRatings.isNotEmpty() || !meta.description.isNullOrBlank()) {
+            DetailNuvioReadCard(
+                pills = overviewPills,
                 ratings = meta.externalRatings,
-                horizontalScrollPadding = horizontalScrollPadding,
-                onClick = { showRatings = true },
+                description = meta.description,
+                onRatingsClick = { showRatings = true },
             )
         }
 
@@ -202,48 +153,6 @@ fun DetailMetaInfo(
             )
         }
 
-        if (!meta.description.isNullOrBlank()) {
-            var expanded by remember { mutableStateOf(false) }
-            var canExpand by remember(meta.description) { mutableStateOf(false) }
-            val overviewScrollState = rememberScrollState()
-            Column(
-                modifier = Modifier.animateContentSize(),
-            ) {
-                Text(
-                    text = meta.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = if (expanded) Int.MAX_VALUE else 3,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 22.sp,
-                    onTextLayout = { result ->
-                        if (!expanded) {
-                            canExpand = result.hasVisualOverflow
-                        }
-                    },
-                    modifier = if (expanded) {
-                        Modifier
-                            .heightIn(max = 220.dp)
-                            .verticalScroll(overviewScrollState)
-                    } else {
-                        Modifier
-                    },
-                )
-                if (canExpand) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (expanded) {
-                            stringResource(Res.string.details_show_less)
-                        } else {
-                            stringResource(Res.string.details_show_more)
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.clickable { expanded = !expanded },
-                    )
-                }
-            }
-        }
     }
 
     if (showRatings) {
@@ -253,6 +162,206 @@ fun DetailMetaInfo(
             episodeTmdbRatings = episodeTmdbRatings,
             onDismiss = { showRatings = false },
         )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun DetailNuvioReadCard(
+    pills: List<String>,
+    ratings: List<MetaExternalRating>,
+    description: String?,
+    onRatingsClick: () -> Unit,
+) {
+    val accent = MaterialTheme.colorScheme.primary
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.24f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            accent.copy(alpha = 0.16f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.08f),
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                        ),
+                    ),
+                )
+                .padding(17.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accent.copy(alpha = 0.14f))
+                        .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "N",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = accent,
+                        fontWeight = FontWeight.Black,
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = "NUVIO READ",
+                        style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.2.sp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Black,
+                    )
+                    Text(
+                        text = stringResource(Res.string.details_nuvio_read_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            if (pills.isNotEmpty()) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    pills.forEach { pill -> DetailNuvioReadPill(pill) }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = ratings.isNotEmpty(),
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                DetailRatingsRow(
+                    ratings = ratings,
+                    horizontalScrollPadding = 0.dp,
+                    onClick = onRatingsClick,
+                )
+            }
+
+            description?.trim()?.takeIf(String::isNotBlank)?.let { synopsis ->
+                DetailNuvioReadStory(synopsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailNuvioReadPill(text: String) {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)),
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DetailNuvioReadStory(description: String) {
+    var expanded by remember(description) { mutableStateOf(false) }
+    var canExpand by remember(description) { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    val shape = RoundedCornerShape(20.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .animateContentSize()
+                .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.details_nuvio_read_story_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+            )
+            Box {
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.92f),
+                    maxLines = if (expanded) Int.MAX_VALUE else 5,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 23.sp,
+                    onTextLayout = { result ->
+                        if (!expanded) canExpand = result.hasVisualOverflow
+                    },
+                    modifier = if (expanded) {
+                        Modifier.heightIn(max = 220.dp).verticalScroll(scrollState)
+                    } else {
+                        Modifier
+                    },
+                )
+                if (canExpand && !expanded) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(26.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                    ),
+                                ),
+                            ),
+                    )
+                }
+            }
+            if (canExpand) {
+                Surface(
+                    modifier = Modifier
+                        .nuvioKeyboardFocusIndicator(RoundedCornerShape(999.dp))
+                        .clickable { expanded = !expanded },
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
+                ) {
+                    Text(
+                        text = if (expanded) {
+                            stringResource(Res.string.details_show_less)
+                        } else {
+                            stringResource(Res.string.details_show_more)
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
     }
 }
 
