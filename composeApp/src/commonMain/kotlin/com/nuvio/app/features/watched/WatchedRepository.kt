@@ -9,6 +9,8 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.tracking.TrackingProviderRegistry
+import com.nuvio.app.features.tracking.TrackingHistoryItem
+import com.nuvio.app.features.tracking.buildTrackingMediaReference
 import com.nuvio.app.features.tracking.TrackingSettingsRepository
 import com.nuvio.app.features.tracking.TrackingWatchedSnapshot
 import com.nuvio.app.features.tracking.WatchProgressSource
@@ -1283,6 +1285,28 @@ object WatchedRepository {
                     log.e(error) { "Failed to push watched items to ${provider.providerId.storageId}" }
                 }
             }
+            TrackingProviderRegistry.connectedHistoryWriters()
+                .filterNot { writer -> writer.providerId in succeededTrackerProviderIds }
+                .forEach { writer ->
+                    try {
+                        val historyItems = items.map { item ->
+                            TrackingHistoryItem(
+                                media = item.toTrackingMediaReference(),
+                                watchedAtEpochMs = item.markedAtEpochMs,
+                            )
+                        }
+                        val result = writer.addToHistory(profileId = profileId, items = historyItems)
+                        check(result.isComplete) {
+                            "${writer.providerId.storageId} could not match ${result.notFoundCount} " +
+                                "of ${result.attemptedCount} watched items"
+                        }
+                        succeededTrackerProviderIds += writer.providerId
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (error: Throwable) {
+                        log.e(error) { "Failed to push watched items to ${writer.providerId.storageId}" }
+                    }
+                }
         }
         return WatchedPushOutcome(
             nuvioSyncSucceeded = nuvioSyncSucceeded,
@@ -1314,6 +1338,55 @@ object WatchedRepository {
                 log.e(error) { "Failed to delete watched items from ${provider.providerId.storageId}" }
             }
         }
+        val watchedProviderIds = TrackingProviderRegistry.connectedWatchedProviders()
+            .mapTo(linkedSetOf()) { provider -> provider.providerId }
+        TrackingProviderRegistry.connectedHistoryWriters()
+            .filterNot { writer -> writer.providerId in watchedProviderIds }
+            .forEach { writer ->
+                try {
+                    val result = writer.removeFromHistory(
+                        profileId = profileId,
+                        items = items.map { item -> item.toTrackingMediaRemovalReference() },
+                    )
+                    check(result.isComplete) {
+                        "${writer.providerId.storageId} could not match ${result.notFoundCount} " +
+                            "of ${result.attemptedCount} watched items"
+                    }
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    log.e(error) { "Failed to delete watched items from ${writer.providerId.storageId}" }
+                }
+            }
+    }
+
+    private fun WatchedItem.toTrackingMediaReference() = buildTrackingMediaReference(
+        contentType = type,
+        parentMetaId = id,
+        videoId = videoId,
+        title = name,
+        releaseInfo = releaseInfo,
+        seasonNumber = season,
+        episodeNumber = episode,
+    )
+
+    private fun WatchedItem.toTrackingMediaRemovalReference() = toTrackingMediaReference().let { media ->
+        val episodeInfo = media.episode ?: return@let media
+        val remainingEpisodes = uiState.value.items
+            .asSequence()
+            .filter { remaining ->
+                remaining.id == id &&
+                    remaining.season == season &&
+                    remaining.episode != null
+            }
+            .mapNotNull { remaining -> remaining.episode }
+            .filter { number -> number > 0 }
+            .toSet()
+        val continuousProgress = generateSequence(1) { number -> number + 1 }
+            .first { number -> number !in remainingEpisodes } - 1
+        media.copy(
+            episode = episodeInfo.copy(continuousProgressAfterRemoval = continuousProgress),
+        )
     }
 
     private fun accountScopeSnapshot(): CoroutineScope =

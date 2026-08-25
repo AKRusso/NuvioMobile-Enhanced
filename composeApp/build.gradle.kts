@@ -74,6 +74,21 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
     abstract val simklAppName: Property<String>
 
     @get:Input
+    abstract val aniListClientId: Property<String>
+
+    @get:Input
+    abstract val aniListRedirectUri: Property<String>
+
+    @get:Input
+    abstract val malClientId: Property<String>
+
+    @get:Input
+    abstract val malRedirectUri: Property<String>
+
+    @get:Input
+    abstract val premiumizeClientId: Property<String>
+
+    @get:Input
     abstract val updateGithubOwner: Property<String>
 
     @get:Input
@@ -159,6 +174,22 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
             )
         }
 
+        outDir.resolve("com/nuvio/app/features/anime").apply {
+            mkdirs()
+            resolve("AnimeTrackingConfig.kt").writeText(
+                """
+                |package com.nuvio.app.features.anime
+                |
+                |object AnimeTrackingConfig {
+                |    const val ANILIST_CLIENT_ID = "${aniListClientId.get()}"
+                |    const val ANILIST_REDIRECT_URI = "${aniListRedirectUri.get()}"
+                |    const val MAL_CLIENT_ID = "${malClientId.get()}"
+                |    const val MAL_REDIRECT_URI = "${malRedirectUri.get()}"
+                |}
+                """.trimMargin()
+            )
+        }
+
         outDir.resolve("com/nuvio/app/features/updater").apply {
             mkdirs()
             resolve("AppUpdateConfig.kt").writeText(
@@ -213,7 +244,7 @@ abstract class GenerateRuntimeConfigsTask : DefaultTask() {
                 |package com.nuvio.app.features.debrid
                 |
                 |object PremiumizeConfig {
-                |    const val CLIENT_ID = "${props.getProperty("PREMIUMIZE_CLIENT_ID", "")}"
+                |    const val CLIENT_ID = "${premiumizeClientId.get()}"
                 |}
                 """.trimMargin()
             )
@@ -425,6 +456,11 @@ val generateRuntimeConfigs = tasks.register<GenerateRuntimeConfigsTask>("generat
     simklClientId.set(runtimeConfigValue("SIMKL_CLIENT_ID"))
     simklRedirectUri.set(runtimeConfigValue("SIMKL_REDIRECT_URI", fallback = "nuvioenhanced://auth/simkl"))
     simklAppName.set(runtimeConfigValue("SIMKL_APP_NAME", fallback = "nuvio"))
+    aniListClientId.set(runtimeConfigValue("ANILIST_CLIENT_ID"))
+    aniListRedirectUri.set(runtimeConfigValue("ANILIST_REDIRECT_URI", fallback = "nuvioenhanced://auth/anilist"))
+    malClientId.set(runtimeConfigValue("MAL_CLIENT_ID"))
+    malRedirectUri.set(runtimeConfigValue("MAL_REDIRECT_URI", fallback = "nuvioenhanced://auth/mal"))
+    premiumizeClientId.set(runtimeConfigValue("PREMIUMIZE_CLIENT_ID"))
     updateGithubOwner.set(
         runtimeConfigValue(
             "NUVIO_UPDATE_GITHUB_OWNER",

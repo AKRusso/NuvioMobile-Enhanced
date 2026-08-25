@@ -358,6 +358,10 @@
     <string name="compose_player_panel_sources">Sources</string>
     <string name="compose_player_panel_streams">Streams</string>
     <string name="compose_player_playback_error">Erreur de lecture</string>
+    <string name="compose_player_retry">Réessayer</string>
+    <string name="compose_player_copy_diagnostics">Copier le diagnostic</string>
+    <string name="compose_player_diagnostics_copied">Diagnostic de lecture copié</string>
+    <string name="compose_player_diagnostics_copy_failed">Impossible de copier le diagnostic de lecture</string>
     <string name="compose_player_playing">Lecture en cours</string>
     <string name="compose_player_fetch_subtitles">Appuyez pour chercher des sous-titres</string>
     <string name="compose_player_go_back">Retour</string>
@@ -1612,6 +1616,18 @@
     <string name="person_role_director">Réalisateur</string>
     <string name="person_role_writer">Scénariste</string>
     <string name="rating_audience_score">Score du public</string>
+    <string name="details_series_counts">%1$d saisons • %2$d épisodes</string>
+    <string name="details_series_counts_one_season">1 saison • %1$d épisodes</string>
+    <string name="details_rating_source">Source des notes</string>
+    <string name="details_episode_ratings">Notes des épisodes</string>
+    <string name="details_episode_ratings_unavailable">Les notes des épisodes ne sont pas disponibles.</string>
+    <string name="details_rating_scale">Échelle des notes</string>
+    <string name="details_rating_awesome">Exceptionnel (9.0+)</string>
+    <string name="details_rating_great">Excellent (8.0-8.9)</string>
+    <string name="details_rating_good">Bon (7.5-7.9)</string>
+    <string name="details_rating_regular">Moyen (7.0-7.4)</string>
+    <string name="details_rating_bad">Mauvais (6.0-6.9)</string>
+    <string name="details_rating_garbage">Très mauvais (&lt;6.0)</string>
     <string name="trailer_no_playable_stream">Aucun stream de bande-annonce lisible trouvé.</string>
     <string name="trailer_season_label">Saison %1$d - %2$s</string>
     <string name="unit_bytes_b">o</string>
@@ -2055,4 +2071,16 @@
     <string name="downloads_auto_selecting">Sélection des sources…</string>
     <string name="downloads_download_started">Téléchargements démarrés</string>
     <string name="downloads_status_waiting">En attente</string>
+    <string name="settings_anime_connected_as">Connecté à %1$s en tant que %2$s</string>
+    <string name="settings_anime_connected_description">La progression des animés est mise à jour automatiquement à la fin d’un épisode.</string>
+    <string name="settings_anime_sign_in_description">Connectez votre compte pour synchroniser automatiquement la progression des animés.</string>
+    <string name="settings_anime_finish_sign_in">Terminer la connexion</string>
+    <string name="settings_anime_approval_description">Terminez l’autorisation dans votre navigateur.</string>
+    <string name="settings_anime_connect">Connecter %1$s</string>
+    <string name="settings_anime_open_login">Ouvrir l’autorisation</string>
+    <string name="settings_anime_disconnect">Déconnecter</string>
+    <string name="settings_anime_missing_client_id">Ajoutez l’identifiant client de %1$s à la configuration de l’application.</string>
+    <string name="settings_anime_visit">Visiter %1$s</string>
+    <string name="settings_anime_automatic_scrobble">Mettre à jour automatiquement après lecture</string>
+    <string name="settings_anime_explicit_watched_sync">Synchroniser les changements manuels de visionnage</string>
 </resources>

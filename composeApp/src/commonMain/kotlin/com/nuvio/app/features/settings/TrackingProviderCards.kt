@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -36,6 +37,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +66,12 @@ import com.nuvio.app.core.ui.NuvioLoadingIndicator
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.anime.AnimeTrackingAuthUiState
+import com.nuvio.app.features.anime.AniListTrackingRepository
+import com.nuvio.app.features.anime.MyAnimeListTrackingRepository
+import com.nuvio.app.features.anime.AnimeTrackingProvider
+import com.nuvio.app.features.anime.AnimeTrackingProviderPreferences
+import com.nuvio.app.features.anime.AnimeTrackingSettingsRepository
 import com.nuvio.app.features.simkl.SimklAuthError
 import com.nuvio.app.features.simkl.SimklAuthRepository
 import com.nuvio.app.features.simkl.SimklAuthUiState
@@ -84,6 +92,20 @@ import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_donate
 import nuvio.composeapp.generated.resources.action_cancel
 import nuvio.composeapp.generated.resources.community_donation_progress_fee_notice
+import nuvio.composeapp.generated.resources.logo_anilist
+import nuvio.composeapp.generated.resources.logo_mal
+import nuvio.composeapp.generated.resources.settings_anime_approval_description
+import nuvio.composeapp.generated.resources.settings_anime_connect
+import nuvio.composeapp.generated.resources.settings_anime_connected_as
+import nuvio.composeapp.generated.resources.settings_anime_connected_description
+import nuvio.composeapp.generated.resources.settings_anime_disconnect
+import nuvio.composeapp.generated.resources.settings_anime_finish_sign_in
+import nuvio.composeapp.generated.resources.settings_anime_missing_client_id
+import nuvio.composeapp.generated.resources.settings_anime_open_login
+import nuvio.composeapp.generated.resources.settings_anime_automatic_scrobble
+import nuvio.composeapp.generated.resources.settings_anime_explicit_watched_sync
+import nuvio.composeapp.generated.resources.settings_anime_sign_in_description
+import nuvio.composeapp.generated.resources.settings_anime_visit
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_expired
 import nuvio.composeapp.generated.resources.settings_simkl_authorization_revoked
 import nuvio.composeapp.generated.resources.settings_simkl_connect
@@ -120,12 +142,15 @@ import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_descr
 import nuvio.composeapp.generated.resources.settings_trakt_vip_unavailable_title
 import nuvio.composeapp.generated.resources.settings_trakt_supporters_count
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.painterResource
 
 internal enum class TrackingBrand(val displayName: String) {
     NUVIO("Nuvio"),
     TRAKT("Trakt"),
     SIMKL("Simkl"),
     TMDB("TMDB"),
+    ANILIST("AniList"),
+    MY_ANIME_LIST("MyAnimeList"),
 }
 
 internal enum class TrackingConnectionCardMode {
@@ -141,6 +166,8 @@ internal fun isTrackingBrandAvailable(
 ): Boolean = when (brand) {
     TrackingBrand.NUVIO,
     TrackingBrand.TMDB,
+    TrackingBrand.ANILIST,
+    TrackingBrand.MY_ANIME_LIST,
     -> true
     TrackingBrand.TRAKT -> traktConnected
     TrackingBrand.SIMKL -> simklConnected
@@ -165,6 +192,18 @@ internal fun TrackingProviderCards(
     simklUiState: SimklAuthUiState,
     onSupportersClick: () -> Unit,
 ) {
+    val aniListUiState by remember {
+        AniListTrackingRepository.ensureLoaded()
+        AniListTrackingRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val malUiState by remember {
+        MyAnimeListTrackingRepository.ensureLoaded()
+        MyAnimeListTrackingRepository.uiState
+    }.collectAsStateWithLifecycle()
+    val animeSettings by remember {
+        AnimeTrackingSettingsRepository.ensureLoaded()
+        AnimeTrackingSettingsRepository.state
+    }.collectAsStateWithLifecycle()
     val syncState by remember {
         SimklSyncRepository.ensureLoaded()
         SimklSyncRepository.state
@@ -186,28 +225,38 @@ internal fun TrackingProviderCards(
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val useTwoColumns = maxWidth >= 600.dp
         if (useTwoColumns) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                TraktProviderCard(
-                    uiState = traktUiState,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                )
-                SimklProviderCard(
-                    uiState = simklUiState,
-                    isSyncing = syncState.isLoading,
-                    syncErrorMessage = syncState.errorMessage,
-                    onSyncRequested = onSimklSyncRequested,
-                    onInfoRequested = { showSyncInfo = true },
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    TraktProviderCard(uiState = traktUiState, modifier = Modifier.weight(1f).fillMaxHeight())
+                    SimklProviderCard(
+                        uiState = simklUiState,
+                        isSyncing = syncState.isLoading,
+                        syncErrorMessage = syncState.errorMessage,
+                        onSyncRequested = onSimklSyncRequested,
+                        onInfoRequested = { showSyncInfo = true },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    AnimeTrackingProviderCard(
+                        TrackingBrand.ANILIST,
+                        aniListUiState,
+                        animeSettings.aniList,
+                        Modifier.weight(1f).fillMaxHeight(),
+                    )
+                    AnimeTrackingProviderCard(
+                        TrackingBrand.MY_ANIME_LIST,
+                        malUiState,
+                        animeSettings.myAnimeList,
+                        Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
             }
         } else {
             Column(
@@ -226,12 +275,129 @@ internal fun TrackingProviderCards(
                     onInfoRequested = { showSyncInfo = true },
                     modifier = Modifier.fillMaxWidth(),
                 )
+                AnimeTrackingProviderCard(
+                    TrackingBrand.ANILIST,
+                    aniListUiState,
+                    animeSettings.aniList,
+                    Modifier.fillMaxWidth(),
+                )
+                AnimeTrackingProviderCard(
+                    TrackingBrand.MY_ANIME_LIST,
+                    malUiState,
+                    animeSettings.myAnimeList,
+                    Modifier.fillMaxWidth(),
+                )
             }
         }
     }
 
     if (showSyncInfo) {
         SimklSyncInfoDialog(onDismiss = { showSyncInfo = false })
+    }
+}
+
+@Composable
+private fun AnimeTrackingProviderCard(
+    brand: TrackingBrand,
+    uiState: AnimeTrackingAuthUiState,
+    preferences: AnimeTrackingProviderPreferences,
+    modifier: Modifier,
+) {
+    val provider = if (brand == TrackingBrand.ANILIST) {
+        AnimeTrackingProvider.ANILIST
+    } else {
+        AnimeTrackingProvider.MY_ANIME_LIST
+    }
+    val repository = if (provider == AnimeTrackingProvider.ANILIST) {
+        AniListTrackingRepository
+    } else {
+        MyAnimeListTrackingRepository
+    }
+    TrackingProviderCard(
+        brand = brand,
+        mode = if (uiState.connected) TrackingConnectionCardMode.CONNECTED else TrackingConnectionCardMode.DISCONNECTED,
+        credentialsConfigured = uiState.credentialsConfigured,
+        isLoading = uiState.isLoading,
+        connectedLabel = stringResource(
+            Res.string.settings_anime_connected_as,
+            brand.displayName,
+            uiState.username ?: brand.displayName,
+        ),
+        connectedDescription = stringResource(Res.string.settings_anime_connected_description),
+        signInDescription = stringResource(Res.string.settings_anime_sign_in_description),
+        finishSignInLabel = stringResource(Res.string.settings_anime_finish_sign_in),
+        approvalDescription = stringResource(Res.string.settings_anime_approval_description),
+        connectLabel = stringResource(Res.string.settings_anime_connect, brand.displayName),
+        openLoginLabel = stringResource(Res.string.settings_anime_open_login),
+        disconnectLabel = stringResource(Res.string.settings_anime_disconnect),
+        missingCredentialsMessage = stringResource(Res.string.settings_anime_missing_client_id, brand.displayName),
+        errorMessage = uiState.errorMessage,
+        websiteLabel = stringResource(Res.string.settings_anime_visit, brand.displayName),
+        websiteUrl = if (brand == TrackingBrand.ANILIST) "https://anilist.co" else "https://myanimelist.net",
+        onConnectRequested = repository::onConnectRequested,
+        onResumeAuthorization = repository::onConnectRequested,
+        onCancelAuthorization = {},
+        onDisconnect = repository::onDisconnectRequested,
+        connectedContent = {
+            AnimeTrackingPreferences(
+                preferences = preferences,
+                onAutomaticScrobbleChanged = {
+                    AnimeTrackingSettingsRepository.setAutomaticScrobble(provider, it)
+                },
+                onExplicitWatchedSyncChanged = {
+                    AnimeTrackingSettingsRepository.setExplicitWatchedSync(provider, it)
+                },
+            )
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun AnimeTrackingPreferences(
+    preferences: AnimeTrackingProviderPreferences,
+    onAutomaticScrobbleChanged: (Boolean) -> Unit,
+    onExplicitWatchedSyncChanged: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        AnimeTrackingPreferenceRow(
+            label = stringResource(Res.string.settings_anime_automatic_scrobble),
+            checked = preferences.automaticScrobble,
+            onCheckedChange = onAutomaticScrobbleChanged,
+        )
+        AnimeTrackingPreferenceRow(
+            label = stringResource(Res.string.settings_anime_explicit_watched_sync),
+            checked = preferences.explicitWatchedSync,
+            onCheckedChange = onExplicitWatchedSyncChanged,
+        )
+    }
+}
+
+@Composable
+private fun AnimeTrackingPreferenceRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(NuvioTokens.Radius.md))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.9f),
+        )
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
     }
 }
 
@@ -350,6 +516,7 @@ private fun TrackingProviderCard(
     onSyncRequested: (() -> Unit)? = null,
     onInfoRequested: (() -> Unit)? = null,
     onDisconnect: () -> Unit,
+    connectedContent: (@Composable () -> Unit)? = null,
 ) {
     val tokens = MaterialTheme.nuvio
     val uriHandler = LocalUriHandler.current
@@ -377,11 +544,19 @@ private fun TrackingProviderCard(
         TrackingBrandGlyph(
             brand = brand,
             contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(12.dp)
-                .size(150.dp)
-                .alpha(0.08f),
+            modifier = if (brand == TrackingBrand.ANILIST || brand == TrackingBrand.MY_ANIME_LIST) {
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .offset(x = 12.dp, y = 46.dp)
+                    .size(196.dp)
+                    .alpha(0.1f)
+            } else {
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(12.dp)
+                    .size(150.dp)
+                    .alpha(0.08f)
+            },
         )
 
         Column(
@@ -401,6 +576,7 @@ private fun TrackingProviderCard(
                         label = connectedLabel,
                         description = connectedDescription,
                     )
+                    connectedContent?.invoke()
                     if (syncLabel != null && onSyncRequested != null) {
                         TrackingBrandPrimaryButton(
                             label = syncLabel,
@@ -712,6 +888,8 @@ private fun TrackingDisconnectDialog(
                             stringResource(Res.string.settings_simkl_disconnect_description)
                         TrackingBrand.NUVIO,
                         TrackingBrand.TMDB,
+                        TrackingBrand.ANILIST,
+                        TrackingBrand.MY_ANIME_LIST,
                         -> stringResource(
                             Res.string.settings_tracking_disconnect_description,
                             brand.displayName,
@@ -774,6 +952,14 @@ internal fun TrackingBrandGlyph(
             modifier = modifier,
             tint = MaterialTheme.nuvio.colors.accent,
         )
+        TrackingBrand.ANILIST,
+        TrackingBrand.MY_ANIME_LIST,
+        -> Image(
+            painter = painterResource(if (brand == TrackingBrand.ANILIST) Res.drawable.logo_anilist else Res.drawable.logo_mal),
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = ContentScale.Fit,
+        )
     }
 }
 
@@ -782,11 +968,22 @@ private fun TrackingBrandWordmark(
     brand: TrackingBrand,
     contentDescription: String,
 ) {
+    if (brand == TrackingBrand.ANILIST || brand == TrackingBrand.MY_ANIME_LIST) {
+        Text(
+            text = brand.displayName,
+            color = Color.White,
+            fontWeight = FontWeight.Black,
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        return
+    }
     val painter: Painter = when (brand) {
         TrackingBrand.TRAKT -> traktBrandPainter(TraktBrandAsset.Wordmark)
         TrackingBrand.SIMKL -> simklBrandPainter(SimklBrandAsset.Wordmark)
         TrackingBrand.NUVIO,
         TrackingBrand.TMDB,
+        TrackingBrand.ANILIST,
+        TrackingBrand.MY_ANIME_LIST,
         -> return
     }
     Image(
@@ -801,6 +998,8 @@ private fun TrackingBrandWordmark(
                 .height(30.dp)
             TrackingBrand.NUVIO,
             TrackingBrand.TMDB,
+            TrackingBrand.ANILIST,
+            TrackingBrand.MY_ANIME_LIST,
             -> Modifier
         },
         contentScale = ContentScale.Fit,
@@ -814,6 +1013,12 @@ private fun TrackingBrand.cardBrush(): Brush = when (this) {
     )
     TrackingBrand.SIMKL -> Brush.linearGradient(
         colors = listOf(Color(0xFF050505), Color(0xFF292929), Color(0xFF111111)),
+    )
+    TrackingBrand.ANILIST -> Brush.linearGradient(
+        colors = listOf(Color(0xFF111827), Color(0xFF1667A8), Color(0xFF02A9FF)),
+    )
+    TrackingBrand.MY_ANIME_LIST -> Brush.linearGradient(
+        colors = listOf(Color(0xFF182238), Color(0xFF2E51A2), Color(0xFF4B73D1)),
     )
     TrackingBrand.NUVIO,
     TrackingBrand.TMDB,

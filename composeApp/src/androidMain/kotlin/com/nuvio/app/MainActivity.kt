@@ -5,6 +5,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,7 @@ import com.nuvio.app.core.network.DnsOverHttpsSettingsStorage
 import com.nuvio.app.core.storage.PlatformLocalAccountDataCleaner
 import com.nuvio.app.core.sync.SyncClientIdentityStorage
 import com.nuvio.app.core.ui.AppSystemUiController
+import com.nuvio.app.core.ui.CardDepthStyleStorage
 import com.nuvio.app.features.addons.AddonStorage
 import com.nuvio.app.features.ai.AiAssistantSettingsStorage
 import com.nuvio.app.features.collection.CollectionMobileSettingsStorage
@@ -62,6 +64,7 @@ import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsStorage
 import com.nuvio.app.features.simkl.SimklAuthStorage
+import com.nuvio.app.features.anime.AnimeTrackingAuthStorage
 import com.nuvio.app.features.simkl.SimklSyncStorage
 import com.nuvio.app.features.trakt.TraktAuthStorage
 import com.nuvio.app.features.trakt.TraktCommentsStorage
@@ -126,6 +129,7 @@ class MainActivity : AppCompatActivity() {
         SearchHistoryStorage.initialize(applicationContext)
         SeasonViewModeStorage.initialize(applicationContext)
         PosterCardStyleStorage.initialize(applicationContext)
+        CardDepthStyleStorage.initialize(applicationContext)
         DebridSettingsStorage.initialize(applicationContext)
         TmdbSettingsStorage.initialize(applicationContext)
         TmdbPreviewArtworkStorage.initialize(applicationContext)
@@ -136,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         TraktLibraryStorage.initialize(applicationContext)
         TraktSettingsStorage.initialize(applicationContext)
         SimklAuthStorage.initialize(applicationContext)
+        AnimeTrackingAuthStorage.initialize(applicationContext)
         SimklSyncStorage.initialize(applicationContext)
         LibraryDisplaySettingsStorage.initialize(applicationContext)
         ContinueWatchingPreferencesStorage.initialize(applicationContext)
@@ -175,6 +180,18 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIncomingAppIntent(intent)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val isDeleteKey = event.keyCode == KeyEvent.KEYCODE_DEL ||
+            event.keyCode == KeyEvent.KEYCODE_FORWARD_DEL
+        if (isDeleteKey && currentFocus?.onCheckIsTextEditor() != true) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                onBackPressedDispatcher.onBackPressed()
+            }
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onResume() {

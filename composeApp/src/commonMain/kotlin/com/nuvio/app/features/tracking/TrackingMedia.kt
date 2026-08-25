@@ -46,6 +46,7 @@ data class TrackingEpisode(
     val season: Int? = null,
     val number: Int,
     val title: String? = null,
+    val continuousProgressAfterRemoval: Int? = null,
 )
 
 data class TrackingCatalogReference(

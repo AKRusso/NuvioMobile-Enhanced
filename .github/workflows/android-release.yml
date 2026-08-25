@@ -178,6 +178,9 @@ jobs:
       TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
       TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
       SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+      ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
+      PREMIUMIZE_CLIENT_ID: ${{ secrets.PREMIUMIZE_CLIENT_ID }}
       EXPECTED_ANDROID_SIGNING_SHA256: 4d87e3d92c54ae0efcdebb75dd08b8cfca1eace052198ed3b8f3f552533a21e3
 
     steps:
@@ -315,7 +318,7 @@ jobs:
           sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE)[[:space:]]*=/d' local.properties
           printf '\nNUVIO_RELEASE_STORE_FILE=%s\n' "${keystore_path}" >> local.properties
 
-          for property_name in TRAKT_CLIENT_ID TRAKT_CLIENT_SECRET SIMKL_CLIENT_ID; do
+          for property_name in TRAKT_CLIENT_ID TRAKT_CLIENT_SECRET SIMKL_CLIENT_ID ANILIST_CLIENT_ID MAL_CLIENT_ID PREMIUMIZE_CLIENT_ID; do
             property_value="${!property_name-}"
             if [[ -n "${property_value}" ]]; then
               sed -i -E "/^[[:space:]]*${property_name}[[:space:]]*=/d" local.properties
