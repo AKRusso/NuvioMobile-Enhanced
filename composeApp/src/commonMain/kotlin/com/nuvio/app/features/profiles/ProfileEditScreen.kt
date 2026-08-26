@@ -1,5 +1,6 @@
 package com.nuvio.app.features.profiles
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,11 +67,10 @@ import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
-import com.nuvio.app.core.ui.ProfileMeshBackground
-import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -139,8 +139,6 @@ fun ProfileEditScreen(
     val previewAccent = remember(visibleAvatarItem, fallbackColorHex) {
         parseHexColor(visibleAvatarItem?.bgColor ?: fallbackColorHex)
     }
-    val automaticBackgroundPreset = ProfileBackgroundPreset.fromTheme(MaterialTheme.appTheme)
-
     NuvioScreen(modifier = modifier) {
         stickyHeader {
             NuvioScreenHeader(
@@ -187,8 +185,7 @@ fun ProfileEditScreen(
                     ) {
                         BackgroundPresetChoice(
                             label = stringResource(Res.string.profile_background_normal),
-                            preset = automaticBackgroundPreset,
-                            fallbackColor = parseHexColor(fallbackColorHex),
+                            preset = null,
                             selected = selectedBackgroundPresetKey == null && backgroundUrl.isBlank(),
                             onClick = {
                                 selectedBackgroundPresetKey = null
@@ -199,7 +196,6 @@ fun ProfileEditScreen(
                             BackgroundPresetChoice(
                                 label = stringResource(preset.labelRes),
                                 preset = preset,
-                                fallbackColor = parseHexColor(fallbackColorHex),
                                 selected = selectedBackgroundPresetKey == preset.key && backgroundUrl.isBlank(),
                                 onClick = {
                                     selectedBackgroundPresetKey = preset.key
@@ -537,7 +533,6 @@ fun ProfileEditScreen(
 private fun BackgroundPresetChoice(
     label: String,
     preset: ProfileBackgroundPreset?,
-    fallbackColor: Color,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -566,10 +561,11 @@ private fun BackgroundPresetChoice(
                     },
                 ),
         ) {
-            ProfileMeshBackground(
-                profileColor = preset?.primary ?: fallbackColor,
-                secondaryColor = preset?.secondary,
-                tertiaryColor = preset?.tertiary,
+            Image(
+                painter = painterResource(preset?.backgroundRes ?: DefaultProfileBackgroundResource),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
             if (selected) {
                 Icon(

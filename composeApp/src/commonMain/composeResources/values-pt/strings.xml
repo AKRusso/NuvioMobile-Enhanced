@@ -1,5 +1,5 @@
 <resources>
-    <string name="profile_choose_background_description">Fundos abstratos Premium. O modo Automático segue o tema deste perfil; ao escolher uma predefinição ou URL, o fundo fica independente.</string>
+    <string name="profile_choose_background_description">Escolhe um fundo Premium. O modo Automático usa o fundo padrão do Nuvio; ao escolher uma predefinição ou URL, o fundo fica independente.</string>
     <string name="profile_background_normal">Automático</string>
     <string name="details_premium_overview_title">Nuvio Read</string>
     <string name="details_premium_overview_subtitle">Factos principais, avaliações e contexto da história agrupados para uma decisão mais rápida.</string>

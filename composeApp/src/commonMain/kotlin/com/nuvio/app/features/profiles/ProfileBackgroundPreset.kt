@@ -1,13 +1,18 @@
 package com.nuvio.app.features.profiles
 
-import androidx.compose.ui.graphics.Color
-import com.nuvio.app.core.ui.AppTheme
 import nuvio.composeapp.generated.resources.Res
+import nuvio.composeapp.generated.resources.profile_background_arctic_blue
+import nuvio.composeapp.generated.resources.profile_background_default
+import nuvio.composeapp.generated.resources.profile_background_gold
+import nuvio.composeapp.generated.resources.profile_background_graphite
+import nuvio.composeapp.generated.resources.profile_background_jade
+import nuvio.composeapp.generated.resources.profile_background_rose_gold
 import nuvio.composeapp.generated.resources.theme_arctic_blue
 import nuvio.composeapp.generated.resources.theme_gold
 import nuvio.composeapp.generated.resources.theme_graphite
 import nuvio.composeapp.generated.resources.theme_jade
 import nuvio.composeapp.generated.resources.theme_rose_gold
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 
 private const val ProfileBackgroundPresetPrefix = "enhanced-mesh://"
@@ -15,44 +20,32 @@ private const val ProfileBackgroundPresetPrefix = "enhanced-mesh://"
 enum class ProfileBackgroundPreset(
     val key: String,
     val labelRes: StringResource,
-    val primary: Color,
-    val secondary: Color,
-    val tertiary: Color,
+    val backgroundRes: DrawableResource,
 ) {
     GOLD(
         key = "gold",
         labelRes = Res.string.theme_gold,
-        primary = Color(0xFFE8A91C),
-        secondary = Color(0xFFFFD45C),
-        tertiary = Color(0xFF9A6200),
+        backgroundRes = Res.drawable.profile_background_gold,
     ),
     JADE(
         key = "jade",
         labelRes = Res.string.theme_jade,
-        primary = Color(0xFF22D37C),
-        secondary = Color(0xFF7BF08D),
-        tertiary = Color(0xFF0BBF9A),
+        backgroundRes = Res.drawable.profile_background_jade,
     ),
     ROSE_GOLD(
         key = "rose-gold",
         labelRes = Res.string.theme_rose_gold,
-        primary = Color(0xFFEC70A9),
-        secondary = Color(0xFFFFB37A),
-        tertiary = Color(0xFFB75AFF),
+        backgroundRes = Res.drawable.profile_background_rose_gold,
     ),
     ARCTIC_BLUE(
         key = "arctic-blue",
         labelRes = Res.string.theme_arctic_blue,
-        primary = Color(0xFF3185F5),
-        secondary = Color(0xFF4DE3FF),
-        tertiary = Color(0xFF4D55E8),
+        backgroundRes = Res.drawable.profile_background_arctic_blue,
     ),
     GRAPHITE(
         key = "graphite",
         labelRes = Res.string.theme_graphite,
-        primary = Color(0xFFAAB2BE),
-        secondary = Color(0xFFF3F5F7),
-        tertiary = Color(0xFF687381),
+        backgroundRes = Res.drawable.profile_background_graphite,
     ),
     ;
 
@@ -66,27 +59,10 @@ enum class ProfileBackgroundPreset(
                 ?: return null
             return entries.firstOrNull { it.key == key }
         }
-
-        fun fromTheme(theme: AppTheme): ProfileBackgroundPreset? = when (theme) {
-            AppTheme.GOLD -> GOLD
-            AppTheme.JADE -> JADE
-            AppTheme.ROSE_GOLD -> ROSE_GOLD
-            AppTheme.ARCTIC_BLUE -> ARCTIC_BLUE
-            AppTheme.GRAPHITE -> GRAPHITE
-            else -> null
-        }
     }
 }
 
+val DefaultProfileBackgroundResource: DrawableResource = Res.drawable.profile_background_default
+
 fun profileBackgroundPreset(profile: NuvioProfile): ProfileBackgroundPreset? =
     ProfileBackgroundPreset.fromStoredValue(profile.backgroundUrl)
-
-fun effectiveProfileBackgroundPreset(
-    profile: NuvioProfile,
-    theme: AppTheme,
-): ProfileBackgroundPreset? =
-    profileBackgroundPreset(profile) ?: if (profile.backgroundUrl == null) {
-        ProfileBackgroundPreset.fromTheme(theme)
-    } else {
-        null
-    }

@@ -3,6 +3,7 @@ package com.nuvio.app.features.profiles
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,12 +59,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
-import com.nuvio.app.core.ui.ProfileMeshBackground
-import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.features.settings.MemberBrandWordmark
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -112,15 +112,11 @@ fun ProfileSelectionScreen(
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val backgroundProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
-    val backgroundProfileColor = remember(backgroundProfile) {
-        backgroundProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
-    }
     val backgroundImageUrl = remember(backgroundProfile?.backgroundUrl) {
         backgroundProfile?.let(::profileBackgroundImageUrl)
     }
-    val appTheme = MaterialTheme.appTheme
-    val backgroundPreset = remember(backgroundProfile?.backgroundUrl, appTheme) {
-        backgroundProfile?.let { effectiveProfileBackgroundPreset(it, appTheme) }
+    val backgroundPreset = remember(backgroundProfile?.backgroundUrl) {
+        backgroundProfile?.let(::profileBackgroundPreset)
     }
 
     BoxWithConstraints(
@@ -130,10 +126,11 @@ fun ProfileSelectionScreen(
         val isTabletLayout = maxWidth >= 768.dp
 
         if (backgroundImageUrl == null) {
-            ProfileMeshBackground(
-                profileColor = backgroundPreset?.primary ?: backgroundProfileColor,
-                secondaryColor = backgroundPreset?.secondary,
-                tertiaryColor = backgroundPreset?.tertiary,
+            Image(
+                painter = painterResource(backgroundPreset?.backgroundRes ?: DefaultProfileBackgroundResource),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
             )
         } else {
             AsyncImage(

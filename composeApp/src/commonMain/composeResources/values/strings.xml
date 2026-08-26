@@ -1276,7 +1276,7 @@
     <string name="settings_appearance_theme_supporter">Nuvio Enhanced Supporter</string>
     <string name="nuvio_enhanced_supporter">Nuvio Enhanced Supporter</string>
     <string name="profile_choose_background">Choose a background</string>
-    <string name="profile_choose_background_description">Premium abstract backgrounds. Automatic follows this profile's theme; selecting a preset or URL keeps it independent.</string>
+    <string name="profile_choose_background_description">Choose a Premium background. Automatic uses the default Nuvio background; selecting a preset or URL keeps it independent.</string>
     <string name="profile_background_normal">Automatic</string>
     <string name="details_premium_overview_title">Nuvio Read</string>
     <string name="details_premium_overview_subtitle">Key facts, ratings, and story context grouped for a faster decision.</string>
