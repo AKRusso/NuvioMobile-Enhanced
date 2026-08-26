@@ -2593,11 +2593,6 @@ private fun HeroMetaGlassRail(
     if (items.isEmpty()) return
 
     val railShape = RoundedCornerShape(999.dp)
-    val railWidthFraction = when (heroDisplayMode) {
-        NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 0.72f else 0.78f
-        NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 0.80f else 0.84f
-        NuvioHeroDisplayMode.InfoRich -> if (layout.isTablet) 0.88f else 0.92f
-    }
     val railMaxWidth = when (heroDisplayMode) {
         NuvioHeroDisplayMode.Cinematic -> if (layout.isTablet) 470.dp else 350.dp
         NuvioHeroDisplayMode.Balanced -> if (layout.isTablet) 520.dp else 390.dp
@@ -2615,7 +2610,6 @@ private fun HeroMetaGlassRail(
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth(railWidthFraction)
                 .widthIn(max = railMaxWidth)
                 .clip(railShape)
                 .then(
@@ -2642,7 +2636,6 @@ private fun HeroMetaGlassRail(
         ) {
             FlowRow(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .padding(
                         horizontal = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 7.dp else 8.dp,
                         vertical = if (compact || heroDisplayMode == NuvioHeroDisplayMode.Cinematic) 5.dp else 7.dp,
