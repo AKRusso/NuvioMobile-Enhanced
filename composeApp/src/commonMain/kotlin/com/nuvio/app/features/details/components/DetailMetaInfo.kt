@@ -163,6 +163,7 @@ fun DetailMetaInfo(
                 pills = overviewPills,
                 ratings = meta.externalRatings,
                 description = meta.description,
+                onRatingsClick = { showRatings = true },
             )
         } else {
             DetailStandardOverview(
@@ -204,6 +205,7 @@ private fun DetailPremiumOverviewCard(
     pills: List<String>,
     ratings: List<MetaExternalRating>,
     description: String?,
+    onRatingsClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -273,7 +275,7 @@ private fun DetailPremiumOverviewCard(
                 DetailRatingsRow(
                     ratings = ratings,
                     horizontalScrollPadding = 0.dp,
-                    onClick = null,
+                    onClick = onRatingsClick,
                 )
             }
 
