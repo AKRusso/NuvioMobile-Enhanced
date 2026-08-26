@@ -19,6 +19,7 @@ internal data class NuvioEnhancedSettingsUiState(
     val liveTvEnabled: Boolean = true,
     val streamSourcePinningEnabled: Boolean = false,
     val backgroundStreamPrefetchEnabled: Boolean = false,
+    val nuvioReadEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -53,7 +54,9 @@ internal data class NuvioEnhancedSettingsUiState(
         featureHighlightsEnabled && feature.id !in seenFeatureIds
 
     val hasNewFeatures: Boolean
-        get() = featureHighlightsEnabled && NuvioEnhancedFeature.entries.any { it.id !in seenFeatureIds }
+        get() = featureHighlightsEnabled && NuvioEnhancedFeature.entries.any {
+            it.showInEnhancedSettings && it.id !in seenFeatureIds
+        }
 }
 
 internal enum class NuvioHeroDisplayMode {
@@ -83,10 +86,14 @@ internal enum class NuvioAudioSelectorStyle {
     Nuvio,
 }
 
-internal enum class NuvioEnhancedFeature(val id: String) {
+internal enum class NuvioEnhancedFeature(
+    val id: String,
+    val showInEnhancedSettings: Boolean = true,
+) {
     HomeExperienceControls("home_experience_controls"),
     HeroControlsV2("hero_controls_v2"),
     DetailPresentationControlsV2("detail_presentation_controls_v2"),
+    NuvioRead("nuvio_read_v1"),
     SmartResume2("smart_resume_2"),
     BackupImport("backup_import"),
     FeatureHighlights("feature_highlights"),
@@ -113,11 +120,14 @@ internal enum class NuvioEnhancedFeature(val id: String) {
     StreamSourcePinning("stream_source_pinning"),
     BackgroundStreamPrefetch("background_stream_prefetch"),
     ContentWarnings("content_warnings"),
+    AnimeTracking("anime_tracking_v1", showInEnhancedSettings = false),
 }
 
 private val latestReleaseFeatureIds = setOf(
     NuvioEnhancedFeature.HeroControlsV2.id,
     NuvioEnhancedFeature.DetailPresentationControlsV2.id,
+    NuvioEnhancedFeature.NuvioRead.id,
+    NuvioEnhancedFeature.AnimeTracking.id,
 )
 
 private val previouslyReleasedFeatureIds = NuvioEnhancedFeature.entries
@@ -134,6 +144,7 @@ private data class StoredNuvioEnhancedSettings(
     val liveTvEnabled: Boolean = true,
     val streamSourcePinningEnabled: Boolean = false,
     val backgroundStreamPrefetchEnabled: Boolean = false,
+    val nuvioReadEnabled: Boolean = false,
     val heroDisplayMode: NuvioHeroDisplayMode = NuvioHeroDisplayMode.Balanced,
     val heroArtworkSource: NuvioHeroArtworkSource = NuvioHeroArtworkSource.Backdrop,
     val posterArtHeroEnabled: Boolean = false,
@@ -255,6 +266,10 @@ internal object NuvioEnhancedSettingsRepository {
 
     fun setBackgroundStreamPrefetchEnabled(enabled: Boolean) = update {
         copy(backgroundStreamPrefetchEnabled = enabled)
+    }
+
+    fun setNuvioReadEnabled(enabled: Boolean) = update {
+        copy(nuvioReadEnabled = enabled)
     }
 
     fun setHeroDisplayMode(mode: NuvioHeroDisplayMode) = update {
@@ -412,6 +427,7 @@ internal object NuvioEnhancedSettingsRepository {
             liveTvEnabled = stored.liveTvEnabled,
             streamSourcePinningEnabled = stored.streamSourcePinningEnabled,
             backgroundStreamPrefetchEnabled = stored.backgroundStreamPrefetchEnabled,
+            nuvioReadEnabled = stored.nuvioReadEnabled,
             heroDisplayMode = stored.heroDisplayMode,
             heroArtworkSource = stored.heroArtworkSource,
             posterArtHeroEnabled = stored.posterArtHeroEnabled,

@@ -1278,8 +1278,11 @@
     <string name="profile_choose_background">Choose a background</string>
     <string name="profile_choose_background_description">Premium abstract backgrounds. Automatic follows this profile's theme; selecting a preset or URL keeps it independent.</string>
     <string name="profile_background_normal">Automatic</string>
-    <string name="details_nuvio_read_subtitle">A quick, spoiler-free read before you press play.</string>
-    <string name="details_nuvio_read_story_label">STORY OVERVIEW</string>
+    <string name="details_premium_overview_title">Nuvio Read</string>
+    <string name="details_premium_overview_subtitle">Key facts, ratings, and story context grouped for a faster decision.</string>
+    <string name="details_premium_story_label">Story</string>
+    <string name="nuvio_enhanced_nuvio_read_title">Nuvio Read</string>
+    <string name="nuvio_enhanced_nuvio_read_desc">Group key facts, ratings, and the story into the enhanced overview card on detail pages.</string>
     <string name="settings_nuvio_enhanced_discord_description">Get support, report issues, and share feedback in the Nuvio Enhanced Discord.</string>
     <string name="settings_nuvio_enhanced_donate_description">Support my work and the continued development of Nuvio Enhanced on Ko-fi.</string>
     <string name="player_next_episode">Next Episode</string>

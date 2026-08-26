@@ -1239,6 +1239,7 @@ fun MetaDetailsScreen(
                                 commentsError = commentsError,
                                 episodeImdbRatings = episodeImdbRatings,
                                 episodeTmdbRatings = episodeTmdbRatings,
+                                showNuvioRead = nuvioEnhancedSettings.nuvioReadEnabled,
                                 onRetryComments = {
                                     detailsScope.launch {
                                         isCommentsLoading = true
@@ -1768,6 +1769,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
     episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
+    showNuvioRead: Boolean,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -1857,6 +1859,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     commentsError = commentsError,
                     episodeImdbRatings = episodeImdbRatings,
                     episodeTmdbRatings = episodeTmdbRatings,
+                    showNuvioRead = showNuvioRead,
                     onRetryComments = onRetryComments,
                     onLoadMoreComments = onLoadMoreComments,
                     onCommentClick = onCommentClick,
@@ -2050,6 +2053,7 @@ private fun ConfiguredMetaSections(
     commentsError: String?,
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
     episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
+    showNuvioRead: Boolean,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -2142,6 +2146,7 @@ private fun ConfiguredMetaSections(
                     meta = meta,
                     episodeImdbRatings = episodeImdbRatings,
                     episodeTmdbRatings = episodeTmdbRatings,
+                    showNuvioRead = showNuvioRead,
                 )
             }
             MetaScreenSectionKey.PRODUCTION -> {

@@ -91,6 +91,7 @@ fun DetailMetaInfo(
     episodeImdbRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     episodeTmdbRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     modifier: Modifier = Modifier,
+    showNuvioRead: Boolean = false,
 ) {
     var showRatings by remember { mutableStateOf(false) }
     Column(
@@ -101,14 +102,36 @@ fun DetailMetaInfo(
     ) {
         val releaseLine = formatMetaReleaseLineForDetails(meta)
         val runtimeText = formatRuntimeForDisplay(meta.runtime)
-        val mainSeasonStats = remember(meta.videos) {
-            meta.mainSeriesStats()
-        }
-        val seriesCountText = mainSeasonStats?.let { stats ->
-            if (stats.seasonCount == 1) {
-                stringResource(Res.string.details_series_counts_one_season, stats.episodeCount)
+        val seasonCountLabel = remember(meta.type, meta.videos) {
+            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
+            if (!isSeriesLike) {
+                null
             } else {
-                stringResource(Res.string.details_series_counts, stats.seasonCount, stats.episodeCount)
+                meta.videos
+                    .mapNotNull { video -> video.season?.takeIf { it > 0 } }
+                    .distinct()
+                    .size
+                    .takeIf { it > 0 }
+                    ?.let { count -> runBlocking { getString(Res.string.details_total_seasons, count) } }
+            }
+        }
+        val totalEpisodesLabel = remember(meta.type, meta.videos) {
+            val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
+            if (!isSeriesLike) {
+                null
+            } else {
+                meta.videos
+                    .map { video ->
+                        when {
+                            video.season != null || video.episode != null -> "${video.season ?: -1}:${video.episode ?: -1}"
+                            video.id.isNotBlank() -> video.id
+                            else -> video.title
+                        }
+                    }
+                    .distinct()
+                    .size
+                    .takeIf { it > 0 }
+                    ?.let { count -> runBlocking { getString(Res.string.details_total_episodes, count) } }
             }
         }
         val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
@@ -117,21 +140,32 @@ fun DetailMetaInfo(
             ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
         val hasMetaRow = releaseLine != null ||
             runtimeText != null ||
-            seriesCountText != null ||
+            seasonCountLabel != null ||
+            totalEpisodesLabel != null ||
             ageBadge != null ||
             (validImdbRating != null && !hasMdbImdbRating)
-        val imdbLabel = stringResource(Res.string.source_imdb)
+        val imdbSourceLabel = stringResource(Res.string.source_imdb)
         val overviewPills = buildList {
             releaseLine?.let(::add)
+            seasonCountLabel?.let(::add)
+            totalEpisodesLabel?.let(::add)
             runtimeText?.let(::add)
-            seriesCountText?.let(::add)
             ageBadge?.let(::add)
             if (validImdbRating != null && !hasMdbImdbRating) {
-                add("$imdbLabel $validImdbRating")
+                add("$imdbSourceLabel $validImdbRating")
             }
         }
-        if (hasMetaRow || meta.externalRatings.isNotEmpty() || !meta.description.isNullOrBlank()) {
-            DetailNuvioReadCard(
+        val hasPremiumOverview = hasMetaRow ||
+            meta.externalRatings.isNotEmpty() ||
+            !meta.description.isNullOrBlank()
+        if (showNuvioRead && hasPremiumOverview) {
+            DetailPremiumOverviewCard(
+                pills = overviewPills,
+                ratings = meta.externalRatings,
+                description = meta.description,
+            )
+        } else {
+            DetailStandardOverview(
                 pills = overviewPills,
                 ratings = meta.externalRatings,
                 description = meta.description,
@@ -166,32 +200,28 @@ fun DetailMetaInfo(
 }
 
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
-private fun DetailNuvioReadCard(
+private fun DetailPremiumOverviewCard(
     pills: List<String>,
     ratings: List<MetaExternalRating>,
     description: String?,
-    onRatingsClick: () -> Unit,
 ) {
-    val accent = MaterialTheme.colorScheme.primary
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.68f),
-        border = BorderStroke(1.dp, accent.copy(alpha = 0.24f)),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)),
     ) {
         Column(
             modifier = Modifier
                 .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            accent.copy(alpha = 0.16f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.08f),
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                    Brush.verticalGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.055f),
+                            Color.Transparent,
                         ),
                     ),
                 )
-                .padding(17.dp),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(
@@ -201,45 +231,37 @@ private fun DetailNuvioReadCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(accent.copy(alpha = 0.14f))
-                        .border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "N",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = accent,
-                        fontWeight = FontWeight.Black,
-                    )
-                }
+                        .size(width = 4.dp, height = 42.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp)),
+                )
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
                     Text(
-                        text = "NUVIO READ",
-                        style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.2.sp),
+                        text = stringResource(Res.string.details_premium_overview_title),
+                        style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Black,
+                        fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = stringResource(Res.string.details_nuvio_read_subtitle),
+                        text = stringResource(Res.string.details_premium_overview_subtitle),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp,
                     )
                 }
             }
 
             if (pills.isNotEmpty()) {
-                FlowRow(
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    pills.forEach { pill -> DetailNuvioReadPill(pill) }
+                    pills.forEach { pill -> DetailPremiumOverviewPill(text = pill) }
                 }
             }
 
@@ -251,27 +273,27 @@ private fun DetailNuvioReadCard(
                 DetailRatingsRow(
                     ratings = ratings,
                     horizontalScrollPadding = 0.dp,
-                    onClick = onRatingsClick,
+                    onClick = null,
                 )
             }
 
-            description?.trim()?.takeIf(String::isNotBlank)?.let { synopsis ->
-                DetailNuvioReadStory(synopsis)
+            description?.trim()?.takeIf { it.isNotBlank() }?.let { cleanDescription ->
+                DetailPremiumStoryBlock(description = cleanDescription)
             }
         }
     }
 }
 
 @Composable
-private fun DetailNuvioReadPill(text: String) {
+private fun DetailPremiumOverviewPill(text: String) {
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.065f),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.07f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.11f)),
     ) {
         Text(
             text = text,
-            modifier = Modifier.padding(horizontal = 11.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,
@@ -282,84 +304,120 @@ private fun DetailNuvioReadPill(text: String) {
 }
 
 @Composable
-private fun DetailNuvioReadStory(description: String) {
+private fun DetailPremiumStoryBlock(description: String) {
     var expanded by remember(description) { mutableStateOf(false) }
     var canExpand by remember(description) { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
-    val shape = RoundedCornerShape(20.dp)
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = shape,
-        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.045f),
+        shape = RoundedCornerShape(22.dp),
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.055f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
     ) {
         Column(
-            modifier = Modifier
-                .animateContentSize()
-                .padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = stringResource(Res.string.details_nuvio_read_story_label),
+                text = stringResource(Res.string.details_premium_story_label),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
             )
-            Box {
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.92f),
-                    maxLines = if (expanded) Int.MAX_VALUE else 5,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 23.sp,
-                    onTextLayout = { result ->
-                        if (!expanded) canExpand = result.hasVisualOverflow
-                    },
-                    modifier = if (expanded) {
-                        Modifier.heightIn(max = 220.dp).verticalScroll(scrollState)
-                    } else {
-                        Modifier
-                    },
-                )
-                if (canExpand && !expanded) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(26.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
-                                    ),
-                                ),
-                            ),
-                    )
-                }
-            }
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = if (expanded) Int.MAX_VALUE else 4,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 23.sp,
+                onTextLayout = { result ->
+                    if (!expanded) canExpand = result.hasVisualOverflow
+                },
+            )
             if (canExpand) {
-                Surface(
+                Text(
+                    text = if (expanded) {
+                        stringResource(Res.string.details_show_less)
+                    } else {
+                        stringResource(Res.string.details_show_more)
+                    },
                     modifier = Modifier
-                        .nuvioKeyboardFocusIndicator(RoundedCornerShape(999.dp))
-                        .clickable { expanded = !expanded },
-                    shape = RoundedCornerShape(999.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)),
-                ) {
-                    Text(
-                        text = if (expanded) {
-                            stringResource(Res.string.details_show_less)
-                        } else {
-                            stringResource(Res.string.details_show_more)
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun DetailStandardOverview(
+    pills: List<String>,
+    ratings: List<MetaExternalRating>,
+    description: String?,
+    onRatingsClick: () -> Unit,
+) {
+    if (pills.isNotEmpty()) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            pills.forEach { pill ->
+                Text(
+                    text = pill,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+    AnimatedVisibility(
+        visible = ratings.isNotEmpty(),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        DetailRatingsRow(
+            ratings = ratings,
+            horizontalScrollPadding = 0.dp,
+            onClick = onRatingsClick,
+        )
+    }
+    description?.trim()?.takeIf { it.isNotBlank() }?.let { synopsis ->
+        var expanded by remember(synopsis) { mutableStateOf(false) }
+        var canExpand by remember(synopsis) { mutableStateOf(false) }
+        val scrollState = rememberScrollState()
+        Column(modifier = Modifier.animateContentSize()) {
+            Text(
+                text = synopsis,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 22.sp,
+                onTextLayout = { result -> if (!expanded) canExpand = result.hasVisualOverflow },
+                modifier = if (expanded) {
+                    Modifier.heightIn(max = 220.dp).verticalScroll(scrollState)
+                } else {
+                    Modifier
+                },
+            )
+            if (canExpand) {
+                Text(
+                    text = if (expanded) {
+                        stringResource(Res.string.details_show_less)
+                    } else {
+                        stringResource(Res.string.details_show_more)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { expanded = !expanded }.padding(top = 4.dp),
+                )
             }
         }
     }
@@ -369,7 +427,7 @@ private fun DetailNuvioReadStory(description: String) {
 private fun DetailRatingsRow(
     ratings: List<MetaExternalRating>,
     horizontalScrollPadding: Dp,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     val orderedRatings = remember(ratings) {
         val bySource = ratings.associateBy { it.source }
@@ -386,8 +444,15 @@ private fun DetailRatingsRow(
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = horizontalScrollPadding)
-            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
+                        .clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {

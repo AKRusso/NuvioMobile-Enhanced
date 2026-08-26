@@ -107,6 +107,10 @@ internal fun LazyListScope.settingsRootContent(
 ) {
     if (showAccountSection) {
         item {
+            val enhancedSettings by remember {
+                NuvioEnhancedSettingsRepository.ensureLoaded()
+                NuvioEnhancedSettingsRepository.uiState
+            }.collectAsStateWithLifecycle()
             SettingsSection(
                 title = stringResource(Res.string.compose_settings_root_account_section),
                 isTablet = isTablet,
@@ -135,7 +139,11 @@ internal fun LazyListScope.settingsRootContent(
                         description = stringResource(Res.string.compose_settings_root_tracking_description),
                         icon = Icons.Default.Sync,
                         isTablet = isTablet,
-                        onClick = onTrackingClick,
+                        highlighted = enhancedSettings.isNew(NuvioEnhancedFeature.AnimeTracking),
+                        onClick = {
+                            NuvioEnhancedSettingsRepository.markFeatureSeen(NuvioEnhancedFeature.AnimeTracking)
+                            onTrackingClick()
+                        },
                     )
                 }
             }

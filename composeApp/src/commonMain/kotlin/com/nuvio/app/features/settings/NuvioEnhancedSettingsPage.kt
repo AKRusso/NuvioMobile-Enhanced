@@ -151,7 +151,8 @@ private fun NuvioEnhancedSettingsPageContent(
         settings.isNew(NuvioEnhancedFeature.PlayerTimeOverlay) ||
         settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle) ||
         settings.isNew(NuvioEnhancedFeature.HeroControlsV2) ||
-        settings.isNew(NuvioEnhancedFeature.DetailPresentationControlsV2)
+        settings.isNew(NuvioEnhancedFeature.DetailPresentationControlsV2) ||
+        settings.isNew(NuvioEnhancedFeature.NuvioRead)
     var selectedCategory by rememberSaveable {
         mutableStateOf(
             if (hasNewFeatures) {
@@ -678,9 +679,9 @@ private fun NuvioEnhancedSettingsPageContent(
                     checked = settings.posterArtHeroEnabled,
                     enabled = heroVisualControlsEnabled,
                     isTablet = isTablet,
-                    highlighted = isNew(NuvioEnhancedFeature.HeroControlsV2),
+                    highlighted = isNew(NuvioEnhancedFeature.HeroExperienceControls),
                     onCheckedChange = {
-                        markSeen(NuvioEnhancedFeature.HeroControlsV2)
+                        markSeen(NuvioEnhancedFeature.HeroExperienceControls)
                         NuvioEnhancedSettingsRepository.setPosterArtHeroEnabled(it)
                     },
                 )
@@ -830,6 +831,20 @@ private fun NuvioEnhancedSettingsPageContent(
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
+                    if (selectedCategory != EnhancedSettingsCategory.New || isNew(NuvioEnhancedFeature.NuvioRead)) {
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.nuvio_enhanced_nuvio_read_title),
+                            description = stringResource(Res.string.nuvio_enhanced_nuvio_read_desc),
+                            checked = settings.nuvioReadEnabled,
+                            isTablet = isTablet,
+                            highlighted = isNew(NuvioEnhancedFeature.NuvioRead),
+                            onCheckedChange = {
+                                markSeen(NuvioEnhancedFeature.NuvioRead)
+                                NuvioEnhancedSettingsRepository.setNuvioReadEnabled(it)
+                            },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     EnhancedChoiceRow(
                         title = stringResource(Res.string.nuvio_enhanced_episode_cards_layout_title),
                         description = stringResource(Res.string.nuvio_enhanced_episode_cards_layout_desc),

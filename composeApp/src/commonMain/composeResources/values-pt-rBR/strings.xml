@@ -1,8 +1,11 @@
 <resources>
     <string name="profile_choose_background_description">Fundos abstratos Premium. O modo Automático segue o tema deste perfil; ao escolher uma predefinição ou URL, o fundo fica independente.</string>
     <string name="profile_background_normal">Automático</string>
-    <string name="details_nuvio_read_subtitle">Uma leitura rápida e sem spoilers antes de reproduzir.</string>
-    <string name="details_nuvio_read_story_label">RESUMO DA HISTÓRIA</string>
+    <string name="details_premium_overview_title">Nuvio Read</string>
+    <string name="details_premium_overview_subtitle">Informações principais, avaliações e contexto da história agrupados para uma decisão mais rápida.</string>
+    <string name="details_premium_story_label">História</string>
+    <string name="nuvio_enhanced_nuvio_read_title">Nuvio Read</string>
+    <string name="nuvio_enhanced_nuvio_read_desc">Agrupa informações principais, avaliações e a história no cartão de visão geral Enhanced das páginas de detalhes.</string>
     <string name="about_licenses_attributions_subtitle">Fontes de dados, agradecimentos e licenças da plataforma</string>
     <string name="about_supporters_contributors_subtitle">Reconhecimento aberto e créditos do projeto</string>
     <string name="action_back">Voltar</string>
