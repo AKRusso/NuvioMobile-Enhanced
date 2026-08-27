@@ -46,6 +46,7 @@ import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NuvioNetworkOfflineCard
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.withDuplicateSafeLazyKeys
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.enabledAddons
@@ -267,7 +268,10 @@ fun SearchScreen(
                             modifier = Modifier.focusRequester(focusRequester),
                             trailingContent = if (query.isNotBlank()) {
                                 {
-                                    IconButton(onClick = { query = "" }) {
+                                    IconButton(
+                                        onClick = { query = "" },
+                                        modifier = Modifier.nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp)),
+                                    ) {
                                         Icon(
                                             imageVector = Icons.Rounded.Close,
                                             contentDescription = stringResource(Res.string.compose_search_clear),
@@ -469,6 +473,7 @@ private fun SearchRecentRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(16.dp))
             .clickable(onClick = onSearchPress)
             .padding(vertical = 2.dp)
             .background(
@@ -487,7 +492,10 @@ private fun SearchRecentRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        IconButton(onClick = onRemovePress) {
+        IconButton(
+            onClick = onRemovePress,
+            modifier = Modifier.nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp)),
+        ) {
             Icon(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = stringResource(Res.string.compose_search_remove_recent_search),

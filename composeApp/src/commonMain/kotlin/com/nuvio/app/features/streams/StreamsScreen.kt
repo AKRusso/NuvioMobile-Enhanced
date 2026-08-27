@@ -82,6 +82,7 @@ import com.nuvio.app.core.ui.NuvioBottomSheetDivider
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioToastController
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.rememberAnimatedSelectionBrush
 import com.nuvio.app.core.ui.rememberAnimatedSoftBrush
@@ -327,6 +328,7 @@ fun StreamsScreen(
                         color = MaterialTheme.colorScheme.background.copy(alpha = 0.45f),
                         shape = CircleShape,
                     )
+                    .nuvioKeyboardFocusIndicator(CircleShape)
                     .clickable(
                         onClick = {
                             StreamsRepository.reload(
@@ -1041,6 +1043,7 @@ private fun FilterChip(
                     Modifier
                 },
             )
+            .nuvioKeyboardFocusIndicator(shape)
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
