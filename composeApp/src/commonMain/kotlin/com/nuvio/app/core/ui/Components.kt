@@ -185,7 +185,10 @@ fun NuvioScreenHeader(
                 horizontalArrangement = Arrangement.spacedBy(tokens.spacing.controlGap),
             ) {
                 if (onBack != null) {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.nuvioKeyboardFocusIndicator(tokens.shapes.avatar),
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(Res.string.action_back),
@@ -241,7 +244,9 @@ fun NuvioActionLabel(
         text = text,
         modifier = modifier.then(
             if (onClick != null) {
-                Modifier.clickable(onClick = onClick)
+                Modifier
+                    .nuvioKeyboardFocusIndicator(MaterialTheme.nuvio.shapes.chip)
+                    .clickable(onClick = onClick)
             } else {
                 Modifier
             }
@@ -262,6 +267,7 @@ fun NuvioIconActionButton(
     val tokens = MaterialTheme.nuvio
     IconButton(
         modifier = modifier
+            .nuvioKeyboardFocusIndicator(tokens.shapes.avatar)
             .background(
                 color = tokens.colors.background.copy(alpha = 0.001f),
                 shape = tokens.shapes.avatar,
@@ -324,6 +330,7 @@ fun NuvioPrimaryButton(
             .fillMaxWidth()
             .height(NuvioTokens.Space.s48 + NuvioTokens.Space.s4)
             .clip(shape)
+            .nuvioKeyboardFocusIndicator(shape, enabled)
             .then(if (animatedBrush != null) Modifier.background(animatedBrush, shape) else Modifier),
         enabled = enabled,
         interactionSource = interactionSource ?: remember { MutableInteractionSource() },

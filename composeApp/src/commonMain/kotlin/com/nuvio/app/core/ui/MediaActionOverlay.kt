@@ -100,9 +100,10 @@ fun NuvioMediaActionOverlay(
                     ),
             )
             BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
+            modifier = Modifier
+                .fillMaxSize()
+                .nuvioExcludeFromKeyboardFocus()
+                .clickable(
                         interactionSource = dismissInteraction,
                         indication = null,
                         onClick = onDismissRequest,
@@ -125,6 +126,7 @@ fun NuvioMediaActionOverlay(
                                 scaleY = 0.985f + (0.015f * contentProgress)
                                 translationY = (1f - contentProgress) * 18f
                             }
+                            .nuvioExcludeFromKeyboardFocus()
                             .clickable(
                                 interactionSource = contentInteraction,
                                 indication = null,

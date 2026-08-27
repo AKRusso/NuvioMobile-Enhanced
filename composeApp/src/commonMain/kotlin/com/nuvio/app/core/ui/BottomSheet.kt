@@ -90,6 +90,7 @@ fun NuvioBottomSheetActionRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(tokens.shapes.compactCard)
             .clickable(onClick = onClick)
             .padding(horizontal = tokens.spacing.screenHorizontal, vertical = tokens.spacing.screenHorizontal),
         horizontalArrangement = Arrangement.spacedBy(NuvioTokens.Space.s14),
