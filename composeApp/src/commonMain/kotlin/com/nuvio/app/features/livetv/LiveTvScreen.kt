@@ -57,6 +57,7 @@ import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.settings.NuvioEnhancedBackupFileBridge
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
@@ -486,7 +487,9 @@ private fun LiveTvRecentChannelCard(
 ) {
     val tokens = MaterialTheme.nuvio
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(tokens.shapes.card),
         onClick = onClick,
         color = tokens.colors.surface,
         shape = tokens.shapes.card,
@@ -1054,7 +1057,10 @@ private fun LiveTvChannelRow(
                     )
                 }
             }
-            IconButton(onClick = onFavoriteClick) {
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier.nuvioKeyboardFocusIndicator(tokens.shapes.avatar),
+            ) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Rounded.Star else Icons.Rounded.StarBorder,
                     contentDescription = stringResource(Res.string.live_tv_favorite),
