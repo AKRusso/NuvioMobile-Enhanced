@@ -55,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -997,6 +998,22 @@ fun MetaDetailsScreen(
                 }
                 val listState = rememberLazyListState()
                 val playFocusRequester = remember(meta.id) { FocusRequester() }
+                val actionSectionListIndex = detailActionSectionLazyListIndex(metaScreenSettingsUiState) { key ->
+                    metaSectionHasContent(
+                        key = key,
+                        meta = meta,
+                        hasProductionSection = hasProductionSection,
+                        hasTrailersSection = hasTrailersSection,
+                        hasEpisodes = hasEpisodes,
+                        hasAdditionalInfoSection = hasAdditionalInfoSection,
+                        hasCollectionSection = hasCollectionSection,
+                        hasMoreLikeThisSection = hasMoreLikeThisSection,
+                        shouldShowComments = shouldShowComments,
+                        comments = comments,
+                        isCommentsLoading = isCommentsLoading,
+                        commentsError = commentsError,
+                    )
+                }
                 val heroStretchState = rememberHeroStretchState(listState)
                 val density = LocalDensity.current
                 val safeAreaTopPx = with(density) {
@@ -1332,7 +1349,14 @@ fun MetaDetailsScreen(
                                             event.type == KeyEventType.KeyDown &&
                                             event.key == Key.DirectionDown
                                         ) {
-                                            playFocusRequester.requestFocus()
+                                            detailsScope.launch {
+                                                actionSectionListIndex?.let { index ->
+                                                    listState.animateScrollToItem(index)
+                                                    withFrameNanos { }
+                                                }
+                                                playFocusRequester.requestFocus()
+                                            }
+                                            true
                                         } else {
                                             false
                                         }

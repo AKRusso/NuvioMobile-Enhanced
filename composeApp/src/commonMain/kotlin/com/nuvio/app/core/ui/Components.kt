@@ -294,6 +294,7 @@ fun NuvioBackButton(
             .size(buttonSize)
             .clip(shape)
             .background(containerColor)
+            .nuvioKeyboardFocusIndicator(shape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
