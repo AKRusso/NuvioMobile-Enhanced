@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 
+@Suppress("DEPRECATION")
 internal fun Context.isTelevisionEnvironment(configuration: Configuration): Boolean {
     val uiModeManager = getSystemService(UiModeManager::class.java)
     val isTelevisionUiMode = uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION ||

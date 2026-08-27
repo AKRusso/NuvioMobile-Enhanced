@@ -10,7 +10,8 @@ internal actual fun isKeyboardNavigationAvailable(): Boolean {
     val configuration = LocalConfiguration.current
     val context = LocalContext.current
     return shouldStartInKeyboardInputMode(
-        hasHardwareKeyboard = configuration.keyboard != Configuration.KEYBOARD_NOKEYS,
+        hasHardwareKeyboard = configuration.keyboard == Configuration.KEYBOARD_QWERTY ||
+            configuration.keyboard == Configuration.KEYBOARD_12KEY,
         hasDpadNavigation = configuration.navigation == Configuration.NAVIGATION_DPAD,
         isTelevision = context.isTelevisionEnvironment(configuration),
     )
