@@ -5,11 +5,15 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -29,6 +33,7 @@ import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 internal val LocalNuvioKeyboardInput = staticCompositionLocalOf { false }
 private val LocalNuvioFocusMemory = staticCompositionLocalOf<NuvioFocusMemory?> { null }
@@ -42,8 +47,13 @@ internal var SemanticsPropertyReceiver.nuvioKeyboardFocused by NuvioKeyboardFocu
 
 @Composable
 internal fun NuvioKeyboardInputProvider(content: @Composable () -> Unit) {
-    var keyboardInput by remember { mutableStateOf(false) }
+    val keyboardNavigationAvailable = isKeyboardNavigationAvailable()
+    var keyboardInput by remember { mutableStateOf(keyboardNavigationAvailable) }
     val focusMemory = remember { NuvioFocusMemory() }
+
+    LaunchedEffect(keyboardNavigationAvailable) {
+        if (keyboardNavigationAvailable) keyboardInput = true
+    }
 
     CompositionLocalProvider(
         LocalNuvioKeyboardInput provides keyboardInput,
@@ -82,14 +92,22 @@ internal fun Modifier.nuvioKeyboardFocusIndicator(
     val keyboardInput = LocalNuvioKeyboardInput.current
     val focusMemory = LocalNuvioFocusMemory.current
     val focusRequester = remember { FocusRequester() }
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
     var focused by remember { mutableStateOf(false) }
     val showIndicator = keyboardInput && focused
 
-    return focusRequester(focusRequester)
+    return bringIntoViewRequester(bringIntoViewRequester)
+        .focusRequester(focusRequester)
         .onFocusChanged {
             focused = it.isFocused
-            if (it.isFocused && rememberAsContentFocus) {
-                focusMemory?.lastContentFocusRequester = focusRequester
+            if (it.isFocused) {
+                if (keyboardInput) {
+                    coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+                }
+                if (rememberAsContentFocus) {
+                    focusMemory?.lastContentFocusRequester = focusRequester
+                }
             }
         }
         .then(
@@ -105,6 +123,15 @@ internal fun Modifier.nuvioKeyboardFocusIndicator(
 
 internal fun Modifier.nuvioExcludeFromKeyboardFocus(): Modifier =
     focusProperties { canFocus = false }
+
+@Composable
+internal expect fun isKeyboardNavigationAvailable(): Boolean
+
+internal fun shouldStartInKeyboardInputMode(
+    hasHardwareKeyboard: Boolean,
+    hasDpadNavigation: Boolean,
+    isTelevision: Boolean,
+): Boolean = hasHardwareKeyboard || hasDpadNavigation || isTelevision
 
 @Composable
 internal fun Modifier.nuvioRestoreLastContentFocusOnUp(): Modifier =

@@ -131,6 +131,7 @@ import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioTokens
+import com.nuvio.app.core.ui.NuvioKeyboardInputProvider
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NativeNavigationTab
@@ -488,6 +489,7 @@ fun App(
         .collectAsStateWithLifecycle()
     val customThemeSecondColor by remember { ThemeSettingsRepository.customThemeSecondColor }
         .collectAsStateWithLifecycle()
+    NuvioKeyboardInputProvider {
     NuvioTheme(
         appTheme = selectedTheme,
         customFirst = customThemeFirstColor,
@@ -781,6 +783,7 @@ fun App(
                     )
                 }
             }
+        }
         }
     }
 }
