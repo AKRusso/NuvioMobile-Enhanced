@@ -51,6 +51,7 @@ import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,6 +164,7 @@ fun PinEntryDialog(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
+                            .nuvioKeyboardFocusIndicator(RoundedCornerShape(8.dp))
                             .clickable(onClick = onForgotPin)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
@@ -236,6 +238,7 @@ private fun PinKeypad(
                                     .size(64.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .nuvioKeyboardFocusIndicator(CircleShape)
                                     .clickable(onClick = onBackspace),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -253,6 +256,7 @@ private fun PinKeypad(
                                     .size(64.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .nuvioKeyboardFocusIndicator(CircleShape)
                                     .clickable { onDigit(key) },
                                 contentAlignment = Alignment.Center,
                             ) {
