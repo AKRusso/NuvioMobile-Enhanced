@@ -70,6 +70,7 @@ import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.details.MetaEpisodeCardStyle
 import com.nuvio.app.features.downloads.DownloadsExternalFolderPlatform
@@ -1252,6 +1253,7 @@ private fun EnhancedDnsProviderRow(
             .fillMaxWidth()
             .background(rowColor, rowShape)
             .border(tokens.borders.hairline, borderColor, rowShape)
+            .nuvioKeyboardFocusIndicator(rowShape)
             .clickable(onClick = onClick)
             .padding(
                 horizontal = if (isTablet) 20.dp else 16.dp,
@@ -1388,7 +1390,9 @@ private fun <T> EnhancedChoiceRow(
             options.forEach { option ->
                 val isSelected = option.value == selected
                 Surface(
-                    modifier = Modifier.clickable(enabled = enabled) { onSelected(option.value) },
+                    modifier = Modifier
+                        .nuvioKeyboardFocusIndicator(RoundedCornerShape(999.dp), enabled)
+                        .clickable(enabled = enabled) { onSelected(option.value) },
                     color = if (isSelected) {
                         tokens.colors.accent.copy(alpha = if (enabled) 1f else 0.45f)
                     } else {

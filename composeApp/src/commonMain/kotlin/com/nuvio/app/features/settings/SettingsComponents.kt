@@ -62,6 +62,7 @@ import com.nuvio.app.core.ui.NuvioBackButton
 import com.nuvio.app.core.ui.NuvioSectionLabel
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.nuvioConsumePointerEvents
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
 import com.nuvio.app.features.home.HomeCatalogSettingsItem
 import nuvio.composeapp.generated.resources.Res
@@ -179,13 +180,15 @@ internal fun SettingsSidebarItem(
     val background = if (selected) primary.copy(alpha = tokens.opacity.hover) else Color.Transparent
     val iconChip = if (selected) primary.copy(alpha = tokens.opacity.selected) else Color.Transparent
     val contentColor = if (selected) tokens.colors.textPrimary else tokens.colors.textMuted
+    val itemShape = RoundedCornerShape(NuvioTokens.Space.s10)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (tvLayout.enabled) 64.dp else 0.dp)
             .padding(horizontal = if (tvLayout.enabled) 14.dp else tokens.spacing.listGap, vertical = NuvioTokens.Space.s2)
-            .background(background, RoundedCornerShape(NuvioTokens.Space.s10))
+            .background(background, itemShape)
+            .nuvioKeyboardFocusIndicator(itemShape)
             .clickable(onClick = onClick)
             .padding(
                 horizontal = if (tvLayout.enabled) 24.dp else tokens.spacing.screenHorizontal,
@@ -276,6 +279,7 @@ internal fun SettingsNavigationRow(
                     Modifier
                 },
             )
+            .nuvioKeyboardFocusIndicator(highlightShape, enabled)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             .alpha(if (enabled) NuvioTokens.Opacity.visible else tokens.opacity.medium),
@@ -362,6 +366,7 @@ internal fun SettingsSwitchRow(
                     Modifier
                 },
             )
+            .nuvioKeyboardFocusIndicator(highlightShape, enabled)
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         horizontalArrangement = Arrangement.Start,
@@ -498,11 +503,13 @@ internal fun HomescreenCatalogRow(
     val tokens = MaterialTheme.nuvio
     val horizontalPadding = if (isTablet) 20.dp else 16.dp
     val verticalPadding = if (isTablet) 18.dp else 16.dp
+    val rowShape = RoundedCornerShape(NuvioTokens.Radius.lg)
     val hapticFeedback = LocalHapticFeedback.current
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(rowShape)
             .clickable { onExpandedChange(!expanded) }
             .padding(horizontal = horizontalPadding, vertical = verticalPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),

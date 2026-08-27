@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.NuvioActionLabel
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.details.MetaEpisodeCardStyle
 import com.nuvio.app.features.details.MetaScreenBackgroundMode
 import com.nuvio.app.features.details.MetaScreenSectionItem
@@ -510,6 +511,7 @@ private fun MetaEpisodeCardStyleOption(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         color = if (selected) {
             MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)

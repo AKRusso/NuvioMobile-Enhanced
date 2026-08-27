@@ -67,6 +67,7 @@ import com.nuvio.app.core.ui.ThemeColors
 import com.nuvio.app.core.ui.ThemeAccentColor
 import com.nuvio.app.core.ui.isEnhanced
 import com.nuvio.app.core.ui.rememberAnimatedAccentBrush
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.isIos
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
@@ -550,6 +551,7 @@ private fun ThemeChip(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
