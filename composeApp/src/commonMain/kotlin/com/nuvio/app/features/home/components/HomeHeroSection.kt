@@ -1929,6 +1929,7 @@ private fun PosterArtHeroPage(
         modifier = Modifier
             .fillMaxSize()
             .background(themedBackground)
+            .nuvioExcludeFromKeyboardFocus()
             .clickable(enabled = onItemClick != null) {
                 onItemClick?.invoke(item)
             },
@@ -2014,6 +2015,7 @@ private fun PosterArtHeroPage(
                     modifier = Modifier
                         .fillMaxWidth(if (layout.isTablet) 0.58f else 0.86f)
                         .height(logoHeight)
+                        .nuvioExcludeFromKeyboardFocus()
                         .clickable(enabled = onItemClick != null) {
                             onItemClick?.invoke(item)
                         },
@@ -2198,6 +2200,7 @@ private fun PosterHeroRoundActionButton(
                 color = if (primary) Color.Black.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.26f),
                 shape = CircleShape,
             )
+            .nuvioKeyboardFocusIndicator(CircleShape, enabled)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -2369,6 +2372,7 @@ private fun HeroContentBlock(
                     modifier = Modifier
                         .fillMaxWidth(layout.logoWidthFraction)
                         .aspectRatio(2.6f)
+                        .nuvioExcludeFromKeyboardFocus()
                         .clickable(enabled = onItemClick != null) {
                             onItemClick?.invoke(item)
                         },
@@ -2381,6 +2385,7 @@ private fun HeroContentBlock(
                     text = item.name,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .nuvioExcludeFromKeyboardFocus()
                         .clickable(enabled = onItemClick != null) {
                             onItemClick?.invoke(item)
                         },

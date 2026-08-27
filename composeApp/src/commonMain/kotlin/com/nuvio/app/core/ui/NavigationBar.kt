@@ -217,6 +217,11 @@ private class NuvioNavigationBarScopeImpl(
                     .weight(1f)
                     .clip(RoundedCornerShape(NuvioTokens.Radius.full))
                     .background(selectedBgColor)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(
+                        RoundedCornerShape(NuvioTokens.Radius.full),
+                        rememberAsContentFocus = false,
+                    )
                     .selectable(
                         selected = selected,
                         enabled = true,
@@ -266,6 +271,11 @@ private class NuvioNavigationBarScopeImpl(
                     .weight(1f)
                     .clip(RoundedCornerShape(NuvioTokens.Radius.full))
                     .background(selectedBgColor)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(
+                        RoundedCornerShape(NuvioTokens.Radius.full),
+                        rememberAsContentFocus = false,
+                    )
                     .selectable(
                         selected = selected,
                         enabled = true,
@@ -312,6 +322,11 @@ private class NuvioNavigationBarScopeImpl(
                     .weight(1f)
                     .clip(RoundedCornerShape(NuvioTokens.Radius.full))
                     .background(selectedBgColor)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(
+                        RoundedCornerShape(NuvioTokens.Radius.full),
+                        rememberAsContentFocus = false,
+                    )
                     .selectable(
                         selected = selected,
                         enabled = true,
@@ -406,6 +421,8 @@ private class NuvioClassicNavigationBarScopeImpl(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .clip(tokens.components.navItemShape)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(tokens.components.navItemShape, rememberAsContentFocus = false)
                     .selectable(
                         selected = selected,
                         enabled = true,
@@ -445,6 +462,8 @@ private class NuvioClassicNavigationBarScopeImpl(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .clip(tokens.components.navItemShape)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(tokens.components.navItemShape, rememberAsContentFocus = false)
                     .selectable(
                         selected = selected,
                         enabled = true,
@@ -477,6 +496,8 @@ private class NuvioClassicNavigationBarScopeImpl(
                     .fillMaxWidth()
                     .weight(1f, fill = false)
                     .clip(tokens.components.navItemShape)
+                    .nuvioRestoreLastContentFocusOnUp()
+                    .nuvioKeyboardFocusIndicator(tokens.components.navItemShape, rememberAsContentFocus = false)
                     .selectable(
                         selected = selected,
                         enabled = true,

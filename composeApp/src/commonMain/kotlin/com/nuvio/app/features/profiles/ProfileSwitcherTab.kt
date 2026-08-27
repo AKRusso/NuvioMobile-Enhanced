@@ -73,6 +73,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import com.nuvio.app.isIos
 import kotlinx.coroutines.delay
@@ -90,6 +91,7 @@ fun ProfileSwitcherTab(
     onProfileSelected: (NuvioProfile) -> Unit,
     onAddProfileRequested: () -> Unit,
     triggerContent: (@Composable (selected: Boolean) -> Unit)? = null,
+    rememberTriggerAsContentFocus: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
@@ -203,6 +205,10 @@ fun ProfileSwitcherTab(
     Box(
         modifier = modifier
             .onGloballyPositioned { triggerCoordinates = it }
+            .nuvioKeyboardFocusIndicator(
+                tokens.shapes.compactCard,
+                rememberAsContentFocus = rememberTriggerAsContentFocus,
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -555,6 +561,7 @@ private fun PopupAddProfileBubble(
                 scaleY = itemScale.value
             }
             .clip(tokens.shapes.compactCard)
+            .nuvioKeyboardFocusIndicator(tokens.shapes.compactCard)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -649,6 +656,7 @@ private fun PopupProfileBubble(
                 scaleY = itemScale.value * pressScale
             }
             .clip(tokens.shapes.compactCard)
+            .nuvioKeyboardFocusIndicator(tokens.shapes.compactCard)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -896,6 +904,7 @@ private fun InlinePinEntry(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .clip(tokens.shapes.compactCard)
+                .nuvioKeyboardFocusIndicator(tokens.shapes.compactCard)
                 .clickable(onClick = onCancel)
                 .padding(horizontal = tokens.spacing.cardPadding, vertical = NuvioTokens.Space.s6),
         )
@@ -930,6 +939,7 @@ private fun CompactPinKeypad(
                                     .size(tokens.components.avatarSize)
                                     .clip(tokens.shapes.avatar)
                                     .background(tokens.colors.surfaceCard)
+                                    .nuvioKeyboardFocusIndicator(tokens.shapes.avatar)
                                     .clickable(onClick = onBackspace),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -947,6 +957,7 @@ private fun CompactPinKeypad(
                                     .size(tokens.components.avatarSize)
                                     .clip(tokens.shapes.avatar)
                                     .background(tokens.colors.surfaceCard)
+                                    .nuvioKeyboardFocusIndicator(tokens.shapes.avatar)
                                     .clickable { onDigit(key) },
                                 contentAlignment = Alignment.Center,
                             ) {

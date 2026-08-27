@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,7 +105,7 @@ fun <T> NuvioShelfSection(
         }
         LazyRow(
             state = state,
-            modifier = rowModifier,
+            modifier = rowModifier.focusGroup(),
             contentPadding = rowContentPadding,
             horizontalArrangement = Arrangement.spacedBy(itemSpacing),
         ) {
@@ -323,6 +324,10 @@ private fun NuvioViewAllPill(
                 color = tokens.colors.surface,
                 shape = RoundedCornerShape(NuvioTokens.Radius.xl),
             )
+            .nuvioKeyboardFocusIndicator(
+                shape = RoundedCornerShape(NuvioTokens.Radius.xl),
+                enabled = onClick != null,
+            )
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
@@ -387,6 +392,7 @@ internal fun Modifier.posterCardClickable(
     val bounds = remember { mutableStateOf<Rect?>(null) }
     return this
         .onGloballyPositioned { coordinates -> bounds.value = coordinates.unclippedBoundsInRoot() }
+        .nuvioKeyboardFocusIndicator(RoundedCornerShape(zoomCornerRadius))
         .combinedClickable(
             onClick = { onClick?.invoke() },
             onLongClick = onLongClick?.let { longClick ->

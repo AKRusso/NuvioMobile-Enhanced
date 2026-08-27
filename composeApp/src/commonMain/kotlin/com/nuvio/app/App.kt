@@ -130,8 +130,12 @@ import com.nuvio.app.core.ui.NuvioFloatingPrompt
 import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
-import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.NuvioKeyboardInputProvider
+import com.nuvio.app.core.ui.nuvioExcludeFromKeyboardFocus
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
+import com.nuvio.app.core.ui.nuvioRestoreLastContentFocusOnDown
+import com.nuvio.app.core.ui.nuvioRestoreLastContentFocusOnRight
+import com.nuvio.app.core.ui.NuvioTokens
 import com.nuvio.app.core.ui.LocalNuvioBottomNavigationOverlayPadding
 import com.nuvio.app.core.ui.LocalTvLayoutProfile
 import com.nuvio.app.core.ui.NativeNavigationTab
@@ -2095,6 +2099,7 @@ private fun MainAppContent(
                                                 onClick = { handleRootTabClick(AppScreenTab.Settings) },
                                                 onProfileSelected = onProfileSelected,
                                                 onAddProfileRequested = onSwitchProfile,
+                                                rememberTriggerAsContentFocus = false,
                                             )
                                         }
                                     }
@@ -2355,6 +2360,7 @@ private fun MainAppContent(
                                                 onClick = { handleRootTabClick(AppScreenTab.Settings) },
                                                 onProfileSelected = onProfileSelected,
                                                 onAddProfileRequested = onSwitchProfile,
+                                                rememberTriggerAsContentFocus = false,
                                             )
                                         }
                                     }
@@ -4160,10 +4166,14 @@ private fun TabletFloatingTopBar(
                             onClick = { onTabSelected(AppScreenTab.Settings) },
                             onProfileSelected = onProfileSelected,
                             onAddProfileRequested = onAddProfileRequested,
+                            rememberTriggerAsContentFocus = false,
+                            modifier = Modifier.nuvioRestoreLastContentFocusOnDown(),
                         )
                         Text(
                             text = stringResource(Res.string.compose_nav_profile),
-                            modifier = Modifier.clickable { onTabSelected(AppScreenTab.Settings) },
+                            modifier = Modifier
+                                .nuvioExcludeFromKeyboardFocus()
+                                .clickable { onTabSelected(AppScreenTab.Settings) },
                             style = MaterialTheme.typography.labelLarge,
                             color = if (selectedTab == AppScreenTab.Settings) {
                                 tokens.colors.textPrimary
@@ -4249,6 +4259,11 @@ private fun TvNavigationRailItem(
     Box(
         modifier = Modifier
             .size(64.dp)
+            .nuvioRestoreLastContentFocusOnRight()
+            .nuvioKeyboardFocusIndicator(
+                RoundedCornerShape(16.dp),
+                rememberAsContentFocus = false,
+            )
             .clickable(onClick = onClick)
             .padding(14.dp),
         contentAlignment = Alignment.Center,
@@ -4272,7 +4287,10 @@ private fun TabletTopPillItem(
         color = if (selected) tokens.colors.overlaySelected else tokens.colors.surface,
         shape = tokens.shapes.chip,
         tonalElevation = if (selected) tokens.elevation.raised else tokens.elevation.flat,
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .nuvioRestoreLastContentFocusOnDown()
+            .nuvioKeyboardFocusIndicator(tokens.shapes.chip, rememberAsContentFocus = false)
+            .clickable(onClick = onClick),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = tokens.components.chipHorizontalPadding, vertical = NuvioTokens.Space.s10),
