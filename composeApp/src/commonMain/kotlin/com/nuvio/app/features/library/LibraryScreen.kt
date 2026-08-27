@@ -90,6 +90,7 @@ import com.nuvio.app.core.ui.PosterLandscapeAspectRatio
 import com.nuvio.app.core.ui.NuvioModalBottomSheet
 import com.nuvio.app.core.ui.dismissNuvioBottomSheet
 import com.nuvio.app.core.ui.nuvioSafeBottomPadding
+import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.watchprogress.CurrentDateProvider
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
@@ -820,6 +821,7 @@ private fun LibraryDownloadFilterChip(
     Surface(
         modifier = Modifier
             .clip(shape)
+            .nuvioKeyboardFocusIndicator(shape)
             .clickable(onClick = onClick),
         shape = shape,
         color = if (selected) {
@@ -887,6 +889,7 @@ private fun LibraryDownloadsEmptyState(
             Surface(
                 modifier = Modifier
                     .clip(RoundedCornerShape(22.dp))
+                    .nuvioKeyboardFocusIndicator(RoundedCornerShape(22.dp))
                     .clickable(onClick = onManageClick),
                 shape = RoundedCornerShape(22.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -1079,6 +1082,7 @@ private fun LibraryDownloadActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(58.dp)
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1121,6 +1125,7 @@ private fun LibraryActiveDownloadCard(
     Column(
         modifier = Modifier
             .width(150.dp)
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick),
         verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
@@ -1978,7 +1983,10 @@ private fun CloudLibraryToolbar(
                     },
                 )
             }
-            IconButton(onClick = onRefresh) {
+            IconButton(
+                onClick = onRefresh,
+                modifier = Modifier.nuvioKeyboardFocusIndicator(RoundedCornerShape(12.dp)),
+            ) {
                 Icon(
                     imageVector = Icons.Rounded.Refresh,
                     contentDescription = stringResource(Res.string.cloud_library_refresh),
@@ -2001,6 +2009,7 @@ private fun LibraryChip(
     Surface(
         modifier = Modifier
             .clip(RoundedCornerShape(18.dp))
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         color = if (selected) colorScheme.primaryContainer else colorScheme.surfaceContainerLow,
@@ -2044,6 +2053,7 @@ private fun CloudLibraryRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
+            .nuvioKeyboardFocusIndicator(MaterialTheme.shapes.medium, playableCount > 0)
             .clickable(enabled = playableCount > 0, onClick = onClick),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -2087,12 +2097,10 @@ private fun CloudLibraryRow(
                     )
                 }
                 if (playableCount > 0) {
-                    IconButton(onClick = onClick) {
-                        Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(Res.string.action_play),
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Rounded.PlayArrow,
+                        contentDescription = stringResource(Res.string.action_play),
+                    )
                 }
             }
             item.progressFraction?.takeIf { it in 0f..0.999f }?.let { progress ->
@@ -2192,6 +2200,7 @@ private fun CloudLibraryFileRow(
     Surface(
         modifier = modifier
             .fillMaxWidth()
+            .nuvioKeyboardFocusIndicator(RoundedCornerShape(8.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.58f),
