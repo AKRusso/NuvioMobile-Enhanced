@@ -257,6 +257,7 @@ jobs:
           CURRENT_BUMP: ${{ steps.release.outputs.current_bump }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           EXCLUDE_COMMITS: ${{ inputs.exclude_commits }}
+          INCLUDE_IOS: ${{ inputs.include_ios }}
         run: |
           ./scripts/generate-release-notes.sh \
             --from "${PREVIOUS_BUMP}" \
@@ -287,11 +288,13 @@ jobs:
             echo
             echo "## Commits"
             cat release-commits.md
-            echo
-            echo "## iOS and iPadOS"
-            echo
-            echo "Published releases include the Full sideload variant as an unsigned IPA."
-            echo "Install it with AltStore or SideStore, which signs it with your own Apple account."
+            if [[ "${INCLUDE_IOS}" == "true" ]]; then
+              echo
+              echo "## iOS and iPadOS"
+              echo
+              echo "Published releases include the Full sideload variant as an unsigned IPA."
+              echo "Install it with AltStore or SideStore, which signs it with your own Apple account."
+            fi
           } > release-notes.md
 
           {
