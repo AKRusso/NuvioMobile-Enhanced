@@ -140,6 +140,7 @@ actual suspend fun httpGetTextWithHeaders(
 actual suspend fun httpGetBytesWithHeaders(
     url: String,
     headers: Map<String, String>,
+    maxResponseBodyBytes: Int,
 ): ByteArray =
     addonHttpClient
         .get(url) {
@@ -151,7 +152,9 @@ actual suspend fun httpGetBytesWithHeaders(
             if (!response.status.isSuccess()) {
                 error(runBlocking { getString(Res.string.network_request_failed_http, response.status.value) })
             }
-            response.body()
+            val payload: ByteArray = response.body()
+            require(payload.size <= maxResponseBodyBytes) { "HTTP response exceeds the safe size limit." }
+            payload
         }
 
 actual suspend fun httpPostJsonWithHeaders(

@@ -15,6 +15,7 @@ actual object MdbListSettingsStorage {
     private const val preferencesName = "nuvio_mdblist_settings"
     private const val enabledKey = "mdblist_enabled"
     private const val apiKey = "mdblist_api_key"
+    private const val apiKeyUpdatedAtKey = "mdblist_api_key_updated_at"
     private const val useImdbKey = "mdblist_use_imdb"
     private const val useTmdbKey = "mdblist_use_tmdb"
     private const val useTomatoesKey = "mdblist_use_tomatoes"
@@ -51,10 +52,16 @@ actual object MdbListSettingsStorage {
     actual fun loadApiKey(): String? =
         preferences?.getString(ProfileScopedKey.of(apiKey), null)
 
-    actual fun saveApiKey(apiKey: String) {
+    actual fun loadApiKeyUpdatedAtEpochMs(): Long? = preferences?.let { sharedPreferences ->
+        val key = ProfileScopedKey.of(apiKeyUpdatedAtKey)
+        if (sharedPreferences.contains(key)) sharedPreferences.getLong(key, 0L) else null
+    }
+
+    actual fun saveApiKey(apiKey: String, updatedAtEpochMs: Long) {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(this.apiKey), apiKey)
+            ?.putLong(ProfileScopedKey.of(apiKeyUpdatedAtKey), updatedAtEpochMs)
             ?.apply()
     }
 
@@ -138,11 +145,10 @@ actual object MdbListSettingsStorage {
 
     actual fun replaceFromSyncPayload(payload: JsonObject) {
         preferences?.edit()?.apply {
-            syncKeys.forEach { remove(ProfileScopedKey.of(it)) }
+            syncKeys.filterNot { it == apiKey }.forEach { remove(ProfileScopedKey.of(it)) }
         }?.apply()
 
         payload.decodeSyncBoolean(enabledKey)?.let(::saveEnabled)
-        payload.decodeSyncString(apiKey)?.let(::saveApiKey)
         payload.decodeSyncBoolean(useImdbKey)?.let(::saveUseImdb)
         payload.decodeSyncBoolean(useTmdbKey)?.let(::saveUseTmdb)
         payload.decodeSyncBoolean(useTomatoesKey)?.let(::saveUseTomatoes)

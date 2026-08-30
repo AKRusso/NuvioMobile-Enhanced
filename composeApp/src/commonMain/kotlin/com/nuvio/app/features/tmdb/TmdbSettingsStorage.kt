@@ -6,7 +6,8 @@ internal expect object TmdbSettingsStorage {
     fun loadEnabled(): Boolean?
     fun saveEnabled(enabled: Boolean)
     fun loadApiKey(): String?
-    fun saveApiKey(apiKey: String)
+    fun loadApiKeyUpdatedAtEpochMs(): Long?
+    fun saveApiKey(apiKey: String, updatedAtEpochMs: Long)
     fun loadLanguage(): String?
     fun saveLanguage(language: String)
     fun loadUseTrailers(): Boolean?

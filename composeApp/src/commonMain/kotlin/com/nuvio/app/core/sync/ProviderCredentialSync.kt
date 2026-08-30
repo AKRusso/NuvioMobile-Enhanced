@@ -4,16 +4,20 @@ import co.touchlab.kermit.Logger
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.network.SupabaseProvider
+import com.nuvio.app.core.time.EpisodeReleaseDatePlatform
 import com.nuvio.app.features.debrid.DebridProviders
 import com.nuvio.app.features.debrid.DebridSettings
 import com.nuvio.app.features.debrid.DebridSettingsRepository
 import com.nuvio.app.features.mdblist.MdbListSettings
+import com.nuvio.app.features.mdblist.MdbListMetadataService
 import com.nuvio.app.features.mdblist.MdbListSettingsRepository
+import com.nuvio.app.features.mdblist.MdbListSettingsStorage
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.player.PlayerSettingsUiState
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.tmdb.TmdbSettings
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
+import com.nuvio.app.features.tmdb.TmdbSettingsStorage
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -66,8 +70,6 @@ object ProviderCredentialSync {
     }
 
     fun clearAccountState() {
-        observeJob?.cancel()
-        observeJob = null
         synchronized(stateLock) {
             observedSnapshots.clear()
             baselineSnapshots.clear()
@@ -97,6 +99,7 @@ object ProviderCredentialSync {
             seedSnapshot(localSnapshot)
             val rows = pullRows(profileId)
             requireCurrentScope(credentialScope)
+            val shouldRepairRemote = localSnapshot.hasLocallyWonRemoteConflict(rows)
             val remoteSnapshot = localSnapshot.mergeRemote(rows)
             val applied = remoteSnapshot != localSnapshot
             if (applied) {
@@ -108,6 +111,10 @@ object ProviderCredentialSync {
                 }
             }
             requireCurrentScope(credentialScope)
+            if (shouldRepairRemote) {
+                pushSnapshot(remoteSnapshot)
+                requireCurrentScope(credentialScope)
+            }
             synchronized(stateLock) {
                 observedSnapshots[profileId] = remoteSnapshot
                 baselineSnapshots[credentialScope] = remoteSnapshot
@@ -208,8 +215,22 @@ object ProviderCredentialSync {
                     ),
                 )
             }
-            add(ProviderCredentialValue(ProviderCredentialIds.TMDB, PROVIDER_API_KEY_FIELD, tmdb.apiKey.trim()))
-            add(ProviderCredentialValue(ProviderCredentialIds.MDBLIST, PROVIDER_API_KEY_FIELD, mdbList.apiKey.trim()))
+            add(
+                ProviderCredentialValue(
+                    provider = ProviderCredentialIds.TMDB,
+                    field = PROVIDER_API_KEY_FIELD,
+                    value = tmdb.apiKey.trim(),
+                    updatedAtEpochMs = TmdbSettingsStorage.loadApiKeyUpdatedAtEpochMs(),
+                ),
+            )
+            add(
+                ProviderCredentialValue(
+                    provider = ProviderCredentialIds.MDBLIST,
+                    field = PROVIDER_API_KEY_FIELD,
+                    value = mdbList.apiKey.trim(),
+                    updatedAtEpochMs = MdbListSettingsStorage.loadApiKeyUpdatedAtEpochMs(),
+                ),
+            )
             add(
                 ProviderCredentialValue(
                     ProviderCredentialIds.ANIMESKIP,
@@ -241,10 +262,19 @@ object ProviderCredentialSync {
                     )
                 }
                 credential.provider == ProviderCredentialIds.TMDB -> {
-                    TmdbSettingsRepository.setApiKey(credential.value)
+                    TmdbSettingsStorage.saveApiKey(
+                        credential.value,
+                        credential.updatedAtEpochMs ?: EpisodeReleaseDatePlatform.nowEpochMs(),
+                    )
+                    TmdbSettingsRepository.onProfileChanged()
                 }
                 credential.provider == ProviderCredentialIds.MDBLIST -> {
-                    MdbListSettingsRepository.setApiKey(credential.value)
+                    MdbListSettingsStorage.saveApiKey(
+                        credential.value,
+                        credential.updatedAtEpochMs ?: EpisodeReleaseDatePlatform.nowEpochMs(),
+                    )
+                    MdbListMetadataService.clearCache()
+                    MdbListSettingsRepository.onProfileChanged()
                 }
                 credential.provider == ProviderCredentialIds.ANIMESKIP -> {
                     PlayerSettingsRepository.setAnimeSkipClientId(credential.value)

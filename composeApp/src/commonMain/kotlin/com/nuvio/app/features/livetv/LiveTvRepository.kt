@@ -1,14 +1,21 @@
 package com.nuvio.app.features.livetv
 
 import com.nuvio.app.features.addons.httpGetText
+import com.nuvio.app.features.addons.httpGetBytesWithHeaders
 import com.nuvio.app.features.addons.httpGetTextWithHeaders
 import io.ktor.http.encodeURLParameter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -23,10 +30,19 @@ object LiveTvRepository {
     private val mutableUiState = MutableStateFlow(LiveTvUiState())
     val uiState = mutableUiState.asStateFlow()
     private val epgScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val epgMutex = Mutex()
+    private var epgJob: Job? = null
+    private var favoriteEpgReloadJob: Job? = null
+    private var activeEpgSourceUrl: String? = null
+    private var activeEpgUrls: List<String> = emptyList()
+    private var activeEpgLoadToken: Any? = null
+    private var epgLoadingActive = false
+    private var featureEnabled = true
 
     private var initialized = false
 
     fun ensureLoaded() {
+        if (!featureEnabled) return
         if (initialized) return
         initialized = true
         mutableUiState.value = mutableUiState.value.copy(
@@ -40,12 +56,62 @@ object LiveTvRepository {
     }
 
     fun onProfileChanged() {
+        epgJob?.cancel()
+        favoriteEpgReloadJob?.cancel()
+        activeEpgSourceUrl = null
+        activeEpgUrls = emptyList()
+        activeEpgLoadToken = null
         initialized = false
         mutableUiState.value = LiveTvUiState()
-        ensureLoaded()
+        if (featureEnabled) ensureLoaded()
+    }
+
+    fun setFeatureEnabled(enabled: Boolean) {
+        if (featureEnabled == enabled) return
+        featureEnabled = enabled
+        if (!enabled) {
+            epgJob?.cancel()
+            epgJob = null
+            favoriteEpgReloadJob?.cancel()
+            favoriteEpgReloadJob = null
+            activeEpgSourceUrl = null
+            activeEpgUrls = emptyList()
+            activeEpgLoadToken = null
+            epgLoadingActive = false
+            initialized = false
+            mutableUiState.value = LiveTvUiState()
+        } else {
+            ensureLoaded()
+        }
+    }
+
+    fun setEpgLoadingActive(active: Boolean) {
+        if (!featureEnabled && active) return
+        if (epgLoadingActive == active) return
+        epgLoadingActive = active
+        if (!active) {
+            epgJob?.cancel()
+            epgJob = null
+            activeEpgLoadToken = null
+            favoriteEpgReloadJob?.cancel()
+            favoriteEpgReloadJob = null
+            mutableUiState.value = mutableUiState.value.copy(
+                currentProgrammes = emptyMap(),
+                programmesByChannel = emptyMap(),
+                isEpgLoading = false,
+            )
+            return
+        }
+
+        val state = mutableUiState.value
+        if (activeEpgUrls.isNotEmpty() && activeEpgSourceUrl == state.sourceUrl) {
+            mutableUiState.value = state.copy(isEpgLoading = true)
+                loadEpgInBackground(state.sourceUrl, activeEpgUrls)
+        }
     }
 
     suspend fun load(sourceUrl: String): Result<List<LiveTvChannel>> {
+        if (!featureEnabled) return liveTvDisabledResult()
         val normalizedUrl = sourceUrl.trim()
         if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
             val error = IllegalArgumentException("Geçerli bir HTTP veya HTTPS M3U bağlantısı girin.")
@@ -75,6 +141,7 @@ object LiveTvRepository {
                     recentChannel = mutableUiState.value.recentChannel,
                     isLoaded = true,
                 )
+                loadEpgInBackground(normalizedUrl, emptyList())
                 return@runCatching listOf(channel)
             }
 
@@ -120,6 +187,7 @@ object LiveTvRepository {
     }
 
     suspend fun loadLocalPlaylist(fileName: String, playlistData: String): Result<List<LiveTvChannel>> {
+        if (!featureEnabled) return liveTvDisabledResult()
         val trimmedData = playlistData.trim()
         val displayName = fileName.trim().ifBlank { "Local M3U playlist" }
         if (trimmedData.isBlank()) {
@@ -152,8 +220,10 @@ object LiveTvRepository {
                 channels = channels,
                 favoriteUrls = mutableUiState.value.favoriteUrls,
                 recentChannel = mutableUiState.value.recentChannel,
+                isEpgLoading = playlist.epgUrls.isNotEmpty(),
                 isLoaded = true,
             )
+            loadEpgInBackground(displayName, playlist.epgUrls)
             channels
         }.onFailure { error ->
             mutableUiState.value = mutableUiState.value.copy(
@@ -165,6 +235,7 @@ object LiveTvRepository {
     }
 
     suspend fun loadStoredLocalPlaylist(): Result<List<LiveTvChannel>> {
+        if (!featureEnabled) return liveTvDisabledResult()
         val playlistData = LiveTvStorage.loadLocalPlaylistData().orEmpty()
         if (playlistData.isBlank()) {
             return Result.failure(IllegalStateException("Kayıtlı M3U dosyası bulunamadı."))
@@ -176,6 +247,7 @@ object LiveTvRepository {
     }
 
     suspend fun loadStalker(settings: LiveTvStalkerSettings): Result<List<LiveTvChannel>> {
+        if (!featureEnabled) return liveTvDisabledResult()
         val normalizedSettings = settings.normalized()
         if (!normalizedSettings.isConfigured) {
             val error = IllegalArgumentException("Portal URL ve MAC adresi zorunludur.")
@@ -214,6 +286,7 @@ object LiveTvRepository {
                 recentChannel = mutableUiState.value.recentChannel,
                 isLoaded = true,
             )
+            loadEpgInBackground(normalizedSettings.portalUrl, emptyList())
             channels
         }.onFailure { error ->
             mutableUiState.value = mutableUiState.value.copy(
@@ -225,6 +298,7 @@ object LiveTvRepository {
     }
 
     suspend fun loadXtream(settings: LiveTvXtreamSettings): Result<List<LiveTvChannel>> {
+        if (!featureEnabled) return liveTvDisabledResult()
         val normalizedSettings = settings.normalized()
         if (!normalizedSettings.isConfigured) {
             val error = IllegalArgumentException("Server URL, username, and password are required.")
@@ -263,6 +337,7 @@ object LiveTvRepository {
                 recentChannel = mutableUiState.value.recentChannel,
                 isLoaded = true,
             )
+            loadEpgInBackground(normalizedSettings.serverUrl, emptyList())
             channels
         }.onFailure { error ->
             mutableUiState.value = mutableUiState.value.copy(
@@ -274,13 +349,20 @@ object LiveTvRepository {
     }
 
     suspend fun prepareForPlayback(channel: LiveTvChannel): LiveTvChannel =
-        if (mutableUiState.value.sourceType == LiveTvSourceType.Stalker && !channel.stalkerCommand.isNullOrBlank()) {
+        if (!featureEnabled) {
+            error("Live TV is disabled.")
+        } else if (mutableUiState.value.sourceType == LiveTvSourceType.Stalker && !channel.stalkerCommand.isNullOrBlank()) {
             resolveStalkerPlaybackChannel(channel)
         } else {
             channel
         }
 
     fun disconnect() {
+        epgJob?.cancel()
+        favoriteEpgReloadJob?.cancel()
+        activeEpgSourceUrl = null
+        activeEpgUrls = emptyList()
+        activeEpgLoadToken = null
         LiveTvStorage.saveSourceUrl("")
         LiveTvStorage.saveLocalPlaylistData("")
         LiveTvStorage.saveSourceType(LiveTvSourceType.M3u)
@@ -295,15 +377,35 @@ object LiveTvRepository {
     }
 
     fun toggleFavorite(channel: LiveTvChannel) {
-        val favorites = mutableUiState.value.favoriteUrls.toMutableSet()
+        if (!featureEnabled) return
+        val state = mutableUiState.value
+        val favorites = state.favoriteUrls.toMutableSet()
         if (!favorites.add(channel.streamUrl)) {
             favorites.remove(channel.streamUrl)
         }
         LiveTvStorage.saveFavoriteUrls(favorites)
-        mutableUiState.value = mutableUiState.value.copy(favoriteUrls = favorites)
+        mutableUiState.value = state.copy(favoriteUrls = favorites)
+
+        if (
+            epgLoadingActive &&
+            !channel.tvgId.isNullOrBlank() &&
+            activeEpgUrls.isNotEmpty() &&
+            activeEpgSourceUrl == state.sourceUrl
+        ) {
+            favoriteEpgReloadJob?.cancel()
+            favoriteEpgReloadJob = epgScope.launch {
+                delay(600L)
+                val latestState = mutableUiState.value
+                if (activeEpgUrls.isNotEmpty() && activeEpgSourceUrl == latestState.sourceUrl) {
+                    mutableUiState.value = latestState.copy(isEpgLoading = true)
+                    loadEpgInBackground(latestState.sourceUrl, activeEpgUrls)
+                }
+            }
+        }
     }
 
     fun recordRecentChannel(channel: LiveTvChannel) {
+        if (!featureEnabled) return
         val recentChannel = LiveTvRecentChannel(
             streamUrl = channel.streamUrl,
             name = channel.name,
@@ -316,24 +418,175 @@ object LiveTvRepository {
     }
 
     private fun loadEpgInBackground(sourceUrl: String, epgUrls: List<String>) {
-        if (epgUrls.isEmpty()) return
-        epgScope.launch {
-            val programmes = epgUrls
-                .mapNotNull { epgUrl ->
-                    runCatching {
-                        parseCurrentXmlTvProgrammes(httpGetText(epgUrl))
-                    }.getOrNull()
-                }
-                .fold(emptyMap<String, LiveTvProgramme>()) { merged, entries -> merged + entries }
+        if (!featureEnabled) return
+        val profileIdAtStart = resolveLiveTvStorageProfileId()
+        val loadToken = Any()
+        activeEpgLoadToken = loadToken
+        activeEpgSourceUrl = sourceUrl
+        activeEpgUrls = epgUrls
+        epgJob?.cancel()
+        favoriteEpgReloadJob?.cancel()
+        favoriteEpgReloadJob = null
+        if (epgUrls.isEmpty() || !epgLoadingActive) {
             if (mutableUiState.value.sourceUrl == sourceUrl) {
                 mutableUiState.value = mutableUiState.value.copy(
-                    currentProgrammes = programmes,
                     isEpgLoading = false,
+                    currentProgrammes = emptyMap(),
+                    programmesByChannel = emptyMap(),
                 )
+            }
+            return
+        }
+        if (mutableUiState.value.sourceUrl == sourceUrl) {
+            mutableUiState.value = mutableUiState.value.copy(
+                isEpgLoading = true,
+            )
+        }
+        epgJob = epgScope.launch {
+            epgMutex.lock()
+            try {
+                val loadContext = currentCoroutineContext()
+                loadContext.ensureActive()
+                val nowEpochMs = LiveTvClock.nowEpochMs()
+                val stateAtStart = mutableUiState.value
+                var resolvedChannels = stateAtStart.channels
+                val accumulatedProgrammes = mutableMapOf<String, MutableList<LiveTvProgramme>>()
+
+                for (epgUrl in epgUrls) {
+                    loadContext.ensureActive()
+                    var freshContent: String? = null
+                    repeat(2) { attempt ->
+                        if (freshContent != null) return@repeat
+                        loadContext.ensureActive()
+                        try {
+                            val payload = httpGetBytesWithHeaders(
+                                url = epgUrl,
+                                headers = mapOf(
+                                    "Accept" to "application/xml,text/xml,application/gzip," +
+                                        "application/x-xz,application/octet-stream,*/*",
+                                ),
+                                maxResponseBodyBytes = maxLiveTvEpgDownloadBytes(epgUrl),
+                            )
+                            freshContent = decodeLiveTvEpgPayload(
+                                url = epgUrl,
+                                payload = payload,
+                                onProgress = { loadContext.ensureActive() },
+                            ).takeIf(::isValidXmlTvContent)
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (_: Throwable) {
+                        }
+                        if (freshContent == null && attempt == 0) delay(350L)
+                    }
+                    loadContext.ensureActive()
+                    ensureActiveEpgLoad(sourceUrl, loadToken)
+                    val cachedEntry = if (freshContent == null) {
+                        LiveTvStorage.readEpgCache(profileIdAtStart, epgUrl)
+                    } else {
+                        null
+                    }
+                    loadContext.ensureActive()
+                    val content = when (chooseLiveTvEpgContent(freshContent != null, cachedEntry != null)) {
+                        LiveTvEpgContentChoice.Fresh -> freshContent
+                        LiveTvEpgContentChoice.Cached -> cachedEntry?.content
+                        LiveTvEpgContentChoice.Failed -> null
+                    }
+                    if (content == null) {
+                        continue
+                    }
+                    val schedule = try {
+                        val providerChannels = extractXmlTvChannelAliases(
+                            content = content,
+                            onProgress = { loadContext.ensureActive() },
+                        )
+                        resolvedChannels = resolveXmlTvChannelIds(resolvedChannels, providerChannels)
+                        val relevantChannelIds = resolvedChannels
+                            .mapNotNull(LiveTvChannel::tvgId)
+                            .map(String::trim)
+                            .filter(String::isNotBlank)
+                            .toSet()
+                        val retainedScheduleChannelIds = resolvedChannels
+                            .asSequence()
+                            .filter { channel -> channel.streamUrl in stateAtStart.favoriteUrls }
+                            .mapNotNull(LiveTvChannel::tvgId)
+                            .map(String::trim)
+                            .filter(String::isNotBlank)
+                            .toSet()
+                        loadContext.ensureActive()
+                        if (
+                            epgLoadingActive &&
+                            activeEpgLoadToken === loadToken &&
+                            mutableUiState.value.sourceUrl == sourceUrl
+                        ) {
+                            mutableUiState.value = mutableUiState.value.copy(channels = resolvedChannels)
+                        }
+                        val parsedSchedule = parseXmlTvProgrammeSchedule(
+                            content = content,
+                            nowEpochMs = nowEpochMs,
+                            relevantChannelIds = relevantChannelIds,
+                            retainedScheduleChannelIds = retainedScheduleChannelIds,
+                            onProgress = { loadContext.ensureActive() },
+                        )
+                        if (freshContent != null) {
+                            loadContext.ensureActive()
+                            ensureActiveEpgLoad(sourceUrl, loadToken)
+                            LiveTvStorage.writeEpgCache(
+                                profileId = profileIdAtStart,
+                                entry = LiveTvEpgCacheEntry(
+                                    url = epgUrl,
+                                    content = content,
+                                    savedAtEpochMs = nowEpochMs,
+                                ),
+                            )
+                            loadContext.ensureActive()
+                        }
+                        parsedSchedule
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Throwable) {
+                        continue
+                    }
+                    schedule.forEach { (channelId, programmes) ->
+                        accumulatedProgrammes.getOrPut(channelId) { mutableListOf() }.addAll(programmes)
+                    }
+                }
+
+                loadContext.ensureActive()
+                val programmesByChannel = mergeXmlTvProgrammeSchedules(listOf(accumulatedProgrammes))
+                if (
+                    epgLoadingActive &&
+                    activeEpgLoadToken === loadToken &&
+                    mutableUiState.value.sourceUrl == sourceUrl
+                ) {
+                    mutableUiState.value = mutableUiState.value.copy(
+                        channels = resolvedChannels,
+                        programmesByChannel = programmesByChannel,
+                        currentProgrammes = currentXmlTvProgrammes(programmesByChannel, nowEpochMs),
+                        isEpgLoading = false,
+                    )
+                }
+            } finally {
+                if (
+                    epgLoadingActive &&
+                    activeEpgLoadToken === loadToken &&
+                    mutableUiState.value.sourceUrl == sourceUrl
+                ) {
+                    mutableUiState.value = mutableUiState.value.copy(isEpgLoading = false)
+                }
+                epgMutex.unlock()
             }
         }
     }
+
+    private fun ensureActiveEpgLoad(sourceUrl: String, loadToken: Any) {
+        if (!epgLoadingActive || activeEpgLoadToken !== loadToken || mutableUiState.value.sourceUrl != sourceUrl) {
+            throw CancellationException("EPG load superseded")
+        }
+    }
 }
+
+private fun liveTvDisabledResult(): Result<List<LiveTvChannel>> =
+    Result.failure(IllegalStateException("Live TV is disabled."))
 
 internal expect object LiveTvStorage {
     fun loadSourceType(): LiveTvSourceType
@@ -639,138 +892,8 @@ private fun JsonElement.jsonArrayOrEmpty(): List<JsonElement> =
 private inline fun <K, V> Iterable<JsonElement>.associateNotNull(transform: (JsonElement) -> Pair<K, V>?): Map<K, V> =
     mapNotNull(transform).toMap()
 
-internal fun parseM3uPlaylist(content: String): List<LiveTvChannel> =
-    parseM3uPlaylistData(content).channels
-
-internal data class ParsedM3uPlaylist(
-    val channels: List<LiveTvChannel>,
-    val epgUrls: List<String>,
-)
-
-internal fun parseM3uPlaylistData(content: String): ParsedM3uPlaylist {
-    val channels = mutableListOf<LiveTvChannel>()
-    val epgUrls = linkedSetOf<String>()
-    var metadata: ParsedM3uMetadata? = null
-    var pendingHeaders = emptyMap<String, String>()
-
-    content.lineSequence().forEach { rawLine ->
-        val line = rawLine.trim().removePrefix("\uFEFF")
-        when {
-            line.startsWith("#EXTM3U", ignoreCase = true) -> {
-                val attributes = parseM3uAttributes(line)
-                listOfNotNull(attributes["url-tvg"], attributes["x-tvg-url"])
-                    .flatMap { it.split(',', ';') }
-                    .map(String::trim)
-                    .filter { it.startsWith("http://") || it.startsWith("https://") }
-                    .forEach(epgUrls::add)
-            }
-
-            line.startsWith("#EXTINF", ignoreCase = true) -> {
-                metadata = parseExtInf(line)
-            }
-
-            line.startsWith("#EXTVLCOPT:http-user-agent=", ignoreCase = true) -> {
-                pendingHeaders = pendingHeaders + ("User-Agent" to line.substringAfter('=').trim())
-            }
-
-            line.startsWith("#EXTVLCOPT:http-referrer=", ignoreCase = true) -> {
-                pendingHeaders = pendingHeaders + ("Referer" to line.substringAfter('=').trim())
-            }
-
-            line.startsWith("#EXTHTTP:", ignoreCase = true) -> {
-                pendingHeaders = pendingHeaders + parseExtHttpHeaders(line.substringAfter(':'))
-            }
-
-            line.isNotEmpty() && !line.startsWith("#") -> {
-                val parsedUrl = parseStreamUrl(line)
-                val current = metadata ?: ParsedM3uMetadata(
-                    name = "Kanal ${channels.size + 1}",
-                    tvgId = null,
-                    logoUrl = null,
-                    group = "",
-                )
-                channels += LiveTvChannel(
-                    id = "${parsedUrl.url}#${channels.size}",
-                    name = current.name.ifBlank { "Kanal ${channels.size + 1}" },
-                    streamUrl = parsedUrl.url,
-                    tvgId = current.tvgId,
-                    logoUrl = current.logoUrl,
-                    group = current.group,
-                    headers = defaultM3uStreamHeaders(parsedUrl.url) + pendingHeaders + parsedUrl.headers,
-                    streamType = parsedUrl.url.inferM3uStreamType(),
-                )
-                metadata = null
-                pendingHeaders = emptyMap()
-            }
-        }
-    }
-
-    return ParsedM3uPlaylist(
-        channels = channels
-            .distinctBy { it.streamUrl }
-            .filterNot { isLikelyCategoryHeading(it.name) },
-        epgUrls = epgUrls.toList(),
-    )
-}
-
-private data class ParsedM3uMetadata(
-    val name: String,
-    val tvgId: String?,
-    val logoUrl: String?,
-    val group: String,
-)
-
-private data class ParsedStreamUrl(
-    val url: String,
-    val headers: Map<String, String>,
-)
-
-private val m3uAttributeRegex = Regex("""([\w-]+)="([^"]*)"""")
-
-private fun parseExtInf(line: String): ParsedM3uMetadata {
-    val attributes = parseM3uAttributes(line.substringBeforeLast(',', line))
-    val displayName = line.substringAfterLast(',', "").trim()
-        .ifBlank { attributes["tvg-name"].orEmpty() }
-
-    return ParsedM3uMetadata(
-        name = displayName,
-        tvgId = attributes["tvg-id"]?.takeIf(String::isNotBlank),
-        logoUrl = attributes["tvg-logo"]?.takeIf { it.isNotBlank() },
-        group = attributes["group-title"].orEmpty(),
-    )
-}
-
-private fun parseM3uAttributes(line: String): Map<String, String> =
-    m3uAttributeRegex
-        .findAll(line)
-        .associate { match -> match.groupValues[1].lowercase() to match.groupValues[2].trim() }
-
-private fun parseStreamUrl(line: String): ParsedStreamUrl {
-    val url = line.substringBefore('|').trim()
-    val headers = line.substringAfter('|', "")
-        .split('&')
-        .mapNotNull { entry ->
-            val key = entry.substringBefore('=').trim()
-            val value = entry.substringAfter('=', "").trim()
-            if (key.isBlank() || value.isBlank()) null else key to value
-        }
-        .toMap()
-    return ParsedStreamUrl(url = url, headers = headers)
-}
-
-private fun parseExtHttpHeaders(value: String): Map<String, String> {
-    val trimmed = value.trim().removePrefix("{").removeSuffix("}")
-    return trimmed.split(',')
-        .mapNotNull { entry ->
-            val key = entry.substringBefore(':').trim().trim('"')
-            val headerValue = entry.substringAfter(':', "").trim().trim('"')
-            if (key.isBlank() || headerValue.isBlank()) null else key to headerValue
-        }
-        .toMap()
-}
-
-private fun defaultM3uStreamHeaders(url: String): Map<String, String> {
-    if (!url.startsWith("http://") && !url.startsWith("https://")) return emptyMap()
+internal fun defaultM3uStreamHeaders(url: String): Map<String, String> {
+    if (!url.startsWith("http://", ignoreCase = true) && !url.startsWith("https://", ignoreCase = true)) return emptyMap()
     return M3U_STREAM_REQUEST_HEADERS
 }
 
@@ -791,7 +914,7 @@ private fun String.looksLikeDirectVideoUrl(): Boolean {
         .any(normalized::endsWith)
 }
 
-private fun String.inferM3uStreamType(): String? {
+internal fun String.inferM3uStreamType(): String? {
     val normalized = substringBefore('#').substringBefore('?').lowercase()
     return when {
         normalized.endsWith(".m3u8") -> "hls"
@@ -822,58 +945,15 @@ internal fun isLikelyCategoryHeading(name: String): Boolean {
 
 internal expect object LiveTvClock {
     fun nowEpochMs(): Long
+    fun formatLocalTime(epochMs: Long): String
     fun parseXmlTvTimestamp(value: String): Long?
 }
-
-private val xmlTvProgrammeRegex = Regex(
-    """<programme\b([^>]*)>([\s\S]*?)</programme>""",
-    RegexOption.IGNORE_CASE,
-)
-private val xmlTvTitleRegex = Regex(
-    """<title\b[^>]*>([\s\S]*?)</title>""",
-    RegexOption.IGNORE_CASE,
-)
-private val xmlAttributeRegex = Regex("""([\w-]+)="([^"]*)"""")
 
 internal fun parseCurrentXmlTvProgrammes(
     content: String,
     nowEpochMs: Long = LiveTvClock.nowEpochMs(),
-): Map<String, LiveTvProgramme> {
-    val programmes = mutableMapOf<String, LiveTvProgramme>()
-    xmlTvProgrammeRegex.findAll(content).forEach { match ->
-        val attributes = xmlAttributeRegex.findAll(match.groupValues[1])
-            .associate { attribute -> attribute.groupValues[1].lowercase() to attribute.groupValues[2] }
-        val channelId = attributes["channel"]?.trim()?.takeIf(String::isNotBlank) ?: return@forEach
-        val rawStart = attributes["start"].orEmpty()
-        val rawStop = attributes["stop"].orEmpty()
-        val startEpochMs = LiveTvClock.parseXmlTvTimestamp(rawStart) ?: return@forEach
-        val stopEpochMs = LiveTvClock.parseXmlTvTimestamp(rawStop) ?: return@forEach
-        if (nowEpochMs !in startEpochMs until stopEpochMs) return@forEach
-        val title = xmlTvTitleRegex.find(match.groupValues[2])
-            ?.groupValues
-            ?.get(1)
-            ?.decodeXmlEntities()
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-            ?: return@forEach
-        programmes[channelId] = LiveTvProgramme(
-            title = title,
-            startEpochMs = startEpochMs,
-            stopEpochMs = stopEpochMs,
-            timeLabel = "${rawStart.xmlTvTimePart()} - ${rawStop.xmlTvTimePart()}",
-        )
-    }
-    return programmes
-}
-
-private fun String.xmlTvTimePart(): String {
-    val digits = takeWhile(Char::isDigit)
-    return if (digits.length >= 12) "${digits.substring(8, 10)}:${digits.substring(10, 12)}" else ""
-}
-
-private fun String.decodeXmlEntities(): String =
-    replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot;", "\"")
-        .replace("&apos;", "'")
+): Map<String, LiveTvProgramme> =
+    currentXmlTvProgrammes(
+        programmesByChannel = parseXmlTvProgrammeSchedule(content, nowEpochMs),
+        nowEpochMs = nowEpochMs,
+    )

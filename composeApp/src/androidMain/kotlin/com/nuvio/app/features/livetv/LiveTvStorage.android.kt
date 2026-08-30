@@ -2,6 +2,8 @@ package com.nuvio.app.features.livetv
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.io.File
+import java.security.MessageDigest
 
 actual object LiveTvStorage {
     private const val preferencesName = "nuvio_live_tv"
@@ -21,8 +23,10 @@ actual object LiveTvStorage {
     private const val recentChannelLogoKey = "recent_channel_logo"
     private const val recentChannelGroupKey = "recent_channel_group"
     private const val recentChannelTvgIdKey = "recent_channel_tvg_id"
+    private const val epgCacheMagic = "NUVIO_XMLTV_1"
 
     private var preferences: SharedPreferences? = null
+    private var appContext: Context? = null
 
     private fun resolvedProfileId(): Int = resolveLiveTvStorageProfileId()
 
@@ -47,7 +51,10 @@ actual object LiveTvStorage {
     }
 
     fun initialize(context: Context) {
-        preferences = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        appContext = context.applicationContext
+        preferences = appContext?.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        LiveTvEpgStorageBridge.readCache = ::readEpgCacheEntry
+        LiveTvEpgStorageBridge.writeCache = ::writeEpgCacheEntry
     }
 
     actual fun loadSourceType(): LiveTvSourceType =
@@ -149,5 +156,49 @@ actual object LiveTvStorage {
             putScopedString(recentChannelGroupKey, channel?.group)
             putScopedString(recentChannelTvgIdKey, channel?.tvgId)
         }?.apply()
+    }
+
+    private fun readEpgCacheEntry(profileId: Int, url: String): LiveTvEpgCacheEntry? = runCatching {
+        val file = epgCacheFile(profileId, url) ?: return null
+        if (!file.isFile || file.length() > MAX_DECOMPRESSED_EPG_BYTES + 4096L) return null
+        file.bufferedReader(Charsets.UTF_8).use { reader ->
+            if (reader.readLine() != epgCacheMagic) return null
+            val savedAt = reader.readLine()?.toLongOrNull() ?: return null
+            val storedUrl = reader.readLine() ?: return null
+            if (storedUrl != url) return null
+            val content = reader.readText()
+            if (!isValidXmlTvContent(content)) return null
+            LiveTvEpgCacheEntry(url = storedUrl, content = content, savedAtEpochMs = savedAt)
+        }
+    }.getOrNull()
+
+    private fun writeEpgCacheEntry(profileId: Int, entry: LiveTvEpgCacheEntry) {
+        runCatching {
+            val file = epgCacheFile(profileId, entry.url) ?: return
+            file.parentFile?.mkdirs()
+            val temporary = File(file.parentFile, "${file.name}.tmp")
+            temporary.bufferedWriter(Charsets.UTF_8).use { writer ->
+                writer.append(epgCacheMagic).append('\n')
+                writer.append(entry.savedAtEpochMs.toString()).append('\n')
+                writer.append(entry.url).append('\n')
+                writer.append(entry.content)
+            }
+            if (temporary.length() > MAX_DECOMPRESSED_EPG_BYTES + 4096L) {
+                temporary.delete()
+                return
+            }
+            if (!temporary.renameTo(file)) {
+                temporary.copyTo(file, overwrite = true)
+                temporary.delete()
+            }
+        }
+    }
+
+    private fun epgCacheFile(profileId: Int, url: String): File? {
+        val context = appContext ?: return null
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest("$profileId\n$url".toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte) }
+        return File(context.filesDir, "live_tv_epg/$profileId/$digest.xmltvcache")
     }
 }

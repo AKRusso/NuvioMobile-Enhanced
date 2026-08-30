@@ -34,6 +34,8 @@ data class AnimeTrackingManualMapping(
     val aniListAutomaticResolutionDisabled: Boolean = false,
     val myAnimeListId: Int? = null,
     val myAnimeListAutomaticResolutionDisabled: Boolean = false,
+    val simklId: Long? = null,
+    val simklAutomaticResolutionDisabled: Boolean = false,
 ) {
     fun id(provider: AnimeTrackingProvider): Int? = when (provider) {
         AnimeTrackingProvider.ANILIST -> aniListId
@@ -87,8 +89,8 @@ object AnimeTrackingSettingsRepository : TrackingProfileStore {
     ): AnimeTrackingManualMapping? {
         ensureLoaded()
         return mappingKeys(contentType, contentId, season, episode)
-            .firstNotNullOfOrNull { key -> _state.value.mappings[key] }
-            ?.takeIf { mapping ->
+            .mapNotNull { key -> _state.value.mappings[key] }
+            .firstOrNull { mapping ->
                 mapping.id(provider) != null || mapping.automaticResolutionDisabled(provider)
             }
     }
@@ -116,6 +118,40 @@ object AnimeTrackingSettingsRepository : TrackingProfileStore {
                 myAnimeListAutomaticResolutionDisabled = disableAutomaticResolution,
             )
         }
+        val updatedMappings = current.mappings.toMutableMap().apply {
+            if (mapping == AnimeTrackingManualMapping()) remove(key) else put(key, mapping)
+        }
+        persist(current.copy(mappings = updatedMappings))
+    }
+
+    fun simklMapping(
+        contentType: String,
+        contentId: String,
+        season: Int?,
+        episode: Int?,
+    ): Pair<Long?, Boolean>? {
+        ensureLoaded()
+        return mappingKeys(contentType, contentId, season, episode)
+            .mapNotNull { key -> _state.value.mappings[key] }
+            .firstOrNull { mapping -> mapping.simklId != null || mapping.simklAutomaticResolutionDisabled }
+            ?.let { mapping -> mapping.simklId to mapping.simklAutomaticResolutionDisabled }
+    }
+
+    fun setSimklMapping(
+        contentType: String,
+        contentId: String,
+        season: Int?,
+        episode: Int?,
+        simklId: Long?,
+        disableAutomaticResolution: Boolean = simklId == null,
+    ) {
+        ensureLoaded()
+        val key = mappingKey(contentType, contentId, season, episode)
+        val current = _state.value
+        val mapping = (current.mappings[key] ?: AnimeTrackingManualMapping()).copy(
+            simklId = simklId,
+            simklAutomaticResolutionDisabled = disableAutomaticResolution,
+        )
         val updatedMappings = current.mappings.toMutableMap().apply {
             if (mapping == AnimeTrackingManualMapping()) remove(key) else put(key, mapping)
         }

@@ -117,6 +117,8 @@ import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.player.PlayerSettingsRepository
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
+import com.nuvio.app.features.simkl.SimklAuthRepository
+import com.nuvio.app.features.simkl.SimklConnectionMode
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.streams.StreamsRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
@@ -156,6 +158,11 @@ private const val RANDOM_EPISODE_HISTORY_LIMIT = 8
 private data class EpisodeDownloadRequest(
     val initialEpisodes: List<MetaVideo>,
     val showStartPrompt: Boolean,
+)
+
+private data class AnimeTrackingEditorRequest(
+    val season: Int? = null,
+    val episode: Int? = null,
 )
 
 @Composable
@@ -260,7 +267,7 @@ fun MetaDetailsScreen(
     var episodeTmdbRatings by remember(type, id) { mutableStateOf<Map<Pair<Int, Int>, Double>>(emptyMap()) }
     var deferredMetaWorkAllowed by remember(type, id) { mutableStateOf(false) }
     var showAiAssistant by remember(type, id) { mutableStateOf(false) }
-    var showAnimeTrackingEditor by remember(type, id) { mutableStateOf(false) }
+    var animeTrackingEditorRequest by remember(type, id) { mutableStateOf<AnimeTrackingEditorRequest?>(null) }
     val aniListConnected by remember {
         AniListTrackingRepository.ensureLoaded()
         AniListTrackingRepository.isAuthenticated
@@ -268,6 +275,10 @@ fun MetaDetailsScreen(
     val malConnected by remember {
         MyAnimeListTrackingRepository.ensureLoaded()
         MyAnimeListTrackingRepository.isAuthenticated
+    }.collectAsStateWithLifecycle()
+    val simklAuthUiState by remember {
+        SimklAuthRepository.ensureLoaded()
+        SimklAuthRepository.uiState
     }.collectAsStateWithLifecycle()
 
     val shouldShowComments = !offlineDetailsAvailable &&
@@ -278,15 +289,8 @@ fun MetaDetailsScreen(
     val supportsAiAssistant = displayedMeta?.type
         ?.lowercase()
         ?.let { it in setOf("movie", "film", "series", "show", "tv", "tvshow") } == true
-    val supportsAnimeTracking = displayedMeta?.let { meta ->
-        (aniListConnected || malConnected) && (
-            meta.type.equals("anime", ignoreCase = true) ||
-                listOf("anilist:", "mal:", "kitsu:", "anidb:").any { prefix ->
-                    meta.id.startsWith(prefix, ignoreCase = true) ||
-                        meta.videos.any { video -> video.id.startsWith(prefix, ignoreCase = true) }
-                }
-            )
-    } == true
+    val supportsAnimeTracking =
+        aniListConnected || malConnected || simklAuthUiState.mode == SimklConnectionMode.CONNECTED
 
     LaunchedEffect(displayedMeta?.id) {
         deferredMetaWorkAllowed = false
@@ -1234,7 +1238,7 @@ fun MetaDetailsScreen(
                                 onSaveLongClick = openLibraryListPicker,
                                  onWatchedClick = toggleWatched,
                                  onOpenAnimeTracking = if (supportsAnimeTracking) {
-                                     { showAnimeTrackingEditor = true }
+                                     { animeTrackingEditorRequest = AnimeTrackingEditorRequest() }
                                  } else {
                                      null
                                  },
@@ -1484,13 +1488,25 @@ fun MetaDetailsScreen(
                                 onPlayManually = {
                                     onEpisodeManualPlayClick(selectedEpisode)
                                 },
+                                onTracking = if (supportsAnimeTracking) {
+                                    {
+                                        animeTrackingEditorRequest = AnimeTrackingEditorRequest(
+                                            season = selectedEpisode.season,
+                                            episode = selectedEpisode.episode,
+                                        )
+                                    }
+                                } else {
+                                    null
+                                },
                             )
                         }
 
-                        if (showAnimeTrackingEditor) {
+                        animeTrackingEditorRequest?.let { request ->
                             AnimeTrackingEditorSheet(
                                 meta = meta,
-                                onDismiss = { showAnimeTrackingEditor = false },
+                                initialSeason = request.season,
+                                initialEpisode = request.episode,
+                                onDismiss = { animeTrackingEditorRequest = null },
                             )
                         }
 
@@ -2122,7 +2138,16 @@ private fun ConfiguredMetaSections(
                     playFocusRequester = playFocusRequester,
                     downloadAction = downloadAction,
                     playSideAction = featuredAction,
-                    secondaryActions = listOfNotNull(
+                    featuredAction = onOpenAnimeTracking
+                        ?.takeIf { settings.showAnimeTrackingPencil }
+                        ?.let { onOpen ->
+                            DetailSecondaryAction(
+                                label = stringResource(Res.string.anime_tracking_action),
+                                icon = Icons.Default.Edit,
+                                onClick = onOpen,
+                            )
+                        },
+                    secondaryActions = listOf(
                         DetailSecondaryAction(
                             label = if (isWatched) {
                                 stringResource(Res.string.hero_mark_unwatched)
@@ -2138,11 +2163,7 @@ private fun ConfiguredMetaSections(
                             onClick = onWatchedClick,
                         ),
                         DetailSecondaryAction(
-                            label = if (isSaved) {
-                                stringResource(Res.string.hero_remove_from_library)
-                            } else {
-                                stringResource(Res.string.hero_add_to_library)
-                            },
+                            label = stringResource(Res.string.details_nuvio_library_action),
                             icon = if (isSaved) {
                                 Icons.Default.Check
                             } else {
@@ -2152,13 +2173,6 @@ private fun ConfiguredMetaSections(
                             onClick = onSaveClick,
                             onLongClick = onSaveLongClick,
                         ),
-                        onOpenAnimeTracking?.let { onOpen ->
-                            DetailSecondaryAction(
-                                label = stringResource(Res.string.anime_tracking_action),
-                                icon = Icons.Default.Edit,
-                                onClick = onOpen,
-                            )
-                        },
                     ),
                     isTablet = isTablet,
                     onPlayClick = onPrimaryPlayClick,

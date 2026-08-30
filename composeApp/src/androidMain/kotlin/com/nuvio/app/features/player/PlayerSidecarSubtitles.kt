@@ -1,0 +1,316 @@
+package com.nuvio.app.features.player
+
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import androidx.media3.common.C
+import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.Player
+import androidx.media3.common.text.Cue
+import androidx.media3.extractor.text.CuesWithTiming
+import androidx.media3.extractor.text.DefaultSubtitleParserFactory
+import androidx.media3.extractor.text.SubtitleParser
+import androidx.media3.ui.SubtitleView
+import com.nuvio.app.R
+import com.nuvio.app.features.addons.httpGetTextWithHeaders
+import java.lang.ref.WeakReference
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private const val SIDECAR_TAG = "NuvioSidecar"
+private const val SIDECAR_RENDER_INTERVAL_MS = 100L
+private const val EMPTY_CUE_SIGNATURE = 0x4E5556494FL
+private val sidecarParserFactory = DefaultSubtitleParserFactory()
+private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+
+internal class SidecarGeneration {
+    private var current = 0L
+
+    fun next(): Long = ++current
+
+    fun invalidate(): Long = ++current
+
+    fun isCurrent(candidate: Long): Boolean = candidate == current
+}
+
+internal class SidecarSubtitleController(
+    private val scope: CoroutineScope,
+    private val getPlayer: () -> Player?,
+    private val getSubtitleDelayMs: () -> Int = { 0 },
+) {
+    private val generation = SidecarGeneration()
+    private var activeGeneration: Long? = null
+    private var sidecarSubtitleJob: Job? = null
+    private var activeSidecarSubtitleKey: String? = null
+    private var sidecarTimedCues: List<CuesWithTiming> = emptyList()
+    private var lastSidecarCueSignature: Long? = null
+    private var exoSubtitleViewRef: WeakReference<SubtitleView>? = null
+
+    fun canAttachAddonSubtitleViaSidecar(url: String, useLibass: Boolean): Boolean {
+        val mime = PlayerSubtitleUtils.mimeTypeFromUrl(url)
+        if (mime == MimeTypes.TEXT_SSA && useLibass) return false
+        return sidecarParserFactory.supportsFormat(Format.Builder().setSampleMimeType(mime).build())
+    }
+
+    fun bindSubtitleView(subtitleView: SubtitleView?) {
+        exoSubtitleViewRef = subtitleView?.let(::WeakReference)
+        val currentGeneration = activeGeneration ?: return
+        subtitleView?.setTag(R.id.player_view_sidecar_generation_tag, currentGeneration)
+        if (sidecarTimedCues.isNotEmpty()) renderSidecarCuesAtCurrentPosition()
+    }
+
+    fun stopSidecarAddonSubtitle(clearView: Boolean = true) {
+        generation.invalidate()
+        sidecarSubtitleJob?.cancel()
+        sidecarSubtitleJob = null
+        activeGeneration = null
+        activeSidecarSubtitleKey = null
+        sidecarTimedCues = emptyList()
+        lastSidecarCueSignature = null
+        if (clearView) {
+            postToSubtitleView { view ->
+                view.setTag(R.id.player_view_sidecar_generation_tag, null)
+                view.setCues(emptyList())
+            }
+        }
+    }
+
+    fun startSidecarAddonSubtitle(
+        url: String,
+        headers: Map<String, String> = emptyMap(),
+        useLibass: Boolean = false,
+    ): Boolean {
+        if (!canAttachAddonSubtitleViaSidecar(url, useLibass)) return false
+
+        sidecarSubtitleJob?.cancel()
+        val requestGeneration = generation.next()
+        activeGeneration = requestGeneration
+        activeSidecarSubtitleKey = url
+        lastSidecarCueSignature = null
+        sidecarTimedCues = emptyList()
+        postToSubtitleView { view ->
+            view.setTag(R.id.player_view_sidecar_generation_tag, requestGeneration)
+            view.setCues(emptyList())
+        }
+
+        sidecarSubtitleJob = scope.launch {
+            try {
+                val rawBody = withContext(Dispatchers.IO) {
+                    httpGetTextWithHeaders(url = url, headers = headers)
+                }
+                if (!isActiveGeneration(requestGeneration)) return@launch
+
+                val resolvedMime = PlayerSubtitleUtils.sniffSubtitleMimeType(rawBody, url)
+                val parseResult = withContext(Dispatchers.Default) {
+                    parseSidecarTimedCuesRobust(rawBody, url)
+                }
+                if (!isActiveGeneration(requestGeneration)) return@launch
+
+                if (parseResult.cues.isEmpty()) {
+                    Log.w(
+                        SIDECAR_TAG,
+                        "Sidecar subtitle parse empty for url=$url " +
+                            "urlMime=${PlayerSubtitleUtils.mimeTypeFromUrl(url)} sniffed=$resolvedMime " +
+                            "(buffer preserved; no media reload)",
+                    )
+                    clearGeneration(requestGeneration)
+                    return@launch
+                }
+
+                sidecarTimedCues = parseResult.cues
+                Log.d(
+                    SIDECAR_TAG,
+                    "Sidecar subtitle ready url=$url cues=${parseResult.cues.size} " +
+                        "mime=${parseResult.effectiveMime} source=${parseResult.source} (buffer preserved)",
+                )
+                while (isActive && isActiveGeneration(requestGeneration)) {
+                    renderSidecarCuesAtCurrentPosition()
+                    delay(SIDECAR_RENDER_INTERVAL_MS)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                if (!isActiveGeneration(requestGeneration)) return@launch
+                Log.w(
+                    SIDECAR_TAG,
+                    "Sidecar subtitle failed url=$url: ${error.message} (buffer preserved; no media reload)",
+                )
+                clearGeneration(requestGeneration)
+            }
+        }
+        return true
+    }
+
+    fun renderSidecarCuesAtCurrentPosition() {
+        val cues = sidecarTimedCues
+        val currentGeneration = activeGeneration ?: return
+        if (cues.isEmpty() || !generation.isCurrent(currentGeneration)) return
+        val player = getPlayer() ?: return
+        val delayUs = getSubtitleDelayMs().toLong() * 1_000L
+        val positionUs = (player.currentPosition.coerceAtLeast(0L) * 1_000L - delayUs).coerceAtLeast(0L)
+        val active = collectActiveSidecarCues(cues, positionUs)
+        val signature = activeCueSignature(active)
+        if (signature == lastSidecarCueSignature) return
+        lastSidecarCueSignature = signature
+        postToSubtitleView { view ->
+            if (view.getTag(R.id.player_view_sidecar_generation_tag) == currentGeneration) {
+                view.setCues(active)
+            }
+        }
+    }
+
+    private fun isActiveGeneration(candidate: Long): Boolean =
+        generation.isCurrent(candidate) && activeGeneration == candidate && activeSidecarSubtitleKey != null
+
+    private fun clearGeneration(candidate: Long) {
+        if (!isActiveGeneration(candidate)) return
+        generation.invalidate()
+        activeGeneration = null
+        activeSidecarSubtitleKey = null
+        sidecarTimedCues = emptyList()
+        lastSidecarCueSignature = null
+        postToSubtitleView { view ->
+            if (view.getTag(R.id.player_view_sidecar_generation_tag) == candidate) {
+                view.setTag(R.id.player_view_sidecar_generation_tag, null)
+                view.setCues(emptyList())
+            }
+        }
+    }
+
+    private fun postToSubtitleView(block: (SubtitleView) -> Unit) {
+        val view = exoSubtitleViewRef?.get() ?: return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            block(view)
+        } else {
+            mainHandler.post { exoSubtitleViewRef?.get()?.let(block) }
+        }
+    }
+}
+
+internal data class SidecarParseResult(
+    val cues: List<CuesWithTiming>,
+    val effectiveMime: String,
+    val source: String,
+)
+
+internal fun parseSidecarTimedCuesRobust(rawText: String, sourceUrl: String): SidecarParseResult {
+    val cleaned = rawText.replace("\uFEFF", "")
+    val candidates = PlayerSubtitleUtils.sidecarMimeCandidates(cleaned, sourceUrl)
+    for (mime in candidates) {
+        val parsed = parseSidecarTimedCuesWithMime(cleaned, mime)
+        if (parsed.isNotEmpty()) {
+            val fixed = PlayerSubtitleRtlFix.fixTimedCues(parsed, isBuiltInSubtitle = false)
+            val normalized = if (mime == MimeTypes.TEXT_VTT) normalizeTimedCuePositions(fixed) else fixed
+            return SidecarParseResult(normalized, mime, source = "media3")
+        }
+    }
+
+    val sniffedMime = PlayerSubtitleUtils.sniffSubtitleMimeType(cleaned, sourceUrl)
+    val lenient = if (sniffedMime == MimeTypes.TEXT_SSA || sniffedMime == MimeTypes.APPLICATION_TTML) {
+        emptyList()
+    } else {
+        parseSidecarTimedCuesLenient(cleaned, sourceUrl)
+    }
+    if (lenient.isNotEmpty()) {
+        val fixed = PlayerSubtitleRtlFix.fixTimedCues(lenient, isBuiltInSubtitle = false)
+        val normalized = if (sniffedMime == MimeTypes.TEXT_VTT) normalizeTimedCuePositions(fixed) else fixed
+        return SidecarParseResult(normalized, sniffedMime, source = "lenient")
+    }
+
+    return SidecarParseResult(
+        cues = emptyList(),
+        effectiveMime = candidates.firstOrNull() ?: MimeTypes.APPLICATION_SUBRIP,
+        source = "none",
+    )
+}
+
+private fun normalizeTimedCuePositions(cues: List<CuesWithTiming>): List<CuesWithTiming> = cues.map { entry ->
+    val durationUs = when {
+        entry.durationUs != C.TIME_UNSET -> entry.durationUs
+        entry.endTimeUs != C.TIME_UNSET && entry.startTimeUs != C.TIME_UNSET ->
+            (entry.endTimeUs - entry.startTimeUs).coerceAtLeast(1L)
+        else -> C.TIME_UNSET
+    }
+    CuesWithTiming(entry.cues.map(::normalizeSidecarCuePosition), entry.startTimeUs, durationUs)
+}
+
+private fun parseSidecarTimedCuesWithMime(rawText: String, mimeType: String): List<CuesWithTiming> {
+    val format = Format.Builder().setSampleMimeType(mimeType).build()
+    if (!sidecarParserFactory.supportsFormat(format)) return emptyList()
+    return try {
+        val parser = sidecarParserFactory.create(format)
+        val output = ArrayList<CuesWithTiming>(256)
+        parser.parse(rawText.toByteArray(Charsets.UTF_8), SubtitleParser.OutputOptions.allCues()) { cueGroup ->
+            if (cueGroup.startTimeUs != C.TIME_UNSET) output.add(cueGroup)
+        }
+        output.sortBy { it.startTimeUs }
+        output
+    } catch (error: Exception) {
+        runCatching { Log.d(SIDECAR_TAG, "Sidecar Media3 parse failed mime=$mimeType: ${error.message}") }
+        emptyList()
+    }
+}
+
+internal fun parseSidecarTimedCuesLenient(rawText: String, sourceUrl: String): List<CuesWithTiming> {
+    val syncCues = try {
+        PlayerSubtitleCueParser.parse(rawText, sourceUrl)
+            .filter { it.text.isNotBlank() && it.startTimeMs >= 0L }
+    } catch (_: Exception) {
+        emptyList()
+    }
+    if (syncCues.isEmpty()) return emptyList()
+
+    return syncCues.map { syncCue ->
+        val startUs = syncCue.startTimeMs * 1_000L
+        val endUs = ((syncCue.endTimeMs ?: (syncCue.startTimeMs + 5_000L)) * 1_000L)
+            .coerceAtLeast(startUs + 1L)
+        CuesWithTiming(
+            listOf(Cue.Builder().setText(syncCue.text).build()),
+            startUs,
+            (endUs - startUs).coerceAtLeast(1L),
+        )
+    }
+}
+
+private fun collectActiveSidecarCues(cues: List<CuesWithTiming>, positionUs: Long): List<Cue> {
+    val active = ArrayList<Cue>(4)
+    for (entry in cues) {
+        if (entry.startTimeUs > positionUs) break
+        val end = when {
+            entry.endTimeUs != C.TIME_UNSET -> entry.endTimeUs
+            entry.durationUs != C.TIME_UNSET -> entry.startTimeUs + entry.durationUs
+            else -> Long.MAX_VALUE
+        }
+        if (positionUs < end) active.addAll(entry.cues)
+    }
+    return active
+}
+
+private fun activeCueSignature(cues: List<Cue>): Long {
+    if (cues.isEmpty()) return EMPTY_CUE_SIGNATURE
+    var hash = cues.size.toLong()
+    for (cue in cues) {
+        hash = 31L * hash + (cue.text?.hashCode()?.toLong() ?: 0L)
+        hash = 31L * hash + cue.line.toBits().toLong()
+        hash = 31L * hash + cue.position.toBits().toLong()
+        hash = 31L * hash + cue.lineAnchor.toLong()
+        hash = 31L * hash + cue.positionAnchor.toLong()
+        hash = 31L * hash + cue.size.toBits().toLong()
+    }
+    return hash
+}
+
+private fun normalizeSidecarCuePosition(cue: Cue): Cue {
+    if (cue.bitmap != null || cue.verticalType != Cue.TYPE_UNSET || cue.line == Cue.DIMEN_UNSET) return cue
+    return cue.buildUpon()
+        .setLine(Cue.DIMEN_UNSET, Cue.TYPE_UNSET)
+        .setLineAnchor(Cue.TYPE_UNSET)
+        .build()
+}

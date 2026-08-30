@@ -22,6 +22,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlin.math.round
 
@@ -92,6 +93,50 @@ internal class SimklMutationService(
         val receipt = response.toHistoryRemovalReceipt(candidates, json)
         onMutationCommitted(receipt)
         return receipt.result
+    }
+
+    suspend fun updateEntry(
+        item: TrackingMediaReference,
+        status: TrackingListStatus,
+        score: Int?,
+        memo: SimklMemo,
+    ): TrackingMutationResult {
+        require(item.hasResolvableIdentity) { "Simkl mutation requires a media ID or title" }
+        require(score == null || score in 1..10) { "Simkl score must be between 1 and 10" }
+        require(memo.text.orEmpty().length <= 140) { "Simkl memo must not exceed 140 characters" }
+        val candidate = TrackingHistoryItem(media = item)
+        val response = client.execute(
+            SimklApiRequest(
+                method = SimklHttpMethod.POST,
+                path = "/sync/history",
+                body = buildSimklEntryUpdateBody(item, status, score, memo, json),
+                retryPolicy = SimklRetryPolicy.SYNC_WRITE,
+            ),
+        )
+        val receipt = response.toHistoryMutationReceipt(listOf(candidate), json)
+        onMutationCommitted(receipt)
+        return receipt.result
+    }
+
+    suspend fun removeRating(item: TrackingMediaReference): TrackingMutationResult {
+        require(item.hasResolvableIdentity) { "Simkl mutation requires a media ID or title" }
+        val response = client.execute(
+            SimklApiRequest(
+                method = SimklHttpMethod.POST,
+                path = "/sync/ratings/remove",
+                body = buildSimklRatingRemovalBody(item, json),
+                retryPolicy = SimklRetryPolicy.SYNC_WRITE,
+            ),
+        )
+        val notFound = response.body
+            .takeIf(String::isNotBlank)
+            ?.let { body -> runCatching { json.parseToJsonElement(body).jsonObject }.getOrNull() }
+            ?.get("not_found")
+            ?.jsonObject
+            ?.values
+            ?.sumOf { value -> (value as? kotlinx.serialization.json.JsonArray)?.size ?: 0 }
+            ?: 0
+        return TrackingMutationResult(attemptedCount = 1, notFoundCount = notFound)
     }
 
     suspend fun scrobble(
@@ -187,6 +232,32 @@ object SimklMutationRepository : TrackingListWriter, TrackingHistoryWriter, Trac
         return service.removeFromHistory(items)
     }
 
+    suspend fun updateEntry(
+        profileId: Int,
+        item: TrackingMediaReference,
+        status: TrackingListStatus,
+        score: Int?,
+        memo: SimklMemo,
+    ): TrackingMutationResult {
+        if (!isActiveProfile(profileId)) return TrackingMutationResult(attemptedCount = 0)
+        val result = service.updateEntry(item, status, score, memo)
+        if (score == null) service.removeRating(item)
+        SimklSyncRepository.refreshAsync(
+            intent = TrackingRefreshIntent.INVALIDATED,
+            origin = SimklRefreshOrigin.MUTATION,
+        )
+        return result
+    }
+
+    suspend fun deleteEntry(
+        profileId: Int,
+        item: TrackingMediaReference,
+        destructiveDeleteConfirmed: Boolean,
+    ): TrackingMutationResult {
+        requireSimklDestructiveDeleteConfirmed(destructiveDeleteConfirmed)
+        return removeFromHistory(profileId, listOf(item))
+    }
+
     override suspend fun scrobble(
         profileId: Int,
         action: TrackingScrobbleAction,
@@ -207,6 +278,10 @@ object SimklMutationRepository : TrackingListWriter, TrackingHistoryWriter, Trac
     }
 
     private fun isActiveProfile(profileId: Int): Boolean = ProfileRepository.activeProfileId == profileId
+}
+
+internal fun requireSimklDestructiveDeleteConfirmed(confirmed: Boolean) {
+    require(confirmed) { "Deleting a Simkl entry also removes its watched history and rating" }
 }
 
 internal fun buildSimklListMutationBody(
@@ -268,6 +343,48 @@ internal fun buildSimklScrobbleBody(
         ),
     )
     return json.encodeToString(request)
+}
+
+internal fun buildSimklEntryUpdateBody(
+    item: TrackingMediaReference,
+    status: TrackingListStatus,
+    score: Int?,
+    memo: SimklMemo,
+    json: Json = SimklMutationJson,
+): String {
+    require(score == null || score in 1..10) { "Simkl score must be between 1 and 10" }
+    require(memo.text.orEmpty().length <= 140) { "Simkl memo must not exceed 140 characters" }
+    val dto = SimklHistoryItemDto(
+        title = item.title.nonBlankOrNull(),
+        year = item.year,
+        ids = item.ids.toSimklJsonObjectOrNull(),
+        status = status.wireValue,
+        rating = score,
+        memo = memo,
+    )
+    return json.encodeToString(
+        SimklHistoryMutationRequestDto(
+            movies = listOf(dto).takeIf { item.kind == TrackingMediaKind.MOVIE }.orEmpty(),
+            shows = listOf(dto).takeIf { item.kind != TrackingMediaKind.MOVIE }.orEmpty(),
+        ),
+    )
+}
+
+internal fun buildSimklRatingRemovalBody(
+    item: TrackingMediaReference,
+    json: Json = SimklMutationJson,
+): String {
+    val dto = SimklRatingRemovalItemDto(
+        title = item.title.nonBlankOrNull(),
+        year = item.year,
+        ids = item.ids.toSimklJsonObjectOrNull(),
+    )
+    return json.encodeToString(
+        SimklRatingRemovalRequestDto(
+            movies = listOf(dto).takeIf { item.kind == TrackingMediaKind.MOVIE }.orEmpty(),
+            shows = listOf(dto).takeIf { item.kind != TrackingMediaKind.MOVIE }.orEmpty(),
+        ),
+    )
 }
 
 private fun buildHistoryRequest(
@@ -464,9 +581,24 @@ private data class SimklHistoryItemDto(
     val ids: JsonObject? = null,
     @SerialName("watched_at") val watchedAt: String? = null,
     val status: String? = null,
+    val rating: Int? = null,
+    val memo: SimklMemo? = null,
     val episodes: List<SimklEpisodeMutationDto> = emptyList(),
     val seasons: List<SimklSeasonMutationDto> = emptyList(),
     @SerialName("use_tvdb_anime_seasons") val useTvdbAnimeSeasons: Boolean = false,
+)
+
+@Serializable
+private data class SimklRatingRemovalRequestDto(
+    val movies: List<SimklRatingRemovalItemDto> = emptyList(),
+    val shows: List<SimklRatingRemovalItemDto> = emptyList(),
+)
+
+@Serializable
+private data class SimklRatingRemovalItemDto(
+    val title: String? = null,
+    val year: Int? = null,
+    val ids: JsonObject? = null,
 )
 
 @Serializable

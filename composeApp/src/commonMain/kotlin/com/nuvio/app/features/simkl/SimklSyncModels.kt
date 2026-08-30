@@ -2,7 +2,17 @@ package com.nuvio.app.features.simkl
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonDecoder
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
@@ -55,6 +65,57 @@ data class SimklSeason(
     val episodes: List<SimklEpisode> = emptyList(),
 )
 
+@Serializable(with = SimklMemoSerializer::class)
+data class SimklMemo(
+    val text: String? = null,
+    val isPrivate: Boolean = true,
+)
+
+internal object SimklMemoSerializer : KSerializer<SimklMemo> {
+    override val descriptor: SerialDescriptor = JsonElement.serializer().descriptor
+
+    override fun deserialize(decoder: Decoder): SimklMemo {
+        val element = (decoder as JsonDecoder).decodeJsonElement()
+        return when (element) {
+            is JsonObject -> SimklMemo(
+                text = (element["text"] as? JsonPrimitive)
+                    ?.contentOrNull
+                    ?.trim()
+                    ?.takeIf(String::isNotEmpty),
+                isPrivate = element["is_private"].memoBooleanOrNull() ?: true,
+            )
+            is JsonPrimitive -> SimklMemo(
+                text = element.contentOrNull?.trim()?.takeIf(String::isNotEmpty),
+            )
+            else -> SimklMemo()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: SimklMemo) {
+        val content = value.text?.trim()?.takeIf(String::isNotEmpty)
+        val element = if (content == null) {
+            JsonObject(emptyMap())
+        } else {
+            JsonObject(
+                mapOf(
+                    "text" to JsonPrimitive(content),
+                    "is_private" to JsonPrimitive(value.isPrivate),
+                ),
+            )
+        }
+        (encoder as JsonEncoder).encodeJsonElement(element)
+    }
+}
+
+private fun JsonElement?.memoBooleanOrNull(): Boolean? {
+    val primitive = this as? JsonPrimitive ?: return null
+    return primitive.booleanOrNull ?: when (primitive.contentOrNull?.trim()?.lowercase()) {
+        "true", "1" -> true
+        "false", "0" -> false
+        else -> null
+    }
+}
+
 @Serializable
 data class SimklLibraryEntry(
     val mediaType: SimklMediaType = SimklMediaType.SHOWS,
@@ -72,6 +133,7 @@ data class SimklLibraryEntry(
     val show: SimklMedia? = null,
     val movie: SimklMedia? = null,
     @SerialName("anime_type") val animeType: String? = null,
+    val memo: SimklMemo = SimklMemo(),
     val seasons: List<SimklSeason> = emptyList(),
 ) {
     val media: SimklMedia?

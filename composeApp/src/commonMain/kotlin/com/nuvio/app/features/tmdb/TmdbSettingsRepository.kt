@@ -1,5 +1,6 @@
 package com.nuvio.app.features.tmdb
 
+import com.nuvio.app.core.time.EpisodeReleaseDatePlatform
 import com.nuvio.app.features.player.DeviceLanguagePreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -60,7 +61,7 @@ object TmdbSettingsRepository {
             TmdbSettingsStorage.saveEnabled(false)
         }
         publish()
-        TmdbSettingsStorage.saveApiKey(normalized)
+        TmdbSettingsStorage.saveApiKey(normalized, EpisodeReleaseDatePlatform.nowEpochMs())
     }
 
     fun setLanguage(value: String) {
@@ -172,6 +173,9 @@ object TmdbSettingsRepository {
     private fun loadFromDisk() {
         hasLoaded = true
         apiKey = TmdbSettingsStorage.loadApiKey()?.trim().orEmpty()
+        if (apiKey.isNotBlank() && TmdbSettingsStorage.loadApiKeyUpdatedAtEpochMs() == null) {
+            TmdbSettingsStorage.saveApiKey(apiKey, EpisodeReleaseDatePlatform.nowEpochMs())
+        }
         enabled = (TmdbSettingsStorage.loadEnabled() ?: false) && apiKey.isNotBlank()
         val storedLanguage = TmdbSettingsStorage.loadLanguage()
         language = storedLanguage?.let(::normalizeLanguage)

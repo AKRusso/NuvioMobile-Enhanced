@@ -62,6 +62,7 @@
     <string name="addons_version_format">Phiên bản %1$s</string>
     <string name="cd_selected">Đã chọn</string>
     <string name="collections_copy_json">Sao chép JSON</string>
+    <string name="collections_copy_json_error">Dữ liệu bộ sưu tập quá lớn đối với bảng nhớ tạm trên thiết bị này.</string>
     <string name="collections_count_summary">%1$d bộ sưu tập, %2$d thư mục</string>
     <string name="collections_delete_message">Xóa "%1$s"? Hành động này không thể hoàn tác</string>
     <string name="collections_delete_title">Xóa bộ sưu tập</string>
@@ -2002,4 +2003,29 @@
     <string name="downloads_auto_selecting">Đang chọn nguồn…</string>
     <string name="downloads_download_started">Đã bắt đầu tải xuống</string>
     <string name="downloads_status_waiting">Đang chờ</string>
+    <string name="live_tv_guide_title">Lịch TV yêu thích</string>
+    <string name="live_tv_guide_next_24_hours">Bây giờ · 24 giờ tiếp theo</string>
+    <string name="live_tv_guide_hour_range">+%1$d đến +%2$d giờ</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d kênh yêu thích</string>
+    <string name="live_tv_guide_earlier">Lịch trước đó</string>
+    <string name="live_tv_guide_later">Lịch tiếp theo</string>
+    <string name="live_tv_guide_now">Bây giờ</string>
+    <string name="live_tv_guide_no_favorites_title">Chưa có kênh yêu thích</string>
+    <string name="live_tv_guide_no_favorites_body">Đánh dấu sao các kênh trong TV trực tiếp và chúng sẽ tự động xuất hiện tại đây.</string>
+    <string name="live_tv_guide_loading">Đang tải lịch XMLTV…</string>
+    <string name="live_tv_programme_status_live">ĐANG TRỰC TIẾP</string>
+    <string name="live_tv_programme_status_upcoming">SẮP PHÁT</string>
+    <string name="live_tv_programme_status_ended">ĐÃ KẾT THÚC</string>
+    <string name="live_tv_programme_flag_new">Mới</string>
+    <string name="live_tv_programme_flag_premiere">Công chiếu</string>
+    <string name="live_tv_programme_flag_repeat">Phát lại</string>
+    <string name="live_tv_programme_detail_category">Thể loại</string>
+    <string name="live_tv_programme_detail_episode">Tập</string>
+    <string name="live_tv_programme_detail_rating">Xếp hạng</string>
+    <string name="live_tv_programme_detail_date">Ngày</string>
+    <string name="live_tv_programme_detail_country">Quốc gia</string>
+    <string name="live_tv_programme_detail_language">Ngôn ngữ</string>
+    <string name="live_tv_programme_detail_status">Trạng thái</string>
+    <string name="live_tv_programme_watch_live">XEM TRỰC TIẾP</string>
+    <string name="live_tv_programme_open_live">MỞ KÊNH TRỰC TIẾP NGAY</string>
 </resources>

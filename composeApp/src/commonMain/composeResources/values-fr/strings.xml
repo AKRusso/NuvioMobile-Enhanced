@@ -64,6 +64,7 @@
     <string name="addons_version_format">Version %1$s</string>
     <string name="cd_selected">Sélectionné</string>
     <string name="collections_copy_json">Copier le JSON</string>
+    <string name="collections_copy_json_error">Les données de la collection sont trop volumineuses pour le presse-papiers de cet appareil.</string>
     <string name="collections_count_summary">%1$d collection(s), %2$d dossier(s)</string>
     <string name="collections_delete_message">Supprimer « %1$s » ? Cette action est irréversible.</string>
     <string name="collections_delete_title">Supprimer la collection</string>
@@ -2095,4 +2096,29 @@
     <string name="anime_tracking_automatic_mapping">Utiliser la correspondance automatique</string>
     <string name="anime_tracking_search_hint">Rechercher un animé</string>
     <string name="anime_tracking_update_failed">Impossible de mettre à jour ce service.</string>
+    <string name="live_tv_guide_title">Guide TV des favoris</string>
+    <string name="live_tv_guide_next_24_hours">Maintenant · prochaines 24 heures</string>
+    <string name="live_tv_guide_hour_range">De +%1$d à +%2$d heures</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d chaînes favorites</string>
+    <string name="live_tv_guide_earlier">Guide précédent</string>
+    <string name="live_tv_guide_later">Guide suivant</string>
+    <string name="live_tv_guide_now">Maintenant</string>
+    <string name="live_tv_guide_no_favorites_title">Aucune chaîne favorite pour le moment</string>
+    <string name="live_tv_guide_no_favorites_body">Ajoutez des chaînes aux favoris dans la TV en direct et elles apparaîtront automatiquement ici.</string>
+    <string name="live_tv_guide_loading">Chargement du guide XMLTV…</string>
+    <string name="live_tv_programme_status_live">EN DIRECT</string>
+    <string name="live_tv_programme_status_upcoming">À VENIR</string>
+    <string name="live_tv_programme_status_ended">TERMINÉ</string>
+    <string name="live_tv_programme_flag_new">Nouveau</string>
+    <string name="live_tv_programme_flag_premiere">Première</string>
+    <string name="live_tv_programme_flag_repeat">Rediffusion</string>
+    <string name="live_tv_programme_detail_category">Catégorie</string>
+    <string name="live_tv_programme_detail_episode">Épisode</string>
+    <string name="live_tv_programme_detail_rating">Classification</string>
+    <string name="live_tv_programme_detail_date">Date</string>
+    <string name="live_tv_programme_detail_country">Pays</string>
+    <string name="live_tv_programme_detail_language">Langue</string>
+    <string name="live_tv_programme_detail_status">Statut</string>
+    <string name="live_tv_programme_watch_live">REGARDER EN DIRECT</string>
+    <string name="live_tv_programme_open_live">OUVRIR LA CHAÎNE EN DIRECT</string>
 </resources>

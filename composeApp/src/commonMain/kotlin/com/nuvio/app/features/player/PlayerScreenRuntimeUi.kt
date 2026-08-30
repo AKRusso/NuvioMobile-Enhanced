@@ -494,6 +494,12 @@ private fun BoxScope.RenderPlaybackOverlays(
                 flushWatchProgress()
                 args.onBack()
             },
+            onRetryError = {
+                playerController?.retry()
+                errorMessage = null
+                initialLoadCompleted = false
+                controlsVisible = !playerControlsLocked
+            },
         )
     }
 }

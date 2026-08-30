@@ -13,6 +13,7 @@ import platform.Foundation.NSUserDefaults
 actual object TmdbSettingsStorage {
     private const val enabledKey = "tmdb_enabled"
     private const val apiKeyKey = "tmdb_api_key"
+    private const val apiKeyUpdatedAtKey = "tmdb_api_key_updated_at"
     private const val languageKey = "tmdb_language"
     private const val useTrailersKey = "tmdb_use_trailers"
     private const val useArtworkKey = "tmdb_use_artwork"
@@ -53,8 +54,18 @@ actual object TmdbSettingsStorage {
     actual fun loadApiKey(): String? =
         NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(apiKeyKey))
 
-    actual fun saveApiKey(apiKey: String) {
+    actual fun loadApiKeyUpdatedAtEpochMs(): Long? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(apiKeyUpdatedAtKey)
+        return if (defaults.objectForKey(key) != null) defaults.doubleForKey(key).toLong() else null
+    }
+
+    actual fun saveApiKey(apiKey: String, updatedAtEpochMs: Long) {
         NSUserDefaults.standardUserDefaults.setObject(apiKey, forKey = ProfileScopedKey.of(apiKeyKey))
+        NSUserDefaults.standardUserDefaults.setDouble(
+            updatedAtEpochMs.toDouble(),
+            forKey = ProfileScopedKey.of(apiKeyUpdatedAtKey),
+        )
     }
 
     actual fun loadLanguage(): String? =
@@ -169,12 +180,11 @@ actual object TmdbSettingsStorage {
     }
 
     actual fun replaceFromSyncPayload(payload: JsonObject) {
-        syncKeys.forEach { key ->
+        syncKeys.filterNot { it == apiKeyKey }.forEach { key ->
             NSUserDefaults.standardUserDefaults.removeObjectForKey(ProfileScopedKey.of(key))
         }
 
         payload.decodeSyncBoolean(enabledKey)?.let(::saveEnabled)
-        payload.decodeSyncString(apiKeyKey)?.let(::saveApiKey)
         payload.decodeSyncString(languageKey)?.let(::saveLanguage)
         payload.decodeSyncBoolean(useTrailersKey)?.let(::saveUseTrailers)
         payload.decodeSyncBoolean(useArtworkKey)?.let(::saveUseArtwork)

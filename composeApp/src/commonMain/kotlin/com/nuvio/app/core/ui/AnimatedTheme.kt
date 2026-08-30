@@ -19,6 +19,7 @@ import kotlin.math.pow
 internal data class AnimatedThemeVisuals(
     val accent: Color,
     val accentStrong: Color,
+    val colors: List<Color>,
     val brush: Brush,
     val chipBrush: Brush,
     val lineBrush: Brush,
@@ -61,6 +62,7 @@ internal fun rememberAnimatedThemeVisuals(
     return AnimatedThemeVisuals(
         accent = accent,
         accentStrong = accentStrong,
+        colors = actionColors,
         brush = themeBrush(actionColors),
         chipBrush = themeBrush(chipColors),
         lineBrush = themeBrush(lineColors),

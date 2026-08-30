@@ -225,11 +225,16 @@ internal class PlayerScreenRuntime(
     var preferredAudioSelectionApplied by mutableStateOf(false)
     var preferredSubtitleSelectionApplied by mutableStateOf(false)
     var manualSubtitleSelectionLocked by mutableStateOf(false)
+    var lastAppliedSubtitlePreferenceKey: String? = null
     var activeSubtitleTab by mutableStateOf(SubtitleTab.BuiltIn)
     var autoFetchedAddonSubtitlesForKey by mutableStateOf<String?>(null)
     var trackPreferenceRestoreApplied by mutableStateOf(false)
     var subtitleDelayMs by mutableStateOf(0)
     var subtitleAutoSyncState by mutableStateOf(SubtitleAutoSyncUiState())
+
+    var visibleAddonSubtitlesCacheSource: List<AddonSubtitle>? = null
+    var visibleAddonSubtitlesCacheSettings: PlayerSettingsUiState? = null
+    var visibleAddonSubtitlesCache: List<AddonSubtitle> = emptyList()
 
     var lastSyncedSettingsResizeMode: PlayerResizeMode? = null
     var lastResetPlaybackIdentity: String? = null

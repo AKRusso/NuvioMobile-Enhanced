@@ -38,4 +38,19 @@ class ProfileSettingsCredentialPolicyTest {
         assertEquals(JsonPrimitive("local"), merged["tmdb_api_key"])
         assertEquals(JsonPrimitive(true), merged["tmdb_enabled"])
     }
+
+    @Test
+    fun `omitted remote credential field preserves local credential`() {
+        val remote = buildJsonObject {
+            put("mdblist_enabled", JsonPrimitive(true))
+        }
+        val local = buildJsonObject {
+            put("mdblist_api_key", JsonPrimitive("local"))
+        }
+
+        val merged = preservingLocalProfileCredentials(PROFILE_MDBLIST_SETTINGS_FEATURE, remote, local)
+
+        assertEquals(JsonPrimitive("local"), merged["mdblist_api_key"])
+        assertEquals(JsonPrimitive(true), merged["mdblist_enabled"])
+    }
 }

@@ -228,11 +228,6 @@ private object AppUpdaterRepository {
         if (apkAssets.isEmpty()) return null
         if (apkAssets.size == 1) return apkAssets.first()
 
-        apkAssets.firstOrNull { asset ->
-            val name = asset.name.lowercase()
-            name.contains("full") && (name.contains("release") || name.contains("signed"))
-        }?.let { return it }
-
         val supportedAbis = AppUpdaterPlatform.getSupportedAbis()
         for (abi in supportedAbis) {
             val candidate = apkAssets.firstOrNull { asset ->
@@ -244,6 +239,9 @@ private object AppUpdaterRepository {
         return apkAssets.firstOrNull { asset ->
             val name = asset.name.lowercase()
             name.contains("universal") || name.contains("all")
+        } ?: apkAssets.firstOrNull { asset ->
+            val name = asset.name.lowercase()
+            name.contains("full") && (name.contains("release") || name.contains("signed"))
         } ?: apkAssets.first()
     }
 }

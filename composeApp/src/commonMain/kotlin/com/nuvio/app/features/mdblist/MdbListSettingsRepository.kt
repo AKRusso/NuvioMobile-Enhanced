@@ -1,5 +1,6 @@
 package com.nuvio.app.features.mdblist
 
+import com.nuvio.app.core.time.EpisodeReleaseDatePlatform
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,7 +55,7 @@ object MdbListSettingsRepository {
             MdbListSettingsStorage.saveEnabled(false)
         }
         publish()
-        MdbListSettingsStorage.saveApiKey(normalized)
+        MdbListSettingsStorage.saveApiKey(normalized, EpisodeReleaseDatePlatform.nowEpochMs())
         MdbListMetadataService.clearCache()
     }
 
@@ -102,6 +103,9 @@ object MdbListSettingsRepository {
     private fun loadFromDisk() {
         hasLoaded = true
         apiKey = MdbListSettingsStorage.loadApiKey().orEmpty().trim()
+        if (apiKey.isNotBlank() && MdbListSettingsStorage.loadApiKeyUpdatedAtEpochMs() == null) {
+            MdbListSettingsStorage.saveApiKey(apiKey, EpisodeReleaseDatePlatform.nowEpochMs())
+        }
         enabled = (MdbListSettingsStorage.loadEnabled() ?: false) && apiKey.isNotBlank()
         useImdb = MdbListSettingsStorage.loadUseImdb() ?: true
         useTmdb = MdbListSettingsStorage.loadUseTmdb() ?: true

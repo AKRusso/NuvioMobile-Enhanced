@@ -11,15 +11,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -51,66 +50,95 @@ object SubtitleRepository {
         val generation = ++fetchGeneration
         activeFetchJob = scope.launch {
             val requestType = canonicalSubtitleType(type)
+            if (generation != fetchGeneration) return@launch
             _isLoading.value = true
+            if (generation != fetchGeneration) return@launch
             _error.value = null
+            if (generation != fetchGeneration) return@launch
             _addonSubtitles.value = emptyList()
 
             val addons = AddonRepository.uiState.value.addons.enabledAddons()
-            val allSubs = addons.map { addon ->
-                async {
-                    val manifest = addon.manifest ?: return@async emptyList()
-                    val subtitleResource = manifest.resources.find { it.name.isSubtitleResourceName() }
-                        ?: return@async emptyList()
-                    if (!subtitleResource.supportsSubtitleType(requestType, videoId)) {
-                        return@async emptyList()
-                    }
+            val subtitleAddons = addons.filter { addon ->
+                val manifest = addon.manifest ?: return@filter false
+                val subtitleResource = manifest.resources.find { it.name.isSubtitleResourceName() }
+                    ?: return@filter false
+                subtitleResource.supportsSubtitleType(requestType, videoId)
+            }
+            val completedBlocks = mutableListOf<List<AddonSubtitle>?>()
 
-                    val subtitleUrl = buildAddonResourceUrl(
-                        manifestUrl = manifest.transportUrl,
-                        resource = "subtitles",
-                        type = requestType,
-                        id = videoId,
-                    )
+            supervisorScope {
+                val requests = subtitleAddons.map { addon ->
+                    async {
+                        val manifest = addon.manifest ?: return@async null
+                        val subtitleUrl = buildAddonResourceUrl(
+                            manifestUrl = manifest.transportUrl,
+                            resource = "subtitles",
+                            type = requestType,
+                            id = videoId,
+                        )
 
-                    try {
-                        val response = withContext(Dispatchers.Default) {
-                            httpGetText(subtitleUrl)
+                        try {
+                            withTimeoutOrNull(10_000L) {
+                                val response = withContext(Dispatchers.Default) {
+                                    httpGetText(subtitleUrl)
+                                }
+                                val parsed = json.parseToJsonElement(response).jsonObject
+                                val subtitlesArray = parsed["subtitles"]?.jsonArray ?: return@withTimeoutOrNull emptyList()
+
+                                subtitlesArray.mapIndexedNotNull { index, element ->
+                                    val obj = element.jsonObject
+                                    val id = obj.stringValue("id")
+                                        ?: "${manifest.id}_$index"
+                                    val url = obj.stringValue("url") ?: return@mapIndexedNotNull null
+                                    val rawLang = obj.subtitleLanguage() ?: "unknown"
+                                    val normalizedLang = normalizeLanguageCode(rawLang) ?: rawLang
+
+                                    AddonSubtitle(
+                                        id = id,
+                                        url = url,
+                                        language = normalizedLang,
+                                        display = getString(
+                                            Res.string.player_addon_subtitle_display_format,
+                                            getLanguageLabelForCode(rawLang),
+                                            addon.displayTitle,
+                                        ),
+                                        addonName = addon.displayTitle,
+                                    )
+                                }
+                            }
+                        } catch (error: Throwable) {
+                            if (error is CancellationException) throw error
+                            null
                         }
-                        val parsed = json.parseToJsonElement(response).jsonObject
-                        val subtitlesArray = parsed["subtitles"]?.jsonArray ?: return@async emptyList()
-
-                        subtitlesArray.mapIndexedNotNull { index, element ->
-                            val obj = element.jsonObject
-                            val id = obj.stringValue("id")
-                                ?: "${manifest.id}_$index"
-                            val url = obj.stringValue("url") ?: return@mapIndexedNotNull null
-                            val rawLang = obj.subtitleLanguage() ?: "unknown"
-                            val normalizedLang = normalizeLanguageCode(rawLang) ?: rawLang
-
-                            AddonSubtitle(
-                                id = id,
-                                url = url,
-                                language = normalizedLang,
-                                display = getString(
-                                    Res.string.player_addon_subtitle_display_format,
-                                    getLanguageLabelForCode(rawLang),
-                                    addon.displayTitle,
-                                ),
-                                addonName = addon.displayTitle,
-                            )
-                        }
-                    } catch (error: Throwable) {
-                        if (error is CancellationException) throw error
-                        emptyList()
                     }
                 }
-            }.awaitAll().flatten()
+
+                requests.forEach { request ->
+                    completedBlocks += request.await()
+                    val aggregated = aggregateOrderedSubtitleBlocks(
+                        blocks = completedBlocks,
+                        generation = generation,
+                        activeGeneration = fetchGeneration,
+                    ) ?: return@supervisorScope
+                    if (aggregated != _addonSubtitles.value) {
+                        if (generation != fetchGeneration) return@supervisorScope
+                        _addonSubtitles.value = aggregated
+                    }
+                }
+            }
 
             if (generation != fetchGeneration) return@launch
-            _addonSubtitles.value = allSubs
-            if (allSubs.isEmpty() && addons.any { it.manifest?.resources?.any { r -> r.name.isSubtitleResourceName() } == true }) {
-                _error.value = getString(Res.string.compose_player_no_subtitles_found)
+            val allSubs = aggregateOrderedSubtitleBlocks(
+                blocks = completedBlocks,
+                generation = generation,
+                activeGeneration = fetchGeneration,
+            ) ?: return@launch
+            if (allSubs.isEmpty() && subtitleAddons.isNotEmpty()) {
+                val message = getString(Res.string.compose_player_no_subtitles_found)
+                if (generation != fetchGeneration) return@launch
+                _error.value = message
             }
+            if (generation != fetchGeneration) return@launch
             _isLoading.value = false
         }
     }
@@ -122,6 +150,15 @@ object SubtitleRepository {
         _isLoading.value = false
         _error.value = null
     }
+}
+
+internal fun <T> aggregateOrderedSubtitleBlocks(
+    blocks: List<List<T>?>,
+    generation: Long,
+    activeGeneration: Long,
+): List<T>? {
+    if (generation != activeGeneration) return null
+    return blocks.filterNotNull().flatten()
 }
 
 private fun canonicalSubtitleType(type: String): String =

@@ -1,5 +1,6 @@
 package com.nuvio.app.features.profiles
 
+import com.nuvio.app.core.ui.AppTheme
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.profile_background_arctic_blue
 import nuvio.composeapp.generated.resources.profile_background_default
@@ -59,6 +60,15 @@ enum class ProfileBackgroundPreset(
                 ?: return null
             return entries.firstOrNull { it.key == key }
         }
+
+        fun fromTheme(theme: AppTheme): ProfileBackgroundPreset? = when (theme) {
+            AppTheme.GOLD -> GOLD
+            AppTheme.JADE -> JADE
+            AppTheme.ROSE_GOLD -> ROSE_GOLD
+            AppTheme.ARCTIC_BLUE -> ARCTIC_BLUE
+            AppTheme.GRAPHITE -> GRAPHITE
+            else -> null
+        }
     }
 }
 
@@ -66,3 +76,13 @@ val DefaultProfileBackgroundResource: DrawableResource = Res.drawable.profile_ba
 
 fun profileBackgroundPreset(profile: NuvioProfile): ProfileBackgroundPreset? =
     ProfileBackgroundPreset.fromStoredValue(profile.backgroundUrl)
+
+fun effectiveProfileBackgroundPreset(
+    profile: NuvioProfile,
+    theme: AppTheme,
+): ProfileBackgroundPreset? =
+    profileBackgroundPreset(profile) ?: if (profile.backgroundUrl == null) {
+        ProfileBackgroundPreset.fromTheme(theme)
+    } else {
+        null
+    }

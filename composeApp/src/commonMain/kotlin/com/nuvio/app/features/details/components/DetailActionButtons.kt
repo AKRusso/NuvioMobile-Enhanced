@@ -68,6 +68,7 @@ fun DetailActionButtons(
     playLabel: String = stringResource(Res.string.action_play),
     downloadAction: DetailSecondaryAction? = null,
     playSideAction: DetailSecondaryAction? = null,
+    featuredAction: DetailSecondaryAction? = null,
     secondaryActions: List<DetailSecondaryAction> = emptyList(),
     actionsMenuLabel: String = stringResource(Res.string.details_actions_menu_label),
     isTablet: Boolean = false,
@@ -86,11 +87,8 @@ fun DetailActionButtons(
         animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
         label = "detail_action_menu_progress",
     )
-    val expandableActions = if (downloadAction == null) {
-        listOfNotNull(playSideAction) + secondaryActions
-    } else {
-        secondaryActions
-    }
+    val wideLowerAction = downloadAction ?: playSideAction
+    val expandableActions = listOfNotNull(playSideAction.takeIf { downloadAction != null }) + secondaryActions
     val spacing = 12.dp
 
     Column(
@@ -149,29 +147,30 @@ fun DetailActionButtons(
                 }
             }
 
-            if (downloadAction != null) {
-                playSideAction?.let { action ->
+            if (wideLowerAction == null) {
+                featuredAction?.let { action ->
                     Spacer(modifier = Modifier.width(spacing))
                     DetailCompactAction(
                         action = action,
                         size = buttonHeight,
                         hapticFeedback = hapticFeedback,
+                        featured = true,
                     )
                 }
-            } else {
-                ExpandableDetailActions(
-                    actions = expandableActions,
-                    expanded = actionsExpanded,
-                    progress = menuProgress,
-                    buttonSize = buttonHeight,
-                    spacing = spacing,
-                    actionsMenuLabel = actionsMenuLabel,
-                    onExpandedChange = { actionsExpanded = it },
-                )
             }
+
+            ExpandableDetailActions(
+                actions = expandableActions,
+                expanded = actionsExpanded,
+                progress = menuProgress,
+                buttonSize = buttonHeight,
+                spacing = spacing,
+                actionsMenuLabel = actionsMenuLabel,
+                onExpandedChange = { actionsExpanded = it },
+            )
         }
 
-        downloadAction?.let { action ->
+        wideLowerAction?.let { action ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Start,
@@ -183,15 +182,15 @@ fun DetailActionButtons(
                     modifier = Modifier.weight(1f),
                     hapticFeedback = hapticFeedback,
                 )
-                ExpandableDetailActions(
-                    actions = expandableActions,
-                    expanded = actionsExpanded,
-                    progress = menuProgress,
-                    buttonSize = buttonHeight,
-                    spacing = spacing,
-                    actionsMenuLabel = actionsMenuLabel,
-                    onExpandedChange = { actionsExpanded = it },
-                )
+                featuredAction?.let { featured ->
+                    Spacer(modifier = Modifier.width(spacing))
+                    DetailCompactAction(
+                        action = featured,
+                        size = buttonHeight,
+                        hapticFeedback = hapticFeedback,
+                        featured = true,
+                    )
+                }
             }
         }
     }
@@ -314,15 +313,17 @@ private fun DetailCompactAction(
     action: DetailSecondaryAction,
     size: Dp,
     hapticFeedback: androidx.compose.ui.hapticfeedback.HapticFeedback,
+    featured: Boolean = false,
 ) {
     Surface(
         modifier = Modifier
             .size(size)
             .clip(CircleShape),
         shape = CircleShape,
-        color = if (action.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor = if (action.isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        color = if (featured || action.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (featured || action.isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
         tonalElevation = 6.dp,
+        shadowElevation = if (featured) 8.dp else 0.dp,
     ) {
         Box(
             modifier = Modifier

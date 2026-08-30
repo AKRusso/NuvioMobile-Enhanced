@@ -51,6 +51,7 @@ data class MetaScreenSettingsUiState(
     val blurUnwatchedEpisodes: Boolean = false,
     val showEpisodeRatings: Boolean = true,
     val showDownloadAction: Boolean = false,
+    val showAnimeTrackingPencil: Boolean = false,
 )
 
 enum class MetaScreenBackgroundMode {
@@ -130,6 +131,8 @@ private data class StoredMetaScreenSettingsPayload(
     val showEpisodeRatings: Boolean = true,
     @SerialName("show_download_action")
     val showDownloadAction: Boolean = false,
+    @SerialName("show_anime_tracking_pencil")
+    val showAnimeTrackingPencil: Boolean = false,
 )
 
 private data class MetaScreenSectionDefinition(
@@ -210,6 +213,7 @@ object MetaScreenSettingsRepository {
     private var blurUnwatchedEpisodes: Boolean = false
     private var showEpisodeRatings: Boolean = true
     private var showDownloadAction: Boolean = false
+    private var showAnimeTrackingPencil: Boolean = false
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 
     fun ensureLoaded() {
@@ -232,6 +236,7 @@ object MetaScreenSettingsRepository {
                 blurUnwatchedEpisodes = parsed.blurUnwatchedEpisodes
                 showEpisodeRatings = parsed.showEpisodeRatings
                 showDownloadAction = parsed.showDownloadAction
+                showAnimeTrackingPencil = parsed.showAnimeTrackingPencil
                 preferences = parsed.items.mapNotNull { item ->
                     val key = runCatching { MetaScreenSectionKey.valueOf(item.key) }.getOrNull() ?: return@mapNotNull null
                     key to item
@@ -255,6 +260,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
         showDownloadAction = false
+        showAnimeTrackingPencil = false
         _uiState.value = MetaScreenSettingsUiState()
         ensureLoaded()
     }
@@ -319,6 +325,13 @@ object MetaScreenSettingsRepository {
         persist()
     }
 
+    fun setShowAnimeTrackingPencil(enabled: Boolean) {
+        ensureLoaded()
+        showAnimeTrackingPencil = enabled
+        publish()
+        persist()
+    }
+
     fun setTabGroup(key: MetaScreenSectionKey, groupId: Int?) {
         ensureLoaded()
         if (!key.canBeTabbed) return
@@ -343,6 +356,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
         showDownloadAction = false
+        showAnimeTrackingPencil = false
         _uiState.value = MetaScreenSettingsUiState()
     }
 
@@ -356,6 +370,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes: Boolean = false,
         showEpisodeRatings: Boolean = true,
         showDownloadAction: Boolean = false,
+        showAnimeTrackingPencil: Boolean = false,
         backgroundMode: MetaScreenBackgroundMode? = null,
     ) {
         ensureLoaded()
@@ -367,6 +382,7 @@ object MetaScreenSettingsRepository {
         this.blurUnwatchedEpisodes = blurUnwatchedEpisodes
         this.showEpisodeRatings = showEpisodeRatings
         this.showDownloadAction = showDownloadAction
+        this.showAnimeTrackingPencil = showAnimeTrackingPencil
         preferences = items.associate { item ->
             item.key to StoredMetaScreenSectionPreference(
                 key = item.key.name,
@@ -397,6 +413,7 @@ object MetaScreenSettingsRepository {
         blurUnwatchedEpisodes = false
         showEpisodeRatings = true
         showDownloadAction = false
+        showAnimeTrackingPencil = false
         normalizePreferences()
         publish()
         persist()
@@ -469,6 +486,7 @@ object MetaScreenSettingsRepository {
             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
             showEpisodeRatings = showEpisodeRatings,
             showDownloadAction = showDownloadAction,
+            showAnimeTrackingPencil = showAnimeTrackingPencil,
         )
     }
 
@@ -486,6 +504,7 @@ object MetaScreenSettingsRepository {
                     blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                     showEpisodeRatings = showEpisodeRatings,
                     showDownloadAction = showDownloadAction,
+                    showAnimeTrackingPencil = showAnimeTrackingPencil,
                 ),
             ),
         )

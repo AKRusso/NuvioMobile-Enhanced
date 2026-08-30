@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +58,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,6 +79,7 @@ import nuvio.composeapp.generated.resources.compose_player_close
 import nuvio.composeapp.generated.resources.compose_player_episode_code_full
 import nuvio.composeapp.generated.resources.compose_player_go_back
 import nuvio.composeapp.generated.resources.compose_player_playback_error
+import nuvio.composeapp.generated.resources.compose_player_retry
 import nuvio.composeapp.generated.resources.compose_player_youre_watching
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -502,11 +510,18 @@ internal fun PauseMetadataOverlay(
 internal fun ErrorModal(
     message: String,
     onDismiss: () -> Unit,
+    onRetry: () -> Unit,
 ) {
+    val title = stringResource(Res.string.compose_player_playback_error)
+    val retryFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        retryFocusRequester.requestFocus()
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.9f)),
+            .background(Color.Black.copy(alpha = 0.9f))
+            .semantics { paneTitle = title },
         contentAlignment = Alignment.Center,
     ) {
         Column(
@@ -517,10 +532,11 @@ internal fun ErrorModal(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = stringResource(Res.string.compose_player_playback_error),
+                text = title,
                 style = MaterialTheme.nuvioTypeScale.displaySm.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
                 textAlign = TextAlign.Center,
+                modifier = Modifier.semantics { heading() },
             )
             Text(
                 text = message,
@@ -534,8 +550,26 @@ internal fun ErrorModal(
                 modifier = Modifier
                     .padding(top = 4.dp)
                     .widthIn(min = 180.dp, max = 260.dp)
-                    .clickable(onClick = onDismiss),
+                    .focusRequester(retryFocusRequester)
+                    .clickable(role = Role.Button, onClick = onRetry),
                 color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.compose_player_retry),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    style = MaterialTheme.nuvioTypeScale.bodyLg.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            Surface(
+                modifier = Modifier
+                    .widthIn(min = 180.dp, max = 260.dp)
+                    .clickable(role = Role.Button, onClick = onDismiss),
+                color = Color.White.copy(alpha = 0.12f),
                 shape = RoundedCornerShape(12.dp),
             ) {
                 Text(
@@ -544,7 +578,7 @@ internal fun ErrorModal(
                         .fillMaxWidth()
                         .padding(vertical = 12.dp),
                     style = MaterialTheme.nuvioTypeScale.bodyLg.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = Color.White.copy(alpha = 0.72f),
                     textAlign = TextAlign.Center,
                 )
             }

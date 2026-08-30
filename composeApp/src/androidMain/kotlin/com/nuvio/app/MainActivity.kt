@@ -56,6 +56,7 @@ import com.nuvio.app.features.profiles.AvatarStorage
 import com.nuvio.app.features.profiles.ProfilePinCacheStorage
 import com.nuvio.app.features.profiles.ProfileStorage
 import com.nuvio.app.features.details.SeasonViewModeStorage
+import com.nuvio.app.features.search.DiscoverSelectionStorage
 import com.nuvio.app.features.search.SearchHistoryStorage
 import com.nuvio.app.features.settings.SentrySettingsStorage
 import com.nuvio.app.features.settings.AppIconPlatform
@@ -126,6 +127,7 @@ class MainActivity : AppCompatActivity() {
         ProfileStorage.initialize(applicationContext)
         AvatarStorage.initialize(applicationContext)
         ProfilePinCacheStorage.initialize(applicationContext)
+        DiscoverSelectionStorage.initialize(applicationContext)
         SearchHistoryStorage.initialize(applicationContext)
         SeasonViewModeStorage.initialize(applicationContext)
         PosterCardStyleStorage.initialize(applicationContext)

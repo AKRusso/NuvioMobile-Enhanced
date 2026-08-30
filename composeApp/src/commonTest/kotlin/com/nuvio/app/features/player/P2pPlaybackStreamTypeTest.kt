@@ -6,9 +6,8 @@ import kotlin.test.assertNull
 
 class P2pPlaybackStreamTypeTest {
     @Test
-    fun matroskaFilenameUsesMatroskaPlaybackEngine() {
-        assertEquals(
-            "matroska",
+    fun matroskaFilenameDoesNotForceAPlaybackEngine() {
+        assertNull(
             p2pPlaybackStreamType(streamType = null, filename = "Episode.01.1080p.mkv"),
         )
     }
@@ -24,5 +23,10 @@ class P2pPlaybackStreamTypeTest {
     @Test
     fun unknownContainerKeepsAnUnknownTypeUnset() {
         assertNull(p2pPlaybackStreamType(streamType = null, filename = "Episode.01"))
+    }
+
+    @Test
+    fun directStreamTypeDoesNotForceAPlaybackEngine() {
+        assertNull(p2pPlaybackStreamType(streamType = "direct", filename = "Episode.01.mkv"))
     }
 }

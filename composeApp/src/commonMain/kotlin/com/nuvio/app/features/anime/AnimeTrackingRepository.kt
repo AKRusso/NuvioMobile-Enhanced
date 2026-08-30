@@ -149,6 +149,62 @@ abstract class AnimeTrackingRepository(
         }
     }
 
+    internal suspend fun loadEntry(media: TrackingMediaReference): AnimeTrackingEntry? {
+        val token = validAccessToken() ?: return null
+        val mediaId = resolvedMediaId(media) ?: return null
+        return when (animeProvider) {
+            AnimeTrackingProvider.ANILIST -> AnimeTrackingApi.aniListEntry(token, mediaId)
+            AnimeTrackingProvider.MY_ANIME_LIST -> AnimeTrackingApi.malEntry(token, mediaId)
+        }
+    }
+
+    internal suspend fun saveEntry(
+        media: TrackingMediaReference,
+        update: AnimeTrackingEntryUpdate,
+    ): Boolean {
+        val token = validAccessToken() ?: return false
+        val mediaId = resolvedMediaId(media) ?: return false
+        val mutationStatus = when (animeProvider) {
+            AnimeTrackingProvider.ANILIST -> AnimeTrackingApi.saveAniListEntry(token, mediaId, update)
+            AnimeTrackingProvider.MY_ANIME_LIST -> AnimeTrackingApi.saveMalEntry(token, mediaId, update)
+        }
+        handleMutationStatus(mutationStatus)
+        return mutationStatus == AnimeTrackingMutationStatus.SUCCESS
+    }
+
+    internal suspend fun saveEntry(
+        media: TrackingMediaReference,
+        status: AnimeTrackingUserStatus,
+        progress: Int,
+        score: Double,
+    ): Boolean = saveEntry(media, AnimeTrackingEntryUpdate(status, progress, score))
+
+    internal suspend fun deleteEntry(media: TrackingMediaReference, listEntryId: Int?): Boolean {
+        val token = validAccessToken() ?: return false
+        val mediaId = resolvedMediaId(media) ?: return false
+        val mutationStatus = when (animeProvider) {
+            AnimeTrackingProvider.ANILIST -> listEntryId?.let { AnimeTrackingApi.deleteAniListEntry(token, it) }
+                ?: AnimeTrackingMutationStatus.FAILED
+            AnimeTrackingProvider.MY_ANIME_LIST -> AnimeTrackingApi.deleteMalEntry(token, mediaId)
+        }
+        handleMutationStatus(mutationStatus)
+        return mutationStatus == AnimeTrackingMutationStatus.SUCCESS
+    }
+
+    internal suspend fun toggleFavourite(media: TrackingMediaReference): Boolean {
+        if (animeProvider != AnimeTrackingProvider.ANILIST) return false
+        val token = validAccessToken() ?: return false
+        val mediaId = resolvedMediaId(media) ?: return false
+        val mutationStatus = AnimeTrackingApi.toggleAniListFavourite(token, mediaId)
+        handleMutationStatus(mutationStatus)
+        return mutationStatus == AnimeTrackingMutationStatus.SUCCESS
+    }
+
+    internal fun sourceUrl(mediaId: Int): String = when (animeProvider) {
+        AnimeTrackingProvider.ANILIST -> "https://anilist.co/anime/$mediaId"
+        AnimeTrackingProvider.MY_ANIME_LIST -> "https://myanimelist.net/anime/$mediaId"
+    }
+
     suspend fun saveProgress(media: TrackingMediaReference, progress: Int): Boolean {
         val token = validAccessToken() ?: return false
         val mediaId = resolvedMediaId(media) ?: return false

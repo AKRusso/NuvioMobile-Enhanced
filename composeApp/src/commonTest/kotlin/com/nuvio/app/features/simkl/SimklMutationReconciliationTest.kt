@@ -81,6 +81,72 @@ class SimklMutationReconciliationTest {
     }
 
     @Test
+    fun `list response records resolved tv anime classification locally`() {
+        val request = anime()
+        val receipt = response(
+            """
+            {
+              "added": {
+                "movies": [],
+                "shows": [
+                  {
+                    "to": "plantowatch",
+                    "ids": {"simkl": 39687, "mal": 16498},
+                    "type": "show",
+                    "anime_type": "tv"
+                  }
+                ]
+              },
+              "not_found": {"movies": [], "shows": []}
+            }
+            """,
+        ).toListMutationReceipt(listOf(request), json)
+
+        val entry = SimklSyncSnapshot()
+            .applyMutationReceipt(receipt, 1_700_000_000_000L)
+            .entries
+            .single()
+
+        assertEquals(SimklMediaType.ANIME, entry.mediaType)
+        assertEquals("tv", entry.animeType)
+        assertEquals(SimklListStatus.PLAN_TO_WATCH, entry.status)
+        assertFalse(receipt.requiresReconciliation)
+    }
+
+    @Test
+    fun `list response records resolved anime movie classification locally`() {
+        val request = movie()
+        val receipt = response(
+            """
+            {
+              "added": {
+                "movies": [
+                  {
+                    "to": "completed",
+                    "ids": {"simkl": 472214, "imdb": "tt1375666"},
+                    "type": "movie",
+                    "anime_type": "movie"
+                  }
+                ],
+                "shows": []
+              },
+              "not_found": {"movies": [], "shows": []}
+            }
+            """,
+        ).toListMutationReceipt(listOf(request), json)
+
+        val entry = SimklSyncSnapshot()
+            .applyMutationReceipt(receipt, 1_700_000_000_000L)
+            .entries
+            .single()
+
+        assertEquals(SimklMediaType.ANIME, entry.mediaType)
+        assertEquals("movie", entry.animeType)
+        assertEquals(SimklListStatus.COMPLETED, entry.status)
+        assertFalse(receipt.requiresReconciliation)
+    }
+
+    @Test
     fun `partial list response commits only items present in added`() {
         val accepted = movie()
         val missing = movie().copy(

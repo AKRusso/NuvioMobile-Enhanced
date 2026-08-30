@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.ui.nuvio
+import com.nuvio.app.features.details.MetaScreenSettingsRepository
 import com.nuvio.app.features.library.LibrarySourceMode
 import com.nuvio.app.features.profiles.ProfileRepository
 import com.nuvio.app.features.simkl.SimklAnimeIdPreference
@@ -55,6 +56,8 @@ import nuvio.composeapp.generated.resources.settings_tracking_nuvio_library_desc
 import nuvio.composeapp.generated.resources.settings_tracking_nuvio_progress_description
 import nuvio.composeapp.generated.resources.settings_tracking_progress_refresh_failed
 import nuvio.composeapp.generated.resources.settings_tracking_services
+import nuvio.composeapp.generated.resources.settings_tracking_pencil
+import nuvio.composeapp.generated.resources.settings_tracking_pencil_description
 import nuvio.composeapp.generated.resources.settings_tracking_simkl_library_description
 import nuvio.composeapp.generated.resources.settings_tracking_simkl_progress_description
 import nuvio.composeapp.generated.resources.settings_tracking_source_fallback
@@ -135,6 +138,27 @@ internal fun LazyListScope.trackingSettingsContent(
                 SimklManualClientIdSettings(
                     isTablet = isTablet,
                     simklUiState = simklUiState,
+                )
+            }
+        }
+    }
+
+    item {
+        val metaSettings by remember {
+            MetaScreenSettingsRepository.ensureLoaded()
+            MetaScreenSettingsRepository.uiState
+        }.collectAsStateWithLifecycle()
+        SettingsSection(
+            title = stringResource(Res.string.settings_tracking_anime_section),
+            isTablet = isTablet,
+        ) {
+            SettingsGroup(isTablet = isTablet) {
+                SettingsSwitchRow(
+                    title = stringResource(Res.string.settings_tracking_pencil),
+                    description = stringResource(Res.string.settings_tracking_pencil_description),
+                    checked = metaSettings.showAnimeTrackingPencil,
+                    isTablet = isTablet,
+                    onCheckedChange = MetaScreenSettingsRepository::setShowAnimeTrackingPencil,
                 )
             }
         }

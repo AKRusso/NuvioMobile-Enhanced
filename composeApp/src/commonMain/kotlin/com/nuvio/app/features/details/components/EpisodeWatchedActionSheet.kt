@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAddCheckCircle
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +50,7 @@ import nuvio.composeapp.generated.resources.episode_mark_season_unwatched
 import nuvio.composeapp.generated.resources.episode_mark_season_watched
 import nuvio.composeapp.generated.resources.episode_mark_unwatched
 import nuvio.composeapp.generated.resources.episode_mark_watched
+import nuvio.composeapp.generated.resources.anime_tracking_action
 import nuvio.composeapp.generated.resources.play_manually
 import nuvio.composeapp.generated.resources.streams_download_file
 import org.jetbrains.compose.resources.stringResource
@@ -68,6 +70,7 @@ fun EpisodeWatchedActionSheet(
     onDownload: (() -> Unit)? = null,
     showPlayManually: Boolean = false,
     onPlayManually: (() -> Unit)? = null,
+    onTracking: (() -> Unit)? = null,
 ) {
     val artwork = episodeActionSheetArtwork(episode)
 
@@ -145,6 +148,14 @@ fun EpisodeWatchedActionSheet(
                             icon = Icons.Default.PlayArrow,
                             title = stringResource(Res.string.play_manually),
                             onClick = { dismissAfter(onPlayManually) },
+                        )
+                    }
+                    if (onTracking != null) {
+                        EpisodeSheetDivider()
+                        EpisodeSheetActionRow(
+                            icon = Icons.Default.Edit,
+                            title = stringResource(Res.string.anime_tracking_action),
+                            onClick = { dismissAfter(onTracking) },
                         )
                     }
                 }

@@ -19,6 +19,7 @@ class PlayerTrackSelectionTest {
             tracks = tracks,
             targets = listOf("en"),
             mode = SubtitleAutoSelectionMode.FORCED_ONLY,
+            selectedAudioTrack = audioTrack("en"),
         )
 
         assertEquals(2, selectedIndex)
@@ -28,7 +29,7 @@ class PlayerTrackSelectionTest {
     fun matchingAudioUsesForcedOnlyPrimarySubtitleTarget() {
         val plan = assertNotNull(
             resolveSubtitleAutoSelectionPlan(
-                selectedAudioLanguage = "en",
+                selectedAudioTrack = audioTrack("en"),
                 preferredAudioTargets = listOf("en"),
                 preferredSubtitleTargets = listOf("en", "fr"),
                 useForcedSubtitles = true,
@@ -50,6 +51,7 @@ class PlayerTrackSelectionTest {
             tracks = tracks,
             targets = listOf("en"),
             mode = SubtitleAutoSelectionMode.FORCED_ONLY,
+            selectedAudioTrack = audioTrack("en"),
         )
 
         assertEquals(-1, selectedIndex)
@@ -63,7 +65,7 @@ class PlayerTrackSelectionTest {
         )
         val plan = assertNotNull(
             resolveSubtitleAutoSelectionPlan(
-                selectedAudioLanguage = "ja",
+                selectedAudioTrack = audioTrack("ja"),
                 preferredAudioTargets = listOf("ja"),
                 preferredSubtitleTargets = listOf("en", "fr"),
                 useForcedSubtitles = true,
@@ -84,7 +86,7 @@ class PlayerTrackSelectionTest {
     fun audioMatchingOnlySecondarySubtitleTargetUsesNormalSubtitles() {
         val plan = assertNotNull(
             resolveSubtitleAutoSelectionPlan(
-                selectedAudioLanguage = "fr",
+                selectedAudioTrack = audioTrack("fr"),
                 preferredAudioTargets = listOf("fr"),
                 preferredSubtitleTargets = listOf("en", "fr"),
                 useForcedSubtitles = true,
@@ -103,7 +105,7 @@ class PlayerTrackSelectionTest {
         )
         val plan = assertNotNull(
             resolveSubtitleAutoSelectionPlan(
-                selectedAudioLanguage = "en",
+                selectedAudioTrack = audioTrack("en"),
                 preferredAudioTargets = listOf("en"),
                 preferredSubtitleTargets = listOf("en"),
                 useForcedSubtitles = false,
@@ -135,7 +137,7 @@ class PlayerTrackSelectionTest {
     fun forcedModeWithoutSubtitleTargetUsesMatchingSelectedAudioLanguage() {
         val plan = assertNotNull(
             resolveSubtitleAutoSelectionPlan(
-                selectedAudioLanguage = "ja",
+                selectedAudioTrack = audioTrack("ja"),
                 preferredAudioTargets = listOf("ja"),
                 preferredSubtitleTargets = emptyList(),
                 useForcedSubtitles = true,
@@ -149,7 +151,7 @@ class PlayerTrackSelectionTest {
     @Test
     fun forcedModeWaitsUntilSelectedAudioIsKnown() {
         val plan = resolveSubtitleAutoSelectionPlan(
-            selectedAudioLanguage = null,
+            selectedAudioTrack = null,
             preferredAudioTargets = listOf("en"),
             preferredSubtitleTargets = listOf("en"),
             useForcedSubtitles = true,
@@ -186,9 +188,92 @@ class PlayerTrackSelectionTest {
             ),
             targets = listOf("en"),
             mode = SubtitleAutoSelectionMode.FORCED_ONLY,
+            selectedAudioTrack = audioTrack("en"),
         )
 
         assertEquals(0, selectedIndex)
+    }
+
+    @Test
+    fun forcedSelectionRequiresMatchingSelectedAudioLanguage() {
+        val tracks = listOf(subtitleTrack(index = 0, language = "en", isForced = true))
+
+        assertEquals(-1, findPreferredSubtitleTrackIndex(
+            tracks, listOf("en"), SubtitleAutoSelectionMode.FORCED_ONLY, selectedAudioTrack = null,
+        ))
+        assertEquals(-1, findPreferredSubtitleTrackIndex(
+            tracks, listOf("en"), SubtitleAutoSelectionMode.FORCED_ONLY, audioTrack("ja"),
+        ))
+        assertEquals(0, findPreferredSubtitleTrackIndex(
+            tracks, listOf("en"), SubtitleAutoSelectionMode.FORCED_ONLY, audioTrack("en"),
+        ))
+    }
+
+    @Test
+    fun genericPortugueseAudioActivatesForcedForBrazilianTarget() {
+        val plan = assertNotNull(resolveSubtitleAutoSelectionPlan(
+            selectedAudioTrack = audioTrack("pt"),
+            preferredAudioTargets = listOf("pt"),
+            preferredSubtitleTargets = listOf("pt-br"),
+            useForcedSubtitles = true,
+        ))
+
+        assertEquals(listOf("pt-br"), plan.targets)
+        assertEquals(SubtitleAutoSelectionMode.FORCED_ONLY, plan.mode)
+    }
+
+    @Test
+    fun regionalPortugueseAndSpanishTieBreakersStayExact() {
+        val tracks = listOf(
+            subtitleTrack(0, "pt", "Portuguese (Brazil)", false),
+            subtitleTrack(1, "pt", "Portuguese Portugal", false),
+            subtitleTrack(2, "es", "Spanish Castilian", false),
+            subtitleTrack(3, "es", "Español Latino", false),
+        )
+
+        assertEquals(0, findPreferredSubtitleTrackIndex(tracks, listOf("pt-br"), SubtitleAutoSelectionMode.NORMAL_ONLY))
+        assertEquals(1, findPreferredSubtitleTrackIndex(tracks, listOf("pt"), SubtitleAutoSelectionMode.NORMAL_ONLY))
+        assertEquals(2, findPreferredSubtitleTrackIndex(tracks, listOf("es"), SubtitleAutoSelectionMode.NORMAL_ONLY))
+        assertEquals(3, findPreferredSubtitleTrackIndex(tracks, listOf("es-419"), SubtitleAutoSelectionMode.NORMAL_ONLY))
+    }
+
+    @Test
+    fun europeanPortugueseTargetDoesNotSelectBrazilianOnlyTrack() {
+        val selectedIndex = findPreferredSubtitleTrackIndex(
+            tracks = listOf(subtitleTrack(0, "pt", "Portuguese (Brazil)", false)),
+            targets = listOf("pt"),
+            mode = SubtitleAutoSelectionMode.NORMAL_ONLY,
+        )
+
+        assertEquals(-1, selectedIndex)
+    }
+
+    @Test
+    fun forcedRestoreSkipsNormalLanguageFallback() {
+        val selectedIndex = findPersistedSubtitleTrackIndex(
+            tracks = listOf(
+                subtitleTrack(0, "en", isForced = false),
+                subtitleTrack(1, "en", isForced = true),
+            ),
+            preference = PersistedPlayerTrackPreference(
+                subtitleType = PersistedSubtitleSelectionType.INTERNAL,
+                subtitleLanguage = "en",
+                subtitleIsForced = true,
+            ),
+        )
+
+        assertEquals(1, selectedIndex)
+    }
+
+    @Test
+    fun forcedAddonDetectionIgnoresRegularTranslations() {
+        val regular = addonSubtitle("english", "en")
+        val forced = addonSubtitle("english-forced", "en", "https://example.com/en.forced.srt")
+
+        assertEquals(false, addonSubtitleIsForced(regular))
+        assertEquals(true, addonSubtitleIsForced(forced))
+        assertEquals(true, addonSubtitleMatchesSelectedAudioLanguage(forced, audioTrack("en")))
+        assertEquals(false, addonSubtitleMatchesSelectedAudioLanguage(forced, audioTrack("ja")))
     }
 
     @Test
@@ -234,6 +319,14 @@ class PlayerTrackSelectionTest {
         assertEquals(listOf("french", "english"), visibleSubtitles.map { it.id })
     }
 
+    private fun audioTrack(language: String?) = AudioTrack(
+        index = 0,
+        id = "audio-0",
+        label = language ?: "Audio",
+        language = language,
+        isSelected = true,
+    )
+
     private fun subtitleTrack(
         index: Int,
         language: String?,
@@ -250,9 +343,10 @@ class PlayerTrackSelectionTest {
     private fun addonSubtitle(
         id: String,
         language: String,
+        url: String = "https://example.com/$id.srt",
     ) = AddonSubtitle(
         id = id,
-        url = "https://example.com/$id.srt",
+        url = url,
         language = language,
         display = id,
         addonName = "Addon",

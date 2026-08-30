@@ -30,6 +30,7 @@ expect suspend fun httpGetTextWithHeaders(
 expect suspend fun httpGetBytesWithHeaders(
     url: String,
     headers: Map<String, String> = emptyMap(),
+    maxResponseBodyBytes: Int = Int.MAX_VALUE,
 ): ByteArray
 
 expect suspend fun httpPostJsonWithHeaders(

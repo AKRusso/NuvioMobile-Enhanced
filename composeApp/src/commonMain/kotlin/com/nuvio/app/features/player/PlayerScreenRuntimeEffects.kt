@@ -251,6 +251,36 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
 
     LaunchedEffect(
         playerController,
+        playerSettingsUiState.preferredSubtitleLanguage,
+        playerSettingsUiState.secondaryPreferredSubtitleLanguage,
+        subtitleStyle.useForcedSubtitles,
+    ) {
+        val controller = playerController ?: return@LaunchedEffect
+        val preferenceKey = listOf(
+            playerSettingsUiState.preferredSubtitleLanguage,
+            playerSettingsUiState.secondaryPreferredSubtitleLanguage.orEmpty(),
+            subtitleStyle.useForcedSubtitles,
+        ).joinToString("|")
+        val preferenceChanged = lastAppliedSubtitlePreferenceKey != null &&
+            lastAppliedSubtitlePreferenceKey != preferenceKey
+        lastAppliedSubtitlePreferenceKey = preferenceKey
+        controller.applySubtitlePreferences(
+            preferredLanguage = playerSettingsUiState.preferredSubtitleLanguage,
+            secondaryPreferredLanguage = playerSettingsUiState.secondaryPreferredSubtitleLanguage,
+            useForcedSubtitles = subtitleStyle.useForcedSubtitles,
+            autoSelectionApplied = preferredSubtitleSelectionApplied,
+            hasActiveSubtitle = manualSubtitleSelectionLocked &&
+                (selectedSubtitleIndex >= 0 || selectedAddonSubtitleId != null),
+            useCustomSubtitles = useCustomSubtitles,
+        )
+        if (preferenceChanged && !manualSubtitleSelectionLocked) {
+            preferredSubtitleSelectionApplied = false
+            refreshTracks()
+        }
+    }
+
+    LaunchedEffect(
+        playerController,
         playerControllerSourceUrl,
         activeSourceUrl,
         activePlaybackSourceUrl,
@@ -295,10 +325,29 @@ internal fun PlayerScreenRuntime.BindPlayerRuntimeEffects() {
         if (!autoAddonFallbackPending || useCustomSubtitles || manualSubtitleSelectionLocked) {
             return@LaunchedEffect
         }
-        val targets = preferredSubtitleTargetsForSettings(playerSettingsUiState)
+        val selectedAudioTrack = audioTracks.firstOrNull { it.index == selectedAudioIndex }
+            ?: audioTracks.firstOrNull { it.isSelected }
+        val configuredTargets = preferredSubtitleTargetsForSettings(playerSettingsUiState)
+        val targets = configuredTargets.ifEmpty {
+            if (subtitleStyle.useForcedSubtitles) {
+                listOfNotNull(selectedAudioTrack?.let(::selectedAudioLanguageTarget))
+            } else {
+                emptyList()
+            }
+        }
+        val forcedOnly = subtitleStyle.useForcedSubtitles && selectedAudioTrack != null &&
+            targets.firstOrNull()?.let { target ->
+                audioMatchesSubtitleTargetForForced(selectedAudioTrack, target)
+            } == true
         val currentEpisodeSubtitle = targets.firstNotNullOfOrNull { target ->
             visibleAddonSubtitles.firstOrNull { subtitle ->
-                languageMatchesPreference(subtitle.language, target)
+                if (forcedOnly) {
+                    addonSubtitleIsForced(subtitle) &&
+                        addonSubtitleMatchesLanguage(subtitle, target) &&
+                        addonSubtitleMatchesSelectedAudioLanguage(subtitle, selectedAudioTrack)
+                } else {
+                    !addonSubtitleIsForced(subtitle) && addonSubtitleMatchesLanguage(subtitle, target)
+                }
             }
         } ?: return@LaunchedEffect
 

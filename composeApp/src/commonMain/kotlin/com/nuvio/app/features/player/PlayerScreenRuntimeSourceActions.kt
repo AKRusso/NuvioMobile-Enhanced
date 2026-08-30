@@ -21,17 +21,7 @@ import kotlinx.coroutines.launch
 
 internal fun p2pPlaybackStreamType(streamType: String?, filename: String?): String? {
     val declaredType = streamType?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
-    if (declaredType != null && declaredType != "direct") return declaredType
-
-    val extension = filename
-        ?.substringBefore('#')
-        ?.substringBefore('?')
-        ?.substringAfterLast('.')
-        ?.lowercase()
-    return when (extension) {
-        "mkv", "mk3d" -> "matroska"
-        else -> declaredType
-    }
+    return declaredType?.takeUnless { it == "direct" }
 }
 
 internal fun PlayerScreenRuntime.resolveDebridForPlayer(

@@ -59,6 +59,7 @@
     <string name="addons_version_format">גרסה %1$s</string>
     <string name="cd_selected">נבחר</string>
     <string name="collections_copy_json">העתק JSON</string>
+    <string name="collections_copy_json_error">נתוני האוסף גדולים מדי ללוח של המכשיר הזה.</string>
     <string name="collections_delete_title">מחק אוסף</string>
     <string name="collections_editor_add_catalog">הוסף קטלוג</string>
     <string name="collections_editor_add_folder">הוסף תיקייה</string>
@@ -754,4 +755,29 @@
     <string name="downloads_auto_selecting">בחירת מקורות…</string>
     <string name="downloads_download_started">ההורדות החלו</string>
     <string name="downloads_status_waiting">בהמתנה</string>
+    <string name="live_tv_guide_title">מדריך הטלוויזיה של המועדפים</string>
+    <string name="live_tv_guide_next_24_hours">עכשיו · 24 השעות הבאות</string>
+    <string name="live_tv_guide_hour_range">+%1$d עד +%2$d שעות</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d ערוצים מועדפים</string>
+    <string name="live_tv_guide_earlier">מדריך מוקדם יותר</string>
+    <string name="live_tv_guide_later">מדריך מאוחר יותר</string>
+    <string name="live_tv_guide_now">עכשיו</string>
+    <string name="live_tv_guide_no_favorites_title">אין עדיין ערוצים מועדפים</string>
+    <string name="live_tv_guide_no_favorites_body">סמנו ערוצים כמועדפים בטלוויזיה בשידור חי והם יופיעו כאן אוטומטית.</string>
+    <string name="live_tv_guide_loading">מדריך XMLTV נטען…</string>
+    <string name="live_tv_programme_status_live">בשידור חי עכשיו</string>
+    <string name="live_tv_programme_status_upcoming">בקרוב</string>
+    <string name="live_tv_programme_status_ended">הסתיים</string>
+    <string name="live_tv_programme_flag_new">חדש</string>
+    <string name="live_tv_programme_flag_premiere">בכורה</string>
+    <string name="live_tv_programme_flag_repeat">שידור חוזר</string>
+    <string name="live_tv_programme_detail_category">קטגוריה</string>
+    <string name="live_tv_programme_detail_episode">פרק</string>
+    <string name="live_tv_programme_detail_rating">דירוג</string>
+    <string name="live_tv_programme_detail_date">תאריך</string>
+    <string name="live_tv_programme_detail_country">מדינה</string>
+    <string name="live_tv_programme_detail_language">שפה</string>
+    <string name="live_tv_programme_detail_status">מצב</string>
+    <string name="live_tv_programme_watch_live">צפייה בשידור חי</string>
+    <string name="live_tv_programme_open_live">פתיחת הערוץ החי עכשיו</string>
 </resources>

@@ -29,6 +29,30 @@ data class LiveTvProgramme(
     val startEpochMs: Long,
     val stopEpochMs: Long,
     val timeLabel: String,
+    val subtitle: String? = null,
+    val description: String? = null,
+    val categories: List<String> = emptyList(),
+    val episode: String? = null,
+    val iconUrl: String? = null,
+    val rating: String? = null,
+    val credits: List<LiveTvProgrammeCredit> = emptyList(),
+    val date: String? = null,
+    val country: String? = null,
+    val language: String? = null,
+    val isNew: Boolean = false,
+    val isPremiere: Boolean = false,
+    val isPreviouslyShown: Boolean = false,
+)
+
+data class LiveTvProgrammeCredit(
+    val role: String,
+    val name: String,
+)
+
+data class LiveTvEpgCacheEntry(
+    val url: String,
+    val content: String,
+    val savedAtEpochMs: Long,
 )
 
 data class LiveTvUiState(
@@ -38,6 +62,7 @@ data class LiveTvUiState(
     val xtreamSettings: LiveTvXtreamSettings = LiveTvXtreamSettings(),
     val channels: List<LiveTvChannel> = emptyList(),
     val currentProgrammes: Map<String, LiveTvProgramme> = emptyMap(),
+    val programmesByChannel: Map<String, List<LiveTvProgramme>> = emptyMap(),
     val recentChannel: LiveTvRecentChannel? = null,
     val favoriteUrls: Set<String> = emptySet(),
     val isEpgLoading: Boolean = false,

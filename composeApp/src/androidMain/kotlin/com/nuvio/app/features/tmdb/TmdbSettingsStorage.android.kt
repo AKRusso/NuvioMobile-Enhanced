@@ -15,6 +15,7 @@ actual object TmdbSettingsStorage {
     private const val preferencesName = "nuvio_tmdb_settings"
     private const val enabledKey = "tmdb_enabled"
     private const val apiKeyKey = "tmdb_api_key"
+    private const val apiKeyUpdatedAtKey = "tmdb_api_key_updated_at"
     private const val languageKey = "tmdb_language"
     private const val useTrailersKey = "tmdb_use_trailers"
     private const val useArtworkKey = "tmdb_use_artwork"
@@ -61,10 +62,16 @@ actual object TmdbSettingsStorage {
     actual fun loadApiKey(): String? =
         preferences?.getString(ProfileScopedKey.of(apiKeyKey), null)
 
-    actual fun saveApiKey(apiKey: String) {
+    actual fun loadApiKeyUpdatedAtEpochMs(): Long? = preferences?.let { sharedPreferences ->
+        val key = ProfileScopedKey.of(apiKeyUpdatedAtKey)
+        if (sharedPreferences.contains(key)) sharedPreferences.getLong(key, 0L) else null
+    }
+
+    actual fun saveApiKey(apiKey: String, updatedAtEpochMs: Long) {
         preferences
             ?.edit()
             ?.putString(ProfileScopedKey.of(apiKeyKey), apiKey)
+            ?.putLong(ProfileScopedKey.of(apiKeyUpdatedAtKey), updatedAtEpochMs)
             ?.apply()
     }
 
@@ -187,11 +194,10 @@ actual object TmdbSettingsStorage {
 
     actual fun replaceFromSyncPayload(payload: JsonObject) {
         preferences?.edit()?.apply {
-            syncKeys.forEach { remove(ProfileScopedKey.of(it)) }
+            syncKeys.filterNot { it == apiKeyKey }.forEach { remove(ProfileScopedKey.of(it)) }
         }?.apply()
 
         payload.decodeSyncBoolean(enabledKey)?.let(::saveEnabled)
-        payload.decodeSyncString(apiKeyKey)?.let(::saveApiKey)
         payload.decodeSyncString(languageKey)?.let(::saveLanguage)
         payload.decodeSyncBoolean(useTrailersKey)?.let(::saveUseTrailers)
         payload.decodeSyncBoolean(useArtworkKey)?.let(::saveUseArtwork)

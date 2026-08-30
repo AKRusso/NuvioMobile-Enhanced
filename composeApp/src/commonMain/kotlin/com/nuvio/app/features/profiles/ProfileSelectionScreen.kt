@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.auth.AuthRepository
 import com.nuvio.app.core.auth.AuthState
+import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.settings.MemberBrandWordmark
 import kotlinx.coroutines.delay
@@ -116,8 +117,9 @@ fun ProfileSelectionScreen(
     val backgroundImageUrl = remember(backgroundProfile?.backgroundUrl) {
         backgroundProfile?.let(::profileBackgroundImageUrl)
     }
-    val backgroundPreset = remember(backgroundProfile?.backgroundUrl) {
-        backgroundProfile?.let(::profileBackgroundPreset)
+    val appTheme = MaterialTheme.appTheme
+    val backgroundPreset = remember(backgroundProfile?.backgroundUrl, appTheme) {
+        backgroundProfile?.let { profile -> effectiveProfileBackgroundPreset(profile, appTheme) }
     }
 
     BoxWithConstraints(

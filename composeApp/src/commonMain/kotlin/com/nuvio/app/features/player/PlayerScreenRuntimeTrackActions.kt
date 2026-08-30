@@ -14,15 +14,50 @@ internal val PlayerScreenRuntime.addonSubtitleFetchKey: String?
     )
 
 internal val PlayerScreenRuntime.visibleAddonSubtitles: List<AddonSubtitle>
-    get() = filterAddonSubtitlesForSettings(
-        subtitles = addonSubtitles,
-        settings = playerSettingsUiState,
-    )
+    get() {
+        if (
+            visibleAddonSubtitlesCacheSource !== addonSubtitles ||
+            visibleAddonSubtitlesCacheSettings != playerSettingsUiState
+        ) {
+            visibleAddonSubtitlesCacheSource = addonSubtitles
+            visibleAddonSubtitlesCacheSettings = playerSettingsUiState
+            visibleAddonSubtitlesCache = filterAddonSubtitlesForSettings(
+                subtitles = addonSubtitles,
+                settings = playerSettingsUiState,
+            )
+        }
+        return ensureSelectedAddonSubtitleVisible(
+            filteredSubtitles = visibleAddonSubtitlesCache,
+            unfilteredSubtitles = addonSubtitles,
+            selectedId = selectedAddonSubtitleId,
+        )
+    }
 
 internal val PlayerScreenRuntime.selectedAddonSubtitle: AddonSubtitle?
-    get() = visibleAddonSubtitles.firstOrNull { subtitle ->
-        subtitle.selectionKey == selectedAddonSubtitleId || subtitle.url == selectedAddonSubtitleId
+    get() = resolveSelectedAddonSubtitle(addonSubtitles, selectedAddonSubtitleId)
+
+internal fun resolveSelectedAddonSubtitle(
+    subtitles: List<AddonSubtitle>,
+    selectedId: String?,
+): AddonSubtitle? {
+    selectedId ?: return null
+    return subtitles.firstOrNull { subtitle ->
+        subtitle.selectionKey == selectedId || subtitle.url == selectedId
     }
+}
+
+internal fun ensureSelectedAddonSubtitleVisible(
+    filteredSubtitles: List<AddonSubtitle>,
+    unfilteredSubtitles: List<AddonSubtitle>,
+    selectedId: String?,
+): List<AddonSubtitle> {
+    val selected = resolveSelectedAddonSubtitle(unfilteredSubtitles, selectedId) ?: return filteredSubtitles
+    return if (filteredSubtitles.any { it.selectionKey == selected.selectionKey }) {
+        filteredSubtitles
+    } else {
+        listOf(selected) + filteredSubtitles
+    }
+}
 
 internal fun PlayerScreenRuntime.updateTrackPreference(
     update: (PersistedPlayerTrackPreference) -> PersistedPlayerTrackPreference,
@@ -53,6 +88,7 @@ internal fun PlayerScreenRuntime.persistInternalSubtitlePreference(track: Subtit
             subtitleLanguage = track?.language,
             subtitleName = track?.label,
             subtitleTrackId = track?.id,
+            subtitleIsForced = track?.isForced,
             addonSubtitleId = null,
             addonSubtitleUrl = null,
             addonSubtitleAddonName = null,
@@ -72,6 +108,7 @@ internal fun PlayerScreenRuntime.persistAddonSubtitlePreference(subtitle: AddonS
             // URL for another episode; keep only the user's descriptive preference.
             addonSubtitleUrl = null,
             addonSubtitleAddonName = subtitle.addonName,
+            subtitleIsForced = null,
         )
     }
 }
@@ -200,7 +237,7 @@ internal fun PlayerScreenRuntime.refreshTracks() {
         val selectedAudioTrack = audioTracks.firstOrNull { track -> track.index == selectedAudioIndex }
             ?: audioTracks.firstOrNull { it.isSelected }
         val selectionPlan = resolveSubtitleAutoSelectionPlan(
-            selectedAudioLanguage = resolveAudioTrackLanguageTarget(selectedAudioTrack),
+            selectedAudioTrack = selectedAudioTrack,
             preferredAudioTargets = preferredAudioTargets,
             preferredSubtitleTargets = preferredSubtitleTargets,
             useForcedSubtitles = subtitleStyle.useForcedSubtitles,
@@ -219,6 +256,7 @@ internal fun PlayerScreenRuntime.refreshTracks() {
                 tracks = subtitleTracks,
                 targets = selectionPlan.targets,
                 mode = selectionPlan.mode,
+                selectedAudioTrack = selectedAudioTrack,
             )
             if (preferredSubtitleIndex >= 0 && preferredSubtitleIndex != selectedSubtitleIndex) {
                 playerController?.selectSubtitleTrack(preferredSubtitleIndex)
@@ -231,7 +269,7 @@ internal fun PlayerScreenRuntime.refreshTracks() {
                     selectionPlan.mode == SubtitleAutoSelectionMode.FORCED_ONLY
                 ) {
                     disableAutomaticSubtitleSelection()
-                    autoAddonFallbackPending = false
+                    autoAddonFallbackPending = true
                 } else {
                     // The player has finished loading tracks and no normal built-in track
                     // matches. Add-ons are considered only after this point.

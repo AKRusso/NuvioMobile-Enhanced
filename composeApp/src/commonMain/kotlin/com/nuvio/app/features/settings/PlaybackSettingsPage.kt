@@ -648,10 +648,28 @@ private fun PlaybackSettingsSection(
                     enabled = subtitleRenderingEnabled,
                     isTablet = isTablet,
                     onCheckedChange = { enabled ->
-                        PlayerSettingsRepository.setSubtitleStyle(subtitleStyle.copy(outlineEnabled = enabled))
+                        PlayerSettingsRepository.setSubtitleStyle(
+                            subtitleStyle.copy(
+                                outlineEnabled = enabled,
+                                outlineWidth = subtitleStyle.outlineWidth.coerceAtLeast(1),
+                            ),
+                        )
                     },
                 )
                 if (subtitleStyle.outlineEnabled) {
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSliderRow(
+                        title = stringResource(Res.string.settings_playback_subtitle_outline_thickness),
+                        value = subtitleStyle.outlineWidth,
+                        valueText = subtitleStyle.outlineWidth.toString(),
+                        valueRange = 1..5,
+                        step = 1,
+                        enabled = subtitleRenderingEnabled,
+                        isTablet = isTablet,
+                        onValueChange = { width ->
+                            PlayerSettingsRepository.setSubtitleStyle(subtitleStyle.copy(outlineWidth = width))
+                        },
+                    )
                     SettingsGroupDivider(isTablet = isTablet)
                     SettingsNavigationRow(
                         title = stringResource(Res.string.settings_playback_subtitle_outline_color),

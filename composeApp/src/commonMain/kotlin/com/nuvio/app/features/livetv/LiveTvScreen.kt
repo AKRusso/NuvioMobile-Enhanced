@@ -32,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -70,6 +71,7 @@ import nuvio.composeapp.generated.resources.live_tv_empty_description
 import nuvio.composeapp.generated.resources.live_tv_empty_title
 import nuvio.composeapp.generated.resources.live_tv_favorite
 import nuvio.composeapp.generated.resources.live_tv_favorites
+import nuvio.composeapp.generated.resources.live_tv_guide_title
 import nuvio.composeapp.generated.resources.live_tv_load
 import nuvio.composeapp.generated.resources.live_tv_load_file
 import nuvio.composeapp.generated.resources.live_tv_recent_channel_cta
@@ -111,8 +113,10 @@ fun LiveTvScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var selectedGroup by rememberSaveable { mutableStateOf("") }
     var favoritesOnly by rememberSaveable { mutableStateOf(false) }
+    var showingGuide by rememberSaveable { mutableStateOf(false) }
     var editingSource by rememberSaveable { mutableStateOf(uiState.sourceUrl.isBlank()) }
     var showingAdvancedSettings by rememberSaveable { mutableStateOf(false) }
+    var settingsSourceTypeName by rememberSaveable { mutableStateOf(uiState.sourceType.name) }
     var stalkerPortalUrl by rememberSaveable { mutableStateOf(uiState.stalkerSettings.portalUrl) }
     var stalkerMacAddress by rememberSaveable { mutableStateOf(uiState.stalkerSettings.macAddress) }
     var stalkerUsername by rememberSaveable { mutableStateOf(uiState.stalkerSettings.username) }
@@ -121,6 +125,11 @@ fun LiveTvScreen(
     var xtreamUsername by rememberSaveable { mutableStateOf(uiState.xtreamSettings.username) }
     var xtreamPassword by rememberSaveable { mutableStateOf(uiState.xtreamSettings.password) }
     var fileImportError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    DisposableEffect(Unit) {
+        LiveTvRepository.setEpgLoadingActive(true)
+        onDispose { LiveTvRepository.setEpgLoadingActive(false) }
+    }
 
     LaunchedEffect(uiState.sourceUrl) {
         if (sourceUrl.isBlank()) sourceUrl = uiState.sourceUrl
@@ -189,6 +198,7 @@ fun LiveTvScreen(
                 editingSource = false
             } else if (LiveTvRepository.load(sourceUrl).isSuccess) {
                 editingSource = false
+                showingAdvancedSettings = false
                 selectedGroup = ""
                 favoritesOnly = false
             }
@@ -203,6 +213,7 @@ fun LiveTvScreen(
                     scope.launch {
                         if (LiveTvRepository.loadLocalPlaylist("Selected M3U file", payload).isSuccess) {
                             editingSource = false
+                            showingAdvancedSettings = false
                             sourceUrl = LiveTvRepository.uiState.value.sourceUrl
                             selectedGroup = ""
                             favoritesOnly = false
@@ -254,6 +265,19 @@ fun LiveTvScreen(
         }
     }
 
+    if (showingGuide) {
+        LiveTvFavoritesGuide(
+            channels = uiState.channels,
+            favoriteUrls = uiState.favoriteUrls,
+            programmesByChannel = uiState.programmesByChannel,
+            isEpgLoading = uiState.isEpgLoading,
+            onChannelClick = playChannel,
+            onBack = { showingGuide = false },
+            modifier = modifier,
+        )
+        return
+    }
+
     NuvioScreen(
         modifier = modifier,
         horizontalPadding = 16.dp,
@@ -267,48 +291,90 @@ fun LiveTvScreen(
                 )
             }
             item {
-                LiveTvStalkerSettingsCard(
-                    portalUrl = stalkerPortalUrl,
-                    macAddress = stalkerMacAddress,
-                    username = stalkerUsername,
-                    password = stalkerPassword,
-                    isLoading = uiState.isLoading,
-                    errorMessage = uiState.errorMessage,
-                    hasConnectedSource = uiState.sourceType == LiveTvSourceType.Stalker && uiState.channels.isNotEmpty(),
-                    onPortalUrlChange = { stalkerPortalUrl = it },
-                    onMacAddressChange = { stalkerMacAddress = it },
-                    onUsernameChange = { stalkerUsername = it },
-                    onPasswordChange = { stalkerPassword = it },
-                    onLoad = loadStalkerSource,
-                    onDisconnect = {
-                        LiveTvRepository.disconnect()
-                        editingSource = true
-                        showingAdvancedSettings = false
-                        favoritesOnly = false
-                        selectedGroup = ""
+                LiveTvSourceTypeSelector(
+                    selectedSourceType = LiveTvSourceType.entries.firstOrNull {
+                        it.name == settingsSourceTypeName
+                    } ?: LiveTvSourceType.M3u,
+                    onSelected = { sourceType ->
+                        if (
+                            sourceType == LiveTvSourceType.M3u &&
+                            uiState.sourceType != LiveTvSourceType.M3u &&
+                            sourceUrl == uiState.sourceUrl
+                        ) {
+                            sourceUrl = ""
+                        }
+                        settingsSourceTypeName = sourceType.name
                     },
                 )
             }
-            item {
-                LiveTvXtreamSettingsCard(
-                    serverUrl = xtreamServerUrl,
-                    username = xtreamUsername,
-                    password = xtreamPassword,
-                    isLoading = uiState.isLoading,
-                    errorMessage = uiState.errorMessage,
-                    hasConnectedSource = uiState.sourceType == LiveTvSourceType.Xtream && uiState.channels.isNotEmpty(),
-                    onServerUrlChange = { xtreamServerUrl = it },
-                    onUsernameChange = { xtreamUsername = it },
-                    onPasswordChange = { xtreamPassword = it },
-                    onLoad = loadXtreamSource,
-                    onDisconnect = {
-                        LiveTvRepository.disconnect()
-                        editingSource = true
-                        showingAdvancedSettings = false
-                        favoritesOnly = false
-                        selectedGroup = ""
-                    },
-                )
+            when (LiveTvSourceType.entries.firstOrNull { it.name == settingsSourceTypeName }) {
+                LiveTvSourceType.M3u, null -> item {
+                    LiveTvSourceCard(
+                        sourceUrl = sourceUrl,
+                        isLoading = uiState.isLoading,
+                        errorMessage = uiState.errorMessage,
+                        fileImportError = fileImportError,
+                        hasConnectedSource = uiState.sourceType == LiveTvSourceType.M3u && uiState.channels.isNotEmpty(),
+                        onSourceUrlChange = { sourceUrl = it },
+                        onLoad = loadSource,
+                        onChooseFile = chooseLocalPlaylistFile,
+                        onDisconnect = {
+                            LiveTvRepository.disconnect()
+                            fileImportError = null
+                            sourceUrl = ""
+                            editingSource = true
+                            showingAdvancedSettings = false
+                            favoritesOnly = false
+                            selectedGroup = ""
+                        },
+                    )
+                }
+
+                LiveTvSourceType.Stalker -> item {
+                    LiveTvStalkerSettingsCard(
+                        portalUrl = stalkerPortalUrl,
+                        macAddress = stalkerMacAddress,
+                        username = stalkerUsername,
+                        password = stalkerPassword,
+                        isLoading = uiState.isLoading,
+                        errorMessage = uiState.errorMessage,
+                        hasConnectedSource = uiState.sourceType == LiveTvSourceType.Stalker && uiState.channels.isNotEmpty(),
+                        onPortalUrlChange = { stalkerPortalUrl = it },
+                        onMacAddressChange = { stalkerMacAddress = it },
+                        onUsernameChange = { stalkerUsername = it },
+                        onPasswordChange = { stalkerPassword = it },
+                        onLoad = loadStalkerSource,
+                        onDisconnect = {
+                            LiveTvRepository.disconnect()
+                            editingSource = true
+                            showingAdvancedSettings = false
+                            favoritesOnly = false
+                            selectedGroup = ""
+                        },
+                    )
+                }
+
+                LiveTvSourceType.Xtream -> item {
+                    LiveTvXtreamSettingsCard(
+                        serverUrl = xtreamServerUrl,
+                        username = xtreamUsername,
+                        password = xtreamPassword,
+                        isLoading = uiState.isLoading,
+                        errorMessage = uiState.errorMessage,
+                        hasConnectedSource = uiState.sourceType == LiveTvSourceType.Xtream && uiState.channels.isNotEmpty(),
+                        onServerUrlChange = { xtreamServerUrl = it },
+                        onUsernameChange = { xtreamUsername = it },
+                        onPasswordChange = { xtreamPassword = it },
+                        onLoad = loadXtreamSource,
+                        onDisconnect = {
+                            LiveTvRepository.disconnect()
+                            editingSource = true
+                            showingAdvancedSettings = false
+                            favoritesOnly = false
+                            selectedGroup = ""
+                        },
+                    )
+                }
             }
             return@NuvioScreen
         }
@@ -321,9 +387,17 @@ fun LiveTvScreen(
                     NuvioIconActionButton(
                         icon = Icons.Rounded.Settings,
                         contentDescription = stringResource(Res.string.live_tv_settings),
-                        onClick = { showingAdvancedSettings = true },
+                        onClick = {
+                            settingsSourceTypeName = uiState.sourceType.name
+                            showingAdvancedSettings = true
+                        },
                     )
                     if (uiState.channels.isNotEmpty()) {
+                        NuvioIconActionButton(
+                            icon = Icons.Rounded.Tv,
+                            contentDescription = stringResource(Res.string.live_tv_guide_title),
+                            onClick = { showingGuide = true },
+                        )
                         NuvioIconActionButton(
                             icon = Icons.Rounded.Refresh,
                             contentDescription = stringResource(Res.string.live_tv_refresh),
@@ -758,11 +832,6 @@ private fun LiveTvStalkerSettingsCard(
                 }
             }
 
-            SourceTypePillRow(
-                activeLabel = stringResource(Res.string.live_tv_source_stalker),
-                inactiveLabel = stringResource(Res.string.live_tv_source_m3u),
-            )
-
             NuvioInputField(
                 value = portalUrl,
                 onValueChange = onPortalUrlChange,
@@ -879,11 +948,6 @@ private fun LiveTvXtreamSettingsCard(
                 }
             }
 
-            SourceTypePillRow(
-                activeLabel = stringResource(Res.string.live_tv_source_xtream),
-                inactiveLabel = stringResource(Res.string.live_tv_source_m3u),
-            )
-
             NuvioInputField(
                 value = serverUrl,
                 onValueChange = onServerUrlChange,
@@ -937,40 +1001,44 @@ private fun LiveTvXtreamSettingsCard(
 }
 
 @Composable
-private fun SourceTypePillRow(
-    activeLabel: String,
-    inactiveLabel: String,
+private fun LiveTvSourceTypeSelector(
+    selectedSourceType: LiveTvSourceType,
+    onSelected: (LiveTvSourceType) -> Unit,
 ) {
     val tokens = MaterialTheme.nuvio
     Row(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Surface(
-            color = tokens.colors.overlaySelected,
-            contentColor = tokens.colors.textPrimary,
-            shape = tokens.shapes.chip,
-            border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.accent.copy(alpha = 0.52f)),
-        ) {
-            Text(
-                text = activeLabel,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Surface(
-            color = tokens.colors.surfaceCard,
-            contentColor = tokens.colors.textMuted,
-            shape = tokens.shapes.chip,
-            border = BorderStroke(NuvioTokens.Border.thin, tokens.colors.borderSubtle),
-        ) {
-            Text(
-                text = inactiveLabel,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
+        val sourceTypes = listOf(
+            LiveTvSourceType.M3u to stringResource(Res.string.live_tv_source_m3u),
+            LiveTvSourceType.Stalker to stringResource(Res.string.live_tv_source_stalker),
+            LiveTvSourceType.Xtream to stringResource(Res.string.live_tv_source_xtream),
+        )
+        sourceTypes.forEach { (sourceType, label) ->
+            val selected = sourceType == selectedSourceType
+            Surface(
+                modifier = Modifier
+                    .weight(1f)
+                    .nuvioKeyboardFocusIndicator(tokens.shapes.chip),
+                onClick = { onSelected(sourceType) },
+                color = if (selected) tokens.colors.overlaySelected else tokens.colors.surfaceCard,
+                contentColor = if (selected) tokens.colors.textPrimary else tokens.colors.textMuted,
+                shape = tokens.shapes.chip,
+                border = BorderStroke(
+                    NuvioTokens.Border.thin,
+                    if (selected) tokens.colors.accent.copy(alpha = 0.52f) else tokens.colors.borderSubtle,
+                ),
+            ) {
+                Text(
+                    text = label,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
@@ -1045,10 +1113,10 @@ private fun LiveTvChannelRow(
                     Text(
                         text = buildString {
                             append(programme.title)
-                            if (programme.timeLabel.isNotBlank()) {
-                                append("  •  ")
-                                append(programme.timeLabel)
-                            }
+                            append("  •  ")
+                            append(LiveTvClock.formatLocalTime(programme.startEpochMs))
+                            append(" - ")
+                            append(LiveTvClock.formatLocalTime(programme.stopEpochMs))
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = tokens.colors.accent,

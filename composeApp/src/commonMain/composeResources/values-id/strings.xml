@@ -62,6 +62,7 @@
     <string name="addons_version_format">Versi %1$s</string>
     <string name="cd_selected">Dipilih</string>
     <string name="collections_copy_json">Salin JSON</string>
+    <string name="collections_copy_json_error">Data koleksi terlalu besar untuk papan klip perangkat ini.</string>
     <string name="collections_count_summary">%1$d koleksi, %2$d folder</string>
     <string name="collections_delete_message">Hapus \"%1$s\"? Tindakan ini tidak dapat dibatalkan.</string>
     <string name="collections_delete_title">Hapus Koleksi</string>
@@ -1534,4 +1535,29 @@
     <string name="downloads_auto_selecting">Memilih sumber…</string>
     <string name="downloads_download_started">Unduhan dimulai</string>
     <string name="downloads_status_waiting">Menunggu</string>
+    <string name="live_tv_guide_title">Panduan TV Favorit</string>
+    <string name="live_tv_guide_next_24_hours">Sekarang · 24 jam berikutnya</string>
+    <string name="live_tv_guide_hour_range">+%1$d hingga +%2$d jam</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d saluran favorit</string>
+    <string name="live_tv_guide_earlier">Panduan sebelumnya</string>
+    <string name="live_tv_guide_later">Panduan berikutnya</string>
+    <string name="live_tv_guide_now">Sekarang</string>
+    <string name="live_tv_guide_no_favorites_title">Belum ada saluran favorit</string>
+    <string name="live_tv_guide_no_favorites_body">Beri bintang pada saluran di TV Langsung dan saluran tersebut akan muncul di sini secara otomatis.</string>
+    <string name="live_tv_guide_loading">Memuat panduan XMLTV…</string>
+    <string name="live_tv_programme_status_live">SEDANG LANGSUNG</string>
+    <string name="live_tv_programme_status_upcoming">AKAN DATANG</string>
+    <string name="live_tv_programme_status_ended">BERAKHIR</string>
+    <string name="live_tv_programme_flag_new">Baru</string>
+    <string name="live_tv_programme_flag_premiere">Perdana</string>
+    <string name="live_tv_programme_flag_repeat">Ulangan</string>
+    <string name="live_tv_programme_detail_category">Kategori</string>
+    <string name="live_tv_programme_detail_episode">Episode</string>
+    <string name="live_tv_programme_detail_rating">Rating</string>
+    <string name="live_tv_programme_detail_date">Tanggal</string>
+    <string name="live_tv_programme_detail_country">Negara</string>
+    <string name="live_tv_programme_detail_language">Bahasa</string>
+    <string name="live_tv_programme_detail_status">Status</string>
+    <string name="live_tv_programme_watch_live">TONTON LANGSUNG</string>
+    <string name="live_tv_programme_open_live">BUKA SALURAN LANGSUNG SEKARANG</string>
 </resources>

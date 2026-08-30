@@ -60,6 +60,7 @@
     <string name="addons_version_format">Versjon %1$s</string>
     <string name="cd_selected">Valgt</string>
     <string name="collections_copy_json">Kopier JSON</string>
+    <string name="collections_copy_json_error">Samlingsdataene er for store for utklippstavlen på denne enheten.</string>
     <string name="collections_count_summary">%1$d samling(er), %2$d mappe(r)</string>
     <string name="collections_delete_message">Slette «%1$s»? Dette kan ikke angres.</string>
     <string name="collections_delete_title">Slett samling</string>
@@ -1467,4 +1468,29 @@
     <string name="downloads_auto_selecting">Velger kilder…</string>
     <string name="downloads_download_started">Nedlastinger startet</string>
     <string name="downloads_status_waiting">Venter</string>
+    <string name="live_tv_guide_title">TV-guide for favoritter</string>
+    <string name="live_tv_guide_next_24_hours">Nå · neste 24 timer</string>
+    <string name="live_tv_guide_hour_range">+%1$d til +%2$d timer</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d favorittkanaler</string>
+    <string name="live_tv_guide_earlier">Tidligere program</string>
+    <string name="live_tv_guide_later">Senere program</string>
+    <string name="live_tv_guide_now">Nå</string>
+    <string name="live_tv_guide_no_favorites_title">Ingen favorittkanaler ennå</string>
+    <string name="live_tv_guide_no_favorites_body">Merk kanaler som favoritter i direktesendt TV, så vises de automatisk her.</string>
+    <string name="live_tv_guide_loading">Laster XMLTV-guide…</string>
+    <string name="live_tv_programme_status_live">DIREKTE NÅ</string>
+    <string name="live_tv_programme_status_upcoming">KOMMER</string>
+    <string name="live_tv_programme_status_ended">AVSLUTTET</string>
+    <string name="live_tv_programme_flag_new">Ny</string>
+    <string name="live_tv_programme_flag_premiere">Premiere</string>
+    <string name="live_tv_programme_flag_repeat">Reprise</string>
+    <string name="live_tv_programme_detail_category">Kategori</string>
+    <string name="live_tv_programme_detail_episode">Episode</string>
+    <string name="live_tv_programme_detail_rating">Aldersgrense</string>
+    <string name="live_tv_programme_detail_date">Dato</string>
+    <string name="live_tv_programme_detail_country">Land</string>
+    <string name="live_tv_programme_detail_language">Språk</string>
+    <string name="live_tv_programme_detail_status">Status</string>
+    <string name="live_tv_programme_watch_live">SE DIREKTE</string>
+    <string name="live_tv_programme_open_live">ÅPNE DIREKTEKANAL NÅ</string>
 </resources>

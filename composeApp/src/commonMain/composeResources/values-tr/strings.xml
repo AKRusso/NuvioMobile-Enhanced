@@ -67,6 +67,7 @@
     <string name="addons_version_format">Sürüm %1$s</string>
     <string name="cd_selected">Seçili</string>
     <string name="collections_copy_json">JSON'u kopyala</string>
+    <string name="collections_copy_json_error">Koleksiyon verileri bu cihazın panosu için çok büyük.</string>
     <string name="collections_count_summary">%1$d koleksiyon, %2$d klasör</string>
     <string name="collections_delete_message">&quot;%1$s&quot; silinsin mi? Bu işlem geri alınamaz.</string>
     <string name="collections_delete_title">Koleksiyonu sil</string>
@@ -1938,4 +1939,29 @@
     <string name="downloads_auto_selecting">Kaynaklar seçiliyor…</string>
     <string name="downloads_download_started">İndirmeler başladı</string>
     <string name="downloads_status_waiting">Bekleniyor</string>
+    <string name="live_tv_guide_title">Favoriler TV Rehberi</string>
+    <string name="live_tv_guide_next_24_hours">Şimdi · sonraki 24 saat</string>
+    <string name="live_tv_guide_hour_range">+%1$d ile +%2$d saat arası</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d favori kanal</string>
+    <string name="live_tv_guide_earlier">Önceki rehber</string>
+    <string name="live_tv_guide_later">Sonraki rehber</string>
+    <string name="live_tv_guide_now">Şimdi</string>
+    <string name="live_tv_guide_no_favorites_title">Henüz favori kanal yok</string>
+    <string name="live_tv_guide_no_favorites_body">Canlı TV bölümünde kanalları favorilere ekleyin; burada otomatik olarak görünsünler.</string>
+    <string name="live_tv_guide_loading">XMLTV rehberi yükleniyor…</string>
+    <string name="live_tv_programme_status_live">ŞİMDİ CANLI</string>
+    <string name="live_tv_programme_status_upcoming">YAKINDA</string>
+    <string name="live_tv_programme_status_ended">SONA ERDİ</string>
+    <string name="live_tv_programme_flag_new">Yeni</string>
+    <string name="live_tv_programme_flag_premiere">Prömiyer</string>
+    <string name="live_tv_programme_flag_repeat">Tekrar</string>
+    <string name="live_tv_programme_detail_category">Kategori</string>
+    <string name="live_tv_programme_detail_episode">Bölüm</string>
+    <string name="live_tv_programme_detail_rating">Derecelendirme</string>
+    <string name="live_tv_programme_detail_date">Tarih</string>
+    <string name="live_tv_programme_detail_country">Ülke</string>
+    <string name="live_tv_programme_detail_language">Dil</string>
+    <string name="live_tv_programme_detail_status">Durum</string>
+    <string name="live_tv_programme_watch_live">CANLI İZLE</string>
+    <string name="live_tv_programme_open_live">CANLI KANALI ŞİMDİ AÇ</string>
 </resources>

@@ -13,6 +13,7 @@ import platform.Foundation.NSUserDefaults
 actual object MdbListSettingsStorage {
     private const val enabledKey = "mdblist_enabled"
     private const val apiKey = "mdblist_api_key"
+    private const val apiKeyUpdatedAtKey = "mdblist_api_key_updated_at"
     private const val useImdbKey = "mdblist_use_imdb"
     private const val useTmdbKey = "mdblist_use_tmdb"
     private const val useTomatoesKey = "mdblist_use_tomatoes"
@@ -43,8 +44,18 @@ actual object MdbListSettingsStorage {
     actual fun loadApiKey(): String? =
         NSUserDefaults.standardUserDefaults.stringForKey(ProfileScopedKey.of(apiKey))
 
-    actual fun saveApiKey(apiKey: String) {
+    actual fun loadApiKeyUpdatedAtEpochMs(): Long? {
+        val defaults = NSUserDefaults.standardUserDefaults
+        val key = ProfileScopedKey.of(apiKeyUpdatedAtKey)
+        return if (defaults.objectForKey(key) != null) defaults.doubleForKey(key).toLong() else null
+    }
+
+    actual fun saveApiKey(apiKey: String, updatedAtEpochMs: Long) {
         NSUserDefaults.standardUserDefaults.setObject(apiKey, forKey = ProfileScopedKey.of(this.apiKey))
+        NSUserDefaults.standardUserDefaults.setDouble(
+            updatedAtEpochMs.toDouble(),
+            forKey = ProfileScopedKey.of(apiKeyUpdatedAtKey),
+        )
     }
 
     actual fun loadUseImdb(): Boolean? = loadBoolean(useImdbKey)
@@ -123,12 +134,11 @@ actual object MdbListSettingsStorage {
     }
 
     actual fun replaceFromSyncPayload(payload: JsonObject) {
-        syncKeys.forEach { key ->
+        syncKeys.filterNot { it == apiKey }.forEach { key ->
             NSUserDefaults.standardUserDefaults.removeObjectForKey(ProfileScopedKey.of(key))
         }
 
         payload.decodeSyncBoolean(enabledKey)?.let(::saveEnabled)
-        payload.decodeSyncString(apiKey)?.let(::saveApiKey)
         payload.decodeSyncBoolean(useImdbKey)?.let(::saveUseImdb)
         payload.decodeSyncBoolean(useTmdbKey)?.let(::saveUseTmdb)
         payload.decodeSyncBoolean(useTomatoesKey)?.let(::saveUseTomatoes)

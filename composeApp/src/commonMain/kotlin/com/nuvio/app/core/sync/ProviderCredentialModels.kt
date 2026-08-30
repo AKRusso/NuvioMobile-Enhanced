@@ -1,5 +1,6 @@
 package com.nuvio.app.core.sync
 
+import com.nuvio.app.core.time.parseZonedIsoDateTimeToEpochMs
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -24,6 +25,7 @@ internal data class ProviderCredentialValue(
     val provider: String,
     val field: String,
     val value: String,
+    val updatedAtEpochMs: Long? = null,
 ) {
     fun credentialJson(): JsonObject = buildJsonObject {
         put(field, value.trim())
@@ -47,10 +49,53 @@ internal data class ProviderCredentialSnapshot(
                     ?: error("Invalid credential payload for ${local.provider}")
                 val value = element.contentOrNull
                     ?: error("Invalid credential value for ${local.provider}")
-                local.copy(value = value.trim())
+                val remoteValue = value.trim()
+                val remoteUpdatedAt = remote.updatedAt?.let(::parseZonedIsoDateTimeToEpochMs)
+                when {
+                    remoteValue == local.value -> local.copy(
+                        updatedAtEpochMs = listOfNotNull(local.updatedAtEpochMs, remoteUpdatedAt).maxOrNull(),
+                    )
+                    shouldApplyRemoteCredential(local, remoteValue, remoteUpdatedAt) -> local.copy(
+                        value = remoteValue,
+                        updatedAtEpochMs = remoteUpdatedAt,
+                    )
+                    else -> local
+                }
             },
         )
     }
+
+    fun hasLocallyWonRemoteConflict(rows: List<SupabaseProviderCredential>): Boolean {
+        val localByProvider = values.associateBy { it.provider }
+        return rows.any { remote ->
+            val local = localByProvider[remote.provider.lowercase()] ?: return@any false
+            val remoteValue = (remote.credentialJson[local.field] as? JsonPrimitive)
+                ?.contentOrNull
+                ?.trim()
+                ?: return@any false
+            remoteValue != local.value && !shouldApplyRemoteCredential(
+                local = local,
+                remoteValue = remoteValue,
+                remoteUpdatedAtEpochMs = remote.updatedAt?.let(::parseZonedIsoDateTimeToEpochMs),
+            )
+        }
+    }
+}
+
+private fun shouldApplyRemoteCredential(
+    local: ProviderCredentialValue,
+    remoteValue: String,
+    remoteUpdatedAtEpochMs: Long?,
+): Boolean {
+    val localUpdatedAt = local.updatedAtEpochMs
+    if (localUpdatedAt != null) {
+        return remoteUpdatedAtEpochMs != null && remoteUpdatedAtEpochMs > localUpdatedAt
+    }
+    // Legacy TMDB/MDBList keys are migrated as authoritative instead of being erased by an
+    // undated tombstone left by an older client. Other providers retain their existing behavior.
+    val supportsPersistedRevision = local.provider == ProviderCredentialIds.TMDB ||
+        local.provider == ProviderCredentialIds.MDBLIST
+    return !supportsPersistedRevision || remoteValue.isNotBlank() || local.value.isBlank()
 }
 
 @Serializable

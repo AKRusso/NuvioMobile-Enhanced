@@ -1,11 +1,13 @@
 package com.nuvio.app.features.tmdb
 
+import com.nuvio.app.features.addons.RawHttpResponse
 import com.nuvio.app.features.details.MetaCompany
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaPerson
 import com.nuvio.app.features.details.MetaVideo
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlinx.coroutines.runBlocking
 
 class TmdbMetadataServiceTest {
     @Test
@@ -269,4 +271,88 @@ class TmdbMetadataServiceTest {
         assertEquals(base.cast, result.cast)
         assertEquals(base.productionCompanies, result.productionCompanies)
     }
+
+    @Test
+    fun `applyEnrichment exposes episodes from every requested season`() {
+        val base = MetaDetails(
+            id = "tt1234567",
+            type = "series",
+            name = "Series",
+            videos = (1..3).map { season ->
+                MetaVideo(id = "s${season}e1", title = "Addon S$season", season = season, episode = 1)
+            },
+        )
+        val episodes = (1..3).associate { season ->
+            (season to 1) to TmdbEpisodeEnrichment(
+                title = "TMDB S$season",
+                overview = null,
+                thumbnail = null,
+                airDate = null,
+                runtimeMinutes = null,
+            )
+        }
+
+        val result = TmdbMetadataService.applyEnrichment(
+            meta = base,
+            enrichment = null,
+            episodeMap = episodes,
+            settings = TmdbSettings(enabled = true, useEpisodes = true),
+        )
+
+        assertEquals(listOf("TMDB S1", "TMDB S2", "TMDB S3"), result.videos.map { it.title })
+    }
+
+    @Test
+    fun `partial season cache refreshes every missing season without an eight season cap`() {
+        val requested = (1..12).toList()
+
+        assertEquals((2..12).toList(), requestedSeasonsNeedingRefresh(requested, setOf(1)))
+        assertEquals(listOf(2), requestedSeasonsNeedingRefresh((1..3).toList(), setOf(1, 3)))
+    }
+
+    @Test
+    fun `enrichment cache key changes for conditionally fetched modules`() {
+        val base = TmdbSettings(useMoreLikeThis = false, useTrailers = false, useCollections = false)
+        val baseKey = tmdbEnrichmentCacheKey("1", "tv", "fr-FR", base)
+
+        assertEquals(false, baseKey == tmdbEnrichmentCacheKey("1", "tv", "fr-FR", base.copy(useMoreLikeThis = true)))
+        assertEquals(false, baseKey == tmdbEnrichmentCacheKey("1", "tv", "fr-FR", base.copy(useTrailers = true)))
+        assertEquals(false, baseKey == tmdbEnrichmentCacheKey("1", "tv", "fr-FR", base.copy(useCollections = true)))
+    }
+
+    @Test
+    fun `tmdb request retries transient statuses`() = runBlocking {
+        var calls = 0
+        val pauses = mutableListOf<Long>()
+
+        val body = requestTmdbText(pause = pauses::add) {
+            calls += 1
+            rawResponse(status = if (calls == 1) 429 else if (calls == 2) 503 else 200)
+        }
+
+        assertEquals("{}", body)
+        assertEquals(3, calls)
+        assertEquals(listOf(250L, 500L), pauses)
+    }
+
+    @Test
+    fun `tmdb request does not retry permanent client errors`() = runBlocking {
+        var calls = 0
+
+        val body = requestTmdbText(pause = {}) {
+            calls += 1
+            rawResponse(status = 404)
+        }
+
+        assertEquals(null, body)
+        assertEquals(1, calls)
+    }
+
+    private fun rawResponse(status: Int) = RawHttpResponse(
+        status = status,
+        statusText = "",
+        url = "https://api.themoviedb.org/test",
+        body = "{}",
+        headers = emptyMap(),
+    )
 }

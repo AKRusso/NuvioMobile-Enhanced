@@ -377,6 +377,10 @@ private val LanguageNameAliases = mapOf(
     "zulu" to "zu",
 )
 
+private val LanguageNameAliasesByDescendingLength =
+    LanguageNameAliases.entries.sortedByDescending { it.key.length }
+private val LanguageWhitespaceRegex = Regex("\\s+")
+
 fun normalizeLanguageCode(language: String?): String? {
     val raw = language
         ?.trim()
@@ -385,11 +389,14 @@ fun normalizeLanguageCode(language: String?): String? {
         ?.takeIf { it.isNotBlank() }
         ?: return null
 
+    LanguageCodeAliases[raw]?.let { return it.replace('_', '-').lowercase() }
+    if (raw.length == 2 && raw.all(Char::isLetter)) return raw
+
     val tokenized = raw
         .replace('-', ' ')
         .replace('.', ' ')
         .replace('/', ' ')
-        .replace(Regex("\\s+"), " ")
+        .replace(LanguageWhitespaceRegex, " ")
         .trim()
 
     fun containsAny(vararg values: String): Boolean =
@@ -413,10 +420,8 @@ fun normalizeLanguageCode(language: String?): String? {
         }
     }
 
-    LanguageCodeAliases[raw]?.let { return it.replace('_', '-').lowercase() }
     LanguageNameAliases[tokenized]?.let { return it }
-    LanguageNameAliases.entries
-        .sortedByDescending { it.key.length }
+    LanguageNameAliasesByDescendingLength
         .firstOrNull { (name, _) ->
             tokenized == name ||
                 tokenized.startsWith("$name ") ||

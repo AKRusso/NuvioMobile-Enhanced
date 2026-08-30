@@ -56,6 +56,7 @@ internal class SimklApiSyncRemote(
                 "episode_tvdb_id" to "yes",
                 "include_all_episodes" to "yes",
                 "language" to "en",
+                "memos" to "yes",
             )
             is SimklAllItemsRequest.Changes -> mapOf(
                 "date_from" to request.dateFrom,
@@ -64,6 +65,7 @@ internal class SimklApiSyncRemote(
                 "episode_tvdb_id" to "yes",
                 "include_all_episodes" to "yes",
                 "language" to "en",
+                "memos" to "yes",
             )
             SimklAllItemsRequest.CurrentIds -> mapOf(
                 "extended" to "simkl_ids_only",

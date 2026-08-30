@@ -85,4 +85,48 @@ class MetaDetailsParserTest {
 
         assertEquals("show:1:2", result.defaultVideoId)
     }
+
+    @Test
+    fun `parse reads positive per-episode addon ratings`() {
+        val result = MetaDetailsParser.parse(
+            """
+            {
+              "meta": {
+                "id": "show",
+                "type": "series",
+                "name": "Show",
+                "videos": [
+                  { "id": "show:1:1", "title": "Episode 1", "rating": "8.7" },
+                  { "id": "show:1:2", "title": "Episode 2", "rating": 7.5 }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(8.7, result.videos[0].rating)
+        assertEquals(7.5, result.videos[1].rating)
+    }
+
+    @Test
+    fun `parse ignores invalid per-episode addon ratings`() {
+        val result = MetaDetailsParser.parse(
+            """
+            {
+              "meta": {
+                "id": "show",
+                "type": "series",
+                "name": "Show",
+                "videos": [
+                  { "id": "show:1:1", "title": "Episode 1", "rating": "unknown" },
+                  { "id": "show:1:2", "title": "Episode 2", "rating": 0 }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals(null, result.videos[0].rating)
+        assertEquals(null, result.videos[1].rating)
+    }
 }

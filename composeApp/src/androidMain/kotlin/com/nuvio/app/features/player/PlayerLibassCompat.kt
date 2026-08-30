@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
+import androidx.media3.extractor.text.DefaultSubtitleParserFactory
 import androidx.media3.extractor.text.SubtitleParser
 import io.github.peerless2012.ass.media.AssHandler
 import io.github.peerless2012.ass.media.extractor.AssMatroskaExtractor
@@ -64,18 +65,24 @@ private class CompatAssSubtitleParserFactory(
     private val assHandler: AssHandler
 ) : SubtitleParser.Factory {
     private val delegate = AssSubtitleParserFactory(assHandler)
+    private val media3Delegate = DefaultSubtitleParserFactory()
 
     override fun supportsFormat(format: Format): Boolean {
         return delegate.supportsFormat(normalizeSsaFormat(format))
     }
 
     override fun getCueReplacementBehavior(format: Format): Int {
-        return delegate.getCueReplacementBehavior(normalizeSsaFormat(format))
+        val normalized = normalizeSsaFormat(format)
+        return parserFor(normalized).getCueReplacementBehavior(normalized)
     }
 
     override fun create(format: Format): SubtitleParser {
-        return delegate.create(normalizeSsaFormat(format))
+        val normalized = normalizeSsaFormat(format)
+        return parserFor(normalized).create(normalized)
     }
+
+    private fun parserFor(format: Format): SubtitleParser.Factory =
+        if (shouldUseMedia3ParserForExternalSsa(format)) media3Delegate else delegate
 
     private fun normalizeSsaFormat(format: Format): Format {
         val isSsaByCodecs = format.codecs == MimeTypes.TEXT_SSA
@@ -88,6 +95,10 @@ private class CompatAssSubtitleParserFactory(
         return format
     }
 }
+
+internal fun shouldUseMedia3ParserForExternalSsa(format: Format): Boolean =
+    format.sampleMimeType == MimeTypes.TEXT_SSA &&
+        format.containerMimeType != MimeTypes.VIDEO_MATROSKA
 
 @OptIn(UnstableApi::class)
 private fun ExtractorsFactory.withAssMkvSupportCompat(

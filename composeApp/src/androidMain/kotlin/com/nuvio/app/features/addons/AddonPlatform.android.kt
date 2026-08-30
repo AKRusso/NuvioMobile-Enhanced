@@ -6,6 +6,8 @@ import com.nuvio.app.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import com.nuvio.app.core.network.DnsOverHttpsSettingsRepository
 import com.nuvio.app.core.network.toOkHttpDns
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import nuvio.composeapp.generated.resources.Res
@@ -126,13 +128,18 @@ private fun Map<String, String>.withoutAcceptEncoding(): Map<String, String> =
 private fun Map<String, String>.getHeaderIgnoreCase(name: String): String? =
     entries.firstOrNull { (key, _) -> key.equals(name, ignoreCase = true) }?.value
 
-private fun readAtMostBytes(stream: InputStream, maxBytes: Int): LimitedReadResult {
+private fun readAtMostBytes(
+    stream: InputStream,
+    maxBytes: Int,
+    onProgress: () -> Unit = {},
+): LimitedReadResult {
     val out = ByteArrayOutputStream(minOf(maxBytes, 16 * 1024))
     val buffer = ByteArray(8 * 1024)
     var remaining = maxBytes
     var truncated = false
 
     while (remaining > 0) {
+        onProgress()
         val read = stream.read(buffer, 0, minOf(buffer.size, remaining))
         if (read <= 0) break
         out.write(buffer, 0, read)
@@ -239,7 +246,9 @@ actual suspend fun httpGetTextWithHeaders(
 actual suspend fun httpGetBytesWithHeaders(
     url: String,
     headers: Map<String, String>,
+    maxResponseBodyBytes: Int,
 ): ByteArray = withContext(Dispatchers.IO) {
+    val requestContext = currentCoroutineContext()
     val builder = Request.Builder().url(url)
     headers.withoutAcceptEncoding().forEach { (key, value) ->
         builder.header(key, value)
@@ -248,7 +257,20 @@ actual suspend fun httpGetBytesWithHeaders(
         if (!response.isSuccessful) {
             error(runBlocking { getString(Res.string.network_request_failed_http, response.code) })
         }
-        response.body.bytes()
+        val responseBody = response.body
+        val contentLength = responseBody.contentLength()
+        require(contentLength < 0L || contentLength <= maxResponseBodyBytes.toLong()) {
+            "HTTP response exceeds the safe size limit."
+        }
+        val readResult = responseBody.byteStream().use { stream ->
+            readAtMostBytes(
+                stream = stream,
+                maxBytes = maxResponseBodyBytes.coerceAtLeast(0),
+                onProgress = { requestContext.ensureActive() },
+            )
+        }
+        require(!readResult.truncated) { "HTTP response exceeds the safe size limit." }
+        readResult.bytes
     }
 }
 

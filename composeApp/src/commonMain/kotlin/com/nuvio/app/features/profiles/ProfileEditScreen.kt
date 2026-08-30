@@ -67,6 +67,7 @@ import com.nuvio.app.core.ui.NuvioScreen
 import com.nuvio.app.core.ui.NuvioScreenHeader
 import com.nuvio.app.core.ui.NuvioStatusModal
 import com.nuvio.app.core.ui.NuvioSurfaceCard
+import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.features.home.components.CollectionCardRemoteImage
 import kotlinx.coroutines.launch
@@ -140,6 +141,7 @@ fun ProfileEditScreen(
     val previewAccent = remember(visibleAvatarItem, fallbackColorHex) {
         parseHexColor(visibleAvatarItem?.bgColor ?: fallbackColorHex)
     }
+    val automaticBackgroundPreset = ProfileBackgroundPreset.fromTheme(MaterialTheme.appTheme)
     NuvioScreen(modifier = modifier) {
         stickyHeader {
             NuvioScreenHeader(
@@ -186,7 +188,7 @@ fun ProfileEditScreen(
                     ) {
                         BackgroundPresetChoice(
                             label = stringResource(Res.string.profile_background_normal),
-                            preset = null,
+                            preset = automaticBackgroundPreset,
                             selected = selectedBackgroundPresetKey == null && backgroundUrl.isBlank(),
                             onClick = {
                                 selectedBackgroundPresetKey = null

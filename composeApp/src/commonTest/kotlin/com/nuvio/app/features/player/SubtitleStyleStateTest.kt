@@ -1,10 +1,16 @@
 package com.nuvio.app.features.player
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SubtitleStyleStateTest {
+    @Test
+    fun defaultOutlineIsThin() {
+        assertEquals(1, SubtitleStyleState.DEFAULT.outlineWidth)
+    }
+
     @Test
     fun customFontDisablesLibassToKeepTheSelectedTypeface() {
         val style = SubtitleStyleState(

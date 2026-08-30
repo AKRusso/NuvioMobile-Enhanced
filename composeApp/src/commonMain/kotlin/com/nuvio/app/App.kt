@@ -105,6 +105,7 @@ import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.sync.AppForegroundMonitor
 import com.nuvio.app.core.sync.ProfileSettingsSync
+import com.nuvio.app.core.sync.ProviderCredentialSync
 import com.nuvio.app.core.sync.SyncManager
 import com.nuvio.app.core.ui.LocalNuvioNavBarScrollState
 import com.nuvio.app.core.ui.NuvioNavigationBar
@@ -834,6 +835,9 @@ private fun MainAppContent(
             remember {
                 ProfileSettingsSync.startObserving()
             }
+            remember {
+                ProviderCredentialSync.startObserving()
+            }
         }
         val hapticFeedback = LocalHapticFeedback.current
         val focusManager = LocalFocusManager.current
@@ -1051,6 +1055,7 @@ private fun MainAppContent(
     }
 
     LaunchedEffect(liveTvEnabled, selectedTab) {
+        LiveTvRepository.setFeatureEnabled(liveTvEnabled)
         NativeTabBridge.publishLiveTvEnabled(liveTvEnabled)
         if (!liveTvEnabled && selectedTab == AppScreenTab.LiveTv) {
             activateTab(AppScreenTab.Home)
@@ -1525,6 +1530,10 @@ private fun MainAppContent(
             providerName: String = "Live TV",
             recordRecent: Boolean = true,
         ) {
+            if (!liveTvEnabled) {
+                NuvioToastController.show("Live TV is disabled.")
+                return
+            }
             if (recordRecent) {
                 LiveTvRepository.recordRecentChannel(channel)
             }
@@ -1556,6 +1565,10 @@ private fun MainAppContent(
         ) {
             if (!ownsAppRuntime) return@LaunchedEffect
             LiveTvIncomingSourceRepository.requests.collectLatest { request ->
+                if (!liveTvEnabled && request !is LiveTvIncomingSource.Magnet) {
+                    NuvioToastController.show("Live TV is disabled.")
+                    return@collectLatest
+                }
                 when (request) {
                     is LiveTvIncomingSource.DirectStream -> {
                         openLiveTvChannel(
@@ -1576,10 +1589,8 @@ private fun MainAppContent(
                             .onSuccess { channels ->
                                 if (channels.size == 1) {
                                     openLiveTvChannel(channels.first(), providerName = "Shared")
-                                } else if (liveTvEnabled) {
-                                    handleRootTabClick(AppScreenTab.LiveTv)
                                 } else {
-                                    NuvioToastController.show("Live TV tab is disabled.")
+                                    handleRootTabClick(AppScreenTab.LiveTv)
                                 }
                             }
                             .onFailure { error ->
@@ -1592,10 +1603,8 @@ private fun MainAppContent(
                             .onSuccess { channels ->
                                 if (channels.size == 1) {
                                     openLiveTvChannel(channels.first(), providerName = "Shared")
-                                } else if (liveTvEnabled) {
-                                    handleRootTabClick(AppScreenTab.LiveTv)
                                 } else {
-                                    NuvioToastController.show("Live TV tab is disabled.")
+                                    handleRootTabClick(AppScreenTab.LiveTv)
                                 }
                             }
                             .onFailure { error ->
@@ -2119,6 +2128,7 @@ private fun MainAppContent(
                                             .padding(innerPadding)
                                             .padding(start = if (useTvLayout) 80.dp else 0.dp),
                                         selectedTab = selectedTab,
+                                        liveTvEnabled = liveTvEnabled,
                                         searchFocusRequestCount = searchFocusRequestCount,
                                         rootActionsEnabled = tabsRouteActive,
                                         homeScrollToTopRequests = homeScrollToTopRequests,
@@ -3929,6 +3939,7 @@ private fun rememberGuardedPopBackStack(
 @Composable
 private fun AppTabHost(
     selectedTab: AppScreenTab,
+    liveTvEnabled: Boolean,
     modifier: Modifier = Modifier,
     searchFocusRequestCount: Int = 0,
     rootActionsEnabled: Boolean = true,
@@ -4000,10 +4011,12 @@ private fun AppTabHost(
                 }
 
                 AppScreenTab.LiveTv -> {
-                    LiveTvScreen(
-                        modifier = Modifier.fillMaxSize(),
-                        onChannelClick = { channel -> onLiveTvChannelClick?.invoke(channel) },
-                    )
+                    if (liveTvEnabled) {
+                        LiveTvScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            onChannelClick = { channel -> onLiveTvChannelClick?.invoke(channel) },
+                        )
+                    }
                 }
 
                 AppScreenTab.Library -> {

@@ -273,10 +273,14 @@ internal fun downloadLogicalContentKey(
     parentMetaId: String,
     seasonNumber: Int?,
     episodeNumber: Int?,
-): String = if (seasonNumber != null || episodeNumber != null) {
-    "${parentMetaId.trim()}|${seasonNumber ?: -1}|${episodeNumber ?: -1}"
+): String {
+    val season = seasonNumber?.takeIf { it > 0 }
+    val episode = episodeNumber?.takeIf { it > 0 }
+    return if (season != null || episode != null) {
+    "${parentMetaId.trim()}|${season ?: -1}|${episode ?: -1}"
 } else {
     "${parentMetaId.trim()}|movie"
+}
 }
 
 enum class DownloadEnqueueResult {

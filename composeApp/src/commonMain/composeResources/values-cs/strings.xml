@@ -63,6 +63,7 @@
     <string name="addons_version_format">Verze %1$s</string>
     <string name="cd_selected">Vybráno</string>
     <string name="collections_copy_json">Kopírovat JSON</string>
+    <string name="collections_copy_json_error">Data kolekce jsou příliš velká pro schránku tohoto zařízení.</string>
     <string name="collections_count_summary">%1$d sbírka(y), %2$d složka(y)</string>
     <string name="collections_delete_message">Smazat \"%1$s\"? Tuto akci nelze vrátit zpět.</string>
     <string name="collections_delete_title">Smazat sbírku</string>
@@ -2011,4 +2012,29 @@
     <string name="downloads_auto_selecting">Výběr zdrojů…</string>
     <string name="downloads_download_started">Stahování spuštěno</string>
     <string name="downloads_status_waiting">Čeká se</string>
+    <string name="live_tv_guide_title">TV program oblíbených kanálů</string>
+    <string name="live_tv_guide_next_24_hours">Nyní · následujících 24 hodin</string>
+    <string name="live_tv_guide_hour_range">+%1$d až +%2$d hodin</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d oblíbených kanálů</string>
+    <string name="live_tv_guide_earlier">Dřívější program</string>
+    <string name="live_tv_guide_later">Pozdější program</string>
+    <string name="live_tv_guide_now">Nyní</string>
+    <string name="live_tv_guide_no_favorites_title">Zatím žádné oblíbené kanály</string>
+    <string name="live_tv_guide_no_favorites_body">Označte kanály v živém vysílání hvězdičkou a automaticky se zde zobrazí.</string>
+    <string name="live_tv_guide_loading">Načítání programu XMLTV…</string>
+    <string name="live_tv_programme_status_live">PRÁVĚ ŽIVĚ</string>
+    <string name="live_tv_programme_status_upcoming">NADCHÁZEJÍCÍ</string>
+    <string name="live_tv_programme_status_ended">SKONČILO</string>
+    <string name="live_tv_programme_flag_new">Nové</string>
+    <string name="live_tv_programme_flag_premiere">Premiéra</string>
+    <string name="live_tv_programme_flag_repeat">Opakování</string>
+    <string name="live_tv_programme_detail_category">Kategorie</string>
+    <string name="live_tv_programme_detail_episode">Epizoda</string>
+    <string name="live_tv_programme_detail_rating">Hodnocení</string>
+    <string name="live_tv_programme_detail_date">Datum</string>
+    <string name="live_tv_programme_detail_country">Země</string>
+    <string name="live_tv_programme_detail_language">Jazyk</string>
+    <string name="live_tv_programme_detail_status">Stav</string>
+    <string name="live_tv_programme_watch_live">SLEDOVAT ŽIVĚ</string>
+    <string name="live_tv_programme_open_live">OTEVŘÍT ŽIVÝ KANÁL NYNÍ</string>
 </resources>

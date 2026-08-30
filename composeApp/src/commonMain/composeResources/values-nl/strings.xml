@@ -63,6 +63,7 @@
     <string name="addons_version_format">Versie %1$s</string>
     <string name="cd_selected">Geselecteerd</string>
     <string name="collections_copy_json">JSON kopiëren</string>
+    <string name="collections_copy_json_error">De collectiegegevens zijn te groot voor het klembord van dit apparaat.</string>
     <string name="collections_count_summary">%1$d collectie(s), %2$d map(pen)</string>
     <string name="collections_delete_message">"%1$s" verwijderen? Dit kan niet ongedaan worden gemaakt.</string>
     <string name="collections_delete_title">Collectie verwijderen</string>
@@ -2000,4 +2001,29 @@
     <string name="downloads_auto_selecting">Bronnen selecteren…</string>
     <string name="downloads_download_started">Downloads gestart</string>
     <string name="downloads_status_waiting">Wachten</string>
+    <string name="live_tv_guide_title">Tv-gids voor favorieten</string>
+    <string name="live_tv_guide_next_24_hours">Nu · komende 24 uur</string>
+    <string name="live_tv_guide_hour_range">+%1$d tot +%2$d uur</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d favoriete zenders</string>
+    <string name="live_tv_guide_earlier">Eerdere gids</string>
+    <string name="live_tv_guide_later">Latere gids</string>
+    <string name="live_tv_guide_now">Nu</string>
+    <string name="live_tv_guide_no_favorites_title">Nog geen favoriete zenders</string>
+    <string name="live_tv_guide_no_favorites_body">Markeer zenders als favoriet in live-tv en ze verschijnen hier automatisch.</string>
+    <string name="live_tv_guide_loading">XMLTV-gids laden…</string>
+    <string name="live_tv_programme_status_live">NU LIVE</string>
+    <string name="live_tv_programme_status_upcoming">BINNENKORT</string>
+    <string name="live_tv_programme_status_ended">AFGELOPEN</string>
+    <string name="live_tv_programme_flag_new">Nieuw</string>
+    <string name="live_tv_programme_flag_premiere">Première</string>
+    <string name="live_tv_programme_flag_repeat">Herhaling</string>
+    <string name="live_tv_programme_detail_category">Categorie</string>
+    <string name="live_tv_programme_detail_episode">Aflevering</string>
+    <string name="live_tv_programme_detail_rating">Beoordeling</string>
+    <string name="live_tv_programme_detail_date">Datum</string>
+    <string name="live_tv_programme_detail_country">Land</string>
+    <string name="live_tv_programme_detail_language">Taal</string>
+    <string name="live_tv_programme_detail_status">Status</string>
+    <string name="live_tv_programme_watch_live">LIVE KIJKEN</string>
+    <string name="live_tv_programme_open_live">LIVEZENDER NU OPENEN</string>
 </resources>

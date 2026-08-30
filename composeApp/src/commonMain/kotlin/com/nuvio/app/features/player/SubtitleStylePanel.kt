@@ -366,7 +366,14 @@ private fun StyleControlsCard(
                         else colorScheme.surface.copy(alpha = 0.8f)
                     )
                     .border(1.dp, colorScheme.outlineVariant.copy(alpha = 0.8f), RoundedCornerShape(10.dp))
-                    .clickable { onStyleChanged { current -> current.copy(outlineEnabled = !current.outlineEnabled) } }
+                    .clickable {
+                        onStyleChanged { current ->
+                            current.copy(
+                                outlineEnabled = !current.outlineEnabled,
+                                outlineWidth = current.outlineWidth.coerceAtLeast(1),
+                            )
+                        }
+                    }
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -375,6 +382,31 @@ private fun StyleControlsCard(
                     color = if (style.outlineEnabled) colorScheme.onPrimaryContainer else colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
+                )
+            }
+        }
+
+        if (style.outlineEnabled) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.compose_player_outline_thickness),
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                StepperControl(
+                    value = style.outlineWidth.toString(),
+                    onMinus = { onStyleChanged { current -> current.copy(outlineWidth = (current.outlineWidth - 1).coerceAtLeast(1)) } },
+                    onPlus = { onStyleChanged { current -> current.copy(outlineWidth = (current.outlineWidth + 1).coerceAtMost(5)) } },
+                    buttonSize = btnSize,
+                    buttonRadius = btnRadius,
+                    minWidth = 46.dp,
+                    minusIcon = Icons.Rounded.KeyboardArrowDown,
+                    plusIcon = Icons.Rounded.KeyboardArrowUp,
                 )
             }
         }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
+import com.nuvio.app.core.ui.AppTheme
+import com.nuvio.app.core.ui.ThemeColors
+import com.nuvio.app.core.ui.appTheme
+import com.nuvio.app.core.ui.currentAnimatedThemeVisuals
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.nuvio_enhanced_supporter
 import org.jetbrains.compose.resources.stringResource
@@ -50,6 +55,11 @@ internal fun MemberBrandWordmark(
 ) {
     val fullLabel = stringResource(Res.string.nuvio_enhanced_supporter)
     var badgeSize by remember { mutableStateOf(IntSize.Zero) }
+    val appTheme = MaterialTheme.appTheme
+    val animatedThemeColors = currentAnimatedThemeVisuals?.colors
+    val badgeColors = remember(appTheme, animatedThemeColors) {
+        memberBrandWordmarkColors(appTheme, animatedThemeColors)
+    }
     val transition = rememberInfiniteTransition(label = "enhancedSupporterGradient")
     val progress by transition.animateFloat(
         initialValue = 0f,
@@ -63,8 +73,8 @@ internal fun MemberBrandWordmark(
         ),
         label = "enhancedSupporterGradientProgress",
     )
-    val brush = remember(badgeSize, progress) {
-        enhancedSupporterBrush(badgeSize, progress)
+    val brush = remember(badgeSize, progress, badgeColors) {
+        enhancedSupporterBrush(badgeSize, progress, badgeColors)
     }
 
     Row(
@@ -89,7 +99,23 @@ internal fun MemberBrandWordmark(
     }
 }
 
-private fun enhancedSupporterBrush(size: IntSize, progress: Float): Brush {
+internal fun memberBrandWordmarkColors(
+    theme: AppTheme,
+    animatedThemeColors: List<Color>? = null,
+): List<Color> {
+    val palette = ThemeColors.getColorPalette(theme)
+    val themeColors = animatedThemeColors
+        ?.takeIf { it.size >= 2 }
+        ?: palette.accentGradient.takeIf { it.size >= 2 }
+        ?: listOf(palette.secondaryVariant, palette.secondary, palette.focusRing)
+    return themeColors + themeColors.first()
+}
+
+private fun enhancedSupporterBrush(
+    size: IntSize,
+    progress: Float,
+    colors: List<Color>,
+): Brush {
     val textWidth = size.width.toFloat().coerceAtLeast(1f)
     val textHeight = size.height.toFloat().coerceAtLeast(1f)
     val gradientWidth = textWidth * BadgeGradientWidthMultiplier
@@ -102,12 +128,9 @@ private fun enhancedSupporterBrush(size: IntSize, progress: Float): Brush {
     val halfVector = Offset(directionX * lineLength / 2f, directionY * lineLength / 2f)
 
     return Brush.linearGradient(
-        colorStops = arrayOf(
-            0f to Color(0xFF91A8FF),
-            0.52f to Color(0xFFF08BD8),
-            0.78f to Color(0xFFFF9B8E),
-            1f to Color(0xFF91A8FF),
-        ),
+        colorStops = colors.mapIndexed { index, color ->
+            index.toFloat() / colors.lastIndex.coerceAtLeast(1).toFloat() to color
+        }.toTypedArray(),
         start = center - halfVector,
         end = center + halfVector,
     )

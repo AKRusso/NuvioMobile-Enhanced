@@ -62,6 +62,7 @@
     <string name="addons_version_format">Wersja %1$s</string>
     <string name="cd_selected">Wybrano</string>
     <string name="collections_copy_json">Kopiuj JSON</string>
+    <string name="collections_copy_json_error">Dane kolekcji są zbyt duże dla schowka tego urządzenia.</string>
     <string name="collections_count_summary">%1$d kolekcji, %2$d folderów</string>
     <string name="collections_delete_message">Usunąć „%1$s"? Tej operacji nie można cofnąć.</string>
     <string name="collections_delete_title">Usuń kolekcję</string>
@@ -2025,4 +2026,29 @@
     <string name="downloads_auto_selecting">Wybieranie źródeł…</string>
     <string name="downloads_download_started">Rozpoczęto pobieranie</string>
     <string name="downloads_status_waiting">Oczekiwanie</string>
+    <string name="live_tv_guide_title">Program ulubionych kanałów</string>
+    <string name="live_tv_guide_next_24_hours">Teraz · następne 24 godziny</string>
+    <string name="live_tv_guide_hour_range">Od +%1$d do +%2$d godzin</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d ulubionych kanałów</string>
+    <string name="live_tv_guide_earlier">Wcześniejszy program</string>
+    <string name="live_tv_guide_later">Późniejszy program</string>
+    <string name="live_tv_guide_now">Teraz</string>
+    <string name="live_tv_guide_no_favorites_title">Nie ma jeszcze ulubionych kanałów</string>
+    <string name="live_tv_guide_no_favorites_body">Oznacz kanały gwiazdką w telewizji na żywo, a pojawią się tutaj automatycznie.</string>
+    <string name="live_tv_guide_loading">Wczytywanie programu XMLTV…</string>
+    <string name="live_tv_programme_status_live">TERAZ NA ŻYWO</string>
+    <string name="live_tv_programme_status_upcoming">WKRÓTCE</string>
+    <string name="live_tv_programme_status_ended">ZAKOŃCZONO</string>
+    <string name="live_tv_programme_flag_new">Nowy</string>
+    <string name="live_tv_programme_flag_premiere">Premiera</string>
+    <string name="live_tv_programme_flag_repeat">Powtórka</string>
+    <string name="live_tv_programme_detail_category">Kategoria</string>
+    <string name="live_tv_programme_detail_episode">Odcinek</string>
+    <string name="live_tv_programme_detail_rating">Klasyfikacja</string>
+    <string name="live_tv_programme_detail_date">Data</string>
+    <string name="live_tv_programme_detail_country">Kraj</string>
+    <string name="live_tv_programme_detail_language">Język</string>
+    <string name="live_tv_programme_detail_status">Stan</string>
+    <string name="live_tv_programme_watch_live">OGLĄDAJ NA ŻYWO</string>
+    <string name="live_tv_programme_open_live">OTWÓRZ KANAŁ NA ŻYWO TERAZ</string>
 </resources>

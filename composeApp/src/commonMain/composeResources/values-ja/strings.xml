@@ -63,6 +63,7 @@
     <string name="addons_version_format">バージョン %1$s</string>
     <string name="cd_selected">選択済み</string>
     <string name="collections_copy_json">JSONをコピー</string>
+    <string name="collections_copy_json_error">コレクションデータが大きすぎるため、このデバイスのクリップボードにコピーできません。</string>
     <string name="collections_count_summary">%1$d コレクション、%2$d フォルダー</string>
     <string name="collections_delete_message">「%1$s」を削除しますか？この操作は取り消せません。</string>
     <string name="collections_delete_title">コレクションを削除</string>
@@ -2006,4 +2007,29 @@
     <string name="downloads_auto_selecting">ソースを選択中…</string>
     <string name="downloads_download_started">ダウンロードを開始しました</string>
     <string name="downloads_status_waiting">待機中</string>
+    <string name="live_tv_guide_title">お気に入りのテレビ番組表</string>
+    <string name="live_tv_guide_next_24_hours">現在 · 今後24時間</string>
+    <string name="live_tv_guide_hour_range">+%1$d～+%2$d時間</string>
+    <string name="live_tv_guide_favorite_channel_count">お気に入りチャンネル%1$d件</string>
+    <string name="live_tv_guide_earlier">前の番組表</string>
+    <string name="live_tv_guide_later">次の番組表</string>
+    <string name="live_tv_guide_now">現在</string>
+    <string name="live_tv_guide_no_favorites_title">お気に入りのチャンネルはまだありません</string>
+    <string name="live_tv_guide_no_favorites_body">ライブTVでチャンネルをお気に入りに追加すると、ここに自動的に表示されます。</string>
+    <string name="live_tv_guide_loading">XMLTV番組表を読み込んでいます…</string>
+    <string name="live_tv_programme_status_live">現在放送中</string>
+    <string name="live_tv_programme_status_upcoming">まもなく放送</string>
+    <string name="live_tv_programme_status_ended">放送終了</string>
+    <string name="live_tv_programme_flag_new">新着</string>
+    <string name="live_tv_programme_flag_premiere">初回放送</string>
+    <string name="live_tv_programme_flag_repeat">再放送</string>
+    <string name="live_tv_programme_detail_category">カテゴリー</string>
+    <string name="live_tv_programme_detail_episode">エピソード</string>
+    <string name="live_tv_programme_detail_rating">レーティング</string>
+    <string name="live_tv_programme_detail_date">日付</string>
+    <string name="live_tv_programme_detail_country">国</string>
+    <string name="live_tv_programme_detail_language">言語</string>
+    <string name="live_tv_programme_detail_status">ステータス</string>
+    <string name="live_tv_programme_watch_live">ライブで見る</string>
+    <string name="live_tv_programme_open_live">今すぐライブチャンネルを開く</string>
 </resources>

@@ -156,8 +156,23 @@ internal fun NuvioSubtitleModal(
         buildSubtitleSelectionOptions(activeLanguageKey, subtitleTracks, addonSubtitles)
     }
     val selectedOptionId = pendingOptionId ?: playbackOptionId
+    val languageListState = rememberLazyListState()
+    val optionsListState = rememberLazyListState()
     val styleVisible = activeLanguageKey != SubtitleOffLanguageKey &&
         selectedOptionId != null && options.any { it.id == selectedOptionId }
+
+    LaunchedEffect(visible) {
+        if (!visible) return@LaunchedEffect
+        val languageIndex = languageItems.indexOfFirst { it.key == activeLanguageKey }
+        if (languageIndex >= 0) {
+            languageListState.scrollItemIntoViewIfNeeded(languageIndex)
+        }
+        val optionId = selectedOptionId ?: return@LaunchedEffect
+        val optionIndex = options.indexOfFirst { it.id == optionId }
+        if (optionIndex >= 0) {
+            optionsListState.scrollItemIntoViewIfNeeded(optionIndex)
+        }
+    }
 
     LaunchedEffect(languageItems) {
         if (languageItems.none { it.key == activeLanguageKey }) {
@@ -241,6 +256,7 @@ internal fun NuvioSubtitleModal(
                         width = 200.dp * uiScale,
                     ) {
                         LazyColumn(
+                            state = languageListState,
                             modifier = Modifier.heightIn(max = railMaxHeight),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                             contentPadding = PaddingValues(vertical = 8.dp),
@@ -298,6 +314,7 @@ internal fun NuvioSubtitleModal(
 
                                 else -> {
                                     LazyColumn(
+                                        state = optionsListState,
                                         modifier = Modifier.heightIn(max = railMaxHeight),
                                         verticalArrangement = Arrangement.spacedBy(4.dp),
                                         contentPadding = PaddingValues(vertical = 8.dp),
@@ -1105,4 +1122,10 @@ private fun SubtitleRailEmptyState(
             style = MaterialTheme.typography.bodyLarge,
         )
     }
+}
+
+private suspend fun androidx.compose.foundation.lazy.LazyListState.scrollItemIntoViewIfNeeded(targetIndex: Int) {
+    if (targetIndex < 0) return
+    if (layoutInfo.visibleItemsInfo.any { it.index == targetIndex }) return
+    scrollToItem(targetIndex)
 }

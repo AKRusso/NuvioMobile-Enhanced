@@ -3,6 +3,9 @@ package com.nuvio.app.core.auth
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.network.SupabaseProvider
 import com.nuvio.app.core.storage.LocalAccountDataCleaner
+import com.nuvio.app.core.sync.ProfileSettingsSync
+import com.nuvio.app.core.sync.ProviderCredentialSync
+import com.nuvio.app.core.sync.SyncManager
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -41,6 +44,7 @@ object AuthRepository {
 
         val savedAnonId = AuthStorage.loadAnonymousUserId()
         if (savedAnonId != null) {
+            claimLocalAccountData(savedAnonId)
             _state.value = AuthState.Authenticated(
                 userId = savedAnonId,
                 email = null,
@@ -56,6 +60,7 @@ object AuthRepository {
                         val user = status.session.user
                         val userId = user?.id.orEmpty()
                         if (!validateRemoteSession(userId)) return@collect
+                        claimLocalAccountData(userId)
                         _state.value = AuthState.Authenticated(
                             userId = userId,
                             email = user?.email,
@@ -101,6 +106,7 @@ object AuthRepository {
     fun signInAnonymously() {
         _error.value = null
         val userId = Uuid.random().toString()
+        claimLocalAccountData(userId)
         AuthStorage.saveAnonymousUserId(userId)
         _state.value = AuthState.Authenticated(
             userId = userId,
@@ -153,6 +159,7 @@ object AuthRepository {
             Result.success(Unit)
         }
         val localCleanup = runCatching { LocalAccountDataCleaner.wipe() }
+        val ownerClear = runCatching { AuthStorage.clearLocalDataOwnerUserId() }
         _state.value = AuthState.Unauthenticated
 
         val failure = anonymousRead.exceptionOrNull()
@@ -160,6 +167,7 @@ object AuthRepository {
             ?: remoteSignOut.exceptionOrNull()
             ?: fallbackSessionClear.exceptionOrNull()
             ?: localCleanup.exceptionOrNull()
+            ?: ownerClear.exceptionOrNull()
         val cancellation = remoteSignOut.exceptionOrNull() as? CancellationException
             ?: fallbackSessionClear.exceptionOrNull() as? CancellationException
         if (cancellation != null) throw cancellation
@@ -191,11 +199,10 @@ object AuthRepository {
         }.onFailure { e ->
             log.w(e) { "Failed to clear Supabase session after remote invalidation; continuing local reset" }
         }
-        val localCleanup = runCatching { LocalAccountDataCleaner.wipe() }
+        SyncManager.cancelAccountSync()
+        ProfileSettingsSync.clearAccountState()
+        ProviderCredentialSync.clearAccountState()
         _state.value = AuthState.Unauthenticated
-        localCleanup.onFailure { error ->
-            log.e(error) { "Local account cleanup failed after remote session invalidation" }
-        }
     }
 
     suspend fun deleteAccount(): Result<Unit> = runCatching {
@@ -206,6 +213,7 @@ object AuthRepository {
         try {
             LocalAccountDataCleaner.wipe()
         } finally {
+            AuthStorage.clearLocalDataOwnerUserId()
             _state.value = AuthState.Unauthenticated
         }
     }.onFailure { e ->
@@ -215,6 +223,15 @@ object AuthRepository {
 
     fun clearError() {
         _error.value = null
+    }
+
+    private fun claimLocalAccountData(userId: String) {
+        if (userId.isBlank()) return
+        val previousOwner = AuthStorage.loadLocalDataOwnerUserId()
+        if (previousOwner != null && previousOwner != userId) {
+            LocalAccountDataCleaner.wipe()
+        }
+        AuthStorage.saveLocalDataOwnerUserId(userId)
     }
 
     private fun isInvalidRemoteSessionError(error: Throwable): Boolean {

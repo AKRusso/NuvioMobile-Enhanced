@@ -6,7 +6,8 @@ internal expect object MdbListSettingsStorage {
     fun loadEnabled(): Boolean?
     fun saveEnabled(enabled: Boolean)
     fun loadApiKey(): String?
-    fun saveApiKey(apiKey: String)
+    fun loadApiKeyUpdatedAtEpochMs(): Long?
+    fun saveApiKey(apiKey: String, updatedAtEpochMs: Long)
     fun loadUseImdb(): Boolean?
     fun saveUseImdb(enabled: Boolean)
     fun loadUseTmdb(): Boolean?

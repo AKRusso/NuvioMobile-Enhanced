@@ -33,7 +33,7 @@ class ProviderCredentialModelsTest {
     }
 
     @Test
-    fun `blank remote value is retained as a clear tombstone`() {
+    fun `undated remote blank cannot erase a migrated local key`() {
         val local = ProviderCredentialSnapshot(
             profileId = 1,
             values = listOf(ProviderCredentialValue("mdblist", "api_key", "local")),
@@ -45,6 +45,107 @@ class ProviderCredentialModelsTest {
             ),
         )
 
-        assertEquals("", local.mergeRemote(remote).values.single().value)
+        assertEquals("local", local.mergeRemote(remote).values.single().value)
+    }
+
+    @Test
+    fun `stale remote blank cannot erase a newer local key`() {
+        val local = ProviderCredentialSnapshot(
+            profileId = 1,
+            values = listOf(
+                ProviderCredentialValue("tmdb", "api_key", "local", updatedAtEpochMs = 2_000L),
+            ),
+        )
+        val remote = listOf(
+            SupabaseProviderCredential(
+                provider = "tmdb",
+                credentialJson = buildJsonObject { put("api_key", "") },
+                updatedAt = "1970-01-01T00:00:01Z",
+            ),
+        )
+
+        assertEquals("local", local.mergeRemote(remote).values.single().value)
+        assertEquals(true, local.hasLocallyWonRemoteConflict(remote))
+    }
+
+    @Test
+    fun `newer explicit remote deletion clears local key`() {
+        val local = ProviderCredentialSnapshot(
+            profileId = 1,
+            values = listOf(
+                ProviderCredentialValue("mdblist", "api_key", "local", updatedAtEpochMs = 1_000L),
+            ),
+        )
+        val remote = listOf(
+            SupabaseProviderCredential(
+                provider = "mdblist",
+                credentialJson = buildJsonObject { put("api_key", "") },
+                updatedAt = "1970-01-01T00:00:02Z",
+            ),
+        )
+
+        val merged = local.mergeRemote(remote)
+
+        assertEquals("", merged.values.single().value)
+        assertEquals(2_000L, merged.values.single().updatedAtEpochMs)
+    }
+
+    @Test
+    fun `equal remote deletion does not clear local key`() {
+        val local = ProviderCredentialSnapshot(
+            profileId = 1,
+            values = listOf(
+                ProviderCredentialValue("tmdb", "api_key", "local", updatedAtEpochMs = 2_000L),
+            ),
+        )
+        val remote = listOf(
+            SupabaseProviderCredential(
+                provider = "tmdb",
+                credentialJson = buildJsonObject { put("api_key", "") },
+                updatedAt = "1970-01-01T00:00:02Z",
+            ),
+        )
+
+        assertEquals("local", local.mergeRemote(remote).values.single().value)
+    }
+
+    @Test
+    fun `newer remote nonblank key syncs across devices`() {
+        val local = ProviderCredentialSnapshot(
+            profileId = 1,
+            values = listOf(
+                ProviderCredentialValue("mdblist", "api_key", "old", updatedAtEpochMs = 1_000L),
+            ),
+        )
+        val remote = listOf(
+            SupabaseProviderCredential(
+                provider = "mdblist",
+                credentialJson = buildJsonObject { put("api_key", "new") },
+                updatedAt = "1970-01-01T00:00:02Z",
+            ),
+        )
+
+        assertEquals("new", local.mergeRemote(remote).values.single().value)
+    }
+
+    @Test
+    fun `persisted revision still protects key after process restart`() {
+        val persistedValue = "local"
+        val persistedRevision = 5_000L
+        val restartedSnapshot = ProviderCredentialSnapshot(
+            profileId = 1,
+            values = listOf(
+                ProviderCredentialValue("tmdb", "api_key", persistedValue, persistedRevision),
+            ),
+        )
+        val staleRemote = listOf(
+            SupabaseProviderCredential(
+                provider = "tmdb",
+                credentialJson = buildJsonObject { put("api_key", "") },
+                updatedAt = "1970-01-01T00:00:04Z",
+            ),
+        )
+
+        assertEquals("local", restartedSnapshot.mergeRemote(staleRemote).values.single().value)
     }
 }

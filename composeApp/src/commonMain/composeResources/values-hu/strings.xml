@@ -54,6 +54,7 @@
     <string name="addons_version_format">Verzió: %1$s</string>
     <string name="cd_selected">Kiválasztva</string>
     <string name="collections_copy_json">JSON másolása</string>
+    <string name="collections_copy_json_error">A gyűjtemény adatai túl nagyok az eszköz vágólapjához.</string>
     <string name="collections_count_summary">%1$d gyűjtemény, %2$d mappa</string>
     <string name="collections_delete_message">Biztosan törlöd a(z) \"%1$s\" elemet? Ez a művelet nem vonható vissza.</string>
     <string name="collections_delete_title">Gyűjtemény törlése</string>
@@ -2006,4 +2007,29 @@
     <string name="downloads_auto_selecting">Források kiválasztása…</string>
     <string name="downloads_download_started">Letöltések elindítva</string>
     <string name="downloads_status_waiting">Várakozás</string>
+    <string name="live_tv_guide_title">Kedvenc csatornák műsora</string>
+    <string name="live_tv_guide_next_24_hours">Most · következő 24 óra</string>
+    <string name="live_tv_guide_hour_range">+%1$d és +%2$d óra között</string>
+    <string name="live_tv_guide_favorite_channel_count">%1$d kedvenc csatorna</string>
+    <string name="live_tv_guide_earlier">Korábbi műsor</string>
+    <string name="live_tv_guide_later">Későbbi műsor</string>
+    <string name="live_tv_guide_now">Most</string>
+    <string name="live_tv_guide_no_favorites_title">Még nincsenek kedvenc csatornák</string>
+    <string name="live_tv_guide_no_favorites_body">Jelöld meg csillaggal a csatornákat az élő tévében, és automatikusan megjelennek itt.</string>
+    <string name="live_tv_guide_loading">XMLTV műsor betöltése…</string>
+    <string name="live_tv_programme_status_live">ÉLŐBEN MOST</string>
+    <string name="live_tv_programme_status_upcoming">HAMAROSAN</string>
+    <string name="live_tv_programme_status_ended">VÉGET ÉRT</string>
+    <string name="live_tv_programme_flag_new">Új</string>
+    <string name="live_tv_programme_flag_premiere">Premier</string>
+    <string name="live_tv_programme_flag_repeat">Ismétlés</string>
+    <string name="live_tv_programme_detail_category">Kategória</string>
+    <string name="live_tv_programme_detail_episode">Epizód</string>
+    <string name="live_tv_programme_detail_rating">Értékelés</string>
+    <string name="live_tv_programme_detail_date">Dátum</string>
+    <string name="live_tv_programme_detail_country">Ország</string>
+    <string name="live_tv_programme_detail_language">Nyelv</string>
+    <string name="live_tv_programme_detail_status">Állapot</string>
+    <string name="live_tv_programme_watch_live">ÉLŐ ADÁS MEGTEKINTÉSE</string>
+    <string name="live_tv_programme_open_live">ÉLŐ CSATORNA MEGNYITÁSA MOST</string>
 </resources>

@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -177,11 +179,13 @@ internal fun EnhancedSubtitleModal(
                         ) {
                             when (effectiveActiveTab) {
                                 SubtitleTab.BuiltIn -> BuiltInSubtitleList(
+                                    visible = visible,
                                     tracks = subtitleTracks,
                                     selectedIndex = selectedSubtitleIndex,
                                     onTrackSelected = onBuiltInTrackSelected,
                                 )
                                 SubtitleTab.Addons -> AddonSubtitleList(
+                                    visible = visible,
                                     addons = addonSubtitles,
                                     selectedId = selectedAddonSubtitleId,
                                     isLoading = isLoadingAddonSubtitles,
@@ -269,6 +273,7 @@ private fun SubtitleTabBar(
 
 @Composable
 private fun BuiltInSubtitleList(
+    visible: Boolean,
     tracks: List<SubtitleTrack>,
     selectedIndex: Int,
     onTrackSelected: (Int) -> Unit,
@@ -309,6 +314,7 @@ private fun BuiltInSubtitleList(
         }
 
         BuiltInSubtitleLanguageGroups(
+            visible = visible,
             tracks = tracks,
             selectedIndex = selectedIndex,
             onTrackSelected = onTrackSelected,
@@ -318,6 +324,7 @@ private fun BuiltInSubtitleList(
 
 @Composable
 private fun AddonSubtitleList(
+    visible: Boolean,
     addons: List<AddonSubtitle>,
     selectedId: String?,
     isLoading: Boolean,
@@ -373,6 +380,7 @@ private fun AddonSubtitleList(
     }
 
     AddonSubtitleLanguageGroups(
+        visible = visible,
         addons = addons,
         selectedId = selectedId,
         onSubtitleSelected = onSubtitleSelected,
@@ -381,6 +389,7 @@ private fun AddonSubtitleList(
 
 @Composable
 private fun BuiltInSubtitleLanguageGroups(
+    visible: Boolean,
     tracks: List<SubtitleTrack>,
     selectedIndex: Int,
     onTrackSelected: (Int) -> Unit,
@@ -395,8 +404,14 @@ private fun BuiltInSubtitleLanguageGroups(
     val selectedGroupKey = tracks
         .firstOrNull { it.index == selectedIndex }
         ?.subtitleLanguageGroupKey()
+    val selectedRowRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(visible) {
+        if (visible && selectedIndex >= 0) selectedRowRequester.bringIntoView()
+    }
 
     SubtitleLanguageBrowser(
+        visible = visible,
         groups = groups,
         selectedGroupKey = selectedGroupKey,
         onGroupSelected = { group ->
@@ -409,6 +424,10 @@ private fun BuiltInSubtitleLanguageGroups(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(
+                            if (isSelected) Modifier.bringIntoViewRequester(selectedRowRequester)
+                            else Modifier,
+                        )
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
                         .clickable { onTrackSelected(track.index) }
@@ -439,6 +458,7 @@ private fun BuiltInSubtitleLanguageGroups(
 
 @Composable
 private fun AddonSubtitleLanguageGroups(
+    visible: Boolean,
     addons: List<AddonSubtitle>,
     selectedId: String?,
     onSubtitleSelected: (AddonSubtitle) -> Unit,
@@ -453,8 +473,14 @@ private fun AddonSubtitleLanguageGroups(
     val selectedGroupKey = addons
         .firstOrNull { it.selectionKey == selectedId }
         ?.subtitleLanguageGroupKey()
+    val selectedRowRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(visible) {
+        if (visible && selectedGroupKey != null) selectedRowRequester.bringIntoView()
+    }
 
     SubtitleLanguageBrowser(
+        visible = visible,
         groups = groups,
         selectedGroupKey = selectedGroupKey,
         onGroupSelected = { group ->
@@ -467,6 +493,10 @@ private fun AddonSubtitleLanguageGroups(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .then(
+                            if (isSelected) Modifier.bringIntoViewRequester(selectedRowRequester)
+                            else Modifier,
+                        )
                         .clip(RoundedCornerShape(12.dp))
                         .background(if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant.copy(alpha = 0.6f))
                         .clickable { onSubtitleSelected(sub) }
@@ -525,6 +555,7 @@ private fun AddonSubtitle.subtitleLanguageGroupKey(): String =
 
 @Composable
 private fun <T> SubtitleLanguageBrowser(
+    visible: Boolean,
     groups: List<SubtitleLanguageGroup<T>>,
     selectedGroupKey: String?,
     onGroupSelected: (SubtitleLanguageGroup<T>) -> Unit,
@@ -532,8 +563,15 @@ private fun <T> SubtitleLanguageBrowser(
 ) {
     if (groups.isEmpty()) return
 
-    var activeGroupKey by rememberSaveable { mutableStateOf(selectedGroupKey ?: groups.first().key) }
+    var activeGroupKey by rememberSaveable(visible) {
+        mutableStateOf(selectedGroupKey ?: groups.first().key)
+    }
     val groupKeys = groups.map { it.key }
+    val activeGroupRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(visible) {
+        if (visible) activeGroupRequester.bringIntoView()
+    }
 
     LaunchedEffect(selectedGroupKey) {
         if (selectedGroupKey != null && selectedGroupKey in groupKeys) {
@@ -558,6 +596,11 @@ private fun <T> SubtitleLanguageBrowser(
             ) {
                 groups.forEach { group ->
                     SubtitleLanguageCategory(
+                        modifier = if (group.key == activeGroup.key) {
+                            Modifier.bringIntoViewRequester(activeGroupRequester)
+                        } else {
+                            Modifier
+                        },
                         languageCode = group.key,
                         selected = group.key == activeGroup.key,
                         onClick = {
@@ -575,6 +618,7 @@ private fun <T> SubtitleLanguageBrowser(
 
 @Composable
 private fun SubtitleLanguageCategory(
+    modifier: Modifier = Modifier,
     languageCode: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -586,7 +630,7 @@ private fun SubtitleLanguageCategory(
     )
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .widthIn(min = 72.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(background)

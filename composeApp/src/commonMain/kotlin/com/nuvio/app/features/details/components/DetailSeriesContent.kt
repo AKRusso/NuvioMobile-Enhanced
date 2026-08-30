@@ -74,6 +74,7 @@ import com.nuvio.app.core.ui.nuvioCardDepth
 import com.nuvio.app.core.ui.nuvioHorizontalScrollBleed
 import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.posterCardClickable
+import com.nuvio.app.core.ui.rememberPosterCardStyleUiState
 import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.details.MetaEpisodeCardStyle
 import com.nuvio.app.features.details.MetaVideo
@@ -82,6 +83,7 @@ import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.details.formatRuntimeFromMinutes
 import com.nuvio.app.features.details.metaVideoSeasonEpisodeComparator
 import com.nuvio.app.features.details.normalizeSeasonNumber
+import com.nuvio.app.features.details.preferredEpisodeNumberForSeason
 import com.nuvio.app.features.details.seasonSortKey
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
@@ -185,9 +187,10 @@ fun DetailSeriesContent(
     var seasonViewMode by remember {
         mutableStateOf(SeasonViewModeStorage.load() ?: SeasonViewMode.Posters)
     }
+    val episodeCardCornerRadius = rememberPosterCardStyleUiState().cornerRadiusDp.dp
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val sizing = seriesContentSizing(maxWidth.value)
+        val sizing = seriesContentSizing(maxWidth.value, episodeCardCornerRadius)
         val containerWidthDp = maxWidth.value
 
         Column(
@@ -307,7 +310,11 @@ fun DetailSeriesContent(
                             episodeRatings = episodeRatings,
                             blurUnwatchedEpisodes = blurUnwatchedEpisodes,
                             showEpisodeRatings = showEpisodeRatings,
-                            preferredEpisodeNumber = preferredEpisodeNumber,
+                            preferredEpisodeNumber = preferredEpisodeNumberForSeason(
+                                displayedSeasonNumber = seasonForContent,
+                                preferredSeasonNumber = preferredSeasonNumber,
+                                preferredEpisodeNumber = preferredEpisodeNumber,
+                            ),
                             onEpisodeClick = onEpisodeClick,
                             onEpisodeLongPress = onEpisodeLongPress,
                         )
@@ -339,7 +346,7 @@ fun DetailSeriesContent(
                                     video = episode,
                                     fallbackImage = meta.background ?: meta.poster,
                                     progressEntry = progressByVideoId[episodeVideoId],
-                                    imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] },
+                                    imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
                                     isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                                         WatchingState.isEpisodeWatched(
                                             watchedKeys = watchedKeys,
@@ -682,7 +689,7 @@ private fun EpisodeHorizontalRow(
                 video = episode,
                 fallbackImage = fallbackImage,
                 progressEntry = progressByVideoId[episodeVideoId],
-                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] },
+                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
                 isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                     WatchingState.isEpisodeWatched(
                         watchedKeys = watchedKeys,
@@ -737,7 +744,7 @@ private fun EpisodeHorizontalColumn(
                 video = episode,
                 fallbackImage = fallbackImage,
                 progressEntry = progressByVideoId[episodeVideoId],
-                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] },
+                imdbRating = episode.seasonEpisodeKey()?.let { episodeRatings[it] } ?: episode.rating,
                 isWatched = progressByVideoId[episodeVideoId]?.isEffectivelyCompleted == true ||
                     WatchingState.isEpisodeWatched(
                         watchedKeys = watchedKeys,
@@ -965,7 +972,8 @@ private fun rememberEpisodeHorizontalCardMetrics(
     maxWidthDp: Float,
     tvLayout: TvLayoutProfile = TvLayoutProfile(),
 ): EpisodeHorizontalCardMetrics {
-    return remember(maxWidthDp, tvLayout) {
+    val userCornerRadius = rememberPosterCardStyleUiState().cornerRadiusDp.dp
+    return remember(maxWidthDp, tvLayout, userCornerRadius) {
         if (tvLayout.enabled) {
             return@remember EpisodeHorizontalCardMetrics(
                 rowHorizontalPadding = 0.dp,
@@ -973,7 +981,7 @@ private fun rememberEpisodeHorizontalCardMetrics(
                 itemSpacing = 24.dp,
                 cardWidth = 520.dp,
                 cardHeight = 316.dp,
-                cornerRadius = 22.dp,
+                cornerRadius = userCornerRadius,
                 contentPadding = 22.dp,
                 contentBottomPadding = 24.dp,
                 titleTextSize = 24.sp,
@@ -997,7 +1005,7 @@ private fun rememberEpisodeHorizontalCardMetrics(
                 itemSpacing = 18.dp,
                 cardWidth = 420.dp,
                 cardHeight = 256.dp,
-                cornerRadius = 18.dp,
+                cornerRadius = userCornerRadius,
                 contentPadding = 16.dp,
                 contentBottomPadding = 18.dp,
                 titleTextSize = 18.sp,
@@ -1020,7 +1028,7 @@ private fun rememberEpisodeHorizontalCardMetrics(
                 itemSpacing = 16.dp,
                 cardWidth = 384.dp,
                 cardHeight = 236.dp,
-                cornerRadius = 16.dp,
+                cornerRadius = userCornerRadius,
                 contentPadding = 14.dp,
                 contentBottomPadding = 16.dp,
                 titleTextSize = 17.sp,
@@ -1043,7 +1051,7 @@ private fun rememberEpisodeHorizontalCardMetrics(
                 itemSpacing = 14.dp,
                 cardWidth = 340.dp,
                 cardHeight = 212.dp,
-                cornerRadius = 14.dp,
+                cornerRadius = userCornerRadius,
                 contentPadding = 12.dp,
                 contentBottomPadding = 14.dp,
                 titleTextSize = 16.sp,
@@ -1066,7 +1074,7 @@ private fun rememberEpisodeHorizontalCardMetrics(
                 itemSpacing = 12.dp,
                 cardWidth = 296.dp,
                 cardHeight = 184.dp,
-                cornerRadius = 14.dp,
+                cornerRadius = userCornerRadius,
                 contentPadding = 10.dp,
                 contentBottomPadding = 12.dp,
                 titleTextSize = 14.sp,
@@ -1369,7 +1377,7 @@ private data class SeriesContentSizing(
     val badgeVerticalPadding: Dp,
 )
 
-private fun seriesContentSizing(maxWidthDp: Float): SeriesContentSizing =
+private fun seriesContentSizing(maxWidthDp: Float, episodeCardCornerRadius: Dp): SeriesContentSizing =
     when {
         maxWidthDp >= 1440f -> SeriesContentSizing(
             seasonHeaderSize = 28.sp,
@@ -1384,7 +1392,7 @@ private fun seriesContentSizing(maxWidthDp: Float): SeriesContentSizing =
             seasonPosterRadius = 16.dp,
             cardHeight = 200.dp,
             imageWidth = 200.dp,
-            cardRadius = 20.dp,
+            cardRadius = episodeCardCornerRadius,
             cardGap = 20.dp,
             contentHorizontalPadding = 20.dp,
             contentVerticalPadding = 18.dp,
@@ -1414,7 +1422,7 @@ private fun seriesContentSizing(maxWidthDp: Float): SeriesContentSizing =
             seasonPosterRadius = 14.dp,
             cardHeight = 180.dp,
             imageWidth = 180.dp,
-            cardRadius = 18.dp,
+            cardRadius = episodeCardCornerRadius,
             cardGap = 18.dp,
             contentHorizontalPadding = 18.dp,
             contentVerticalPadding = 16.dp,
@@ -1444,7 +1452,7 @@ private fun seriesContentSizing(maxWidthDp: Float): SeriesContentSizing =
             seasonPosterRadius = 12.dp,
             cardHeight = 160.dp,
             imageWidth = 160.dp,
-            cardRadius = 16.dp,
+            cardRadius = episodeCardCornerRadius,
             cardGap = 16.dp,
             contentHorizontalPadding = 16.dp,
             contentVerticalPadding = 14.dp,
@@ -1474,7 +1482,7 @@ private fun seriesContentSizing(maxWidthDp: Float): SeriesContentSizing =
             seasonPosterRadius = 8.dp,
             cardHeight = 120.dp,
             imageWidth = 120.dp,
-            cardRadius = 16.dp,
+            cardRadius = episodeCardCornerRadius,
             cardGap = 16.dp,
             contentHorizontalPadding = 12.dp,
             contentVerticalPadding = 12.dp,

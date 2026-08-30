@@ -3,6 +3,8 @@ package com.nuvio.app.features.updater
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -128,6 +130,7 @@ object AndroidAppUpdaterPlatform {
         val context = requireContext()
         val apkFile = File(path)
         check(apkFile.exists()) { runBlocking { getString(Res.string.updates_downloaded_file_missing) } }
+        verifyDownloadedPackage(context, apkFile)
 
         val apkUri = FileProvider.getUriForFile(
             context,
@@ -142,6 +145,59 @@ object AndroidAppUpdaterPlatform {
 
         context.startActivity(intent)
     }
+
+    private fun verifyDownloadedPackage(context: Context, apkFile: File) {
+        val packageManager = context.packageManager
+        val signatureFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            PackageManager.GET_SIGNING_CERTIFICATES
+        } else {
+            @Suppress("DEPRECATION")
+            PackageManager.GET_SIGNATURES
+        }
+        val archiveInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageArchiveInfo(
+                apkFile.absolutePath,
+                PackageManager.PackageInfoFlags.of(signatureFlag.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageArchiveInfo(apkFile.absolutePath, signatureFlag)
+        } ?: error("Downloaded update is not a valid APK")
+
+        check(archiveInfo.packageName == context.packageName) {
+            "Downloaded update package ${archiveInfo.packageName} does not match ${context.packageName}"
+        }
+
+        val installedInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(signatureFlag.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(context.packageName, signatureFlag)
+        }
+        val installedSigners = signers(installedInfo)
+        val archiveSigners = signers(archiveInfo)
+        check(installedSigners.isNotEmpty() && archiveSigners.isNotEmpty() &&
+            installedSigners.intersect(archiveSigners).isNotEmpty()) {
+            "Downloaded update is not signed by the installed app signer"
+        }
+    }
+
+    private fun signers(packageInfo: PackageInfo): Set<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val signingInfo = packageInfo.signingInfo ?: return emptySet()
+            val signatures = if (signingInfo.hasMultipleSigners()) {
+                signingInfo.apkContentsSigners
+            } else {
+                signingInfo.signingCertificateHistory
+            }
+            signatures.orEmpty().map { it.toCharsString() }.toSet()
+        } else {
+            @Suppress("DEPRECATION")
+            packageInfo.signatures.orEmpty().map { it.toCharsString() }.toSet()
+        }
 
     private fun preferences() = requireContext().getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
 

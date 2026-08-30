@@ -176,7 +176,6 @@ jobs:
       RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
       RELEASE_KEYSTORE_BASE64: ${{ secrets.NUVIO_RELEASE_KEYSTORE_BASE64 }}
       TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-      TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
       SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
       ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
       MAL_CLIENT_ID: ${{ secrets.MAL_CLIENT_ID }}
@@ -316,9 +315,11 @@ jobs:
 
           # These paths only apply to the machine where local.properties was encoded.
           sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE)[[:space:]]*=/d' local.properties
+          # Never package a private Trakt credential in a client application.
+          sed -i -E '/^[[:space:]]*TRAKT_CLIENT_SECRET[[:space:]]*=/d' local.properties
           printf '\nNUVIO_RELEASE_STORE_FILE=%s\n' "${keystore_path}" >> local.properties
 
-          for property_name in TRAKT_CLIENT_ID TRAKT_CLIENT_SECRET SIMKL_CLIENT_ID ANILIST_CLIENT_ID MAL_CLIENT_ID PREMIUMIZE_CLIENT_ID; do
+          for property_name in TRAKT_CLIENT_ID SIMKL_CLIENT_ID ANILIST_CLIENT_ID MAL_CLIENT_ID PREMIUMIZE_CLIENT_ID; do
             property_value="${!property_name-}"
             if [[ -n "${property_value}" ]]; then
               sed -i -E "/^[[:space:]]*${property_name}[[:space:]]*=/d" local.properties
