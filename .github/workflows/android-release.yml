@@ -18,6 +18,11 @@ on:
         description: Optional comma-separated commit hashes to omit from the notes
         required: false
         type: string
+      include_ios:
+        description: Build and attach the unsigned Full iOS IPA
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -29,7 +34,7 @@ concurrency:
 jobs:
   build-ios:
     name: Build sideload iOS IPA
-    if: inputs.mode == 'build' || inputs.mode == 'draft' || inputs.mode == 'publish'
+    if: inputs.include_ios && (inputs.mode == 'build' || inputs.mode == 'draft' || inputs.mode == 'publish')
     runs-on: macos-15-intel
     timeout-minutes: 60
     env:
@@ -169,7 +174,7 @@ jobs:
   release:
     name: ${{ inputs.mode }} Nuvio release
     needs: build-ios
-    if: ${{ always() && (inputs.mode == 'dry-run' || inputs.mode == 'attach-universal' || needs.build-ios.result == 'success') }}
+    if: ${{ always() && (!inputs.include_ios || inputs.mode == 'dry-run' || inputs.mode == 'attach-universal' || needs.build-ios.result == 'success') }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -422,7 +427,7 @@ jobs:
           if-no-files-found: error
 
       - name: Download sideload IPA artifact
-        if: inputs.mode == 'draft' || inputs.mode == 'publish'
+        if: inputs.include_ios && (inputs.mode == 'draft' || inputs.mode == 'publish')
         uses: actions/download-artifact@v7
         with:
           name: nuvio-${{ steps.release.outputs.version }}-ios-full-unsigned
@@ -435,16 +440,20 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.tag }}
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           RELEASE_BRANCH: ${{ github.ref_name }}
+          INCLUDE_IOS: ${{ inputs.include_ios }}
         run: |
           mapfile -t release_apks < <(find androidApp/build/outputs/apk/full/release -maxdepth 1 -type f -name '*.apk' -print | sort)
           if (( ${#release_apks[@]} == 0 )); then
             echo "No release APKs were produced." >&2
             exit 1
           fi
-          mapfile -t release_ipas < <(find ios-release -maxdepth 1 -type f -name '*.ipa' -print | sort)
-          if (( ${#release_ipas[@]} != 1 )); then
-            echo "Expected exactly one sideload IPA, found ${#release_ipas[@]}." >&2
-            exit 1
+          release_ipas=()
+          if [[ "${INCLUDE_IOS}" == "true" ]]; then
+            mapfile -t release_ipas < <(find ios-release -maxdepth 1 -type f -name '*.ipa' -print | sort)
+            if (( ${#release_ipas[@]} != 1 )); then
+              echo "Expected exactly one sideload IPA, found ${#release_ipas[@]}." >&2
+              exit 1
+            fi
           fi
 
           release_args=(
