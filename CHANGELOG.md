@@ -3,6 +3,57 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.12 - 2026-08-30
+
+A special thank you for the most recent donation. Your support has helped greatly
+in recognizing the value of my work and allows me to continue improving Nuvio
+Enhanced. Thank you for believing in the project.
+
+### Added
+
+- Integrated selected improvements from the official NuvioMobile `0.4.11`
+  release while preserving the Enhanced experience.
+- Added faster and more reliable automatic EPG support for plain XML, GZIP, XZ,
+  and ZIP TV guides, with safer matching and last-known-good caching.
+- Added improved SRT, VTT, ASS, SSA, TTML, and DFXP subtitle support, including
+  ExoPlayer sidecar switching without reloading playback.
+- Added better forced subtitle and regional language selection for Portuguese,
+  Brazilian Portuguese, European Spanish, and Latin American Spanish.
+- Added AniList and MyAnimeList anime tracking, editing, and reconciliation.
+- Added Nuvio Read, expandable biographies, episode ratings, landscape artwork,
+  and refined season and episode presentation.
+- Added per-profile Discover preferences and stronger profile data isolation.
+- Added safer libmpv stream loading, track handling, request headers, external
+  audio, protected subtitles, and surface lifecycle coordination.
+- Added improved keyboard, DeX, TV, and external-display navigation.
+
+### Fixed
+
+- Fixed libmpv concurrency, release, snapshot, and lifecycle races.
+- Fixed black-screen risks during rotation, Picture-in-Picture, and surface
+  recreation.
+- Fixed stale queued operations affecting newly selected streams.
+- Fixed playback position or buffer loss when switching external subtitles.
+- Fixed slow subtitle responses replacing the user's current selection.
+- Fixed incorrect matching between European and Latin American Spanish.
+- Fixed EPG matching for channel names containing HD, FHD, UHD, and 4K suffixes.
+- Fixed M3U parsing with BOM, CRLF, mixed casing, and complex attributes.
+- Fixed performance when processing large XMLTV guides and resilience when EPG
+  servers are temporarily unavailable.
+- Fixed foreground service, Picture-in-Picture, autoplay, search, profile, and
+  several Android stability issues.
+
+Enhanced settings remain preserved when updating from an earlier release.
+
+### Credits
+
+- SankyouGit, for introducing EPG support to Nuvio Enhanced.
+
+### Release
+
+- This release is based on official NuvioMobile `0.4.11` and is versioned
+  independently as Nuvio Enhanced `0.4.12 (116)`.
+
 ## 0.4.11 - 2026-08-21
 
 ### Added

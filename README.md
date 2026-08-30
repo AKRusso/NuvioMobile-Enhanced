@@ -35,10 +35,13 @@ NuvioMobile Enhanced. The goal is to keep the fork aligned with the original
 project, fix bugs, improve Android and iOS, and provide easy-to-install release
 builds.
 
+The current release is aligned with the stable official NuvioMobile `0.4.11`
+codebase while preserving the Enhanced experience and user settings.
+
 | Track | Version |
 | --- | --- |
-| Nuvio Enhanced | `0.4.8 (112)` |
-| Official NuvioMobile base | `0.4.4` |
+| Nuvio Enhanced | `0.4.12 (116)` |
+| Official NuvioMobile base | `0.4.11` |
 | Fork main branch | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
 | Maintainer | [AKRusso](https://github.com/AKRusso) |
 
@@ -95,13 +98,14 @@ file directly, and it is not intended for the App Store.
 
 | Area | Enhanced improvements |
 | --- | --- |
-| Playback | Android libmpv playback, tap-to-seek, progress synchronization, and stability improvements. |
-| Live TV | M3U navigation, favorites, channel switching, filters, XMLTV EPG, and recent channels. |
-| Tracking | Updated Trakt and Simkl authentication and synchronization flows. |
-| Library | Release calendar, clearer status handling, and refined navigation. |
+| Playback | Serialized Android libmpv playback, ExoPlayer sidecar subtitles, exact seeking, audio boost, custom subtitle styling, and safer surface recovery. |
+| Live TV | Robust M3U parsing, automatic compressed XMLTV EPG, channel matching, caching, favorites, filters, and recent channels. |
+| Tracking | Trakt and Simkl synchronization plus AniList and MyAnimeList anime tracking and editing. |
+| Profiles | Per-profile Enhanced settings, Discover choices, themes, backgrounds, playback preferences, and account isolation. |
+| Library | Release calendar, release radar, downloads, clearer status handling, and refined navigation. |
 | AI assistant | Gemini, OpenRouter, Cerebras, and Groq integrations with formatted responses. |
 | Community | Supporters, contributors, Ko-fi donations, and approved supporter avatars. |
-| UX | More consistent visuals, smoother transitions, and less flicker on dynamic screens. |
+| UX | Expandable biographies, episode ratings, landscape artwork, keyboard and DeX navigation, smoother transitions, and less flicker. |
 
 ## Roadmap
 
