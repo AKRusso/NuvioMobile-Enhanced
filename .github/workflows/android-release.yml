@@ -340,6 +340,9 @@ jobs:
             NUVIO_RELEASE_KEY_ALIAS
             NUVIO_RELEASE_KEY_PASSWORD
             SIMKL_CLIENT_ID
+            ANILIST_CLIENT_ID
+            MAL_CLIENT_ID
+            PREMIUMIZE_CLIENT_ID
           )
           for property_name in "${required_properties[@]}"; do
             property_value="${!property_name-}"

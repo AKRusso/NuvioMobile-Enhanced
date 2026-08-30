@@ -40,7 +40,7 @@ codebase while preserving the Enhanced experience and user settings.
 
 | Track | Version |
 | --- | --- |
-| Nuvio Enhanced | `0.4.12 (116)` |
+| Nuvio Enhanced | `0.4.13 (117)` |
 | Official NuvioMobile base | `0.4.11` |
 | Fork main branch | [`enhanced`](https://github.com/AKRusso/NuvioMobile-Enhanced/tree/enhanced) |
 | Maintainer | [AKRusso](https://github.com/AKRusso) |

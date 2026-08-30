@@ -3,6 +3,21 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.13 - 2026-08-30
+
+### Fixed
+
+- Restored AniList and MyAnimeList client configuration in public Android builds.
+- Added release validation for the AniList, MyAnimeList, Premiumize, and Simkl
+  Client IDs so a build cannot be published with those integrations disabled.
+
+Enhanced settings remain preserved when updating from an earlier release.
+
+### Release
+
+- This hotfix is based on official NuvioMobile `0.4.11` and is versioned
+  independently as Nuvio Enhanced `0.4.13 (117)`.
+
 ## 0.4.12 - 2026-08-30
 
 A special thank you for the most recent donation. Your support has helped greatly
