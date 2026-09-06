@@ -15,6 +15,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +114,7 @@ private fun ProductionChip(
     logoHeight: androidx.compose.ui.unit.Dp,
     onClick: (() -> Unit)? = null,
 ) {
+    var logoLoadError by remember(item.logo) { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
@@ -122,7 +127,7 @@ private fun ProductionChip(
             .height(chipHeight),
         contentAlignment = Alignment.Center,
     ) {
-        if (!item.logo.isNullOrBlank()) {
+        if (!item.logo.isNullOrBlank() && !logoLoadError) {
             AsyncImage(
                 model = item.logo,
                 contentDescription = item.name,
@@ -130,6 +135,7 @@ private fun ProductionChip(
                     .width(logoWidth)
                     .height(logoHeight),
                 contentScale = ContentScale.Fit,
+                onError = { logoLoadError = true },
             )
         } else {
             Text(

@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -153,7 +154,8 @@ private fun NuvioEnhancedSettingsPageContent(
         settings.isNew(NuvioEnhancedFeature.PersistentEpisodeShuffle) ||
         settings.isNew(NuvioEnhancedFeature.HeroControlsV2) ||
         settings.isNew(NuvioEnhancedFeature.DetailPresentationControlsV2) ||
-        settings.isNew(NuvioEnhancedFeature.NuvioRead)
+        settings.isNew(NuvioEnhancedFeature.NuvioRead) ||
+        settings.isNew(NuvioEnhancedFeature.CinematicDetailHeader)
     var selectedCategory by rememberSaveable {
         mutableStateOf(
             if (hasNewFeatures) {
@@ -170,6 +172,7 @@ private fun NuvioEnhancedSettingsPageContent(
     val backupImportFailedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_import_failed)
     val backupCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_backup_copied)
     val crashCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_crash_copied)
+    val diagnosticsCopiedMessage = stringResource(Res.string.nuvio_enhanced_toast_diagnostics_copied)
     val externalFolderFailedMessage = stringResource(Res.string.nuvio_enhanced_external_folder_failed)
     val homeHeroVideoPreviewSupported = AppFeaturePolicy.heroTrailerPlaybackSupported &&
         AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
@@ -204,6 +207,8 @@ private fun NuvioEnhancedSettingsPageContent(
     Column(
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.nuvio.spacing.listGap),
     ) {
+        DonationSupportCard()
+
         SettingsSection(
             title = stringResource(Res.string.settings_nuvio_enhanced_title),
             isTablet = isTablet,
@@ -832,6 +837,44 @@ private fun NuvioEnhancedSettingsPageContent(
                 isTablet = isTablet,
             ) {
                 SettingsGroup(isTablet = isTablet) {
+                    if (selectedCategory != EnhancedSettingsCategory.New || isNew(NuvioEnhancedFeature.CinematicDetailHeader)) {
+                        SettingsSwitchRow(
+                            title = stringResource(Res.string.nuvio_enhanced_cinematic_detail_header_title),
+                            description = stringResource(Res.string.nuvio_enhanced_cinematic_detail_header_desc),
+                            checked = settings.cinematicDetailHeaderEnabled,
+                            isTablet = isTablet,
+                            highlighted = isNew(NuvioEnhancedFeature.CinematicDetailHeader),
+                            onCheckedChange = {
+                                markSeen(NuvioEnhancedFeature.CinematicDetailHeader)
+                                NuvioEnhancedSettingsRepository.setCinematicDetailHeaderEnabled(it)
+                            },
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                        EnhancedChoiceRow(
+                            title = stringResource(Res.string.nuvio_enhanced_cinematic_header_content_title),
+                            description = stringResource(Res.string.nuvio_enhanced_cinematic_header_content_desc),
+                            selected = settings.cinematicHeaderContentMode,
+                            options = listOf(
+                                EnhancedChoiceOption(
+                                    CinematicHeaderContentMode.Productions,
+                                    stringResource(Res.string.nuvio_enhanced_cinematic_header_content_productions),
+                                ),
+                                EnhancedChoiceOption(
+                                    CinematicHeaderContentMode.WhereToWatch,
+                                    stringResource(Res.string.nuvio_enhanced_cinematic_header_content_where_to_watch),
+                                ),
+                                EnhancedChoiceOption(
+                                    CinematicHeaderContentMode.Hidden,
+                                    stringResource(Res.string.nuvio_enhanced_cinematic_header_content_hidden),
+                                ),
+                            ),
+                            isTablet = isTablet,
+                            enabled = settings.cinematicDetailHeaderEnabled,
+                            highlighted = false,
+                            onSelected = NuvioEnhancedSettingsRepository::setCinematicHeaderContentMode,
+                        )
+                        SettingsGroupDivider(isTablet = isTablet)
+                    }
                     if (selectedCategory != EnhancedSettingsCategory.New || isNew(NuvioEnhancedFeature.NuvioRead)) {
                         SettingsSwitchRow(
                             title = stringResource(Res.string.nuvio_enhanced_nuvio_read_title),
@@ -972,6 +1015,19 @@ private fun NuvioEnhancedSettingsPageContent(
                         onCheckedChange = {
                             markSeen(NuvioEnhancedFeature.DetailExperienceControls)
                             MetaScreenSettingsRepository.setHeroTrailerPlayback(it)
+                        },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsSwitchRow(
+                        title = stringResource(Res.string.settings_meta_hero_trailer_sound),
+                        description = stringResource(Res.string.settings_meta_hero_trailer_sound_description),
+                        checked = detailSettings.heroTrailerSoundEnabled,
+                        enabled = detailSettings.heroTrailerPlayback,
+                        isTablet = isTablet,
+                        highlighted = isNew(NuvioEnhancedFeature.DetailExperienceControls),
+                        onCheckedChange = {
+                            markSeen(NuvioEnhancedFeature.DetailExperienceControls)
+                            MetaScreenSettingsRepository.setHeroTrailerSoundEnabled(it)
                         },
                     )
                     SettingsGroupDivider(isTablet = isTablet)
@@ -1172,14 +1228,23 @@ private fun NuvioEnhancedSettingsPageContent(
             ) {
                 SettingsGroup(isTablet = isTablet) {
                     SettingsNavigationRow(
+                        title = stringResource(Res.string.nuvio_enhanced_copy_diagnostics_title),
+                        description = stringResource(Res.string.nuvio_enhanced_copy_diagnostics_desc),
+                        icon = Icons.Rounded.ContentCopy,
+                        isTablet = isTablet,
+                        onClick = {
+                            clipboardManager.setText(AnnotatedString(CrashDiagnostics.currentReport()))
+                            NuvioToastController.show(diagnosticsCopiedMessage)
+                        },
+                    )
+                    SettingsGroupDivider(isTablet = isTablet)
+                    SettingsNavigationRow(
                         title = stringResource(Res.string.nuvio_enhanced_copy_last_crash_title),
-                        description = stringResource(
-                            if (lastCrashReport == null) {
-                                Res.string.nuvio_enhanced_copy_last_crash_empty_desc
-                            } else {
-                                Res.string.nuvio_enhanced_copy_last_crash_desc
-                            },
-                        ),
+                        description = lastCrashReport?.let { report ->
+                            listOf(report.contextSummary, report.summary)
+                                .filter(String::isNotBlank)
+                                .joinToString("\n")
+                        } ?: stringResource(Res.string.nuvio_enhanced_copy_last_crash_empty_desc),
                         icon = Icons.Rounded.ContentCopy,
                         enabled = lastCrashReport != null,
                         isTablet = isTablet,
@@ -1192,6 +1257,7 @@ private fun NuvioEnhancedSettingsPageContent(
                 }
             }
         }
+
         }
     }
 
@@ -1583,10 +1649,12 @@ private fun EnhancedSettingsCategoryBar(
         shape = tokens.shapes.compactCard,
         border = BorderStroke(tokens.borders.hairline, tokens.colors.borderSubtle),
     ) {
-        FlowRow(
-            modifier = Modifier.padding(10.dp),
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             categories.forEach { (category, label) ->
                 val isSelected = selected == category

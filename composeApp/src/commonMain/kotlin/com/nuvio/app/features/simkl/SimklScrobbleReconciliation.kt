@@ -110,6 +110,12 @@ private fun SimklLibraryEntry.withWatchedEpisode(
     val update = seasons.withWatchedEpisode(target, committedAt)
     return copy(
         lastWatchedAt = committedAt,
+        status = when (status) {
+            null,
+            SimklListStatus.PLAN_TO_WATCH,
+            -> SimklListStatus.WATCHING
+            else -> status
+        },
         watchedEpisodesCount = watchedEpisodesCount + if (update.wasAlreadyWatched) 0 else 1,
         show = result.media.mergeMissing(media),
         movie = null,

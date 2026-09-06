@@ -152,7 +152,11 @@ internal class SimklMutationService(
                 method = SimklHttpMethod.POST,
                 path = "/scrobble/${action.wireValue}",
                 body = buildSimklScrobbleBody(event, json),
-                retryPolicy = SimklRetryPolicy.NEVER,
+                retryPolicy = if (action == TrackingScrobbleAction.START) {
+                    SimklRetryPolicy.NEVER
+                } else {
+                    SimklRetryPolicy.TRANSIENT_FAILURES
+                },
                 scrobbleStopConflictIsSuccess = action == TrackingScrobbleAction.STOP,
             ),
         )
@@ -272,8 +276,10 @@ object SimklMutationRepository : TrackingListWriter, TrackingHistoryWriter, Trac
                 media = enriched.resolveAnimeEpisodeForSimkl(),
             ),
         )
+        if (!isActiveProfile(profileId)) return
         if (action != TrackingScrobbleAction.START) {
             SimklSyncRepository.commitScrobble(result)
+            SimklProgressRepository.reconcileTerminalScrobble(result, event)
         }
     }
 

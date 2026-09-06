@@ -164,6 +164,12 @@ internal fun shouldReplaceProgressSnapshotEntry(
     if (existingInProgress != candidateInProgress) {
         val inProgressEntry = if (candidateInProgress) normalizedCandidate else normalizedExisting
         val completedEntry = if (candidateInProgress) normalizedExisting else normalizedCandidate
+        val newerLocalCompletionWins =
+            completedEntry.source == WatchProgressSourceLocal &&
+                completedEntry.videoId == inProgressEntry.videoId &&
+                completedEntry.lastUpdatedEpochMs > inProgressEntry.lastUpdatedEpochMs
+        if (newerLocalCompletionWins) return !candidateInProgress
+
         val inProgressIsCurrentEnough =
             inProgressEntry.lastUpdatedEpochMs >= completedEntry.lastUpdatedEpochMs - WatchProgressSnapshotConflictToleranceMs
         return if (candidateInProgress) inProgressIsCurrentEnough else !inProgressIsCurrentEnough

@@ -11,6 +11,22 @@ import kotlin.test.assertTrue
 
 class SimklRefreshPolicyTest {
     @Test
+    fun `forced and source changed progress refreshes bypass automatic freshness`() {
+        assertEquals(
+            TrackingRefreshIntent.INVALIDATED,
+            resolveSimklProgressRefreshIntent(force = true, sourceChanged = false),
+        )
+        assertEquals(
+            TrackingRefreshIntent.INVALIDATED,
+            resolveSimklProgressRefreshIntent(force = false, sourceChanged = true),
+        )
+        assertEquals(
+            TrackingRefreshIntent.AUTOMATIC,
+            resolveSimklProgressRefreshIntent(force = false, sourceChanged = false),
+        )
+    }
+
+    @Test
     fun `startup refresh paths share automatic freshness`() {
         assertEquals(
             TrackingRefreshIntent.AUTOMATIC,

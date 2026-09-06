@@ -267,6 +267,26 @@ internal fun settingsSearchEntries(
         category = enhancedCategory,
         icon = Icons.Rounded.AutoAwesome,
     )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "cinematic-detail-header",
+        title = stringResource(Res.string.nuvio_enhanced_cinematic_detail_header_title),
+        description = stringResource(Res.string.nuvio_enhanced_cinematic_detail_header_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_detail_presentation_title),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "cinematic-header-content",
+        title = stringResource(Res.string.nuvio_enhanced_cinematic_header_content_title),
+        description = stringResource(Res.string.nuvio_enhanced_cinematic_header_content_desc),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_detail_presentation_title),
+        category = enhancedCategory,
+        icon = Icons.Rounded.AutoAwesome,
+    )
     if (supportersContributorsPageEnabled) {
         addPage(
             page = SettingsPage.SupportersContributors,
@@ -277,6 +297,16 @@ internal fun settingsSearchEntries(
             icon = Icons.Rounded.Favorite,
         )
     }
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "support-nuvio-enhanced",
+        title = stringResource(Res.string.support_nuvio_title),
+        description = stringResource(Res.string.support_nuvio_description),
+        pageLabel = nuvioEnhancedPage,
+        section = enhancedCategory,
+        category = enhancedCategory,
+        icon = Icons.Rounded.Favorite,
+    )
     addPage(
         page = SettingsPage.LicensesAttributions,
         key = "licenses-attributions",
@@ -506,6 +536,16 @@ internal fun settingsSearchEntries(
         key = "hero-trailer-playback",
         title = stringResource(Res.string.settings_meta_hero_trailer_playback),
         description = stringResource(Res.string.settings_meta_hero_trailer_playback_description),
+        pageLabel = nuvioEnhancedPage,
+        section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
+        category = enhancedCategory,
+        icon = Icons.Rounded.PlayArrow,
+    )
+    addRow(
+        page = SettingsPage.NuvioEnhanced,
+        key = "hero-trailer-sound",
+        title = stringResource(Res.string.settings_meta_hero_trailer_sound),
+        description = stringResource(Res.string.settings_meta_hero_trailer_sound_description),
         pageLabel = nuvioEnhancedPage,
         section = stringResource(Res.string.nuvio_enhanced_section_details_experience),
         category = enhancedCategory,

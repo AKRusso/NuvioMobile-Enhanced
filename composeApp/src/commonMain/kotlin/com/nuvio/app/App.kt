@@ -101,6 +101,8 @@ import com.nuvio.app.core.auth.AuthState
 import com.nuvio.app.core.auth.DeviceSessionRegistration
 import com.nuvio.app.core.deeplink.AppDeepLink
 import com.nuvio.app.core.deeplink.AppDeepLinkRepository
+import com.nuvio.app.core.diagnostics.DiagnosticArea
+import com.nuvio.app.core.diagnostics.RuntimeDiagnostics
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.sync.AppForegroundMonitor
@@ -128,11 +130,11 @@ import com.nuvio.app.core.ui.configurePlatformImageLoader
 import com.nuvio.app.core.ui.NuvioToastHost
 import com.nuvio.app.core.ui.NuvioToastController
 import com.nuvio.app.core.ui.NuvioFloatingPrompt
-import com.nuvio.app.core.ui.ProfileMeshBackground
 import com.nuvio.app.core.ui.TrackingListPickerDialog
 import com.nuvio.app.core.ui.NuvioTheme
 import com.nuvio.app.core.ui.NuvioKeyboardInputProvider
 import com.nuvio.app.core.ui.nuvioExcludeFromKeyboardFocus
+import com.nuvio.app.core.ui.nuvioConsumePointerEvents
 import com.nuvio.app.core.ui.nuvioKeyboardFocusIndicator
 import com.nuvio.app.core.ui.nuvioRestoreLastContentFocusOnDown
 import com.nuvio.app.core.ui.nuvioRestoreLastContentFocusOnRight
@@ -143,6 +145,7 @@ import com.nuvio.app.core.ui.NativeNavigationTab
 import com.nuvio.app.core.ui.NativeTabBridge
 import com.nuvio.app.core.ui.isLiquidGlassNativeTabBarSupported
 import com.nuvio.app.core.ui.localizedContinueWatchingSubtitle
+import com.nuvio.app.core.ui.appTheme
 import com.nuvio.app.core.ui.nuvio
 import com.nuvio.app.core.ui.TvLayoutProfile
 import com.nuvio.app.core.ui.isTvLayoutProfileEnabled
@@ -210,14 +213,17 @@ import com.nuvio.app.features.player.SubtitleLanguageOption
 import com.nuvio.app.features.player.sanitizePlaybackHeaders
 import com.nuvio.app.features.player.sanitizePlaybackResponseHeaders
 import com.nuvio.app.features.profiles.AvatarRepository
+import com.nuvio.app.features.profiles.DefaultProfileBackgroundResource
 import com.nuvio.app.features.profiles.NativeProfileSwitcherPopup
 import com.nuvio.app.features.profiles.NuvioProfile
 import com.nuvio.app.features.profiles.ProfileEditScreen
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.profiles.ProfileRemoteBackgroundImage
 import com.nuvio.app.features.profiles.ProfileSelectionScreen
 import com.nuvio.app.features.profiles.ProfileSwitcherTab
-import com.nuvio.app.features.profiles.parseHexColor
+import com.nuvio.app.features.profiles.effectiveProfileBackground
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
+import com.nuvio.app.features.details.resolveCachedEpisodeVideoId
 import com.nuvio.app.features.search.SearchScreen
 import com.nuvio.app.features.settings.SettingsScreen
 import com.nuvio.app.features.settings.SettingsPage
@@ -228,6 +234,7 @@ import com.nuvio.app.features.settings.AddonsSettingsScreen
 import com.nuvio.app.features.settings.PluginsSettingsScreen
 import com.nuvio.app.features.settings.AccountSettingsScreen
 import com.nuvio.app.features.settings.AppBrandWordmark
+import com.nuvio.app.features.settings.MemberBrandWordmark
 import com.nuvio.app.features.settings.SupportersContributorsSettingsScreen
 import com.nuvio.app.features.settings.LicensesAttributionsSettingsScreen
 import com.nuvio.app.features.settings.NavBarStyle
@@ -275,6 +282,7 @@ import com.nuvio.app.features.watchprogress.nextUpDismissKey
 import com.nuvio.app.features.watchprogress.toContinueWatchingItem
 import com.nuvio.app.features.watching.application.WatchingActions
 import com.nuvio.app.features.watching.application.WatchingState
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -895,9 +903,8 @@ private fun MainAppContent(
             }
         }
         val profileState by ProfileRepository.state.collectAsStateWithLifecycle()
-        val launchOverlayProfileColor = remember(profileState.activeProfile, profileState.profiles) {
-            val sourceProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
-            sourceProfile?.avatarColorHex?.let(::parseHexColor) ?: Color(0xFF1E88E5)
+        val launchOverlayProfile = remember(profileState.activeProfile, profileState.profiles) {
+            profileState.activeProfile ?: profileState.profiles.firstOrNull()
         }
     val playerSettingsUiState by remember {
         PlayerSettingsRepository.ensureLoaded()
@@ -956,7 +963,10 @@ private fun MainAppContent(
     LaunchedEffect(enhancedSettingsUiState.statusBarVisible) {
         AppSystemUiController.setStatusBarVisible(enhancedSettingsUiState.statusBarVisible)
     }
-    var initialHomeReady by rememberSaveable(ownsAppRuntime) {
+    var initialHomeReady by rememberSaveable(
+        ownsAppRuntime,
+        profileState.activeProfile?.profileIndex,
+    ) {
         mutableStateOf(!ownsAppRuntime)
     }
     var offlineLaunchRouteHandled by rememberSaveable { mutableStateOf(false) }
@@ -1064,6 +1074,18 @@ private fun MainAppContent(
 
     var profileSwitchLoading by remember { mutableStateOf(false) }
 
+    LaunchedEffect(profileState.activeProfile?.profileIndex) {
+        if (!ownsAppRuntime) return@LaunchedEffect
+        delay(5_000)
+        initialHomeReady = true
+    }
+
+    LaunchedEffect(profileSwitchLoading) {
+        if (!profileSwitchLoading) return@LaunchedEffect
+        delay(1_200)
+        profileSwitchLoading = false
+    }
+
     LaunchedEffect(
         liquidGlassNativeTabBarSupported,
         liquidGlassNativeTabBarEnabled,
@@ -1083,11 +1105,17 @@ private fun MainAppContent(
     }
     val launchOverlayState = remember(ownsAppRuntime) {
         MutableTransitionState(
-            ownsAppRuntime && (!initialHomeReady || profileSwitchLoading),
+            ownsAppRuntime && (
+                !initialHomeReady ||
+                    profileSwitchLoading
+                ),
         )
     }
     launchOverlayState.targetState =
-        ownsAppRuntime && (!initialHomeReady || profileSwitchLoading)
+        ownsAppRuntime && (
+            !initialHomeReady ||
+                profileSwitchLoading
+            )
 
     LaunchedEffect(
         launchOverlayState.targetState,
@@ -1360,7 +1388,9 @@ private fun MainAppContent(
         }
     }
 
-    LaunchedEffect(currentRoute) {
+    LaunchedEffect(currentRoute, networkStatusUiState.condition) {
+        RuntimeDiagnostics.updateArea(currentRoute.toDiagnosticArea())
+        RuntimeDiagnostics.updateNetwork(networkStatusUiState.condition.name)
         val inPlaybackFlow = currentRoute is StreamRoute || currentRoute is PlayerRoute
         if (inPlaybackFlow) {
             resumePromptItem = null
@@ -1374,7 +1404,7 @@ private fun MainAppContent(
                     is AppDeepLink.Meta -> {
                         activateTab(AppScreenTab.Home)
                         val routeTitle = runCatching {
-                            MetaDetailsRepository.fetch(deepLink.type, deepLink.id)?.name
+                            MetaDetailsRepository.fetchBase(deepLink.type, deepLink.id)?.name
                         }.getOrNull().orEmpty().ifBlank { detailsFallbackTitle }
                         navController.navigate(
                             DetailRoute(
@@ -2045,7 +2075,10 @@ private fun MainAppContent(
                         } else if (useNativeNavigation) {
                             useNativeTabBar
                         } else {
-                            liquidGlassNativeTabBarSupported && liquidGlassNativeTabBarEnabled && initialHomeReady
+                            liquidGlassNativeTabBarSupported &&
+                                liquidGlassNativeTabBarEnabled &&
+                                initialHomeReady &&
+                                !profileSwitchLoading
                         }
                         val tabsRouteActive = currentRoute is TabsRoute
                         val navBarScrollState = rememberNuvioNavBarScrollState()
@@ -2053,11 +2086,14 @@ private fun MainAppContent(
                         val navBarStyleSetting by remember { ThemeSettingsRepository.navBarStyle }.collectAsStateWithLifecycle()
                         val onProfileSelected: (NuvioProfile) -> Unit = { profile ->
                             nativeProfileSwitcherVisible = false
-                            profileSwitchLoading = true
-                            NativeTabBridge.publishTabBarVisible(false)
                             activateTab(AppScreenTab.Home)
-                            ProfileRepository.selectProfile(profile.profileIndex)
-                            com.nuvio.app.core.sync.SyncManager.pullAllForProfile(profile.profileIndex)
+                            if (profile.profileIndex != profileState.activeProfile?.profileIndex) {
+                                initialHomeReady = false
+                                profileSwitchLoading = true
+                                NativeTabBridge.publishTabBarVisible(false)
+                                ProfileRepository.selectProfile(profile.profileIndex)
+                                SyncManager.pullAllForProfile(profile.profileIndex)
+                            }
                         }
 
                         CompositionLocalProvider(
@@ -2067,7 +2103,7 @@ private fun MainAppContent(
                         Scaffold(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .alpha(if (initialHomeReady) 1f else 0f),
+                                .alpha(if (launchOverlayState.targetState) 0f else 1f),
                             containerColor = Color.Transparent,
                             contentWindowInsets = WindowInsets(0),
                             bottomBar = {
@@ -2278,7 +2314,10 @@ private fun MainAppContent(
                                         onRequestedSettingsPageConsumed = {
                                             requestedSettingsPageName = null
                                         },
-                                        onInitialHomeContentRendered = { initialHomeReady = true },
+                                        onInitialHomeContentRendered = {
+                                            initialHomeReady = true
+                                            profileSwitchLoading = false
+                                        },
                                     )
                                 }
 
@@ -2542,13 +2581,28 @@ private fun MainAppContent(
                         launch.parentMetaId != null &&
                             launch.seasonNumber != null &&
                             launch.episodeNumber != null
+                    val cachedEpisodeVideoId = remember(
+                        launch.parentMetaId,
+                        launch.parentMetaType,
+                        launch.type,
+                        launch.seasonNumber,
+                        launch.episodeNumber,
+                    ) {
+                        val metaId = launch.parentMetaId ?: return@remember null
+                        val metaType = launch.parentMetaType ?: launch.type
+                        resolveCachedEpisodeVideoId(
+                            meta = MetaDetailsRepository.peek(metaType, metaId),
+                            season = launch.seasonNumber,
+                            episode = launch.episodeNumber,
+                        )
+                    }
                     var effectiveVideoId by rememberSaveable(
                         launch.videoId,
                         launch.parentMetaId,
                         launch.seasonNumber,
                         launch.episodeNumber,
                     ) {
-                        mutableStateOf(launch.videoId)
+                        mutableStateOf(cachedEpisodeVideoId ?: launch.videoId)
                     }
                     var hasResolvedVideoId by rememberSaveable(
                         launch.videoId,
@@ -2556,7 +2610,7 @@ private fun MainAppContent(
                         launch.seasonNumber,
                         launch.episodeNumber,
                     ) {
-                        mutableStateOf(!shouldResolveEpisodeVideoId)
+                        mutableStateOf(!shouldResolveEpisodeVideoId || cachedEpisodeVideoId != null)
                     }
 
                     LaunchedEffect(
@@ -2567,17 +2621,29 @@ private fun MainAppContent(
                         launch.seasonNumber,
                         launch.episodeNumber,
                     ) {
-                        effectiveVideoId = launch.videoId
                         if (!shouldResolveEpisodeVideoId) {
+                            effectiveVideoId = launch.videoId
                             hasResolvedVideoId = true
                             return@LaunchedEffect
                         }
 
-                        hasResolvedVideoId = false
                         val metaType = launch.parentMetaType ?: launch.type
                         val metaId = launch.parentMetaId
+                        val cachedVideoId = resolveCachedEpisodeVideoId(
+                            meta = MetaDetailsRepository.peek(metaType, metaId),
+                            season = launch.seasonNumber,
+                            episode = launch.episodeNumber,
+                        )
+                        if (cachedVideoId != null) {
+                            effectiveVideoId = cachedVideoId
+                            hasResolvedVideoId = true
+                            return@LaunchedEffect
+                        }
+
+                        effectiveVideoId = launch.videoId
+                        hasResolvedVideoId = false
                         val resolvedVideoId = runCatching {
-                            MetaDetailsRepository.fetch(metaType, metaId)
+                            MetaDetailsRepository.fetchBase(metaType, metaId)
                         }.getOrNull()
                             ?.videos
                             ?.firstOrNull { video ->
@@ -3876,17 +3942,9 @@ private fun MainAppContent(
                 exit = fadeOut(androidx.compose.animation.core.tween(400)),
             ) {
                 AppLaunchOverlay(
-                    profileColor = launchOverlayProfileColor,
+                    profile = launchOverlayProfile,
                     modifier = Modifier.fillMaxSize(),
                 )
-            }
-
-            // Auto-dismiss profile switch overlay
-            if (profileSwitchLoading) {
-                LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(1200)
-                    profileSwitchLoading = false
-                }
             }
 
             NuvioFloatingPrompt(
@@ -4326,30 +4384,64 @@ private fun TabletTopPillItem(
 
 @Composable
 private fun AppLaunchOverlay(
-    profileColor: Color,
+    profile: NuvioProfile?,
     modifier: Modifier = Modifier,
 ) {
     val tokens = MaterialTheme.nuvio
+    val appTheme = MaterialTheme.appTheme
+    val effectiveBackground = remember(profile?.backgroundUrl, appTheme) {
+        effectiveProfileBackground(profile, appTheme)
+    }
     Box(
         modifier = modifier
-            .zIndex(NuvioTokens.Z.dialog),
+            .zIndex(NuvioTokens.Z.dialog)
+            .nuvioConsumePointerEvents(),
         contentAlignment = Alignment.Center,
     ) {
-        ProfileMeshBackground(
-            profileColor = profileColor,
+        PlatformBackHandler(enabled = true) { }
+        Image(
+            painter = painterResource(effectiveBackground.preset?.backgroundRes ?: DefaultProfileBackgroundResource),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        ProfileRemoteBackgroundImage(
+            imageUrl = effectiveBackground.customImageUrl,
+            profileIndex = profile?.profileIndex,
             modifier = Modifier.fillMaxSize(),
         )
+        if (effectiveBackground.customImageUrl != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.28f)),
+            )
+        }
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AppBrandWordmark(
-                contentDescription = stringResource(Res.string.app_brand_name),
-                modifier = Modifier
-                    .fillMaxWidth(0.48f)
-                    .height(44.dp),
+            MemberBrandWordmark(
+                height = 44.dp,
             )
             Spacer(modifier = Modifier.height(tokens.spacing.sectionGap))
             NuvioLoadingIndicator(color = tokens.colors.accent)
+            Spacer(modifier = Modifier.height(tokens.spacing.controlGap))
+            Text(
+                text = stringResource(Res.string.profile_loading_enhancing_experience),
+                style = MaterialTheme.typography.bodyLarge,
+                color = tokens.colors.textMuted,
+            )
         }
     }
+}
+
+private fun AppRoute?.toDiagnosticArea(): DiagnosticArea = when (this) {
+    null -> DiagnosticArea.Startup
+    is TabsRoute -> DiagnosticArea.Tabs
+    is DetailRoute, is PersonDetailRoute, is EntityBrowseRoute -> DiagnosticArea.Details
+    is StreamRoute -> DiagnosticArea.Streams
+    is PlayerRoute -> DiagnosticArea.Player
+    is CatalogRoute -> DiagnosticArea.Catalog
+    is SettingsDestinationRoute -> DiagnosticArea.Settings
+    else -> DiagnosticArea.Other
 }

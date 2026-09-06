@@ -32,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.app.core.build.AppVersionConfig
 import nuvio.composeapp.generated.resources.Res
-import nuvio.composeapp.generated.resources.action_donate
 import nuvio.composeapp.generated.resources.compose_about_nuvio_version_format
 import nuvio.composeapp.generated.resources.compose_about_version_format
 import nuvio.composeapp.generated.resources.compose_settings_page_account
@@ -59,7 +58,6 @@ import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_section
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_title
 import nuvio.composeapp.generated.resources.nuvio_enhanced_footer_discord
 import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_discord_description
-import nuvio.composeapp.generated.resources.settings_nuvio_enhanced_donate_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_description
 import nuvio.composeapp.generated.resources.compose_settings_root_profile_title
 import nuvio.composeapp.generated.resources.compose_settings_root_privacy_policy_description
@@ -176,18 +174,6 @@ internal fun LazyListScope.settingsRootContent(
                         icon = Icons.Rounded.People,
                         isTablet = isTablet,
                         onClick = { uriHandler.openUri(NuvioEnhancedDiscordUrl) },
-                    )
-                    SettingsGroupDivider(isTablet = isTablet)
-                    SettingsNavigationRow(
-                        title = stringResource(Res.string.action_donate),
-                        description = stringResource(Res.string.settings_nuvio_enhanced_donate_description),
-                        icon = Icons.Rounded.Favorite,
-                        isTablet = isTablet,
-                        onClick = {
-                            CommunityConfig.DONATIONS_DONATE_URL
-                                .takeIf(String::isNotBlank)
-                                ?.let(uriHandler::openUri)
-                        },
                     )
                 }
             }

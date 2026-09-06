@@ -70,6 +70,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -90,6 +92,7 @@ import kotlin.math.sin
 import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.compose_auth_already_have_account
+import nuvio.composeapp.generated.resources.compose_auth_brand_name
 import nuvio.composeapp.generated.resources.compose_auth_continue_without_account
 import nuvio.composeapp.generated.resources.compose_auth_create_account
 import nuvio.composeapp.generated.resources.compose_auth_dont_have_account
@@ -426,9 +429,8 @@ private fun AuthLargeLayout(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start,
         ) {
-            AppBrandWordmark(
-                contentDescription = null,
-                modifier = Modifier.height(60.dp * scale),
+            AuthBrandWordmark(
+                height = 60.dp * scale,
             )
             Spacer(modifier = Modifier.height(32.dp * scale))
             Text(
@@ -522,10 +524,7 @@ private fun AuthBrandLockup(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        AppBrandWordmark(
-            contentDescription = null,
-            modifier = Modifier.height(logoHeight),
-        )
+        AuthBrandWordmark(height = logoHeight)
         Spacer(modifier = Modifier.height(14.dp))
         Text(
             text = stringResource(Res.string.compose_auth_tagline),
@@ -535,6 +534,32 @@ private fun AuthBrandLockup(
                 lineHeight = 20.sp,
                 fontWeight = FontWeight.Normal,
             ),
+        )
+    }
+}
+
+@Composable
+private fun AuthBrandWordmark(
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val brandName = stringResource(Res.string.compose_auth_brand_name)
+    Row(
+        modifier = modifier
+            .height(height)
+            .semantics(mergeDescendants = true) { contentDescription = brandName },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        AppBrandWordmark(
+            contentDescription = null,
+            modifier = Modifier.height(height),
+        )
+        Spacer(modifier = Modifier.width(height * 0.16f))
+        Text(
+            text = "Enhanced",
+            color = AuthTextPrimary,
+            fontSize = (height.value * 0.34f).sp,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }

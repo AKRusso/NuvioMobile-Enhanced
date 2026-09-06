@@ -16,7 +16,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -255,7 +254,7 @@ class SimklMutationRepositoryTest {
     }
 
     @Test
-    fun `service leaves failed scrobble retry to the next player event`() = runBlocking {
+    fun `service retries a transient terminal scrobble failure`() = runBlocking {
         val engine = RecordingEngine(response(status = 503), response(status = 200))
         val service = SimklMutationService(
             client = SimklApiClient(
@@ -268,14 +267,13 @@ class SimklMutationRepositoryTest {
             ),
         )
 
-        assertFailsWith<SimklApiException> {
-            service.scrobble(
-                action = TrackingScrobbleAction.PAUSE,
-                event = TrackingScrobbleEvent(movie(), progressPercent = 45.0),
-            )
-        }
+        val result = service.scrobble(
+            action = TrackingScrobbleAction.PAUSE,
+            event = TrackingScrobbleEvent(movie(), progressPercent = 45.0),
+        )
 
-        assertEquals(listOf("/scrobble/pause"), engine.paths)
+        assertEquals(SimklScrobbleOutcome.PAUSE, result.outcome)
+        assertEquals(listOf("/scrobble/pause", "/scrobble/pause"), engine.paths)
     }
 
     @Test

@@ -387,6 +387,51 @@ class WatchProgressRulesTest {
     }
 
     @Test
+    fun `newer local completion wins incomplete optimistic entry within timestamp tolerance`() {
+        val incomplete = entry(
+            videoId = "show:1:4",
+            parentMetaId = "show",
+            seasonNumber = 1,
+            episodeNumber = 4,
+            lastUpdatedEpochMs = 2_000L,
+            progressPercent = 79f,
+            source = WatchProgressSourceLocal,
+        )
+        val localCompletion = incomplete.copy(
+            lastUpdatedEpochMs = 2_001L,
+            isCompleted = true,
+            progressPercent = 100f,
+            source = WatchProgressSourceLocal,
+        )
+
+        assertTrue(shouldReplaceProgressSnapshotEntry(existing = incomplete, candidate = localCompletion))
+        assertFalse(shouldReplaceProgressSnapshotEntry(existing = localCompletion, candidate = incomplete))
+    }
+
+    @Test
+    fun `local completion does not override newer incomplete playback`() {
+        val localCompletion = entry(
+            videoId = "show:1:4",
+            parentMetaId = "show",
+            seasonNumber = 1,
+            episodeNumber = 4,
+            lastUpdatedEpochMs = 2_000L,
+            isCompleted = true,
+            progressPercent = 100f,
+            source = WatchProgressSourceLocal,
+        )
+        val newerPlayback = localCompletion.copy(
+            lastUpdatedEpochMs = 2_001L,
+            isCompleted = false,
+            progressPercent = 25f,
+            source = WatchProgressSourceTraktPlayback,
+        )
+
+        assertTrue(shouldReplaceProgressSnapshotEntry(existing = localCompletion, candidate = newerPlayback))
+        assertFalse(shouldReplaceProgressSnapshotEntry(existing = newerPlayback, candidate = localCompletion))
+    }
+
+    @Test
     fun `completed progress does not cascade when provider owns watched projection`() {
         val completed = entry(
             videoId = "movie-complete",

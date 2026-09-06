@@ -7,6 +7,7 @@ import com.nuvio.app.features.tracking.TrackingProviderId
 import com.nuvio.app.features.tracking.TrackingProgressProvider
 import com.nuvio.app.features.tracking.TrackingProgressSnapshot
 import com.nuvio.app.features.tracking.TrackingRefreshIntent
+import com.nuvio.app.features.tracking.TrackingScrobbleEvent
 import com.nuvio.app.features.tracking.TrackingWatchedProvider
 import com.nuvio.app.features.tracking.TrackingWatchedSnapshot
 import com.nuvio.app.features.watched.WatchedItem
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 object SimklWatchedSyncAdapter : TrackingWatchedProvider {
@@ -146,6 +148,7 @@ object SimklProgressRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val _uiState = MutableStateFlow(SimklProgressUiState())
     val uiState: StateFlow<SimklProgressUiState> = _uiState.asStateFlow()
+    private val optimisticEntries = MutableStateFlow<Map<String, WatchProgressEntry>>(emptyMap())
 
     init {
         scope.launch {
@@ -159,6 +162,16 @@ object SimklProgressRepository {
         publish(SimklSyncRepository.state.value)
     }
 
+    fun onProfileChanged() {
+        optimisticEntries.value = emptyMap()
+        ensureLoaded()
+    }
+
+    fun clearLocalState() {
+        optimisticEntries.value = emptyMap()
+        _uiState.value = SimklProgressUiState()
+    }
+
     suspend fun refresh(intent: TrackingRefreshIntent) {
         SimklSyncRepository.refresh(
             intent = intent,
@@ -168,6 +181,7 @@ object SimklProgressRepository {
     }
 
     suspend fun removeProgress(entries: Collection<WatchProgressEntry>) {
+        applyOptimisticRemoval(entries)
         val sessionIds = entries.mapNotNullTo(linkedSetOf()) { entry ->
             entry.progressKey
                 ?.removePrefix(SIMKL_PLAYBACK_PROGRESS_KEY_PREFIX)
@@ -200,9 +214,52 @@ object SimklProgressRepository {
         SimklSyncRepository.commitPlaybackRemoval(removed)
     }
 
+    fun applyOptimisticRemoval(entries: Collection<WatchProgressEntry>) {
+        val keys = entries.mapTo(mutableSetOf(), WatchProgressEntry::simklProgressIdentityKey)
+        if (keys.isEmpty()) return
+        optimisticEntries.update { current -> current.filterKeys { key -> key !in keys } }
+        publish(SimklSyncRepository.state.value)
+    }
+
+    fun applyOptimisticProgress(entry: WatchProgressEntry) {
+        val key = entry.simklProgressIdentityKey()
+        optimisticEntries.update { current ->
+            val existing = current[key]
+            if (existing != null && existing.lastUpdatedEpochMs > entry.lastUpdatedEpochMs) {
+                current
+            } else {
+                current + (key to entry)
+            }
+        }
+        publish(SimklSyncRepository.state.value)
+    }
+
+    internal fun reconcileTerminalScrobble(result: SimklScrobbleResult, event: TrackingScrobbleEvent) {
+        val contentIds = buildSet {
+            addAll(result.media.allContentIdsForOptimisticReconciliation())
+            event.media.catalog?.contentId?.trim()?.takeIf(String::isNotBlank)?.let(::add)
+        }
+        val episodeCoordinates = buildSet {
+            result.episode?.let { episode -> add(episode.season to episode.number) }
+            event.media.episode?.let { episode -> add(episode.season to episode.number) }
+        }
+        optimisticEntries.update { current ->
+            current.filterValues { entry ->
+                val sameContent = entry.parentMetaId in contentIds
+                val sameEpisode = episodeCoordinates.isEmpty() ||
+                    (entry.seasonNumber to entry.episodeNumber) in episodeCoordinates
+                !sameContent || !sameEpisode
+            }
+        }
+        publish(SimklSyncRepository.state.value)
+    }
+
     private fun publish(syncState: SimklSyncUiState) {
         _uiState.value = SimklProgressUiState(
-            entries = syncState.snapshot.toSimklProgressEntries(),
+            entries = mergeSimklOptimisticProgress(
+                providerEntries = syncState.snapshot.toSimklProgressEntries(),
+                optimisticEntries = optimisticEntries.value.values,
+            ),
             isLoading = syncState.isLoading,
             hasLoadedRemoteProgress = syncState.hasLoaded && syncState.errorMessage == null,
             errorMessage = syncState.errorMessage,
@@ -216,10 +273,12 @@ object SimklTrackingProgressProvider : TrackingProgressProvider {
 
     override fun ensureLoaded() = SimklProgressRepository.ensureLoaded()
 
-    override fun onProfileChanged() = SimklProgressRepository.ensureLoaded()
+    override fun onProfileChanged() = SimklProgressRepository.onProfileChanged()
+
+    override fun clearLocalState() = SimklProgressRepository.clearLocalState()
 
     override suspend fun refresh(force: Boolean, sourceChanged: Boolean) =
-        SimklProgressRepository.refresh(simklProgressRefreshIntent)
+        SimklProgressRepository.refresh(resolveSimklProgressRefreshIntent(force, sourceChanged))
 
     override fun snapshot(): TrackingProgressSnapshot {
         val state = SimklProgressRepository.uiState.value
@@ -235,6 +294,12 @@ object SimklTrackingProgressProvider : TrackingProgressProvider {
     override suspend fun removeProgress(entries: Collection<WatchProgressEntry>) =
         SimklProgressRepository.removeProgress(entries)
 
+    override fun applyOptimisticRemoval(entries: Collection<WatchProgressEntry>) =
+        SimklProgressRepository.applyOptimisticRemoval(entries)
+
+    override fun applyOptimisticProgress(entry: WatchProgressEntry) =
+        SimklProgressRepository.applyOptimisticProgress(entry)
+
     override fun isHiddenFromProgress(contentId: String): Boolean =
         SimklSyncRepository.state.value.snapshot.isHiddenFromContinueWatching(contentId)
 
@@ -243,6 +308,39 @@ object SimklTrackingProgressProvider : TrackingProgressProvider {
         val resolvedId = snapshot.resolveCanonicalContentId(parentContentId)
         return resolvedId ?: parentContentId
     }
+
+    override suspend fun refreshEpisodeProgress(contentId: String, forceRefresh: Boolean) =
+        SimklProgressRepository.refresh(
+            resolveSimklProgressRefreshIntent(force = forceRefresh, sourceChanged = false),
+        )
+}
+
+internal fun mergeSimklOptimisticProgress(
+    providerEntries: Collection<WatchProgressEntry>,
+    optimisticEntries: Collection<WatchProgressEntry>,
+): List<WatchProgressEntry> = (providerEntries + optimisticEntries)
+    .groupBy(WatchProgressEntry::simklProgressIdentityKey)
+    .mapNotNull { (_, candidates) -> candidates.maxByOrNull(WatchProgressEntry::lastUpdatedEpochMs) }
+    .sortedByDescending(WatchProgressEntry::lastUpdatedEpochMs)
+
+private fun WatchProgressEntry.simklProgressIdentityKey(): String = if (seasonNumber != null && episodeNumber != null) {
+    "${parentMetaType.simklProgressTypeKey()}:${parentMetaId.trim()}:$seasonNumber:$episodeNumber"
+} else {
+    "${parentMetaType.simklProgressTypeKey()}:${parentMetaId.trim()}:${videoId.trim()}"
+}
+
+private fun String.simklProgressTypeKey(): String = when (trim().lowercase()) {
+    "series", "show", "tv", "tvshow" -> "series"
+    "movie", "film" -> "movie"
+    else -> trim().lowercase()
+}
+
+private fun SimklMedia.allContentIdsForOptimisticReconciliation(): Set<String> = buildSet {
+    ids.idValue("imdb")?.let(::add)
+    listOf("tmdb", "tvdb", "mal", "anidb", "anilist", "kitsu").forEach { type ->
+        ids.idValue(type)?.let { id -> add("$type:$id") }
+    }
+    ids.simklIdValue()?.let { id -> add("simkl:$id") }
 }
 
 private const val SIMKL_PLAYBACK_PROGRESS_KEY_PREFIX = "simkl-playback:"

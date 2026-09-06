@@ -11,6 +11,15 @@ internal const val SIMKL_AUTOMATIC_REFRESH_INTERVAL_MS =
 internal val simklConnectionRefreshIntent = TrackingRefreshIntent.AUTOMATIC
 internal val simklProgressRefreshIntent = TrackingRefreshIntent.AUTOMATIC
 
+internal fun resolveSimklProgressRefreshIntent(
+    force: Boolean,
+    sourceChanged: Boolean,
+): TrackingRefreshIntent = if (force || sourceChanged) {
+    TrackingRefreshIntent.INVALIDATED
+} else {
+    simklProgressRefreshIntent
+}
+
 internal fun shouldRunSimklRefresh(
     intent: TrackingRefreshIntent,
     lastCheckedAtEpochMs: Long?,

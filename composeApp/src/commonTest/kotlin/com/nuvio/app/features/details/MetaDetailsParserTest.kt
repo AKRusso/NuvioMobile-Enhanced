@@ -129,4 +129,31 @@ class MetaDetailsParserTest {
         assertEquals(null, result.videos[0].rating)
         assertEquals(null, result.videos[1].rating)
     }
+
+    @Test
+    fun `parse preserves addon production and network logos`() {
+        val result = MetaDetailsParser.parse(
+            """
+            {
+              "meta": {
+                "id": "show",
+                "type": "series",
+                "name": "Show",
+                "production_companies": [
+                  { "id": 420, "name": "Studio", "logo_path": "/studio.png" }
+                ],
+                "networks": [
+                  { "tmdbId": 213, "name": "Netflix", "logo": "https://example.com/netflix.png" }
+                ]
+              }
+            }
+            """.trimIndent(),
+        )
+
+        assertEquals("https://image.tmdb.org/t/p/w300/studio.png", result.productionCompanies.single().logo)
+        assertEquals(420, result.productionCompanies.single().tmdbId)
+        assertEquals("Netflix", result.networks.single().name)
+        assertEquals("https://example.com/netflix.png", result.networks.single().logo)
+        assertEquals(213, result.networks.single().tmdbId)
+    }
 }

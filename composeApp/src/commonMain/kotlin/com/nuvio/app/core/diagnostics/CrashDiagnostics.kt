@@ -6,6 +6,7 @@ data class LocalCrashReport(
     val id: String,
     val summary: String,
     val details: String,
+    val contextSummary: String = "",
 )
 
 expect object CrashDiagnostics {
@@ -15,4 +16,5 @@ expect object CrashDiagnostics {
 
     fun initialize(context: Any?)
     fun dismiss(reportId: String)
+    fun currentReport(): String
 }

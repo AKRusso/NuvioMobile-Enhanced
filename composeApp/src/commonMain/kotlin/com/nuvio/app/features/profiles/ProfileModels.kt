@@ -77,8 +77,8 @@ internal fun mergeProfileBackgrounds(
 ): List<NuvioProfile> = remoteProfiles.map { profile ->
     val backgroundUrl = when {
         backgroundOverrides.containsKey(profile.profileIndex) -> backgroundOverrides[profile.profileIndex]
-        !profile.backgroundUrl.isNullOrBlank() -> normalizedProfileBackgroundUrl(profile.backgroundUrl)
-        else -> localBackgrounds[profile.profileIndex]
+        else -> normalizedProfileBackgroundUrl(localBackgrounds[profile.profileIndex])
+            ?: normalizedProfileBackgroundUrl(profile.backgroundUrl)
     }
     profile.copy(backgroundUrl = backgroundUrl)
 }

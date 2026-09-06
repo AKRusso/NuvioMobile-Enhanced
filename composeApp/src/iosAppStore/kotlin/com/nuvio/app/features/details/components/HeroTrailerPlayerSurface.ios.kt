@@ -14,6 +14,8 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    seekRequest: HeroTrailerSeekRequest?,
+    onPlaybackStateChanged: (HeroTrailerPlaybackSnapshot) -> Unit,
 ) {
     LaunchedEffect(sourceUrl) {
         onError()

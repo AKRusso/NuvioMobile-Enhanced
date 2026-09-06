@@ -40,11 +40,14 @@ import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -71,6 +74,7 @@ object ProfileRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val log = Logger.withTag("ProfileRepository")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val pullMutex = Mutex()
     private fun localizedString(resource: StringResource): String = runBlocking { getString(resource) }
 
     private val _state = MutableStateFlow(ProfileState())
@@ -124,12 +128,12 @@ object ProfileRepository {
 
     suspend fun pullProfiles(): Boolean = pullProfiles(emptyMap())
 
-    private suspend fun pullProfiles(backgroundOverrides: Map<Int, String?>): Boolean {
+    private suspend fun pullProfiles(backgroundOverrides: Map<Int, String?>): Boolean = pullMutex.withLock {
         if (AuthRepository.state.value.isAnonymous) {
             if (!_state.value.isLoaded) {
                 _state.value = _state.value.copy(isLoaded = true)
             }
-            return true
+            return@withLock true
         }
         try {
             val result = SupabaseProvider.client.postgrest.rpc("sync_pull_profiles")
@@ -160,14 +164,15 @@ object ProfileRepository {
                 activeProfileIndex = _state.value.activeProfile!!.profileIndex
             }
             persist()
-            return true
+            return@withLock true
         } catch (e: Throwable) {
-            if (AuthRepository.signOutIfSessionInvalid(e, "Profile pull")) return false
+            if (e is CancellationException) throw e
+            if (AuthRepository.signOutIfSessionInvalid(e, "Profile pull")) return@withLock false
             log.e(e) { "Failed to pull profiles" }
             if (!_state.value.isLoaded) {
                 _state.value = _state.value.copy(isLoaded = true)
             }
-            return false
+            return@withLock false
         }
     }
 

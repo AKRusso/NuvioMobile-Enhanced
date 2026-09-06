@@ -84,9 +84,10 @@ import com.nuvio.app.features.profiles.AvatarCatalogItem
 import com.nuvio.app.features.profiles.AvatarRepository
 import com.nuvio.app.features.profiles.NuvioProfile
 import com.nuvio.app.features.profiles.ProfileRepository
+import com.nuvio.app.features.profiles.ProfileRemoteBackgroundImage
+import com.nuvio.app.features.profiles.profileBackgroundImageUrl
 import com.nuvio.app.features.profiles.parseHexColor
 import com.nuvio.app.features.profiles.profileAvatarImageUrl
-import com.nuvio.app.features.profiles.profileBackgroundImageUrl
 import com.nuvio.app.features.watched.WatchedClock
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watched.WatchedRepository
@@ -797,9 +798,6 @@ private fun ProfileInsightsHero(
     val avatarImageUrl = remember(profile, avatarItem) {
         profile?.let { profileAvatarImageUrl(it, avatarItem) }
     }
-    val backgroundImageUrl = remember(profile) {
-        profile?.let(::profileBackgroundImageUrl)
-    }
     val shape = RoundedCornerShape(if (isTablet) 34.dp else 28.dp)
 
     Box(
@@ -817,16 +815,12 @@ private fun ProfileInsightsHero(
             )
             .border(1.dp, Color.White.copy(alpha = 0.12f), shape),
     ) {
-        if (!backgroundImageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = backgroundImageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .matchParentSize()
-                    .alpha(0.22f),
-                contentScale = ContentScale.Crop,
-            )
-        }
+        ProfileRemoteBackgroundImage(
+            imageUrl = profile?.let(::profileBackgroundImageUrl),
+            profileIndex = profile?.profileIndex,
+            modifier = Modifier.matchParentSize(),
+            alpha = 0.22f,
+        )
         Box(
             modifier = Modifier
                 .matchParentSize()

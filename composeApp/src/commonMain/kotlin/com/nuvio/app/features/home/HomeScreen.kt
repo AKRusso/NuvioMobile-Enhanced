@@ -676,7 +676,7 @@ fun HomeScreen(
             "cloudstream:${cloudStreamUiState.registryRevision}:${cloudStreamUiState.plugins.count { it.isRunnable }}"
     }
 
-    LaunchedEffect(catalogRefreshKey) {
+    LaunchedEffect(activeProfileId, catalogRefreshKey) {
         if (catalogRefreshKey.isEmpty()) return@LaunchedEffect
         HomeCatalogSettingsRepository.syncCatalogs(enabledAddons)
         HomeRepository.refresh(enabledAddons)
@@ -967,7 +967,7 @@ fun HomeScreen(
     val showHeroSkeleton = showHeroSlot &&
         homeUiState.heroItems.isEmpty() &&
         isResolvingHeroSources
-    var firstCatalogReported by remember { mutableStateOf(false) }
+    var firstCatalogReported by remember(activeProfileId) { mutableStateOf(false) }
 
     val visibleCollections = remember(collections) {
         visibleCollectionsWithUniqueIds(collections)
@@ -1025,19 +1025,8 @@ fun HomeScreen(
         }
     }
     val hasPremiumHomeRows = smartShelves.isNotEmpty()
-    val hasInitialHomeContent = homeUiState.sections.isNotEmpty() ||
-        homeUiState.heroItems.isNotEmpty() ||
-        hasContinueWatchingRows ||
-        hasRenderableCollectionRows ||
-        hasPremiumHomeRows
-    val initialHomeReady = hasInitialHomeContent ||
-        (
-            !homeUiState.isLoading &&
-                !isRefreshingEnabledAddons &&
-                (!hasActiveAddons || homeUiState.errorMessage != null)
-            )
-    LaunchedEffect(initialHomeReady, onFirstCatalogRendered) {
-        if (firstCatalogReported || !initialHomeReady) return@LaunchedEffect
+    LaunchedEffect(homeUiState.sections.firstOrNull()?.key, onFirstCatalogRendered) {
+        if (firstCatalogReported || homeUiState.sections.isEmpty()) return@LaunchedEffect
         firstCatalogReported = true
         onFirstCatalogRendered?.invoke()
     }
@@ -1629,6 +1618,16 @@ internal fun buildHomeNextUpSeedCandidates(
                 !isMalformedNextUpSeedContentId(item.id)
         }
     }
+    val latestActivityByContent = buildMap {
+        progressSeeds.forEach { entry ->
+            val content = WatchingContentRef(type = entry.parentMetaType, id = entry.parentMetaId)
+            put(content, maxOf(get(content) ?: Long.MIN_VALUE, entry.lastUpdatedEpochMs))
+        }
+        watchedSeeds.forEach { item ->
+            val content = WatchingContentRef(type = item.type, id = item.id)
+            put(content, maxOf(get(content) ?: Long.MIN_VALUE, item.markedAtEpochMs))
+        }
+    }
 
     return WatchingState.latestCompletedBySeries(
         progressEntries = progressSeeds,
@@ -1642,7 +1641,7 @@ internal fun buildHomeNextUpSeedCandidates(
             content = content,
             seasonNumber = completed.seasonNumber,
             episodeNumber = completed.episodeNumber,
-            markedAtEpochMs = completed.markedAtEpochMs,
+            markedAtEpochMs = latestActivityByContent[content] ?: completed.markedAtEpochMs,
         )
     }.sortedWith(
         compareByDescending<CompletedSeriesCandidate> { candidate -> candidate.markedAtEpochMs }
@@ -1764,7 +1763,7 @@ private suspend fun resolveHomeNextUpCandidate(
 ): HomeNextUpResolutionAttempt {
     val contentId = completedEntry.content.id
     val meta = try {
-        MetaDetailsRepository.fetch(
+        loadHomeNextUpMetadata(
             type = completedEntry.content.type,
             id = contentId,
         )
@@ -1832,6 +1831,15 @@ private suspend fun resolveHomeNextUpCandidate(
     }
     return HomeNextUpResolutionAttempt.success(contentId to (sortTimestamp to item))
 }
+
+internal suspend fun loadHomeNextUpMetadata(
+    type: String,
+    id: String,
+    peek: (String, String) -> MetaDetails? = MetaDetailsRepository::peek,
+    fetchBase: suspend (String, String) -> MetaDetails? = { metaType, metaId ->
+        MetaDetailsRepository.fetchBase(type = metaType, id = metaId)
+    },
+): MetaDetails? = peek(type, id) ?: fetchBase(type, id)
 
 private fun MetaDetails.videoForSeriesAction(action: SeriesPrimaryAction): MetaVideo? {
     if (action.seasonNumber != null && action.episodeNumber != null) {
@@ -2238,7 +2246,7 @@ private fun CachedInProgressItem.toContinueWatchingItem(): ContinueWatchingItem 
     )
 }
 
-private fun ContinueWatchingItem.withFallbackMetadata(
+internal fun ContinueWatchingItem.withFallbackMetadata(
     fallback: ContinueWatchingItem?,
 ): ContinueWatchingItem {
     val nonBlankFallbackTitle = fallback?.title?.takeIf { it.isNotBlank() }
@@ -2251,11 +2259,7 @@ private fun ContinueWatchingItem.withFallbackMetadata(
             hasPlaceholderProgressTitle() && fallbackTitle != null -> fallbackTitle
             else -> title
         },
-        subtitle = when {
-            subtitle.isBlank() -> fallback?.subtitle?.takeIf { it.isNotBlank() }.orEmpty()
-            fallback?.subtitle.isNullOrBlank() -> subtitle
-            else -> fallback.subtitle
-        },
+        subtitle = subtitle.ifBlank { fallback?.subtitle?.takeIf { it.isNotBlank() }.orEmpty() },
         imageUrl = imageUrl.orNonBlank(fallback?.imageUrl),
         logo = logo.orNonBlank(fallback?.logo),
         poster = poster.orNonBlank(fallback?.poster),

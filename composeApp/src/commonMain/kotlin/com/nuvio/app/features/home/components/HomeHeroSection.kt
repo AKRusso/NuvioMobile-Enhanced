@@ -2668,7 +2668,7 @@ private suspend fun fetchHeroDetailMeta(
 ): MetaDetails? =
     runCatching {
         val meta = withTimeoutOrNull(HERO_DETAIL_META_TIMEOUT_MS) {
-            MetaDetailsRepository.fetch(
+            MetaDetailsRepository.fetchBase(
                 type = item.type,
                 id = item.id,
             )

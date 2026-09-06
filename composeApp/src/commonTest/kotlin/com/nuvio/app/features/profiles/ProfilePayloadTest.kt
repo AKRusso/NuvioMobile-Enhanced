@@ -57,6 +57,26 @@ class ProfilePayloadTest {
     }
 
     @Test
+    fun `background merge keeps valid local value over stale or invalid remote value`() {
+        val localBackground = "https://example.com/current-background.jpg"
+        val localBackgrounds = mapOf(2 to localBackground)
+
+        val staleRemote = mergeProfileBackgrounds(
+            remoteProfiles = listOf(
+                NuvioProfile(profileIndex = 2, backgroundUrl = "https://example.com/old-background.jpg"),
+            ),
+            localBackgrounds = localBackgrounds,
+        )
+        val invalidRemote = mergeProfileBackgrounds(
+            remoteProfiles = listOf(NuvioProfile(profileIndex = 2, backgroundUrl = "invalid background")),
+            localBackgrounds = localBackgrounds,
+        )
+
+        assertEquals(localBackground, staleRemote.single().backgroundUrl)
+        assertEquals(localBackground, invalidRemote.single().backgroundUrl)
+    }
+
+    @Test
     fun `predefined background round trips locally without becoming an image URL`() {
         val stored = ProfileBackgroundPreset.ARCTIC_BLUE.storedValue
         val profile = NuvioProfile(profileIndex = 2, backgroundUrl = stored)

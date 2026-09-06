@@ -114,12 +114,9 @@ fun ProfileSelectionScreen(
 
     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val backgroundProfile = profileState.activeProfile ?: profileState.profiles.firstOrNull()
-    val backgroundImageUrl = remember(backgroundProfile?.backgroundUrl) {
-        backgroundProfile?.let(::profileBackgroundImageUrl)
-    }
     val appTheme = MaterialTheme.appTheme
-    val backgroundPreset = remember(backgroundProfile?.backgroundUrl, appTheme) {
-        backgroundProfile?.let { profile -> effectiveProfileBackgroundPreset(profile, appTheme) }
+    val effectiveBackground = remember(backgroundProfile?.backgroundUrl, appTheme) {
+        effectiveProfileBackground(backgroundProfile, appTheme)
     }
 
     BoxWithConstraints(
@@ -128,20 +125,18 @@ fun ProfileSelectionScreen(
     ) {
         val isTabletLayout = maxWidth >= 768.dp
 
-        if (backgroundImageUrl == null) {
-            Image(
-                painter = painterResource(backgroundPreset?.backgroundRes ?: DefaultProfileBackgroundResource),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            AsyncImage(
-                model = backgroundImageUrl,
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+        Image(
+            painter = painterResource(effectiveBackground.preset?.backgroundRes ?: DefaultProfileBackgroundResource),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
+        ProfileRemoteBackgroundImage(
+            imageUrl = effectiveBackground.customImageUrl,
+            profileIndex = backgroundProfile?.profileIndex,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (effectiveBackground.customImageUrl != null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

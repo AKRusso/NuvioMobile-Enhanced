@@ -74,15 +74,30 @@ enum class ProfileBackgroundPreset(
 
 val DefaultProfileBackgroundResource: DrawableResource = Res.drawable.profile_background_default
 
+data class EffectiveProfileBackground(
+    val preset: ProfileBackgroundPreset?,
+    val customImageUrl: String?,
+)
+
 fun profileBackgroundPreset(profile: NuvioProfile): ProfileBackgroundPreset? =
     ProfileBackgroundPreset.fromStoredValue(profile.backgroundUrl)
 
 fun effectiveProfileBackgroundPreset(
     profile: NuvioProfile,
     theme: AppTheme,
-): ProfileBackgroundPreset? =
-    profileBackgroundPreset(profile) ?: if (profile.backgroundUrl == null) {
-        ProfileBackgroundPreset.fromTheme(theme)
-    } else {
-        null
-    }
+): ProfileBackgroundPreset? = effectiveProfileBackground(profile, theme).preset
+
+fun effectiveProfileBackground(
+    profile: NuvioProfile?,
+    theme: AppTheme,
+): EffectiveProfileBackground {
+    val customImageUrl = profile?.let(::profileBackgroundImageUrl)
+    return EffectiveProfileBackground(
+        preset = if (customImageUrl == null) {
+            ProfileBackgroundPreset.fromTheme(theme) ?: profile?.let(::profileBackgroundPreset)
+        } else {
+            null
+        },
+        customImageUrl = customImageUrl,
+    )
+}

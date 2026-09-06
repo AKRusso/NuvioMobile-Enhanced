@@ -41,7 +41,11 @@ actual object CrashDiagnostics {
         if (installed) return
         installed = true
         setUnhandledExceptionHook { throwable ->
-            saveCrashReport(throwable)
+            try {
+                saveCrashReport(throwable)
+            } catch (_: Throwable) {
+                // Crash capture must never replace the original unhandled exception.
+            }
         }
     }
 
@@ -55,12 +59,27 @@ actual object CrashDiagnostics {
         _pendingReport.value = null
     }
 
+    actual fun currentReport(): String {
+        val device = UIDevice.currentDevice
+        val bundleId = NSBundle.mainBundle.bundleIdentifier ?: "unknown"
+        return buildString {
+            appendLine("Nuvio Enhanced current diagnostic report")
+            appendLine("Time: ${formattedNow()}")
+            appendLine("Package: $bundleId")
+            appendLine("Version: ${AppVersionConfig.VERSION_NAME} (${AppVersionConfig.VERSION_CODE})")
+            appendLine("iOS: ${device.systemName} ${device.systemVersion}")
+            appendLine("Device model: ${device.model}")
+            appendLine()
+            append(RuntimeDiagnostics.snapshotText())
+        }.take(maxReportLength)
+    }
+
     private fun loadPendingReport(): LocalCrashReport? {
         val defaults = NSUserDefaults.standardUserDefaults
         val id = defaults.stringForKey(idKey)?.takeIf(String::isNotBlank) ?: return null
         val summary = defaults.stringForKey(summaryKey)?.takeIf(String::isNotBlank) ?: "Unknown crash"
         val details = defaults.stringForKey(detailsKey)?.takeIf(String::isNotBlank) ?: return null
-        return LocalCrashReport(id = id, summary = summary, details = details)
+        return localCrashReport(id = id, summary = summary, details = details)
     }
 
     private fun loadLastReport(): LocalCrashReport? {
@@ -68,7 +87,7 @@ actual object CrashDiagnostics {
         val id = defaults.stringForKey(lastIdKey)?.takeIf(String::isNotBlank) ?: return null
         val summary = defaults.stringForKey(lastSummaryKey)?.takeIf(String::isNotBlank) ?: "Unknown crash"
         val details = defaults.stringForKey(lastDetailsKey)?.takeIf(String::isNotBlank) ?: return null
-        return LocalCrashReport(id = id, summary = summary, details = details)
+        return localCrashReport(id = id, summary = summary, details = details)
     }
 
     private fun saveCrashReport(throwable: Throwable) {
@@ -84,7 +103,7 @@ actual object CrashDiagnostics {
         defaults.setObject(summary, forKey = lastSummaryKey)
         defaults.setObject(details, forKey = lastDetailsKey)
         defaults.synchronize()
-        val report = LocalCrashReport(id = id, summary = summary, details = details)
+        val report = localCrashReport(id = id, summary = summary, details = details)
         _pendingReport.value = report
         _lastReport.value = report
     }
@@ -100,11 +119,13 @@ actual object CrashDiagnostics {
             appendLine("Package: $bundleId")
             appendLine("Version: ${AppVersionConfig.VERSION_NAME} (${AppVersionConfig.VERSION_CODE})")
             appendLine("iOS: ${device.systemName} ${device.systemVersion}")
-            appendLine("Device: ${device.model} (${device.name})")
+            appendLine("Device model: ${device.model}")
             appendLine("Process: ${process.processName}")
             appendLine("Thread: Kotlin/Native unhandled exception")
             appendLine("Exception: ${throwable::class.qualifiedName ?: throwable::class.simpleName ?: "Throwable"}")
             appendLine("Message: ${throwable.message?.sanitizeCrashReport().orEmpty()}")
+            appendLine()
+            appendLine(RuntimeDiagnostics.snapshotText())
             appendLine()
             appendLine(stackTrace)
         }
@@ -123,13 +144,5 @@ actual object CrashDiagnostics {
         return if (message == null) type else "$type: $message"
     }
 
-    private fun String.sanitizeCrashReport(): String =
-        replace(Regex("""(?i)(access_token|refresh_token|token|api_key|apikey|client_secret|password)=([^&\s]+)""")) {
-            "${it.groupValues[1]}=<redacted>"
-        }
-            .replace(Regex("""https?://[^\s)]+""")) { match ->
-                val value = match.value
-                val base = value.substringBefore("?").substringBefore("#")
-                if (base == value) value else "$base?<redacted>"
-            }
+    private fun String.sanitizeCrashReport(): String = sanitizeDiagnosticText()
 }

@@ -395,18 +395,6 @@ private fun SupportersContributorsBody(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            uiState.donationProgress?.let { progress ->
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = if (progress.progressPercent >= 100) {
-                        stringResource(Res.string.community_donation_progress_complete)
-                    } else {
-                        stringResource(Res.string.community_donation_progress_remaining)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             if (!donationsConfigured) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(

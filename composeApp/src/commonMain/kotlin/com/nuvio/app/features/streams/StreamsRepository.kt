@@ -2,6 +2,8 @@ package com.nuvio.app.features.streams
 
 import co.touchlab.kermit.Logger
 import com.nuvio.app.core.build.AppFeaturePolicy
+import com.nuvio.app.core.diagnostics.DiagnosticEvent
+import com.nuvio.app.core.diagnostics.RuntimeDiagnostics
 import com.nuvio.app.features.addons.AddonRepository
 import com.nuvio.app.features.addons.buildAddonResourceUrl
 import com.nuvio.app.features.addons.enabledAddons
@@ -45,6 +47,7 @@ object StreamsRepository {
     private var activeJob: Job? = null
     private var activeRequestKey: String? = null
     private var activeContentRequestKey: String? = null
+    private var activeRequestGeneration = 0L
 
     fun requestToken(
         type: String,
@@ -153,8 +156,12 @@ object StreamsRepository {
         val currentState = _uiState.value
         if (
             !forceRefresh &&
-            activeRequestKey == requestKey &&
-            (currentState.groups.isNotEmpty() || currentState.emptyStateReason != null || currentState.isAnyLoading)
+            shouldReuseStreamRequest(
+                sameRequest = activeRequestKey == requestKey,
+                hasResult = currentState.groups.isNotEmpty() || currentState.emptyStateReason != null,
+                isLoading = currentState.isAnyLoading,
+                jobActive = activeJob?.isActive == true,
+            )
         ) {
             log.d { "Skipping stream reload for unchanged request type=$type id=$videoId" }
             return
@@ -162,8 +169,12 @@ object StreamsRepository {
         if (
             !forceRefresh &&
             manualSelection &&
-            activeContentRequestKey == contentRequestKey &&
-            (currentState.groups.isNotEmpty() || currentState.emptyStateReason != null || currentState.isAnyLoading)
+            shouldReuseStreamRequest(
+                sameRequest = activeContentRequestKey == contentRequestKey,
+                hasResult = currentState.groups.isNotEmpty() || currentState.emptyStateReason != null,
+                isLoading = currentState.isAnyLoading,
+                jobActive = activeJob?.isActive == true,
+            )
         ) {
             log.d { "Reusing prefetched streams for manual picker type=$type id=$videoId" }
             activeRequestKey = requestKey
@@ -180,10 +191,15 @@ object StreamsRepository {
             return
         }
 
+        val requestGeneration = ++activeRequestGeneration
+        RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadStarted)
+        RuntimeDiagnostics.updateStreams(groups = 0, loadingGroups = 0, providerTasks = 0)
         activeRequestKey = requestKey
         activeContentRequestKey = contentRequestKey
         activeJob?.cancel()
         _uiState.value = StreamsUiState(requestToken = requestToken)
+        fun isCurrentRequest(): Boolean =
+            activeRequestGeneration == requestGeneration
 
         PlayerSettingsRepository.ensureLoaded()
         val playerSettings = PlayerSettingsRepository.uiState.value
@@ -231,6 +247,8 @@ object StreamsRepository {
                 activeAddonIds = setOf("embedded"),
                 isAnyLoading = false,
             )
+            RuntimeDiagnostics.updateStreams(groups = 1, loadingGroups = 0, providerTasks = 0)
+            RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadFinished)
             return
         }
 
@@ -254,9 +272,20 @@ object StreamsRepository {
                 activeAddonIds = setOf(providerAddonId),
                 isAnyLoading = true,
             )
+            RuntimeDiagnostics.updateStreams(groups = 1, loadingGroups = 1, providerTasks = 1)
             activeJob = scope.launch {
-                CloudStreamRepository.loadLinks(cloudStreamRoute.providerId, cloudStreamRoute.data)
-                    .fold(
+                val result = runCatchingUnlessCancelled {
+                    withTimeoutOrNull(STREAM_PROVIDER_TIMEOUT_MS) {
+                        CloudStreamRepository.loadLinks(cloudStreamRoute.providerId, cloudStreamRoute.data)
+                    } ?: error("$providerName timed out")
+                }.fold(
+                    onSuccess = { it },
+                    onFailure = { Result.failure(it) },
+                )
+                if (
+                    activeRequestGeneration != requestGeneration
+                ) return@launch
+                result.fold(
                         onSuccess = { sources ->
                             val streams = cloudStreamSourcesToStreamItems(
                                 providerId = cloudStreamRoute.providerId,
@@ -264,7 +293,7 @@ object StreamsRepository {
                                 sources = sources,
                             )
                             _uiState.value = StreamsUiState(
-                                requestToken = requestToken,
+                            requestToken = _uiState.value.requestToken,
                                 groups = listOf(
                                     AddonStreamGroup(
                                         addonName = providerName,
@@ -282,7 +311,7 @@ object StreamsRepository {
                         onFailure = { error ->
                             log.w(error) { "CloudStream link resolution failed provider=${cloudStreamRoute.providerId}" }
                             _uiState.value = StreamsUiState(
-                                requestToken = requestToken,
+                            requestToken = _uiState.value.requestToken,
                                 groups = listOf(
                                     AddonStreamGroup(
                                         addonName = providerName,
@@ -299,6 +328,7 @@ object StreamsRepository {
                         },
                     )
             }
+            activeJob?.let { job -> finalizeJob(job, requestGeneration) }
             return
         }
 
@@ -319,6 +349,7 @@ object StreamsRepository {
                 isAnyLoading = false,
                 emptyStateReason = StreamsEmptyStateReason.NoAddonsInstalled,
             )
+            RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadFinished)
             return
         }
 
@@ -351,6 +382,7 @@ object StreamsRepository {
                 isAnyLoading = false,
                 emptyStateReason = StreamsEmptyStateReason.NoCompatibleAddons,
             )
+            RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadFinished)
             return
         }
 
@@ -398,6 +430,11 @@ object StreamsRepository {
             val totalTasks = streamAddons.size +
                 pluginProviderGroups.sumOf { it.scrapers.size } +
                 cloudStreamProviderGroups.size
+            RuntimeDiagnostics.updateStreams(
+                groups = initialGroups.size,
+                loadingGroups = initialGroups.count { it.isLoading },
+                providerTasks = totalTasks,
+            )
             val cloudStreamSemaphore = Semaphore(CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY)
 
             val installedAddonNames = installedAddonOrder.toSet()
@@ -422,6 +459,9 @@ object StreamsRepository {
             }
 
             fun tryAutoSelectAvailableStream() {
+                if (
+                    activeRequestGeneration != requestGeneration
+                ) return
                 if (!isDirectAutoPlayFlow || autoSelectTriggered) return
                 val bingeGroupOnly = !timeoutElapsed
                 if (bingeGroupOnly && persistedBingeGroup == null) return
@@ -448,6 +488,9 @@ object StreamsRepository {
 
             fun publishAddonGroup(group: AddonStreamGroup) {
                 _uiState.update { current ->
+                    if (
+                        activeRequestGeneration != requestGeneration
+                    ) return@update current
                     val updated = StreamAutoPlaySelector.orderAddonStreams(
                         groups = current.groups.map { currentGroup ->
                             if (currentGroup.addonId == group.addonId) group else currentGroup
@@ -491,10 +534,12 @@ object StreamsRepository {
                 tryAutoSelectAvailableStream()
 
                 val availabilityJob = launch {
-                    val availabilityGroup = LocalDebridAvailabilityService.annotateCachedAvailability(
-                        groups = listOf(checkingGroup),
-                        eligibleGroupIds = eligibleGroupIds,
-                    ).firstOrNull() ?: checkingGroup
+                    val availabilityGroup = withTimeoutOrNull(DEBRID_AVAILABILITY_TIMEOUT_MS) {
+                        LocalDebridAvailabilityService.annotateCachedAvailability(
+                            groups = listOf(checkingGroup),
+                            eligibleGroupIds = eligibleGroupIds,
+                        ).firstOrNull()
+                    } ?: checkingGroup
                     publishAddonGroup(presentStreamGroup(availabilityGroup))
                     tryAutoSelectAvailableStream()
 
@@ -528,6 +573,9 @@ object StreamsRepository {
 
             fun stopPendingGroups(errorMessage: String? = null) {
                 _uiState.update { current ->
+                    if (
+                        activeRequestGeneration != requestGeneration
+                    ) return@update current
                     val updatedGroups = current.groups.map { group ->
                         if (group.isLoading) {
                             group.copy(
@@ -560,6 +608,7 @@ object StreamsRepository {
                     if (isUnlimitedTimeout) {
                         launch {
                             delay(60_000L)
+                            if (!isCurrentRequest()) return@launch
                             if (!autoSelectTriggered) {
                                 autoSelectTriggered = true
                                 val allStreams = _uiState.value.groups.flatMap { it.streams }
@@ -597,6 +646,7 @@ object StreamsRepository {
                     // Bounded timeout (1-30s)
                     launch {
                         delay(timeoutSeconds * 1_000L)
+                        if (!isCurrentRequest()) return@launch
                         timeoutElapsed = true
                         if (!autoSelectTriggered) {
                             val allStreams = _uiState.value.groups.flatMap { it.streams }
@@ -755,12 +805,11 @@ object StreamsRepository {
             }
 
             var receivedTasks = 0
-            while (receivedTasks < totalTasks) {
-                val completion = withTimeoutOrNull(STREAM_TOTAL_TIMEOUT_MS) {
-                    completions.receive()
-                } ?: break
-                receivedTasks++
-                when (completion) {
+            val allTasksCompleted = withTimeoutOrNull(STREAM_TOTAL_TIMEOUT_MS) {
+                while (receivedTasks < totalTasks) {
+                    val completion = completions.receive()
+                    receivedTasks++
+                    when (completion) {
                     is StreamLoadCompletion.Addon -> {
                         val result = completion.group
                         publishAddonGroupAfterCacheCheck(result)
@@ -774,6 +823,9 @@ object StreamsRepository {
                         }
 
                         _uiState.update { current ->
+                            if (
+                                activeRequestGeneration != requestGeneration
+                            ) return@update current
                             val updated = StreamAutoPlaySelector.orderAddonStreams(
                                 groups = current.groups.map { group ->
                                     if (group.addonId != completion.addonId) {
@@ -809,16 +861,20 @@ object StreamsRepository {
                         tryAutoSelectAvailableStream()
                     }
 
+                    }
                 }
-            }
+                true
+            } ?: false
 
-            if (receivedTasks < totalTasks) {
+            if (!allTasksCompleted) {
+                RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadTimedOut)
                 log.w { "Stream loading timed out after $receivedTasks / $totalTasks provider tasks" }
                 stopPendingGroups(errorMessage = "Timed out")
             }
 
             for (availabilityJob in debridAvailabilityJobs) {
                 availabilityJob.join()
+                if (!isCurrentRequest()) break
 
                 // Early binge-group match after each availability job completes
                 if (isDirectAutoPlayFlow && !autoSelectTriggered && persistedBingeGroup != null) {
@@ -858,6 +914,7 @@ object StreamsRepository {
                     installedAddonNames = installedAddonNames,
                 ) { original, prepared ->
                     _uiState.update { current ->
+                        if (!isCurrentRequest()) return@update current
                         current.copy(
                             groups = DirectDebridStreamPreparer.replacePreparedStream(
                                 groups = current.groups,
@@ -889,7 +946,9 @@ object StreamsRepository {
                             )
                             if (earlyMatch != null) {
                                 autoSelectTriggered = true
-                                _uiState.update { it.copy(autoPlayStream = earlyMatch) }
+                                _uiState.update { current ->
+                                    if (!isCurrentRequest()) current else current.copy(autoPlayStream = earlyMatch)
+                                }
                             }
                         }
                     }
@@ -917,7 +976,9 @@ object StreamsRepository {
                             )
                             if (selected != null) {
                                 autoSelectTriggered = true
-                                _uiState.update { it.copy(autoPlayStream = selected) }
+                                _uiState.update { current ->
+                                    if (!isCurrentRequest()) current else current.copy(autoPlayStream = selected)
+                                }
                             }
                         } else if (persistedBingeGroup != null) {
                             // Before timeout: try binge-group-only early match
@@ -937,7 +998,9 @@ object StreamsRepository {
                             )
                             if (earlyMatch != null) {
                                 autoSelectTriggered = true
-                                _uiState.update { it.copy(autoPlayStream = earlyMatch) }
+                                _uiState.update { current ->
+                                    if (!isCurrentRequest()) current else current.copy(autoPlayStream = earlyMatch)
+                                }
                             }
                         }
                     }
@@ -963,7 +1026,7 @@ object StreamsRepository {
                     activeResolverProviderId = debridSettings.activeResolverProviderId,
                 )
                 _uiState.update {
-                    it.copy(
+                    if (!isCurrentRequest()) it else it.copy(
                         autoPlayStream = evaluation.stream,
                         autoPlayCandidates = evaluation.readyStreams,
                     )
@@ -971,7 +1034,7 @@ object StreamsRepository {
             }
             if (isDirectAutoPlayFlow && _uiState.value.autoPlayStream == null) {
                 _uiState.update {
-                    it.copy(
+                    if (!isCurrentRequest()) it else it.copy(
                         isDirectAutoPlayFlow = false,
                         showDirectAutoPlayOverlay = false,
                     )
@@ -979,6 +1042,7 @@ object StreamsRepository {
             }
             timeoutJob?.cancel()
         }
+        activeJob?.let { job -> finalizeJob(job, requestGeneration) }
     }
 
     fun selectFilter(addonId: String?) {
@@ -1020,8 +1084,19 @@ object StreamsRepository {
     }
 
     fun cancelLoading() {
+        val wasLoading = activeJob?.isActive == true ||
+            _uiState.value.isAnyLoading ||
+            _uiState.value.groups.any { it.isLoading }
+        activeRequestGeneration += 1
+        activeRequestKey = null
+        activeContentRequestKey = null
         activeJob?.cancel()
         activeJob = null
+        RuntimeDiagnostics.updateStreamLoading(
+            groups = _uiState.value.groups.size,
+            loadingGroups = 0,
+        )
+        if (wasLoading) RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadCancelled)
         _uiState.update { current ->
             fun StreamsUiState.withStoppedOverlay() = copy(
                 autoPlayStream = null,
@@ -1050,6 +1125,7 @@ object StreamsRepository {
     }
 
     fun clear() {
+        activeRequestGeneration += 1
         activeJob?.cancel()
         activeJob = null
         activeRequestKey = null
@@ -1066,6 +1142,35 @@ object StreamsRepository {
             }
         }
     }
+
+    private fun finalizeJob(job: Job, requestGeneration: Long) {
+        job.invokeOnCompletion { cause ->
+            if (
+                activeJob !== job ||
+                activeRequestGeneration != requestGeneration
+            ) return@invokeOnCompletion
+            _uiState.update { current ->
+                val interrupted = cause != null || current.isAnyLoading || current.groups.any { it.isLoading }
+                if (!interrupted) return@update current
+                val updatedGroups = current.groups.map { group ->
+                    if (group.isLoading) group.copy(isLoading = false, error = group.error ?: "Loading interrupted") else group
+                }
+                current.copy(
+                    groups = updatedGroups,
+                    isAnyLoading = false,
+                    emptyStateReason = updatedGroups.toEmptyStateReason(anyLoading = false),
+                    isDirectAutoPlayFlow = false,
+                    showDirectAutoPlayOverlay = false,
+                )
+            }
+            RuntimeDiagnostics.updateStreamLoading(
+                groups = _uiState.value.groups.size,
+                loadingGroups = 0,
+            )
+            RuntimeDiagnostics.record(DiagnosticEvent.StreamLoadFinished)
+            activeJob = null
+        }
+    }
 }
 
 // Provider count must not be capped: a repository can contain many narrowly scoped
@@ -1074,3 +1179,11 @@ object StreamsRepository {
 private const val CLOUDSTREAM_STREAM_PROVIDER_CONCURRENCY = 18
 private const val STREAM_PROVIDER_TIMEOUT_MS = 30_000L
 private const val STREAM_TOTAL_TIMEOUT_MS = 45_000L
+private const val DEBRID_AVAILABILITY_TIMEOUT_MS = 15_000L
+
+internal fun shouldReuseStreamRequest(
+    sameRequest: Boolean,
+    hasResult: Boolean,
+    isLoading: Boolean,
+    jobActive: Boolean,
+): Boolean = sameRequest && if (isLoading) jobActive else hasResult

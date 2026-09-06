@@ -7,6 +7,7 @@ import com.nuvio.app.features.cloud.CloudLibraryProviderState
 import com.nuvio.app.features.cloud.CloudLibraryUiState
 import com.nuvio.app.features.cloud.playbackVideoId
 import com.nuvio.app.features.debrid.DebridProviders
+import com.nuvio.app.features.details.MetaDetails
 import com.nuvio.app.features.watchprogress.CachedInProgressItem
 import com.nuvio.app.features.watchprogress.CachedNextUpItem
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
@@ -19,6 +20,7 @@ import com.nuvio.app.features.watchprogress.resolvedProgressKey
 import com.nuvio.app.features.watchprogress.toContinueWatchingItem
 import com.nuvio.app.features.watched.WatchedItem
 import com.nuvio.app.features.watching.domain.WatchingContentRef
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,6 +46,46 @@ class HomeScreenTest {
         assertEquals(3, plan.deferredCandidates.size)
         assertEquals("show-1", plan.initialCandidates.first().content.id)
         assertEquals("show-33", plan.deferredCandidates.first().content.id)
+    }
+
+    @Test
+    fun `home next up metadata uses base fetch when cache is empty`() = runBlocking {
+        val baseMeta = MetaDetails(id = "show", type = "series", name = "Show")
+        var baseFetches = 0
+
+        val result = loadHomeNextUpMetadata(
+            type = "series",
+            id = "show",
+            peek = { _, _ -> null },
+            fetchBase = { type, id ->
+                baseFetches += 1
+                assertEquals("series", type)
+                assertEquals("show", id)
+                baseMeta
+            },
+        )
+
+        assertEquals(baseMeta, result)
+        assertEquals(1, baseFetches)
+    }
+
+    @Test
+    fun `home next up metadata prefers cache without fetching base`() = runBlocking {
+        val cachedMeta = MetaDetails(id = "show", type = "series", name = "Cached Show")
+        var baseFetches = 0
+
+        val result = loadHomeNextUpMetadata(
+            type = "series",
+            id = "show",
+            peek = { _, _ -> cachedMeta },
+            fetchBase = { _, _ ->
+                baseFetches += 1
+                null
+            },
+        )
+
+        assertEquals(cachedMeta, result)
+        assertEquals(0, baseFetches)
     }
 
     @Test
@@ -584,6 +626,47 @@ class HomeScreenTest {
 
         assertEquals(4, result.single().seasonNumber)
         assertEquals(14, result.single().episodeNumber)
+    }
+
+    @Test
+    fun `furthest next up seed retains the most recent series activity timestamp`() {
+        val oldFurthestEpisode = watchedItem(
+            id = "show",
+            season = 1,
+            episode = 10,
+            markedAtEpochMs = 1_000L,
+        )
+        val recentlyWatchedEarlierEpisode = watchedItem(
+            id = "show",
+            season = 1,
+            episode = 5,
+            markedAtEpochMs = 3_000L,
+        )
+
+        val result = buildHomeNextUpSeedCandidates(
+            progressEntries = emptyList(),
+            watchedItems = listOf(oldFurthestEpisode, recentlyWatchedEarlierEpisode),
+            providerOwnsCompletedHistory = false,
+            preferFurthestEpisode = true,
+            nowEpochMs = 4_000L,
+        )
+
+        assertEquals(10, result.single().episodeNumber)
+        assertEquals(3_000L, result.single().markedAtEpochMs)
+    }
+
+    @Test
+    fun `live episode subtitle is not replaced by stale cached metadata`() {
+        val live = continueWatchingItem(
+            videoId = "show:1:5",
+            subtitle = "S1E5 • Current episode",
+        )
+        val stale = continueWatchingItem(
+            videoId = "show:1:4",
+            subtitle = "S1E4 • Previous episode",
+        )
+
+        assertEquals("S1E5 • Current episode", live.withFallbackMetadata(stale).subtitle)
     }
 
     @Test

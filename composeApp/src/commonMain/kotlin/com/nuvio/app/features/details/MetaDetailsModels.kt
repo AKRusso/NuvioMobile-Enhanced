@@ -99,6 +99,7 @@ data class MetaVideo(
 )
 
 data class MetaDetailsUiState(
+    val requestKey: String? = null,
     val isLoading: Boolean = false,
     val meta: MetaDetails? = null,
     val errorMessage: String? = null,

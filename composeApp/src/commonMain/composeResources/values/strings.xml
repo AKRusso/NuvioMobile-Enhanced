@@ -330,6 +330,7 @@
     <string name="compose_action_pause">Pause</string>
     <string name="compose_action_reload">Reload</string>
     <string name="compose_auth_already_have_account">Already have an account? </string>
+    <string name="compose_auth_brand_name">Nuvio Enhanced</string>
     <string name="compose_auth_continue_without_account">Continue Without Account</string>
     <string name="compose_auth_create_account">Create Account</string>
     <string name="compose_auth_dont_have_account">Don't have an account? </string>
@@ -860,6 +861,8 @@
     <string name="settings_meta_details_description">Runtime, status, release, language, and related info.</string>
     <string name="settings_meta_hero_trailer_playback">Hero Trailer Playback</string>
     <string name="settings_meta_hero_trailer_playback_description">Play trailer previews in the metadata hero when a trailer is available.</string>
+    <string name="settings_meta_hero_trailer_sound">Trailer previews start with sound</string>
+    <string name="settings_meta_hero_trailer_sound_description">Start automatic detail trailer previews with audio enabled. You can still mute them from the trailer.</string>
     <string name="settings_meta_episode_cards">Episode Cards</string>
     <string name="settings_meta_episode_cards_description">Choose how episodes are rendered on the metadata screen.</string>
     <string name="settings_meta_episode_style_horizontal">Horizontal</string>
@@ -1286,8 +1289,21 @@
     <string name="details_premium_story_label">Story</string>
     <string name="nuvio_enhanced_nuvio_read_title">Nuvio Read</string>
     <string name="nuvio_enhanced_nuvio_read_desc">Group key facts, ratings, and the story into the enhanced overview card on detail pages.</string>
+    <string name="nuvio_enhanced_cinematic_detail_header_title">Cinematic detail header</string>
+    <string name="nuvio_enhanced_cinematic_detail_header_desc">Use a horizontal backdrop, production branding, title, and tailored metadata above the existing actions.</string>
+    <string name="nuvio_enhanced_cinematic_header_content_title">Cinematic header content</string>
+    <string name="nuvio_enhanced_cinematic_header_content_desc">Choose production branding, regional streaming availability, or a clean header without logos.</string>
+    <string name="nuvio_enhanced_cinematic_header_content_productions">Productions</string>
+    <string name="nuvio_enhanced_cinematic_header_content_where_to_watch">Where to Watch</string>
+    <string name="nuvio_enhanced_cinematic_header_content_hidden">Hidden</string>
+    <string name="details_where_to_watch_attribution">Availability by JustWatch</string>
+    <string name="details_where_to_watch_tmdb_required">Enable TMDB to see streaming availability</string>
     <string name="settings_nuvio_enhanced_discord_description">Get support, report issues, and share feedback in the Nuvio Enhanced Discord.</string>
     <string name="settings_nuvio_enhanced_donate_description">Support my work and the continued development of Nuvio Enhanced on Ko-fi.</string>
+    <string name="support_nuvio_title">Support Nuvio Enhanced</string>
+    <string name="support_nuvio_description">Help keep Nuvio Enhanced independent and support its continued development.</string>
+    <string name="support_nuvio_donate_kofi">Donate on Ko-fi</string>
+    <string name="support_nuvio_view_supporters">View supporters</string>
     <string name="player_next_episode">Next Episode</string>
     <string name="compose_player_next_ep">Next Ep</string>
     <string name="player_next_episode_finding_source">Finding source…</string>
@@ -2481,6 +2497,7 @@
     <string name="profile_save_failed">Couldn't save the profile. Try again.</string>
     <string name="profile_loading_welcome">Welcome, %1$s!</string>
     <string name="profile_loading_message">One sec, increasing power levels...</string>
+    <string name="profile_loading_enhancing_experience">Enhancing your experience…</string>
     <string name="profile_gif_search_button">Search GIFs</string>
     <string name="profile_gif_search_description">Search the configured GIF provider and choose a GIF profile image URL.</string>
     <string name="profile_gif_search_empty">Search for a reaction, character or mood to find a GIF profile image.</string>
@@ -2702,6 +2719,8 @@
     <string name="nuvio_enhanced_copy_last_crash_title">Copy last crash report</string>
     <string name="nuvio_enhanced_copy_last_crash_desc">Copy the latest local crash report so it can be shared with the developer.</string>
     <string name="nuvio_enhanced_copy_last_crash_empty_desc">No local crash report has been saved on this device yet.</string>
+    <string name="nuvio_enhanced_copy_diagnostics_title">Copy current diagnostics</string>
+    <string name="nuvio_enhanced_copy_diagnostics_desc">Copies a privacy-safe technical snapshot for reporting loading, streams, network, or other issues without a crash.</string>
     <string name="nuvio_enhanced_feedback_title">Nuvio Enhanced feedback</string>
     <string name="nuvio_enhanced_feedback_desc">Send bugs, ideas or user feedback directly to the Nuvio Enhanced maintainer.</string>
     <string name="nuvio_enhanced_intro_title">Nuvio Enhanced</string>
@@ -2723,6 +2742,7 @@
     <string name="nuvio_enhanced_toast_backup_import_failed">Backup import failed</string>
     <string name="nuvio_enhanced_toast_backup_copied">Backup copied to clipboard</string>
     <string name="nuvio_enhanced_toast_crash_copied">Crash report copied to clipboard</string>
+    <string name="nuvio_enhanced_toast_diagnostics_copied">Diagnostic report copied to clipboard</string>
     <string name="nuvio_enhanced_toast_no_email_app">No email app available</string>
     <string name="theme_messenger">Messenger</string>
     <string name="theme_amethyst">Amethyst</string>

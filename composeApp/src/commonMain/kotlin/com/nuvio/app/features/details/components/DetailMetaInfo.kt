@@ -92,6 +92,7 @@ fun DetailMetaInfo(
     episodeTmdbRatings: Map<Pair<Int, Int>, Double> = emptyMap(),
     modifier: Modifier = Modifier,
     showNuvioRead: Boolean = false,
+    descriptionOnly: Boolean = false,
 ) {
     var showRatings by remember { mutableStateOf(false) }
     Column(
@@ -100,9 +101,10 @@ fun DetailMetaInfo(
             .animateContentSize(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        val releaseLine = formatMetaReleaseLineForDetails(meta)
-        val runtimeText = formatRuntimeForDisplay(meta.runtime)
-        val seasonCountLabel = remember(meta.type, meta.videos) {
+        val releaseLine = if (descriptionOnly) null else formatMetaReleaseLineForDetails(meta)
+        val runtimeText = if (descriptionOnly) null else formatRuntimeForDisplay(meta.runtime)
+        val seasonCountLabel = remember(descriptionOnly, meta.type, meta.videos) {
+            if (descriptionOnly) return@remember null
             val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
             if (!isSeriesLike) {
                 null
@@ -115,73 +117,63 @@ fun DetailMetaInfo(
                     ?.let { count -> runBlocking { getString(Res.string.details_total_seasons, count) } }
             }
         }
-        val totalEpisodesLabel = remember(meta.type, meta.videos) {
+        val totalEpisodesLabel = remember(descriptionOnly, meta.type, meta.videos) {
+            if (descriptionOnly) return@remember null
             val isSeriesLike = meta.type == "series" || meta.videos.any { it.season != null || it.episode != null }
             if (!isSeriesLike) {
                 null
             } else {
-                meta.videos
-                    .map { video ->
-                        when {
-                            video.season != null || video.episode != null -> "${video.season ?: -1}:${video.episode ?: -1}"
-                            video.id.isNotBlank() -> video.id
-                            else -> video.title
-                        }
-                    }
-                    .distinct()
-                    .size
-                    .takeIf { it > 0 }
+                meta.mainSeriesStats()
+                    ?.episodeCount
+                    ?.takeIf { it > 0 }
                     ?.let { count -> runBlocking { getString(Res.string.details_total_episodes, count) } }
             }
         }
-        val ageBadge = meta.ageRating?.trim()?.takeIf { it.isNotBlank() }
-        val hasMdbImdbRating = meta.externalRatings.any { it.source == PROVIDER_IMDB }
-        val validImdbRating = meta.imdbRating
-            ?.takeIf { raw -> raw.toDoubleOrNull()?.let { it > 0.0 } == true }
+        val semanticMetadata = remember(descriptionOnly, meta.ageRating, meta.imdbRating, meta.externalRatings) {
+            if (descriptionOnly) DetailHeaderMetadataData(null, null) else detailHeaderMetadataData(meta)
+        }
+        val ratings = if (descriptionOnly) emptyList() else meta.externalRatings
         val hasMetaRow = releaseLine != null ||
             runtimeText != null ||
             seasonCountLabel != null ||
             totalEpisodesLabel != null ||
-            ageBadge != null ||
-            (validImdbRating != null && !hasMdbImdbRating)
-        val imdbSourceLabel = stringResource(Res.string.source_imdb)
-        val overviewPills = buildList {
+            semanticMetadata.ageRating != null ||
+            semanticMetadata.rawImdbRating != null
+        val overviewTextItems = buildList {
             releaseLine?.let(::add)
             seasonCountLabel?.let(::add)
             totalEpisodesLabel?.let(::add)
             runtimeText?.let(::add)
-            ageBadge?.let(::add)
-            if (validImdbRating != null && !hasMdbImdbRating) {
-                add("$imdbSourceLabel $validImdbRating")
-            }
         }
         val hasPremiumOverview = hasMetaRow ||
-            meta.externalRatings.isNotEmpty() ||
+            ratings.isNotEmpty() ||
             !meta.description.isNullOrBlank()
-        if (showNuvioRead && hasPremiumOverview) {
+        if (showNuvioRead && !descriptionOnly && hasPremiumOverview) {
             DetailPremiumOverviewCard(
-                pills = overviewPills,
-                ratings = meta.externalRatings,
+                textItems = overviewTextItems,
+                semanticMetadata = semanticMetadata,
+                ratings = ratings,
                 description = meta.description,
                 onRatingsClick = { showRatings = true },
             )
         } else {
             DetailStandardOverview(
-                pills = overviewPills,
-                ratings = meta.externalRatings,
+                textItems = overviewTextItems,
+                semanticMetadata = semanticMetadata,
+                ratings = ratings,
                 description = meta.description,
                 onRatingsClick = { showRatings = true },
             )
         }
 
-        if (meta.director.isNotEmpty()) {
+        if (!descriptionOnly && meta.director.isNotEmpty()) {
             MetaLabelValueRow(
                 label = stringResource(Res.string.details_director),
                 value = meta.director.joinToString(", "),
             )
         }
 
-        if (meta.writer.isNotEmpty()) {
+        if (!descriptionOnly && meta.writer.isNotEmpty()) {
             MetaLabelValueRow(
                 label = stringResource(Res.string.details_writer),
                 value = meta.writer.joinToString(", "),
@@ -202,7 +194,8 @@ fun DetailMetaInfo(
 
 @Composable
 private fun DetailPremiumOverviewCard(
-    pills: List<String>,
+    textItems: List<String>,
+    semanticMetadata: DetailHeaderMetadataData,
     ratings: List<MetaExternalRating>,
     description: String?,
     onRatingsClick: () -> Unit,
@@ -255,7 +248,11 @@ private fun DetailPremiumOverviewCard(
                 }
             }
 
-            if (pills.isNotEmpty()) {
+            if (
+                textItems.isNotEmpty() ||
+                semanticMetadata.ageRating != null ||
+                semanticMetadata.rawImdbRating != null
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -263,7 +260,19 @@ private fun DetailPremiumOverviewCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    pills.forEach { pill -> DetailPremiumOverviewPill(text = pill) }
+                    textItems.forEach { item -> DetailPremiumOverviewPill(text = item) }
+                    semanticMetadata.ageRating?.let { ageRating ->
+                        DetailHeroMetaBadge(
+                            text = ageRating,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    semanticMetadata.rawImdbRating?.let { rating ->
+                        DetailImdbRating(
+                            rating = rating,
+                            fallbackColor = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                 }
             }
 
@@ -359,22 +368,36 @@ private fun DetailPremiumStoryBlock(description: String) {
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun DetailStandardOverview(
-    pills: List<String>,
+    textItems: List<String>,
+    semanticMetadata: DetailHeaderMetadataData,
     ratings: List<MetaExternalRating>,
     description: String?,
     onRatingsClick: () -> Unit,
 ) {
-    if (pills.isNotEmpty()) {
+    if (
+        textItems.isNotEmpty() ||
+        semanticMetadata.ageRating != null ||
+        semanticMetadata.rawImdbRating != null
+    ) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            pills.forEach { pill ->
+            textItems.forEach { item ->
                 Text(
-                    text = pill,
+                    text = item,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold,
+                )
+            }
+            semanticMetadata.ageRating?.let { ageRating ->
+                DetailHeroMetaBadge(text = ageRating)
+            }
+            semanticMetadata.rawImdbRating?.let { rating ->
+                DetailImdbRating(
+                    rating = rating,
+                    fallbackColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -801,7 +824,7 @@ private fun MetaLabelValueRow(
 }
 
 @Composable
-private fun DetailHeroMetaBadge(
+internal fun DetailHeroMetaBadge(
     text: String,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
@@ -820,6 +843,30 @@ private fun DetailHeroMetaBadge(
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+internal fun DetailImdbRating(
+    rating: String,
+    fallbackColor: Color,
+) {
+    val textStyle = MaterialTheme.typography.titleMedium.copy(
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.sp,
+    )
+    val ratingColor = if (AppFeaturePolicy.imdbRatingLogoEnabled) ImdbYellow else fallbackColor
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        ImdbRatingSourceLabel(
+            storeTextStyle = textStyle,
+            storeTextColor = fallbackColor,
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = rating,
+            style = textStyle,
+            color = ratingColor,
         )
     }
 }

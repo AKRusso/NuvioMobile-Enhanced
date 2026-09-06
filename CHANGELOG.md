@@ -3,6 +3,55 @@
 All notable Nuvio Enhanced changes are recorded here. GitHub release notes use the
 same user-facing summary so the in-app updater can display it before download.
 
+## 0.4.14 - 2026-09-06
+
+### Added
+
+- Added privacy-safe runtime diagnostics and persistent local crash reports with
+  a dedicated copy action under Nuvio Enhanced system settings.
+- Added optional cinematic detail headers, richer production and network
+  information, regional streaming-provider availability, and expanded series
+  statistics.
+- Added custom profile backgrounds with resilient loading, theme-matched
+  supporter presets, and refreshed profile and startup presentation.
+
+### Improved
+
+- Metadata requests now share cached work, avoid duplicate loading, and enforce
+  bounded initial loading while optional enrichment continues into the cache.
+- Episode playback now reuses cached video identifiers, and stream requests
+  handle cancellation, replacement, provider failures, and timeouts more safely.
+- Plugin repositories now store scraper code separately, consolidate local
+  persistence, and isolate refreshes between profiles for substantially lower
+  memory usage with large repositories.
+- Improved detail-page layouts, episode navigation, Home refresh behavior,
+  keyboard focus, hero trailer playback, and release artwork fallbacks.
+- Improved Simkl progress reconciliation, transient scrobble retries, watched
+  episode transitions, and protection against stale provider snapshots.
+
+### Fixed
+
+- Fixed metadata text and artwork changing repeatedly while a detail page was
+  loading or after late enrichment completed.
+- Fixed stream screens becoming stuck in loading states or showing results from
+  an older title, episode, or profile.
+- Fixed out-of-memory failures when loading and persisting large plugin scraper
+  repositories.
+- Fixed supporter theme backgrounds not following the selected theme. Explicit
+  custom background images remain unchanged when switching themes.
+- Fixed stale remote profile data replacing valid local backgrounds and improved
+  custom-background recovery after returning to the foreground.
+- Hardened Android and iOS crash reporting so diagnostics cannot replace the
+  original failure or expose private identifiers, URLs, tokens, or email
+  addresses.
+
+Enhanced settings remain preserved when updating from an earlier release.
+
+### Release
+
+- This release is based on official NuvioMobile `0.4.11` and is versioned
+  independently as Nuvio Enhanced `0.4.14 (118)`.
+
 ## 0.4.13 - 2026-08-30
 
 ### Fixed

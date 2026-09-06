@@ -2,12 +2,22 @@ package com.nuvio.app.features.settings
 
 import kotlin.test.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class NuvioEnhancedFeaturePolicyTest {
     @Test
     fun `nuvio read is optional by default`() {
         assertFalse(NuvioEnhancedSettingsUiState().nuvioReadEnabled)
+    }
+
+    @Test
+    fun `cinematic detail header is optional by default`() {
+        assertFalse(NuvioEnhancedSettingsUiState().cinematicDetailHeaderEnabled)
+        assertEquals(
+            CinematicHeaderContentMode.Productions,
+            NuvioEnhancedSettingsUiState().cinematicHeaderContentMode,
+        )
     }
 
     @Test

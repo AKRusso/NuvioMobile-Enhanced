@@ -303,7 +303,7 @@ internal fun SimklMedia.canonicalContentId(animeIdPreference: SimklAnimeIdPrefer
  * When the user prefers MAL or Kitsu as the canonical anime ID, only the preferred ID type
  * is emitted to prevent duplicates in continue watching and watched badge resolution.
  */
-private fun SimklMedia.alternateContentIds(): Set<String> {
+internal fun SimklMedia.alternateContentIds(): Set<String> {
     val preference = TrackingSettingsRepository.uiState.value.simklAnimeIdPreference
     return when (preference) {
         SimklAnimeIdPreference.IMDB -> buildSet {

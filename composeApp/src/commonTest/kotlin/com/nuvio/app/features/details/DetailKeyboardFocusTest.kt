@@ -2,7 +2,9 @@ package com.nuvio.app.features.details
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DetailKeyboardFocusTest {
     @Test
@@ -66,6 +68,74 @@ class DetailKeyboardFocusTest {
         )
 
         assertNull(detailActionSectionLazyListIndex(settings) { true })
+    }
+
+    @Test
+    fun productionSectionAvailabilityFollowsCinematicHeaderWithoutChangingSettings() {
+        assertTrue(
+            detailProductionSectionVisible(
+                hasProductionData = true,
+                cinematicDetailHeaderEnabled = false,
+            ),
+        )
+        assertFalse(
+            detailProductionSectionVisible(
+                hasProductionData = true,
+                cinematicDetailHeaderEnabled = true,
+            ),
+        )
+        assertFalse(
+            detailProductionSectionVisible(
+                hasProductionData = false,
+                cinematicDetailHeaderEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun cinematicHeaderRemovesOnlyItsBackdropBridge() {
+        assertFalse(
+            shouldRenderDetailBackdropBridge(
+                backgroundMode = MetaScreenBackgroundMode.Cinematic,
+                cinematicDetailHeaderEnabled = true,
+            ),
+        )
+        assertFalse(
+            shouldRenderDetailBackdropBridge(
+                backgroundMode = MetaScreenBackgroundMode.DominantColor,
+                cinematicDetailHeaderEnabled = true,
+            ),
+        )
+        assertTrue(
+            shouldRenderDetailBackdropBridge(
+                backgroundMode = MetaScreenBackgroundMode.Cinematic,
+                cinematicDetailHeaderEnabled = false,
+            ),
+        )
+        assertFalse(
+            shouldRenderDetailBackdropBridge(
+                backgroundMode = MetaScreenBackgroundMode.Normal,
+                cinematicDetailHeaderEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun cinematicHeaderUsesDescriptionOnlyAndDisablesNuvioRead() {
+        assertTrue(shouldUseDescriptionOnlyDetailOverview(cinematicDetailHeaderEnabled = true))
+        assertFalse(shouldUseDescriptionOnlyDetailOverview(cinematicDetailHeaderEnabled = false))
+        assertFalse(
+            shouldEnableDetailNuvioRead(
+                nuvioReadEnabled = true,
+                cinematicDetailHeaderEnabled = true,
+            ),
+        )
+        assertTrue(
+            shouldEnableDetailNuvioRead(
+                nuvioReadEnabled = true,
+                cinematicDetailHeaderEnabled = false,
+            ),
+        )
     }
 
     private fun section(

@@ -34,7 +34,7 @@ class ProfileBackgroundPresetTest {
     }
 
     @Test
-    fun `automatic background follows theme while explicit backgrounds win`() {
+    fun `supporter theme wins presets while custom backgrounds win`() {
         val automatic = NuvioProfile(profileIndex = 1)
         val explicitPreset = NuvioProfile(
             profileIndex = 1,
@@ -46,7 +46,36 @@ class ProfileBackgroundPresetTest {
         )
 
         assertEquals(ProfileBackgroundPreset.GOLD, effectiveProfileBackgroundPreset(automatic, AppTheme.GOLD))
-        assertEquals(ProfileBackgroundPreset.JADE, effectiveProfileBackgroundPreset(explicitPreset, AppTheme.GOLD))
+        assertEquals(ProfileBackgroundPreset.GOLD, effectiveProfileBackgroundPreset(explicitPreset, AppTheme.GOLD))
+        assertEquals(ProfileBackgroundPreset.JADE, effectiveProfileBackgroundPreset(explicitPreset, AppTheme.WHITE))
         assertNull(effectiveProfileBackgroundPreset(customImage, AppTheme.GOLD))
+    }
+
+    @Test
+    fun `effective background changes with supporter theme when there is no custom image`() {
+        val profile = NuvioProfile(
+            profileIndex = 1,
+            backgroundUrl = ProfileBackgroundPreset.JADE.storedValue,
+        )
+
+        val gold = effectiveProfileBackground(profile, AppTheme.GOLD)
+        val roseGold = effectiveProfileBackground(profile, AppTheme.ROSE_GOLD)
+
+        assertEquals(ProfileBackgroundPreset.GOLD, gold.preset)
+        assertEquals(ProfileBackgroundPreset.ROSE_GOLD, roseGold.preset)
+        assertNull(gold.customImageUrl)
+        assertNull(roseGold.customImageUrl)
+    }
+
+    @Test
+    fun `custom image remains unchanged across theme changes`() {
+        val customUrl = "https://example.com/custom-background.jpg"
+        val profile = NuvioProfile(profileIndex = 1, backgroundUrl = customUrl)
+
+        AppTheme.entries.forEach { theme ->
+            val effective = effectiveProfileBackground(profile, theme)
+            assertNull(effective.preset)
+            assertEquals(customUrl, effective.customImageUrl)
+        }
     }
 }

@@ -105,6 +105,35 @@ class SimklScrobbleReconciliationTest {
     }
 
     @Test
+    fun `first completed episode moves a planned show into watching`() {
+        val media = showMedia(simklId = 2090L, imdb = "tt1520211")
+        val snapshot = SimklSyncSnapshot(
+            entries = listOf(
+                SimklLibraryEntry(
+                    mediaType = SimklMediaType.SHOWS,
+                    status = SimklListStatus.PLAN_TO_WATCH,
+                    show = media,
+                ),
+            ),
+        )
+
+        val updated = snapshot.applyScrobbleResult(
+            result = SimklScrobbleResult(
+                outcome = SimklScrobbleOutcome.SCROBBLE,
+                playbackId = null,
+                progress = 95.0,
+                mediaType = SimklMediaType.SHOWS,
+                media = media,
+                episode = SimklPlaybackEpisode(season = 1, number = 1),
+            ),
+            committedAtEpochMs = 1_700_000_000_000L,
+        )
+
+        assertEquals(SimklListStatus.WATCHING, updated.entries.single().status)
+        assertEquals(1, updated.entries.single().watchedEpisodesCount)
+    }
+
+    @Test
     fun `anime stop updates only the matching Simkl title when siblings share IMDb`() {
         val firstMedia = animeMedia(100L, "tt2560140", 16498L)
         val secondMedia = animeMedia(101L, "tt2560140", 25777L)

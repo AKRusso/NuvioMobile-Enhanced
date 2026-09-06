@@ -82,6 +82,7 @@ import com.nuvio.app.features.details.SeasonViewMode
 import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.details.formatRuntimeFromMinutes
 import com.nuvio.app.features.details.metaVideoSeasonEpisodeComparator
+import com.nuvio.app.features.details.episodeListIdentity
 import com.nuvio.app.features.details.normalizeSeasonNumber
 import com.nuvio.app.features.details.preferredEpisodeNumberForSeason
 import com.nuvio.app.features.details.seasonSortKey
@@ -646,9 +647,10 @@ private fun EpisodeHorizontalRow(
     }
     val rowMetrics = rememberEpisodeHorizontalCardMetrics(maxWidthDp, tvLayout)
     val listState = rememberLazyListState()
-    var hasPositioned by remember(episodes) { mutableStateOf(false) }
+    val episodesIdentity = remember(episodes) { episodeListIdentity(episodes) }
+    var hasPositioned by remember(episodesIdentity) { mutableStateOf(false) }
 
-    LaunchedEffect(episodes, preferredEpisodeNumber) {
+    LaunchedEffect(episodesIdentity, preferredEpisodeNumber) {
         val targetIndex = if (preferredEpisodeNumber != null) {
             episodes.indexOfFirst { it.episode == preferredEpisodeNumber }
         } else {

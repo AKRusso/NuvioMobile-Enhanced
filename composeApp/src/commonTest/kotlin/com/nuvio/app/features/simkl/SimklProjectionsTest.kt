@@ -2,6 +2,7 @@ package com.nuvio.app.features.simkl
 
 import com.nuvio.app.features.tracking.TrackingMediaKind
 import com.nuvio.app.features.tracking.TrackingMembershipRemovalImpact
+import com.nuvio.app.features.watchprogress.WatchProgressEntry
 import com.nuvio.app.features.watchprogress.WatchProgressSourceSimklPlayback
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -218,6 +219,30 @@ class SimklProjectionsTest {
     }
 
     @Test
+    fun `optimistic Simkl progress overrides an older provider snapshot`() {
+        val provider = progressEntry(positionMs = 20L, updatedAt = 100L)
+        val optimistic = progressEntry(positionMs = 55L, updatedAt = 200L)
+
+        val merged = mergeSimklOptimisticProgress(listOf(provider), listOf(optimistic))
+
+        assertEquals(1, merged.size)
+        assertEquals(55L, merged.single().lastPositionMs)
+        assertEquals(200L, merged.single().lastUpdatedEpochMs)
+    }
+
+    @Test
+    fun `newer Simkl provider progress replaces an optimistic entry`() {
+        val optimistic = progressEntry(positionMs = 55L, updatedAt = 200L)
+        val provider = progressEntry(positionMs = 60L, updatedAt = 300L)
+
+        val merged = mergeSimklOptimisticProgress(listOf(provider), listOf(optimistic))
+
+        assertEquals(1, merged.size)
+        assertEquals(60L, merged.single().lastPositionMs)
+        assertEquals(300L, merged.single().lastUpdatedEpochMs)
+    }
+
+    @Test
     fun `media reference retains anime catalog and all accepted ids`() {
         val anime = entry(
             type = SimklMediaType.ANIME,
@@ -243,6 +268,19 @@ class SimklProjectionsTest {
         assertEquals(4, reference.episode?.number)
         assertEquals("https://catalog.example/anime.webp", reference.posterUrl)
     }
+
+    private fun progressEntry(positionMs: Long, updatedAt: Long) = WatchProgressEntry(
+        contentType = "series",
+        parentMetaId = "tt4574334",
+        parentMetaType = "series",
+        videoId = "tt4574334:1:3",
+        title = "Show",
+        seasonNumber = 1,
+        episodeNumber = 3,
+        lastPositionMs = positionMs,
+        durationMs = 100L,
+        lastUpdatedEpochMs = updatedAt,
+    )
 
     @Test
     fun `clean plan to watch removal needs no destructive confirmation`() {

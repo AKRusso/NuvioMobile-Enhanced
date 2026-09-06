@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
@@ -28,6 +29,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
 import com.nuvio.app.features.player.PlatformPlaybackDataSourceFactory
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
@@ -40,6 +43,8 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    seekRequest: HeroTrailerSeekRequest?,
+    onPlaybackStateChanged: (HeroTrailerPlaybackSnapshot) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -47,6 +52,7 @@ actual fun HeroTrailerPlayerSurface(
     val latestOnReady = rememberUpdatedState(onReady)
     val latestOnEnded = rememberUpdatedState(onEnded)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnPlaybackStateChanged = rememberUpdatedState(onPlaybackStateChanged)
     var lifecycleAllowsPlayback by remember {
         mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
     }
@@ -97,7 +103,6 @@ actual fun HeroTrailerPlayerSurface(
     DisposableEffect(exoPlayer, lifecycleOwner) {
         val listener = object : Player.Listener {
             private var readyReported = false
-            private var endedReported = false
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 when (playbackState) {
@@ -108,10 +113,7 @@ actual fun HeroTrailerPlayerSurface(
                         }
                     }
                     Player.STATE_ENDED -> {
-                        if (!endedReported) {
-                            endedReported = true
-                            latestOnEnded.value()
-                        }
+                        latestOnEnded.value()
                     }
                     else -> Unit
                 }
@@ -131,9 +133,9 @@ actual fun HeroTrailerPlayerSurface(
                 Lifecycle.Event.ON_START -> {
                     lifecycleAllowsPlayback = true
                     exoPlayer.volume = if (muted) 0f else 1f
+                    playerContainer?.attachPlayer(exoPlayer)
+                    playerContainer?.alpha = 1f
                     if (latestPlayWhenReady.value && exoPlayer.playbackState != Player.STATE_ENDED) {
-                        playerContainer?.attachPlayer(exoPlayer)
-                        playerContainer?.alpha = 1f
                         exoPlayer.playWhenReady = true
                         exoPlayer.play()
                     }
@@ -177,6 +179,31 @@ actual fun HeroTrailerPlayerSurface(
         }
     }
 
+    LaunchedEffect(exoPlayer, seekRequest?.id) {
+        val request = seekRequest ?: return@LaunchedEffect
+        exoPlayer.seekTo(request.positionMs.coerceAtLeast(0L))
+        if (playWhenReady && lifecycleAllowsPlayback) {
+            exoPlayer.playWhenReady = true
+            exoPlayer.play()
+        }
+    }
+
+    LaunchedEffect(exoPlayer) {
+        while (isActive) {
+            val durationMs = exoPlayer.duration
+                .takeUnless { it == C.TIME_UNSET || it < 0L }
+                ?: 0L
+            latestOnPlaybackStateChanged.value(
+                HeroTrailerPlaybackSnapshot(
+                    positionMs = exoPlayer.currentPosition.coerceAtLeast(0L),
+                    durationMs = durationMs,
+                    isPlaying = exoPlayer.isPlaying,
+                ),
+            )
+            delay(250L)
+        }
+    }
+
     LaunchedEffect(exoPlayer, muted, lifecycleAllowsPlayback) {
         exoPlayer.volume = if (muted || !lifecycleAllowsPlayback) 0f else 1f
     }
@@ -192,8 +219,9 @@ actual fun HeroTrailerPlayerSurface(
         },
         update = { container ->
             playerContainer = container
-            if (playWhenReady && lifecycleAllowsPlayback) {
+            if (lifecycleAllowsPlayback) {
                 container.attachPlayer(exoPlayer)
+                container.alpha = 1f
             } else {
                 container.detachPlayer(exoPlayer)
                 container.alpha = 0f

@@ -12,6 +12,7 @@ import com.nuvio.app.features.details.MoreLikeThisSource
 import com.nuvio.app.features.details.PersonDetail
 import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.PosterShape
+import com.nuvio.app.features.player.DeviceLanguagePreferences
 import com.nuvio.app.features.watchprogress.WatchProgressClock
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -49,6 +50,8 @@ object TmdbMetadataService {
     private val entityHeaderCache = mutableMapOf<String, TmdbEntityHeader>()
     private val entityRailCache = mutableMapOf<String, List<MetaPreview>>()
     private val previewArtworkCache = mutableMapOf<String, TmdbPreviewArtwork>()
+    private val companyBrandingCache = mutableMapOf<String, TmdbCompanyBranding>()
+    private val watchProviderCache = mutableMapOf<String, TmdbWatchProviderAvailability>()
 
     private fun <T> cacheGet(cache: Map<String, T>, key: String): T? =
         synchronized(cacheLock) { cache[key] }
@@ -719,6 +722,68 @@ object TmdbMetadataService {
         )
     }
 
+    suspend fun fetchCompanyBranding(
+        meta: MetaDetails,
+        fallbackItemId: String,
+    ): TmdbCompanyBranding? = withContext(Dispatchers.Default) {
+        val settings = TmdbSettingsRepository.snapshot()
+        if (!settings.enabled || !settings.hasApiKey) return@withContext null
+
+        val mediaType = normalizeMetaType(meta.type)
+        val tmdbId = TmdbService.ensureTmdbId(meta.id, mediaType)
+            ?: TmdbService.ensureTmdbId(fallbackItemId, mediaType)
+            ?: return@withContext null
+        val language = normalizeTmdbLanguage(settings.language)
+        val cacheKey = "$mediaType:$tmdbId:$language"
+        cacheGet(companyBrandingCache, cacheKey)?.let { return@withContext it }
+
+        val details = fetch<TmdbDetailsResponse>(
+            endpoint = "$mediaType/$tmdbId",
+            query = mapOf("language" to language),
+        ) ?: return@withContext null
+        val branding = TmdbCompanyBranding(
+            productionCompanies = details.productionCompanies.mapNotNull { it.toMetaCompany() },
+            networks = details.networks.mapNotNull { it.toMetaCompany() },
+        )
+        cachePut(companyBrandingCache, cacheKey, branding)
+        branding.takeIf { it.productionCompanies.isNotEmpty() || it.networks.isNotEmpty() }
+    }
+
+    suspend fun fetchWatchProviders(
+        meta: MetaDetails,
+        fallbackItemId: String,
+    ): TmdbWatchProviderAvailability? = withContext(Dispatchers.Default) {
+        val settings = TmdbSettingsRepository.snapshot()
+        if (!settings.enabled || !settings.hasApiKey) return@withContext null
+
+        val mediaType = normalizeMetaType(meta.type)
+        val tmdbId = TmdbService.ensureTmdbId(meta.id, mediaType)
+            ?: TmdbService.ensureTmdbId(fallbackItemId, mediaType)
+            ?: return@withContext null
+        val region = resolveTmdbWatchProviderRegion(
+            languageCodes = DeviceLanguagePreferences.preferredLanguageCodes(),
+            fallbackLanguage = settings.language,
+        )
+        val cacheKey = "$mediaType:$tmdbId:$region"
+        cacheGet(watchProviderCache, cacheKey)?.let { return@withContext it }
+
+        val response = fetch<TmdbWatchProviderResponse>(
+            endpoint = "$mediaType/$tmdbId/watch/providers",
+        ) ?: return@withContext null
+        val regional = response.results[region] ?: return@withContext null
+        val availability = TmdbWatchProviderAvailability(
+            region = region,
+            providers = mergeStreamingWatchProviders(
+                flatrate = regional.flatrate.map(TmdbWatchProviderDto::toWatchProvider),
+                free = regional.free.map(TmdbWatchProviderDto::toWatchProvider),
+                ads = regional.ads.map(TmdbWatchProviderDto::toWatchProvider),
+            ),
+            attributionUrl = regional.link?.trim()?.takeIf(String::isNotBlank),
+        )
+        cachePut(watchProviderCache, cacheKey, availability)
+        availability
+    }
+
     internal fun buildStandaloneMeta(
         type: String,
         id: String,
@@ -1357,6 +1422,44 @@ object TmdbMetadataService {
     }
 }
 
+data class TmdbCompanyBranding(
+    val productionCompanies: List<MetaCompany>,
+    val networks: List<MetaCompany>,
+)
+
+data class TmdbWatchProviderAvailability(
+    val region: String,
+    val providers: List<TmdbWatchProvider>,
+    val attributionUrl: String?,
+)
+
+data class TmdbWatchProvider(
+    val id: Int,
+    val name: String,
+    val logo: String?,
+    val displayPriority: Int,
+)
+
+internal fun mergeStreamingWatchProviders(
+    flatrate: List<TmdbWatchProvider>,
+    free: List<TmdbWatchProvider>,
+    ads: List<TmdbWatchProvider>,
+): List<TmdbWatchProvider> = (flatrate + free + ads)
+    .distinctBy(TmdbWatchProvider::id)
+    .sortedWith(compareBy(TmdbWatchProvider::displayPriority, TmdbWatchProvider::name))
+
+internal fun resolveTmdbWatchProviderRegion(
+    languageCodes: List<String>,
+    fallbackLanguage: String?,
+): String {
+    val normalized = (languageCodes + listOfNotNull(fallbackLanguage))
+        .map(::normalizeTmdbLanguage)
+    return normalized.firstNotNullOfOrNull { language ->
+        language.substringAfter("-", "").uppercase().takeIf { it.length == 2 }
+            ?: watchProviderDefaultRegions[language.substringBefore("-")]
+    } ?: "US"
+}
+
 internal data class TmdbEnrichment(
     val localizedTitle: String?,
     val titleAliases: List<String> = emptyList(),
@@ -1701,6 +1804,25 @@ private val defaultLanguageRegions = mapOf(
     "es" to "ES",
 )
 
+private val watchProviderDefaultRegions = mapOf(
+    "ar" to "SA",
+    "de" to "DE",
+    "en" to "US",
+    "es" to "ES",
+    "fr" to "FR",
+    "it" to "IT",
+    "ja" to "JP",
+    "ko" to "KR",
+    "nl" to "NL",
+    "pl" to "PL",
+    "pt" to "PT",
+    "ro" to "RO",
+    "ru" to "RU",
+    "tr" to "TR",
+    "uk" to "UA",
+    "zh" to "CN",
+)
+
 private const val TMDB_EPISODE_ENRICHMENT_TTL_MS = 24L * 60L * 60L * 1_000L
 private const val TMDB_RETRY_BASE_DELAY_MS = 250L
 
@@ -1918,6 +2040,34 @@ private data class TmdbCompany(
     val name: String? = null,
     @SerialName("logo_path") val logoPath: String? = null,
 )
+
+@Serializable
+private data class TmdbWatchProviderResponse(
+    val results: Map<String, TmdbWatchProviderRegion> = emptyMap(),
+)
+
+@Serializable
+private data class TmdbWatchProviderRegion(
+    val link: String? = null,
+    val flatrate: List<TmdbWatchProviderDto> = emptyList(),
+    val free: List<TmdbWatchProviderDto> = emptyList(),
+    val ads: List<TmdbWatchProviderDto> = emptyList(),
+)
+
+@Serializable
+private data class TmdbWatchProviderDto(
+    @SerialName("provider_id") val providerId: Int,
+    @SerialName("provider_name") val providerName: String,
+    @SerialName("logo_path") val logoPath: String? = null,
+    @SerialName("display_priority") val displayPriority: Int = Int.MAX_VALUE,
+) {
+    fun toWatchProvider(): TmdbWatchProvider = TmdbWatchProvider(
+        id = providerId,
+        name = providerName.trim(),
+        logo = buildImageUrl(logoPath, "w92"),
+        displayPriority = displayPriority,
+    )
+}
 
 @Serializable
 private data class TmdbCollectionRef(

@@ -30,10 +30,13 @@ actual fun HeroTrailerPlayerSurface(
     onReady: () -> Unit,
     onEnded: () -> Unit,
     onError: () -> Unit,
+    seekRequest: HeroTrailerSeekRequest?,
+    onPlaybackStateChanged: (HeroTrailerPlaybackSnapshot) -> Unit,
 ) {
     val latestOnReady = rememberUpdatedState(onReady)
     val latestOnEnded = rememberUpdatedState(onEnded)
     val latestOnError = rememberUpdatedState(onError)
+    val latestOnPlaybackStateChanged = rememberUpdatedState(onPlaybackStateChanged)
     val bridge = remember {
         NuvioPlayerBridgeFactory.create()
     }
@@ -88,6 +91,18 @@ actual fun HeroTrailerPlayerSurface(
         }
     }
 
+
+    LaunchedEffect(bridge, seekRequest?.id) {
+        val request = seekRequest ?: return@LaunchedEffect
+        runCatching {
+            bridge.seekTo(request.positionMs.coerceAtLeast(0L))
+            if (playWhenReady) bridge.play()
+        }.onFailure { error ->
+            Logger.w(HERO_TRAILER_IOS_TAG, error) { "Failed to seek iOS hero trailer preview" }
+            latestOnError.value()
+        }
+    }
+
     LaunchedEffect(bridge, sourceUrl, sourceAudioUrl) {
         var readyReported = false
         var endedReported = false
@@ -111,8 +126,16 @@ actual fun HeroTrailerPlayerSurface(
             if (!endedReported && runCatching { bridge.getIsEnded() }.getOrDefault(false)) {
                 endedReported = true
                 latestOnEnded.value()
-                return@LaunchedEffect
+            } else if (endedReported && !runCatching { bridge.getIsEnded() }.getOrDefault(false)) {
+                endedReported = false
             }
+            latestOnPlaybackStateChanged.value(
+                HeroTrailerPlaybackSnapshot(
+                    positionMs = runCatching { bridge.getPositionMs() }.getOrDefault(0L).coerceAtLeast(0L),
+                    durationMs = runCatching { bridge.getDurationMs() }.getOrDefault(0L).coerceAtLeast(0L),
+                    isPlaying = runCatching { bridge.getIsPlaying() }.getOrDefault(false),
+                ),
+            )
             delay(250L)
         }
     }

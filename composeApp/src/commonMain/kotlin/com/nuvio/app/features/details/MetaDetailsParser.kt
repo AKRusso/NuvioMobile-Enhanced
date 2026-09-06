@@ -46,6 +46,8 @@ internal object MetaDetailsParser {
             director = meta.directors(links),
             writer = meta.writers(links),
             cast = meta.cast(links),
+            productionCompanies = meta.companies("productionCompanies", "production_companies"),
+            networks = meta.companies("networks"),
             country = meta.string("country"),
             awards = meta.string("awards"),
             language = meta.string("language"),
@@ -94,6 +96,59 @@ internal object MetaDetailsParser {
 
     private fun JsonObject.int(name: String): Int? =
         this[name]?.jsonPrimitive?.intOrNull
+
+    private fun JsonObject.companies(vararg names: String): List<MetaCompany> {
+        val appExtras = this["app_extras"] as? JsonObject
+        return names
+            .flatMap { name -> companyList(name) + appExtras.companyList(name) }
+            .distinctBy { company -> company.name.trim().lowercase() }
+    }
+
+    private fun JsonObject?.companyList(name: String): List<MetaCompany> {
+        val value = this?.get(name) ?: return emptyList()
+        return when (value) {
+            is JsonArray -> value.mapNotNull { element ->
+                when (element) {
+                    is JsonObject -> {
+                        val companyName = element.string("name")?.trim()?.takeIf(String::isNotBlank)
+                            ?: return@mapNotNull null
+                        val rawLogo = listOf("logo", "logoUrl", "logo_url", "logo_path")
+                            .firstNotNullOfOrNull { field -> element.string(field) }
+                        val tmdbId = element.int("tmdbId")
+                            ?: element.int("tmdb_id")
+                            ?: element.int("id")
+                            ?: element.string("id")?.toIntOrNull()
+                        MetaCompany(
+                            name = companyName,
+                            logo = rawLogo?.normalizeCompanyLogo(),
+                            tmdbId = tmdbId,
+                        )
+                    }
+                    is JsonPrimitive -> element.contentOrNull
+                        ?.trim()
+                        ?.takeIf(String::isNotBlank)
+                        ?.let(::MetaCompany)
+                    else -> null
+                }
+            }
+            is JsonPrimitive -> value.contentOrNull
+                ?.split(',')
+                ?.map(String::trim)
+                ?.filter(String::isNotBlank)
+                ?.map(::MetaCompany)
+                .orEmpty()
+            else -> emptyList()
+        }
+    }
+
+    private fun String.normalizeCompanyLogo(): String? {
+        val logo = trim().takeIf(String::isNotBlank) ?: return null
+        return if (logo.startsWith('/')) {
+            "https://image.tmdb.org/t/p/w300$logo"
+        } else {
+            logo
+        }
+    }
 
     private fun JsonObject.boolean(name: String): Boolean? =
         this[name]?.jsonPrimitive?.booleanOrNull

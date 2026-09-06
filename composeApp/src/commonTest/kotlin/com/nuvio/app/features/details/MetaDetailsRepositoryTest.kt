@@ -34,4 +34,13 @@ class MetaDetailsRepositoryTest {
         assertEquals(40_000L, tmdbEnrichmentTimeoutMs(seasonCount = 12))
         assertEquals(60_000L, tmdbEnrichmentTimeoutMs(seasonCount = 100))
     }
+
+    @Test
+    fun `metadata request key distinguishes titles and types`() {
+        assertEquals("movie:tt123", metaDetailsRequestKey(type = "movie", id = "tt123"))
+        assertNotEquals(
+            metaDetailsRequestKey(type = "movie", id = "tt123"),
+            metaDetailsRequestKey(type = "series", id = "tt123"),
+        )
+    }
 }

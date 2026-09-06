@@ -26,6 +26,34 @@ class PluginPersistenceTest {
     }
 
     @Test
+    fun largeCollectionMetadataSizeDoesNotScaleWithSharedSourceCode() {
+        val sourceCode = "module.exports = " + "x".repeat(1_100_000)
+        val stored = PluginsUiState(
+            scrapers = List(61) { index ->
+                pluginScraper(sourceCode).copy(
+                    id = "scraper-$index",
+                    name = "Scraper $index",
+                )
+            },
+        ).toStoredPluginsState()
+
+        val encoded = json.encodeToString(stored)
+
+        assertTrue(stored.scrapers.all { it.code == null })
+        assertTrue(encoded.length < 32_000)
+        assertFalse(sourceCode in encoded)
+    }
+
+    @Test
+    fun metadataStatePreservesExcludedQualities() {
+        val stored = PluginsUiState(
+            excludedQualities = setOf("cam", "480p"),
+        ).toStoredPluginsState()
+
+        assertEquals(setOf("cam", "480p"), stored.excludedQualities)
+    }
+
+    @Test
     fun cachedScraperCodeRestoresOfflineWithoutMigration() {
         val sourceCode = "offline scraper source"
         val stored = pluginScraper(sourceCode).toStoredPluginScraper()
@@ -48,6 +76,18 @@ class PluginPersistenceTest {
         val restored = stored.restorePluginScraper { null }
 
         assertEquals(sourceCode, restored?.scraper?.code)
+        assertTrue(restored?.requiresMigration == true)
+    }
+
+    @Test
+    fun cachedCodeTakesPriorityWhileLegacyStateIsStillMarkedForMigration() {
+        val stored = pluginScraper("legacy source")
+            .toStoredPluginScraper()
+            .copy(code = "legacy source")
+
+        val restored = stored.restorePluginScraper { "cached source" }
+
+        assertEquals("cached source", restored?.scraper?.code)
         assertTrue(restored?.requiresMigration == true)
     }
 

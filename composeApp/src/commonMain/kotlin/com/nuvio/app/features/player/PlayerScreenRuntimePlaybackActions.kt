@@ -10,10 +10,8 @@ import com.nuvio.app.features.watchprogress.WatchProgressClock
 import com.nuvio.app.features.watchprogress.WatchProgressPlaybackSession
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.features.watchprogress.buildPlaybackVideoId
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal val PlayerScreenRuntime.activePlaybackIdentity: String
     get() = activeTorrentInfoHash
@@ -190,16 +188,13 @@ private fun PlayerScreenRuntime.emitTrackingScrobbleTerminal(
     val percent = provided ?: currentPlaybackProgressPercent()
     val mediaSnapshot = currentTrackingMedia
     val inputsSnapshot = snapshotTrackingScrobbleItemInputs()
-    scope.launch {
-        withContext(NonCancellable) {
-            val media = mediaSnapshot ?: inputsSnapshot.buildMedia()
-            if (!media.hasResolvableIdentity) return@withContext
-            TrackingScrobbleCoordinator.scrobble(
+    val media = mediaSnapshot ?: inputsSnapshot.buildMedia()
+    if (media.hasResolvableIdentity) {
+        TrackingScrobbleCoordinator.enqueueScrobble(
             profileId = profileId,
             action = action,
             event = TrackingScrobbleEvent(media = media, progressPercent = percent.toDouble()),
-            )
-        }
+        )
     }
     currentTrackingMedia = null
     hasRequestedScrobbleStartForCurrentItem = false
@@ -277,15 +272,15 @@ internal suspend fun PlayerScreenRuntime.resolveParentalGuideImdbId(): String? {
 internal fun PlayerScreenRuntime.flushWatchProgress(
     scrobbleAction: TrackingScrobbleAction = TrackingScrobbleAction.STOP,
 ) {
+    WatchProgressRepository.flushPlaybackProgress(
+        session = playbackSession,
+        snapshot = playbackSnapshot,
+    )
     when (scrobbleAction) {
         TrackingScrobbleAction.PAUSE -> emitTrackingScrobblePause()
         TrackingScrobbleAction.STOP -> emitStopScrobbleForCurrentProgress()
         TrackingScrobbleAction.START -> Unit
     }
-    WatchProgressRepository.flushPlaybackProgress(
-        session = playbackSession,
-        snapshot = playbackSnapshot,
-    )
 }
 
 internal fun PlayerScreenRuntime.scheduleProgressSyncAfterSeek() {

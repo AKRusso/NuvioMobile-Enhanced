@@ -45,6 +45,7 @@ data class MetaScreenSettingsUiState(
     val backgroundMode: MetaScreenBackgroundMode = MetaScreenBackgroundMode.Normal,
     val cinematicBackground: Boolean = false,
     val heroTrailerPlayback: Boolean = false,
+    val heroTrailerSoundEnabled: Boolean = false,
     val randomEpisodeButton: Boolean = false,
     val tabLayout: Boolean = false,
     val episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
@@ -120,6 +121,8 @@ private data class StoredMetaScreenSettingsPayload(
     val cinematicBackground: Boolean = false,
     @SerialName("hero_trailer_playback")
     val heroTrailerPlayback: Boolean = false,
+    @SerialName("hero_trailer_sound_enabled")
+    val heroTrailerSoundEnabled: Boolean = false,
     @SerialName("random_episode_button")
     val randomEpisodeButton: Boolean = false,
     @SerialName("tvStyleLayout")
@@ -207,6 +210,7 @@ object MetaScreenSettingsRepository {
     private var preferences: MutableMap<MetaScreenSectionKey, StoredMetaScreenSectionPreference> = mutableMapOf()
     private var backgroundMode: MetaScreenBackgroundMode = MetaScreenBackgroundMode.Normal
     private var heroTrailerPlayback: Boolean = false
+    private var heroTrailerSoundEnabled: Boolean = false
     private var randomEpisodeButton: Boolean = false
     private var tabLayout: Boolean = false
     private var episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal
@@ -229,6 +233,7 @@ object MetaScreenSettingsRepository {
                 backgroundMode = MetaScreenBackgroundMode.parse(parsed.backgroundMode)
                     ?: MetaScreenBackgroundMode.fromLegacyCinematic(parsed.cinematicBackground)
                 heroTrailerPlayback = parsed.heroTrailerPlayback
+                heroTrailerSoundEnabled = parsed.heroTrailerSoundEnabled
                 randomEpisodeButton = parsed.randomEpisodeButton
                 tabLayout = parsed.tabLayout
                 episodeCardStyle = MetaEpisodeCardStyle.parse(parsed.episodeCardStyle)
@@ -254,6 +259,7 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerSoundEnabled = false
         randomEpisodeButton = false
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
@@ -279,6 +285,13 @@ object MetaScreenSettingsRepository {
     fun setHeroTrailerPlayback(enabled: Boolean) {
         ensureLoaded()
         heroTrailerPlayback = enabled
+        publish()
+        persist()
+    }
+
+    fun setHeroTrailerSoundEnabled(enabled: Boolean) {
+        ensureLoaded()
+        heroTrailerSoundEnabled = enabled
         publish()
         persist()
     }
@@ -350,6 +363,7 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerSoundEnabled = false
         randomEpisodeButton = false
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
@@ -364,6 +378,7 @@ object MetaScreenSettingsRepository {
         items: List<MetaScreenSectionItem>,
         cinematicBackground: Boolean,
         heroTrailerPlayback: Boolean = false,
+        heroTrailerSoundEnabled: Boolean = false,
         randomEpisodeButton: Boolean = false,
         tabLayout: Boolean,
         episodeCardStyle: MetaEpisodeCardStyle = MetaEpisodeCardStyle.Horizontal,
@@ -376,6 +391,7 @@ object MetaScreenSettingsRepository {
         ensureLoaded()
         this.backgroundMode = backgroundMode ?: MetaScreenBackgroundMode.fromLegacyCinematic(cinematicBackground)
         this.heroTrailerPlayback = heroTrailerPlayback
+        this.heroTrailerSoundEnabled = heroTrailerSoundEnabled
         this.randomEpisodeButton = randomEpisodeButton
         this.tabLayout = tabLayout
         this.episodeCardStyle = episodeCardStyle
@@ -407,6 +423,7 @@ object MetaScreenSettingsRepository {
         preferences.clear()
         backgroundMode = MetaScreenBackgroundMode.Normal
         heroTrailerPlayback = false
+        heroTrailerSoundEnabled = false
         randomEpisodeButton = false
         tabLayout = false
         episodeCardStyle = MetaEpisodeCardStyle.Horizontal
@@ -480,6 +497,7 @@ object MetaScreenSettingsRepository {
             backgroundMode = backgroundMode,
             cinematicBackground = backgroundMode.usesBackdropBackground,
             heroTrailerPlayback = heroTrailerPlayback,
+            heroTrailerSoundEnabled = heroTrailerSoundEnabled,
             randomEpisodeButton = randomEpisodeButton,
             tabLayout = tabLayout,
             episodeCardStyle = episodeCardStyle,
@@ -498,6 +516,7 @@ object MetaScreenSettingsRepository {
                     backgroundMode = MetaScreenBackgroundMode.persist(backgroundMode),
                     cinematicBackground = backgroundMode.usesBackdropBackground,
                     heroTrailerPlayback = heroTrailerPlayback,
+                    heroTrailerSoundEnabled = heroTrailerSoundEnabled,
                     randomEpisodeButton = randomEpisodeButton,
                     tabLayout = tabLayout,
                     episodeCardStyle = MetaEpisodeCardStyle.persist(episodeCardStyle),

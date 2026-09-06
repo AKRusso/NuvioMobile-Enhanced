@@ -82,6 +82,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.nuvio.app.core.build.AppFeaturePolicy
 import com.nuvio.app.core.build.TrailerPlaybackMode
+import com.nuvio.app.core.diagnostics.MetadataLoadTrigger
 import com.nuvio.app.core.network.NetworkCondition
 import com.nuvio.app.core.network.NetworkStatusRepository
 import com.nuvio.app.core.ui.NuvioBackButton
@@ -95,6 +96,7 @@ import com.nuvio.app.features.anime.AniListTrackingRepository
 import com.nuvio.app.features.anime.MyAnimeListTrackingRepository
 import com.nuvio.app.features.details.components.AiAssistantSheet
 import com.nuvio.app.features.details.components.DetailActionButtons
+import com.nuvio.app.features.details.components.CinematicDetailHeader
 import com.nuvio.app.features.details.components.DetailSecondaryAction
 import com.nuvio.app.features.details.components.CommentDetailSheet
 import com.nuvio.app.features.details.components.DetailAdditionalInfoSection
@@ -107,6 +109,7 @@ import com.nuvio.app.features.details.components.DetailPosterRailSection
 import com.nuvio.app.features.details.components.DetailProductionSection
 import com.nuvio.app.features.details.components.DetailSeriesContent
 import com.nuvio.app.features.details.components.DetailTrailersSection
+import com.nuvio.app.features.details.components.readableDetailContentColor
 import com.nuvio.app.features.details.components.EpisodeDownloadFlowSheet
 import com.nuvio.app.features.details.components.EpisodeWatchedActionSheet
 import com.nuvio.app.features.details.components.SeasonWatchedActionSheet
@@ -116,12 +119,14 @@ import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.library.LibraryRepository
 import com.nuvio.app.features.library.toLibraryItem
 import com.nuvio.app.features.player.PlayerSettingsRepository
+import com.nuvio.app.features.settings.CinematicHeaderContentMode
 import com.nuvio.app.features.settings.NuvioEnhancedSettingsRepository
 import com.nuvio.app.features.simkl.SimklAuthRepository
 import com.nuvio.app.features.simkl.SimklConnectionMode
 import com.nuvio.app.features.streams.StreamAutoPlayPolicy
 import com.nuvio.app.features.streams.StreamsRepository
 import com.nuvio.app.features.tmdb.TmdbSettingsRepository
+import com.nuvio.app.features.tmdb.TmdbMetadataService
 import com.nuvio.app.features.tmdb.TmdbService
 import com.nuvio.app.features.trakt.TraktAuthRepository
 import com.nuvio.app.features.trakt.TraktCommentReview
@@ -242,6 +247,9 @@ fun MetaDetailsScreen(
     }.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
     var autoLoadAttempted by remember(type, id) { mutableStateOf(false) }
+    val currentRequestKey = remember(type, id) { metaDetailsRequestKey(type, id) }
+    val isCurrentRequestLoading = uiState.requestKey == currentRequestKey && uiState.isLoading
+    val currentRequestError = uiState.errorMessage.takeIf { uiState.requestKey == currentRequestKey }
     var observedOfflineState by remember(type, id) { mutableStateOf(false) }
     var selectedEpisodeForActions by remember(type, id) { mutableStateOf<MetaVideo?>(null) }
     var selectedSeasonForActions by remember(type, id) { mutableStateOf<Int?>(null) }
@@ -360,14 +368,14 @@ fun MetaDetailsScreen(
         }.orEmpty()
     }
 
-    LaunchedEffect(type, id, offlineDetailsAvailable, displayedMeta, uiState.isLoading, autoLoadAttempted) {
+    LaunchedEffect(type, id, offlineDetailsAvailable, displayedMeta, autoLoadAttempted) {
         if (offlineDetailsAvailable) {
             autoLoadAttempted = true
             return@LaunchedEffect
         }
-        if (!autoLoadAttempted && displayedMeta == null && !uiState.isLoading) {
+        if (!autoLoadAttempted && displayedMeta == null) {
             autoLoadAttempted = true
-            MetaDetailsRepository.load(type, id)
+            MetaDetailsRepository.load(type, id, trigger = MetadataLoadTrigger.Initial)
         }
     }
 
@@ -380,12 +388,12 @@ fun MetaDetailsScreen(
         offlineDetailsAvailable,
     ) {
         if (offlineDetailsAvailable) return@LaunchedEffect
-        if (displayedMeta != null && !uiState.isLoading) {
-            MetaDetailsRepository.load(type, id)
+        if (displayedMeta != null && !isCurrentRequestLoading) {
+            MetaDetailsRepository.load(type, id, trigger = MetadataLoadTrigger.SettingsChanged)
         }
     }
 
-    LaunchedEffect(networkStatusUiState.condition, displayedMeta, uiState.isLoading, type, id, offlineDetailsAvailable) {
+    LaunchedEffect(networkStatusUiState.condition, displayedMeta, isCurrentRequestLoading, type, id, offlineDetailsAvailable) {
         if (offlineDetailsAvailable) return@LaunchedEffect
         when (networkStatusUiState.condition) {
             NetworkCondition.NoInternet,
@@ -397,8 +405,8 @@ fun MetaDetailsScreen(
             NetworkCondition.Online -> {
                 if (!observedOfflineState) return@LaunchedEffect
                 observedOfflineState = false
-                if (displayedMeta == null && !uiState.isLoading) {
-                    MetaDetailsRepository.load(type, id)
+                if (displayedMeta == null && !isCurrentRequestLoading) {
+                    MetaDetailsRepository.load(type, id, trigger = MetadataLoadTrigger.Reconnected)
                 }
             }
 
@@ -414,14 +422,14 @@ fun MetaDetailsScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         when {
-            displayedMeta == null && uiState.isLoading -> {
+            displayedMeta == null && (isCurrentRequestLoading || !autoLoadAttempted) -> {
                 NuvioLoadingIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
 
-            displayedMeta == null && uiState.errorMessage != null -> {
+            displayedMeta == null && currentRequestError != null -> {
                 Column(
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -438,7 +446,7 @@ fun MetaDetailsScreen(
                         text = when (networkStatusUiState.condition) {
                             NetworkCondition.NoInternet -> stringResource(Res.string.details_check_connection)
                             NetworkCondition.ServersUnreachable -> stringResource(Res.string.details_servers_unreachable)
-                            else -> uiState.errorMessage.orEmpty()
+                            else -> currentRequestError.orEmpty()
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -746,8 +754,13 @@ fun MetaDetailsScreen(
                 } else {
                     null
                 }
-                val hasProductionSection = remember(meta) {
-                    meta.productionCompanies.isNotEmpty() || meta.networks.isNotEmpty()
+                val cinematicDetailHeaderEnabled = nuvioEnhancedSettings.cinematicDetailHeaderEnabled
+                val cinematicHeaderContentMode = nuvioEnhancedSettings.cinematicHeaderContentMode
+                val hasProductionSection = remember(meta, cinematicDetailHeaderEnabled) {
+                    detailProductionSectionVisible(
+                        hasProductionData = meta.productionCompanies.isNotEmpty() || meta.networks.isNotEmpty(),
+                        cinematicDetailHeaderEnabled = cinematicDetailHeaderEnabled,
+                    )
                 }
                 val hasAdditionalInfoSection = remember(meta) {
                     meta.status != null ||
@@ -766,6 +779,75 @@ fun MetaDetailsScreen(
                 val hasTrailersSection = remember(meta, offlineDetailsMode) {
                     !offlineDetailsMode && meta.trailers.isNotEmpty()
                 }
+                var cinematicProductionCompanies by remember(meta.id) {
+                    mutableStateOf(emptyList<MetaCompany>())
+                }
+                var cinematicNetworks by remember(meta.id) {
+                    mutableStateOf(emptyList<MetaCompany>())
+                }
+                LaunchedEffect(
+                    cinematicDetailHeaderEnabled,
+                    cinematicHeaderContentMode,
+                    deferredMetaWorkAllowed,
+                    meta.id,
+                    meta.productionCompanies,
+                    meta.networks,
+                ) {
+                    cinematicProductionCompanies = emptyList()
+                    cinematicNetworks = emptyList()
+                    if (
+                        !cinematicDetailHeaderEnabled ||
+                        cinematicHeaderContentMode != CinematicHeaderContentMode.Productions ||
+                        !deferredMetaWorkAllowed ||
+                        (meta.productionCompanies.isNotEmpty() && meta.networks.isNotEmpty())
+                    ) {
+                        return@LaunchedEffect
+                    }
+                    TmdbMetadataService.fetchCompanyBranding(
+                        meta = meta,
+                        fallbackItemId = id,
+                    )?.let { branding ->
+                        cinematicProductionCompanies = branding.productionCompanies
+                        cinematicNetworks = branding.networks
+                    }
+                }
+                var cinematicWatchProviders by remember(meta.id) {
+                    mutableStateOf<com.nuvio.app.features.tmdb.TmdbWatchProviderAvailability?>(null)
+                }
+                LaunchedEffect(
+                    cinematicDetailHeaderEnabled,
+                    cinematicHeaderContentMode,
+                    deferredMetaWorkAllowed,
+                    meta.id,
+                    tmdbSettingsUiState.enabled,
+                    tmdbSettingsUiState.hasApiKey,
+                    tmdbSettingsUiState.language,
+                ) {
+                    cinematicWatchProviders = null
+                    if (
+                        !cinematicDetailHeaderEnabled ||
+                        cinematicHeaderContentMode != CinematicHeaderContentMode.WhereToWatch ||
+                        !deferredMetaWorkAllowed ||
+                        !tmdbSettingsUiState.enabled ||
+                        !tmdbSettingsUiState.hasApiKey
+                    ) {
+                        return@LaunchedEffect
+                    }
+                    cinematicWatchProviders = TmdbMetadataService.fetchWatchProviders(
+                        meta = meta,
+                        fallbackItemId = id,
+                    )
+                }
+                val cinematicHeaderMeta = remember(
+                    meta,
+                    cinematicProductionCompanies,
+                    cinematicNetworks,
+                ) {
+                    meta.copy(
+                        productionCompanies = meta.productionCompanies.ifEmpty { cinematicProductionCompanies },
+                        networks = meta.networks.ifEmpty { cinematicNetworks },
+                    )
+                }
                 val uriHandler = LocalUriHandler.current
                 val inAppTrailerPlaybackEnabled = AppFeaturePolicy.trailerPlaybackMode == TrailerPlaybackMode.IN_APP
                 val trailerScope = rememberCoroutineScope()
@@ -780,12 +862,15 @@ fun MetaDetailsScreen(
                 }
                 val heroTrailerPlaybackEnabled = AppFeaturePolicy.heroTrailerPlaybackSupported &&
                     inAppTrailerPlaybackEnabled &&
-                    metaScreenSettingsUiState.heroTrailerPlayback &&
+                    (metaScreenSettingsUiState.heroTrailerPlayback || cinematicDetailHeaderEnabled) &&
                     !offlineDetailsMode
                 var heroTrailerPlaybackSource by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf<TrailerPlaybackSource?>(null) }
                 var heroTrailerReady by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }
                 var heroTrailerFinished by remember(meta.id, heroTrailerCandidate?.id) { mutableStateOf(false) }
                 val heroTrailerMuted by HeroTrailerAudioState.muted.collectAsStateWithLifecycle()
+                var cinematicTrailerMuted by remember(meta.id, metaScreenSettingsUiState.heroTrailerSoundEnabled) {
+                    mutableStateOf(!metaScreenSettingsUiState.heroTrailerSoundEnabled)
+                }
                 LaunchedEffect(
                     heroTrailerPlaybackEnabled,
                     heroTrailerCandidate?.id,
@@ -1146,6 +1231,24 @@ fun MetaDetailsScreen(
                         ),
                         label = "detail_dominant_backdrop_color",
                     )
+                    val cinematicHeaderContainerColor = if (backgroundMode == MetaScreenBackgroundMode.Normal) {
+                        colorScheme.background
+                    } else {
+                        Color.Transparent
+                    }
+                    val cinematicHeaderTopChromeColor = if (backgroundMode == MetaScreenBackgroundMode.Normal) {
+                        Color.Black
+                    } else {
+                        Color.Transparent
+                    }
+                    val cinematicHeaderEffectiveBackgroundColor = when (backgroundMode) {
+                        MetaScreenBackgroundMode.Normal,
+                        MetaScreenBackgroundMode.Cinematic -> colorScheme.background
+                        MetaScreenBackgroundMode.DominantColor -> dominantBackdropColor
+                    }
+                    val cinematicHeaderContentColor = readableDetailContentColor(
+                        cinematicHeaderEffectiveBackgroundColor,
+                    )
 
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (backgroundMode) {
@@ -1184,40 +1287,72 @@ fun MetaDetailsScreen(
                                 key = "detail-hero",
                                 contentType = "detail-hero",
                             ) {
-                                DetailHero(
-                                    meta = meta,
-                                    isTablet = isTablet,
-                                    contentMaxWidth = contentMaxWidth,
-                                    scrollOffsetProvider = detailScrollOffsetProvider,
-                                    stretchPx = { heroStretchState.stretchPx },
-                                    onHeightChanged = { heroHeightPxState.intValue = it },
-                                    heroTrailerSourceUrl = heroTrailerSourceUrl,
-                                    heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
-                                    heroTrailerReady = heroTrailerReady,
-                                    heroTrailerPlayWhenReady = heroTrailerPlayWhenReady,
-                                    heroTrailerMuted = heroTrailerMuted,
-                                    heroGradientColor = dominantBackdropColor.takeIf { dominantColorEnabled },
-                                    onBackdropLoaded = { painter, imageBitmap ->
-                                        dominantBackdropPainter = painter
-                                        dominantBackdropImageBitmap = imageBitmap
-                                    },
-                                    onHeroTrailerMuteToggle = {
-                                        HeroTrailerAudioState.toggleMuted()
-                                    },
-                                    onHeroTrailerReady = {
-                                        if (!heroTrailerFinished) {
-                                            heroTrailerReady = true
-                                        }
-                                    },
-                                    onHeroTrailerEnded = {
-                                        heroTrailerReady = false
-                                        heroTrailerFinished = true
-                                    },
-                                    onHeroTrailerError = {
-                                        heroTrailerReady = false
-                                        heroTrailerFinished = true
-                                    },
-                                )
+                                if (cinematicDetailHeaderEnabled) {
+                                    CinematicDetailHeader(
+                                        meta = cinematicHeaderMeta,
+                                        isTablet = isTablet,
+                                        contentMaxWidth = contentMaxWidth,
+                                        scrollOffsetProvider = detailScrollOffsetProvider,
+                                        stretchPx = { heroStretchState.stretchPx },
+                                        onHeightChanged = { heroHeightPxState.intValue = it },
+                                        onBackdropLoaded = { painter, imageBitmap ->
+                                            dominantBackdropPainter = painter
+                                            dominantBackdropImageBitmap = imageBitmap
+                                        },
+                                        onCompanyClick = onCompanyClick,
+                                        trailerSourceUrl = heroTrailerSourceUrl,
+                                        trailerSourceAudioUrl = heroTrailerSourceAudioUrl,
+                                        trailerAutoPlay = metaScreenSettingsUiState.heroTrailerPlayback,
+                                        trailerPlaybackAllowed = !isLeavingDetails && isHeroTrailerWithinPlayThreshold,
+                                        trailerMuted = cinematicTrailerMuted,
+                                        containerColor = cinematicHeaderContainerColor,
+                                        effectiveBackgroundColor = cinematicHeaderEffectiveBackgroundColor,
+                                        contentColor = cinematicHeaderContentColor,
+                                        topChromeColor = cinematicHeaderTopChromeColor,
+                                        contentMode = cinematicHeaderContentMode,
+                                        watchProviderAvailability = cinematicWatchProviders,
+                                        tmdbAvailable = tmdbSettingsUiState.enabled && tmdbSettingsUiState.hasApiKey,
+                                        onContentModeChange = NuvioEnhancedSettingsRepository::setCinematicHeaderContentMode,
+                                        onTrailerMuteToggle = {
+                                            cinematicTrailerMuted = !cinematicTrailerMuted
+                                        },
+                                    )
+                                } else {
+                                    DetailHero(
+                                        meta = meta,
+                                        isTablet = isTablet,
+                                        contentMaxWidth = contentMaxWidth,
+                                        scrollOffsetProvider = detailScrollOffsetProvider,
+                                        stretchPx = { heroStretchState.stretchPx },
+                                        onHeightChanged = { heroHeightPxState.intValue = it },
+                                        heroTrailerSourceUrl = heroTrailerSourceUrl,
+                                        heroTrailerSourceAudioUrl = heroTrailerSourceAudioUrl,
+                                        heroTrailerReady = heroTrailerReady,
+                                        heroTrailerPlayWhenReady = heroTrailerPlayWhenReady,
+                                        heroTrailerMuted = heroTrailerMuted,
+                                        heroGradientColor = dominantBackdropColor.takeIf { dominantColorEnabled },
+                                        onBackdropLoaded = { painter, imageBitmap ->
+                                            dominantBackdropPainter = painter
+                                            dominantBackdropImageBitmap = imageBitmap
+                                        },
+                                        onHeroTrailerMuteToggle = {
+                                            HeroTrailerAudioState.toggleMuted()
+                                        },
+                                        onHeroTrailerReady = {
+                                            if (!heroTrailerFinished) {
+                                                heroTrailerReady = true
+                                            }
+                                        },
+                                        onHeroTrailerEnded = {
+                                            heroTrailerReady = false
+                                            heroTrailerFinished = true
+                                        },
+                                        onHeroTrailerError = {
+                                            heroTrailerReady = false
+                                            heroTrailerFinished = true
+                                        },
+                                    )
+                                }
                             }
 
                             configuredMetaSectionItems(
@@ -1260,7 +1395,13 @@ fun MetaDetailsScreen(
                                 commentsError = commentsError,
                                 episodeImdbRatings = episodeImdbRatings,
                                 episodeTmdbRatings = episodeTmdbRatings,
-                                showNuvioRead = nuvioEnhancedSettings.nuvioReadEnabled,
+                                showNuvioRead = shouldEnableDetailNuvioRead(
+                                    nuvioReadEnabled = nuvioEnhancedSettings.nuvioReadEnabled,
+                                    cinematicDetailHeaderEnabled = cinematicDetailHeaderEnabled,
+                                ),
+                                descriptionOnlyOverview = shouldUseDescriptionOnlyDetailOverview(
+                                    cinematicDetailHeaderEnabled,
+                                ),
                                 onRetryComments = {
                                     detailsScope.launch {
                                         isCommentsLoading = true
@@ -1315,7 +1456,12 @@ fun MetaDetailsScreen(
                             }
                         }
 
-                        if (backgroundMode.usesBackdropBackground && deferredMetaWorkAllowed && heroHeightPx > 0) {
+                        if (
+                            shouldRenderDetailBackdropBridge(
+                                backgroundMode = backgroundMode,
+                                cinematicDetailHeaderEnabled = cinematicDetailHeaderEnabled,
+                            ) && deferredMetaWorkAllowed && heroHeightPx > 0
+                        ) {
                             val blendColor = dominantBackdropColor.takeIf { dominantColorEnabled }
                                 ?: colorScheme.background
                             Box(
@@ -1366,7 +1512,11 @@ fun MetaDetailsScreen(
                                         }
                                     },
                                 containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.onBackground,
+                                contentColor = if (cinematicDetailHeaderEnabled) {
+                                    cinematicHeaderContentColor
+                                } else {
+                                    MaterialTheme.colorScheme.onBackground
+                                },
                             )
                         }
 
@@ -1810,6 +1960,7 @@ private fun LazyListScope.configuredMetaSectionItems(
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
     episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
     showNuvioRead: Boolean,
+    descriptionOnlyOverview: Boolean,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -1900,6 +2051,7 @@ private fun LazyListScope.configuredMetaSectionItems(
                     episodeImdbRatings = episodeImdbRatings,
                     episodeTmdbRatings = episodeTmdbRatings,
                     showNuvioRead = showNuvioRead,
+                    descriptionOnlyOverview = descriptionOnlyOverview,
                     onRetryComments = onRetryComments,
                     onLoadMoreComments = onLoadMoreComments,
                     onCommentClick = onCommentClick,
@@ -2094,6 +2246,7 @@ private fun ConfiguredMetaSections(
     episodeImdbRatings: Map<Pair<Int, Int>, Double>,
     episodeTmdbRatings: Map<Pair<Int, Int>, Double>,
     showNuvioRead: Boolean,
+    descriptionOnlyOverview: Boolean,
     onRetryComments: () -> Unit,
     onLoadMoreComments: () -> Unit,
     onCommentClick: (TraktCommentReview) -> Unit,
@@ -2185,6 +2338,7 @@ private fun ConfiguredMetaSections(
                     episodeImdbRatings = episodeImdbRatings,
                     episodeTmdbRatings = episodeTmdbRatings,
                     showNuvioRead = showNuvioRead,
+                    descriptionOnly = descriptionOnlyOverview,
                 )
             }
             MetaScreenSectionKey.PRODUCTION -> {
@@ -2386,6 +2540,24 @@ private fun detailTabletContentMaxWidth(maxWidth: Dp, isTablet: Boolean): Dp =
 
 private fun dominantBackdropBlendColor(dominantColor: Color, backgroundColor: Color): Color =
     backgroundColor.blendTowards(dominantColor, fraction = 0.42f)
+
+internal fun detailProductionSectionVisible(
+    hasProductionData: Boolean,
+    cinematicDetailHeaderEnabled: Boolean,
+): Boolean = hasProductionData && !cinematicDetailHeaderEnabled
+
+internal fun shouldRenderDetailBackdropBridge(
+    backgroundMode: MetaScreenBackgroundMode,
+    cinematicDetailHeaderEnabled: Boolean,
+): Boolean = backgroundMode.usesBackdropBackground && !cinematicDetailHeaderEnabled
+
+internal fun shouldUseDescriptionOnlyDetailOverview(cinematicDetailHeaderEnabled: Boolean): Boolean =
+    cinematicDetailHeaderEnabled
+
+internal fun shouldEnableDetailNuvioRead(
+    nuvioReadEnabled: Boolean,
+    cinematicDetailHeaderEnabled: Boolean,
+): Boolean = nuvioReadEnabled && !cinematicDetailHeaderEnabled
 
 private fun Color.blendTowards(target: Color, fraction: Float): Color {
     val clamped = fraction.coerceIn(0f, 1f)

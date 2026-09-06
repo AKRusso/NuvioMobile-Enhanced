@@ -3,8 +3,12 @@ package com.nuvio.app.features.tracking
 import co.touchlab.kermit.Logger
 import com.nuvio.app.features.profiles.ProfileRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 data class TrackingScrobbleFailure(
@@ -14,6 +18,17 @@ data class TrackingScrobbleFailure(
 
 object TrackingScrobbleCoordinator {
     private val log = Logger.withTag("TrackingScrobble")
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    fun enqueueScrobble(
+        profileId: Int,
+        action: TrackingScrobbleAction,
+        event: TrackingScrobbleEvent,
+    ) {
+        scope.launch {
+            scrobble(profileId = profileId, action = action, event = event)
+        }
+    }
 
     suspend fun scrobble(
         profileId: Int,

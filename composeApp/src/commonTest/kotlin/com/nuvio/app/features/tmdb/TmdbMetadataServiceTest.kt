@@ -321,6 +321,32 @@ class TmdbMetadataServiceTest {
     }
 
     @Test
+    fun `watch provider region follows device locale and sensible language fallbacks`() {
+        assertEquals("PT", resolveTmdbWatchProviderRegion(listOf("pt"), null))
+        assertEquals("PT", resolveTmdbWatchProviderRegion(listOf("pt-PT"), "en-US"))
+        assertEquals("BR", resolveTmdbWatchProviderRegion(listOf("pt-BR"), "pt-PT"))
+        assertEquals("DE", resolveTmdbWatchProviderRegion(listOf("de"), null))
+        assertEquals("US", resolveTmdbWatchProviderRegion(emptyList(), null))
+    }
+
+    @Test
+    fun `watch provider merge only combines streaming buckets deduplicated by priority`() {
+        val netflix = TmdbWatchProvider(8, "Netflix", "netflix", 2)
+        val max = TmdbWatchProvider(1899, "Max", "max", 1)
+        val duplicateNetflix = netflix.copy(logo = "duplicate")
+        val pluto = TmdbWatchProvider(300, "Pluto TV", "pluto", 3)
+
+        val result = mergeStreamingWatchProviders(
+            flatrate = listOf(netflix, max),
+            free = listOf(duplicateNetflix),
+            ads = listOf(pluto),
+        )
+
+        assertEquals(listOf("Max", "Netflix", "Pluto TV"), result.map(TmdbWatchProvider::name))
+        assertEquals("netflix", result.first { it.id == netflix.id }.logo)
+    }
+
+    @Test
     fun `tmdb request retries transient statuses`() = runBlocking {
         var calls = 0
         val pauses = mutableListOf<Long>()
